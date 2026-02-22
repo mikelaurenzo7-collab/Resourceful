@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.resource import ResourceType
-from app.schemas.resource import ResourceTypeResponse, ListingResponse, ListingFilter
+from app.schemas.resource import ResourceTypeResponse, ListingFilter
 from app.services import listings as listing_service
 from app.services import matching as matching_service
 

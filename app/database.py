@@ -17,8 +17,20 @@ def _get_engine():
 
         settings = get_settings()
         db_url = settings.database_url
-        connect_args = {"check_same_thread": False} if "sqlite" in db_url else {}
-        _engine = create_async_engine(db_url, echo=settings.debug, connect_args=connect_args)
+        is_sqlite = "sqlite" in db_url
+        connect_args = {"check_same_thread": False} if is_sqlite else {}
+        engine_kwargs = {
+            "echo": settings.debug,
+            "connect_args": connect_args,
+        }
+        # Production-grade pool settings for PostgreSQL
+        if not is_sqlite:
+            engine_kwargs.update({
+                "pool_size": 5,
+                "max_overflow": 10,
+                "pool_pre_ping": True,
+            })
+        _engine = create_async_engine(db_url, **engine_kwargs)
     return _engine
 
 

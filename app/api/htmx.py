@@ -75,25 +75,12 @@ async def dashboard_listings(
     db: AsyncSession = Depends(get_db),
 ):
     listings = await listing_service.get_user_listings(db, user.id)
-    html_parts = []
     if listings:
+        html_parts = []
         for listing in listings[:5]:
-            color = {"solar": "amber", "bandwidth": "blue", "gpu": "purple"}.get(listing.resource_type, "gray")
-            html_parts.append(f"""
-            <div class="bg-gray-800 rounded-lg p-4 flex items-center justify-between animate-fade-in">
-                <div class="flex items-center space-x-3">
-                    <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium bg-{color}-400/10 text-{color}-400 ring-1 ring-inset ring-{color}-400/30">
-                        {listing.resource_type}
-                    </span>
-                    <div>
-                        <div class="text-white text-sm font-medium">{listing.title}</div>
-                        <div class="text-gray-500 text-xs">${listing.price_per_unit:.2f}/{listing.resource_type_unit or 'unit'}</div>
-                    </div>
-                </div>
-                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs {'text-green-400 bg-green-400/10' if listing.is_available else 'text-red-400 bg-red-400/10'}">
-                    {'Active' if listing.is_available else 'Inactive'}
-                </span>
-            </div>""")
+            html_parts.append(
+                templates.get_template("components/dashboard_listing_row.html").render(listing=listing)
+            )
         return HTMLResponse("".join(html_parts))
     else:
         return HTMLResponse("""
@@ -111,24 +98,12 @@ async def dashboard_orders(
 ):
     from app.services import orders as order_service
     orders = await order_service.get_user_orders(db, user.id, "seller")
-    html_parts = []
     if orders:
+        html_parts = []
         for order in orders[:5]:
-            status_colors = {
-                "pending": "yellow", "accepted": "blue", "active": "blue",
-                "completed": "green", "cancelled": "red",
-            }
-            color = status_colors.get(order.status, "gray")
-            html_parts.append(f"""
-            <div class="bg-gray-800 rounded-lg p-4 flex items-center justify-between animate-fade-in">
-                <div>
-                    <div class="text-white text-sm font-medium">{order.listing_title or 'Order'}</div>
-                    <div class="text-gray-500 text-xs">{order.quantity} units &middot; ${order.total_price:.2f}</div>
-                </div>
-                <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-{color}-400/10 text-{color}-400">
-                    {order.status.title()}
-                </span>
-            </div>""")
+            html_parts.append(
+                templates.get_template("components/dashboard_order_row.html").render(order=order)
+            )
         return HTMLResponse("".join(html_parts))
     else:
         return HTMLResponse("""

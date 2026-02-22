@@ -1,23 +1,6 @@
 import pytest
 from httpx import AsyncClient
 
-from app.models.resource import ResourceType
-
-
-@pytest.fixture(autouse=True)
-async def seed_types(db_session):
-    """Seed resource types for listing tests."""
-    for slug, name, unit in [
-        ("solar", "Solar Export", "kWh"),
-        ("bandwidth", "Bandwidth", "GB"),
-        ("gpu", "GPU Compute", "GPU-hour"),
-    ]:
-        db_session.add(ResourceType(
-            slug=slug, name=name, unit=unit,
-            description=f"{name} resource type", icon="bolt", color="amber",
-        ))
-    await db_session.commit()
-
 
 @pytest.mark.asyncio
 async def test_create_listing(auth_client: AsyncClient):

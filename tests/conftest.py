@@ -2,14 +2,16 @@ import os
 
 # Force SQLite for tests BEFORE any app imports
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_resourceful.db"
+os.environ["DEBUG"] = "true"
+os.environ["TESTING"] = "1"
 
-import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from app.database import Base, get_db
 from app.main import app
+from app.models.resource import ResourceType
 
 TEST_DB_URL = "sqlite+aiosqlite:///./test_resourceful.db"
 
@@ -33,8 +35,23 @@ app.dependency_overrides[get_db] = override_get_db
 @pytest_asyncio.fixture(autouse=True)
 async def setup_db():
     async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
+
+    # Seed resource types
+    async with TestSessionLocal() as session:
+        session.add_all([
+            ResourceType(slug="solar", name="Solar Export", unit="kWh",
+                         description="Solar export", icon="sun", color="amber"),
+            ResourceType(slug="bandwidth", name="Bandwidth", unit="GB",
+                         description="Bandwidth leasing", icon="wifi", color="blue"),
+            ResourceType(slug="gpu", name="GPU Compute", unit="GPU-hour",
+                         description="GPU compute", icon="cpu", color="purple"),
+        ])
+        await session.commit()
+
     yield
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
 
@@ -55,16 +72,13 @@ async def db_session():
 @pytest_asyncio.fixture
 async def auth_client(client: AsyncClient):
     """Client with authenticated user."""
-    await client.post("/api/auth/register", json={
+    reg = await client.post("/api/auth/register", json={
         "email": "test@example.com",
         "password": "testpass123",
         "full_name": "Test User",
         "role": "both",
     })
-    response = await client.post("/api/auth/login", json={
-        "email": "test@example.com",
-        "password": "testpass123",
-    })
-    token = response.json()["access_token"]
+    assert reg.status_code == 201, f"Register failed: {reg.status_code} {reg.text}"
+    token = reg.json()["access_token"]
     client.headers["Authorization"] = f"Bearer {token}"
     return client

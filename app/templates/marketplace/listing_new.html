@@ -14,6 +14,7 @@
         {% endif %}
 
         <form method="POST" action="/listings/create" class="space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <!-- Resource Type -->
             <div>
                 <label class="block text-sm font-medium text-gray-300 mb-2">Resource Type</label>

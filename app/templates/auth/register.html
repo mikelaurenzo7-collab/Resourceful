@@ -22,6 +22,7 @@
             {% endif %}
 
             <form method="POST" action="/register" class="space-y-6">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div>
                     <label for="full_name" class="block text-sm font-medium text-gray-300">Full name</label>
                     <input type="text" name="full_name" id="full_name" required

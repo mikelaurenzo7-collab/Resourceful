@@ -1,4 +1,6 @@
+import logging
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +10,9 @@ from app.config import get_settings
 from app.models.order import Order
 from app.models.resource import ResourceListing
 from app.schemas.order import OrderCreate, OrderUpdate, OrderResponse
+from app.services import payments as payment_service
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
@@ -18,11 +22,11 @@ def _order_to_response(order: Order) -> OrderResponse:
         "listing_id": order.listing_id,
         "buyer_id": order.buyer_id,
         "seller_id": order.seller_id,
-        "quantity": order.quantity,
-        "unit_price": order.unit_price,
-        "total_price": order.total_price,
-        "platform_fee": order.platform_fee,
-        "seller_payout": order.seller_payout,
+        "quantity": float(order.quantity),
+        "unit_price": float(order.unit_price),
+        "total_price": float(order.total_price),
+        "platform_fee": float(order.platform_fee),
+        "seller_payout": float(order.seller_payout),
         "currency": order.currency,
         "status": order.status,
         "delivery_data": order.delivery_data,
@@ -66,8 +70,10 @@ async def create_order(db: AsyncSession, buyer_id: str, data: OrderCreate) -> Or
     if listing.max_quantity and data.quantity > listing.max_quantity:
         raise ValueError(f"Maximum quantity is {listing.max_quantity}")
 
-    # Calculate pricing
-    total_price = round(data.quantity * listing.price_per_unit, 2)
+    # Calculate pricing with Decimal precision
+    price = Decimal(str(listing.price_per_unit))
+    qty = Decimal(str(data.quantity))
+    total_price = round(float(qty * price), 2)
     platform_fee = round(total_price * (settings.platform_fee_percent / 100), 2)
     seller_payout = round(total_price - platform_fee, 2)
 
@@ -79,7 +85,7 @@ async def create_order(db: AsyncSession, buyer_id: str, data: OrderCreate) -> Or
         buyer_id=buyer_id,
         seller_id=listing.user_id,
         quantity=data.quantity,
-        unit_price=listing.price_per_unit,
+        unit_price=float(price),
         total_price=total_price,
         platform_fee=platform_fee,
         seller_payout=seller_payout,
@@ -94,6 +100,22 @@ async def create_order(db: AsyncSession, buyer_id: str, data: OrderCreate) -> Or
     listing.total_orders += 1
 
     await db.flush()
+
+    # Create Stripe PaymentIntent if Stripe is configured
+    if settings.stripe_secret_key and listing.owner:
+        try:
+            amount_cents = int(total_price * 100)
+            pi = await payment_service.create_payment_intent(
+                amount_cents=amount_cents,
+                currency=listing.currency,
+                seller_stripe_account_id=listing.owner.stripe_account_id,
+                metadata={"order_id": order.id, "listing_id": listing.id},
+            )
+            order.stripe_payment_intent_id = pi.get("id")
+            await db.flush()
+            logger.info("PaymentIntent %s created for order %s", pi.get("id"), order.id)
+        except Exception:
+            logger.exception("Failed to create PaymentIntent for order %s", order.id)
 
     # Reload with relationships
     result = await db.execute(
@@ -182,7 +204,22 @@ async def update_order(
             order.completed_at = datetime.utcnow()
             # Update listing revenue
             if order.listing:
-                order.listing.total_revenue += order.seller_payout
+                order.listing.total_revenue = float(
+                    Decimal(str(order.listing.total_revenue)) + Decimal(str(order.seller_payout))
+                )
+            # Create Stripe transfer to seller
+            if settings.stripe_secret_key and order.seller and order.seller.stripe_account_id:
+                try:
+                    payout_cents = int(float(order.seller_payout) * 100)
+                    transfer = await payment_service.create_transfer(
+                        amount_cents=payout_cents,
+                        destination_account_id=order.seller.stripe_account_id,
+                        transfer_group=order.id,
+                    )
+                    order.stripe_transfer_id = transfer.get("id")
+                    logger.info("Transfer %s created for order %s", transfer.get("id"), order.id)
+                except Exception:
+                    logger.exception("Failed to create transfer for order %s", order.id)
         elif data.status == "cancelled":
             order.cancelled_at = datetime.utcnow()
 

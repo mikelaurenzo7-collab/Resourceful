@@ -31,6 +31,23 @@ class Settings(BaseSettings):
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
     @model_validator(mode="after")
+    def enforce_production_config(self):
+        """Validate critical settings for production (debug=False)."""
+        if not self.debug:
+            if self.secret_key == "CHANGE-ME-in-production-use-openssl-rand-hex-32":
+                raise ValueError(
+                    "SECRET_KEY must be changed from default for production. "
+                    "Generate one with: openssl rand -hex 32"
+                )
+            if "sqlite" in self.database_url:
+                import warnings
+                warnings.warn(
+                    "SQLite is not recommended for production. Use PostgreSQL.",
+                    stacklevel=2,
+                )
+        return self
+
+    @model_validator(mode="after")
     def ensure_async_sqlite_fallback(self):
         """If the DATABASE_URL points to PostgreSQL without asyncpg installed,
         fall back to SQLite for local development."""

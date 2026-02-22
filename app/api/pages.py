@@ -7,16 +7,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserLogin
-from app.schemas.resource import ListingCreate, ListingFilter
+from app.schemas.user import UserCreate
+from app.schemas.resource import ListingCreate
 from app.schemas.order import OrderCreate, OrderUpdate
 from app.services import auth as auth_service
 from app.services import listings as listing_service
 from app.services import orders as order_service
 from app.api.deps import get_optional_user, get_current_user
+from app.middleware.csrf import generate_csrf_token
 
 router = APIRouter(tags=["pages"])
 templates = Jinja2Templates(directory="app/templates")
+
+# Make csrf_token available in all Jinja2 templates
+templates.env.globals["csrf_token"] = generate_csrf_token
 
 
 # --- Public Pages ---
@@ -224,3 +228,110 @@ async def accept_order(
     except ValueError:
         pass
     return RedirectResponse(url="/orders?role=seller", status_code=302)
+
+
+# --- Profile ---
+
+@router.get("/profile", response_class=HTMLResponse)
+async def profile_page(
+    request: Request,
+    user: User = Depends(get_current_user),
+):
+    return templates.TemplateResponse(
+        "dashboard/profile.html",
+        {"request": request, "user": user, "active_page": "profile"},
+    )
+
+
+@router.post("/profile")
+async def profile_update(
+    request: Request,
+    full_name: str = Form(...),
+    bio: str = Form(default=""),
+    location: str = Form(default=""),
+    role: str = Form(default="both"),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.schemas.user import UserUpdate
+    from app.services.auth import get_user_by_id
+
+    db_user = await get_user_by_id(db, user.id)
+    if db_user:
+        update = UserUpdate(full_name=full_name, bio=bio or None, location=location or None, role=role)
+        for field, value in update.model_dump(exclude_unset=True).items():
+            setattr(db_user, field, value)
+        await db.flush()
+
+    return RedirectResponse(url="/profile", status_code=302)
+
+
+# --- Order Detail ---
+
+@router.get("/orders/{order_id}", response_class=HTMLResponse)
+async def order_detail_page(
+    request: Request,
+    order_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    order = await order_service.get_order(db, order_id, user.id)
+    if not order:
+        return RedirectResponse(url="/orders", status_code=302)
+    return templates.TemplateResponse(
+        "dashboard/order_detail.html",
+        {"request": request, "user": user, "order": order, "active_page": "orders"},
+    )
+
+
+# --- Listing Edit ---
+
+@router.get("/listings/{listing_id}/edit", response_class=HTMLResponse)
+async def edit_listing_page(
+    request: Request,
+    listing_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    listing = await listing_service.get_listing(db, listing_id)
+    if not listing or listing.user_id != user.id:
+        return RedirectResponse(url="/dashboard", status_code=302)
+    return templates.TemplateResponse(
+        "marketplace/listing_edit.html",
+        {"request": request, "user": user, "listing": listing, "active_page": "dashboard"},
+    )
+
+
+@router.post("/listings/{listing_id}/edit")
+async def edit_listing_submit(
+    request: Request,
+    listing_id: str,
+    title: str = Form(...),
+    description: str = Form(default=""),
+    price_per_unit: float = Form(...),
+    min_quantity: float = Form(default=1.0),
+    location: str = Form(default=""),
+    is_available: str = Form(default=""),
+    auto_accept: str = Form(default=""),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.schemas.resource import ListingUpdate
+    try:
+        data = ListingUpdate(
+            title=title,
+            description=description or None,
+            price_per_unit=price_per_unit,
+            min_quantity=min_quantity,
+            location=location or None,
+            is_available=is_available == "true",
+            auto_accept=auto_accept == "true",
+        )
+        await listing_service.update_listing(db, listing_id, user.id, data)
+        return RedirectResponse(url="/dashboard", status_code=302)
+    except ValueError as e:
+        listing = await listing_service.get_listing(db, listing_id)
+        return templates.TemplateResponse(
+            "marketplace/listing_edit.html",
+            {"request": request, "user": user, "listing": listing, "error": str(e), "active_page": "dashboard"},
+        )

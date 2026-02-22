@@ -61,7 +61,7 @@
                     </div>
                     <div class="flex items-center space-x-4">
                         {% if user %}
-                        <span class="text-gray-400 text-sm">{{ user.full_name }}</span>
+                        <a href="/profile" class="text-gray-400 hover:text-white text-sm font-medium transition-colors">{{ user.full_name }}</a>
                         <a href="/logout" class="text-gray-400 hover:text-white text-sm font-medium transition-colors">Logout</a>
                         {% else %}
                         <a href="/login" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Login</a>

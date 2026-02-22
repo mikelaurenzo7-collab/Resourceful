@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.resource import ResourceListing, ResourceType
-from app.models.user import User
 from app.schemas.resource import ListingCreate, ListingUpdate, ListingResponse, ListingFilter
 
 
@@ -103,7 +102,7 @@ async def get_user_listings(db: AsyncSession, user_id: str) -> list[ListingRespo
         .where(ResourceListing.user_id == user_id)
         .order_by(ResourceListing.created_at.desc())
     )
-    return [_listing_to_response(l) for l in result.scalars().all()]
+    return [_listing_to_response(row) for row in result.scalars().all()]
 
 
 async def update_listing(
@@ -178,8 +177,10 @@ async def search_listings(
         query = query.where(search_filter)
         count_query = count_query.where(search_filter)
 
-    # Sorting
-    sort_col = getattr(ResourceListing, filters.sort_by, ResourceListing.created_at)
+    # Sorting (whitelist to prevent injection via getattr)
+    allowed_sort = {"created_at", "price_per_unit", "avg_rating", "total_orders"}
+    sort_field = filters.sort_by if filters.sort_by in allowed_sort else "created_at"
+    sort_col = getattr(ResourceListing, sort_field)
     if filters.sort_order == "asc":
         query = query.order_by(sort_col.asc())
     else:
@@ -193,6 +194,6 @@ async def search_listings(
     query = query.offset(offset).limit(filters.per_page)
 
     result = await db.execute(query)
-    listings = [_listing_to_response(l) for l in result.scalars().all()]
+    listings = [_listing_to_response(row) for row in result.scalars().all()]
 
     return listings, total

@@ -93,6 +93,7 @@
                 <!-- Order Form -->
                 {% if user and user.id != listing.user_id %}
                 <form method="POST" action="/orders/create" class="space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="listing_id" value="{{ listing.id }}">
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-1">

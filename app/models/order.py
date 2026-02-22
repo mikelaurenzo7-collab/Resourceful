@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, Float, DateTime, Text, ForeignKey, JSON
+from sqlalchemy import String, Float, DateTime, Text, ForeignKey, JSON, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -25,10 +25,10 @@ class Order(Base):
 
     # Order details
     quantity: Mapped[float] = mapped_column(Float, nullable=False)
-    unit_price: Mapped[float] = mapped_column(Float, nullable=False)
-    total_price: Mapped[float] = mapped_column(Float, nullable=False)
-    platform_fee: Mapped[float] = mapped_column(Float, default=0.0)
-    seller_payout: Mapped[float] = mapped_column(Float, default=0.0)
+    unit_price: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
+    total_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    platform_fee: Mapped[float] = mapped_column(Numeric(10, 2), default=0.0)
+    seller_payout: Mapped[float] = mapped_column(Numeric(10, 2), default=0.0)
     currency: Mapped[str] = mapped_column(String(3), default="USD")
 
     # Status: pending -> accepted -> active -> completed | cancelled | disputed

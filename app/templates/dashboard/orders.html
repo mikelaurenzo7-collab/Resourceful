@@ -32,7 +32,7 @@
                 {% for order in orders %}
                 <tr class="hover:bg-gray-800/50 transition-colors">
                     <td class="px-6 py-4">
-                        <div class="text-white text-sm font-medium">{{ order.listing_title or 'Order' }}</div>
+                        <a href="/orders/{{ order.id }}" class="text-white text-sm font-medium hover:text-brand-400 transition-colors">{{ order.listing_title or 'Order' }}</a>
                         <div class="text-gray-500 text-xs">{{ order.id[:8] }}...</div>
                     </td>
                     <td class="px-6 py-4">
@@ -58,6 +58,7 @@
                     <td class="px-6 py-4">
                         {% if order.status == 'pending' and order.seller_id == user.id %}
                         <form method="POST" action="/orders/{{ order.id }}/accept" class="inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="text-brand-400 hover:text-brand-300 text-sm font-medium">Accept</button>
                         </form>
                         {% endif %}

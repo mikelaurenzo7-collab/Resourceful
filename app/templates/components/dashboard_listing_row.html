@@ -1,0 +1,18 @@
+<div class="bg-gray-800 rounded-lg p-4 flex items-center justify-between animate-fade-in">
+    <div class="flex items-center space-x-3">
+        <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium
+            {% if listing.resource_type == 'solar' %}bg-amber-400/10 text-amber-400 ring-1 ring-inset ring-amber-400/30
+            {% elif listing.resource_type == 'bandwidth' %}bg-blue-400/10 text-blue-400 ring-1 ring-inset ring-blue-400/30
+            {% else %}bg-purple-400/10 text-purple-400 ring-1 ring-inset ring-purple-400/30{% endif %}">
+            {{ listing.resource_type }}
+        </span>
+        <div>
+            <div class="text-white text-sm font-medium">{{ listing.title }}</div>
+            <div class="text-gray-500 text-xs">${{ "%.2f"|format(listing.price_per_unit) }}/{{ listing.resource_type_unit or 'unit' }}</div>
+        </div>
+    </div>
+    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs
+        {% if listing.is_available %}text-green-400 bg-green-400/10{% else %}text-red-400 bg-red-400/10{% endif %}">
+        {{ 'Active' if listing.is_available else 'Inactive' }}
+    </span>
+</div>

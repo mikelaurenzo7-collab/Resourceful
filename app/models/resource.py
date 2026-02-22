@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import String, Float, Boolean, DateTime, Text, ForeignKey, Integer, JSON
+from sqlalchemy import String, Float, Boolean, DateTime, Text, ForeignKey, Integer, JSON, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -46,7 +46,7 @@ class ResourceListing(Base):
     # GPU: {gpu_model, vram_gb, cuda_cores, driver_version}
 
     # Pricing
-    price_per_unit: Mapped[float] = mapped_column(Float, nullable=False)
+    price_per_unit: Mapped[float] = mapped_column(Numeric(10, 4), nullable=False)
     min_quantity: Mapped[float] = mapped_column(Float, default=1.0)
     max_quantity: Mapped[float | None] = mapped_column(Float, nullable=True)
     currency: Mapped[str] = mapped_column(String(3), default="USD")
@@ -70,7 +70,7 @@ class ResourceListing(Base):
 
     # Metrics
     total_orders: Mapped[int] = mapped_column(Integer, default=0)
-    total_revenue: Mapped[float] = mapped_column(Float, default=0.0)
+    total_revenue: Mapped[float] = mapped_column(Numeric(12, 2), default=0.0)
     avg_rating: Mapped[float] = mapped_column(Float, default=0.0)
 
     # Location (for solar, proximity matching)

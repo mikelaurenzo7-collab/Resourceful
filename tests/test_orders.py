@@ -1,17 +1,6 @@
 import pytest
 from httpx import AsyncClient
 
-from app.models.resource import ResourceType
-
-
-@pytest.fixture(autouse=True)
-async def seed_types(db_session):
-    db_session.add(ResourceType(
-        slug="solar", name="Solar", unit="kWh",
-        description="Solar export", icon="sun", color="amber",
-    ))
-    await db_session.commit()
-
 
 async def _create_seller(client: AsyncClient) -> tuple[str, str]:
     """Create a seller user and return (token, listing_id)."""
