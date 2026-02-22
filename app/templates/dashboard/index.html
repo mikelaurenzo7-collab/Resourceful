@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Resourceful{% endblock %}
+
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 animate-fade-in">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-white">Dashboard</h1>
+        <p class="mt-1 text-gray-400">Welcome back, {{ user.full_name }}. Here's your overview.</p>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4 mb-8"
+         hx-get="/htmx/dashboard/stats" hx-trigger="load" hx-swap="innerHTML">
+        {% for i in range(4) %}
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 animate-pulse">
+            <div class="h-4 bg-gray-800 rounded w-24 mb-3"></div>
+            <div class="h-8 bg-gray-800 rounded w-16"></div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Two Column Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- My Listings -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-lg font-semibold text-white">My Listings</h2>
+                <a href="/listings/new" class="text-sm text-brand-400 hover:text-brand-300 font-medium">+ New Listing</a>
+            </div>
+            <div hx-get="/htmx/dashboard/listings" hx-trigger="load" hx-swap="innerHTML">
+                <div class="space-y-3">
+                    {% for i in range(3) %}
+                    <div class="bg-gray-800 rounded-lg p-4 animate-pulse">
+                        <div class="h-4 bg-gray-700 rounded w-3/4 mb-2"></div>
+                        <div class="h-3 bg-gray-700 rounded w-1/2"></div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Orders -->
+        <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-lg font-semibold text-white">Recent Orders</h2>
+                <a href="/orders" class="text-sm text-brand-400 hover:text-brand-300 font-medium">View all</a>
+            </div>
+            <div hx-get="/htmx/dashboard/orders" hx-trigger="load" hx-swap="innerHTML">
+                <div class="space-y-3">
+                    {% for i in range(3) %}
+                    <div class="bg-gray-800 rounded-lg p-4 animate-pulse">
+                        <div class="h-4 bg-gray-700 rounded w-3/4 mb-2"></div>
+                        <div class="h-3 bg-gray-700 rounded w-1/2"></div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resource Types Quick Actions -->
+    <div class="mt-8">
+        <h2 class="text-lg font-semibold text-white mb-4">Quick Actions</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <a href="/listings/new?type=solar" class="group bg-gray-900 border border-gray-800 hover:border-amber-700 rounded-xl p-6 transition-all">
+                <div class="flex items-center space-x-3 mb-3">
+                    <div class="w-10 h-10 bg-amber-900/50 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-white font-medium group-hover:text-amber-400 transition-colors">Solar Export</h3>
+                </div>
+                <p class="text-gray-400 text-sm">List your excess solar energy for local buyers or grid programs.</p>
+            </a>
+
+            <a href="/listings/new?type=bandwidth" class="group bg-gray-900 border border-gray-800 hover:border-blue-700 rounded-xl p-6 transition-all">
+                <div class="flex items-center space-x-3 mb-3">
+                    <div class="w-10 h-10 bg-blue-900/50 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-white font-medium group-hover:text-blue-400 transition-colors">Bandwidth</h3>
+                </div>
+                <p class="text-gray-400 text-sm">Lease your unused internet bandwidth to CDN and edge networks.</p>
+            </a>
+
+            <a href="/listings/new?type=gpu" class="group bg-gray-900 border border-gray-800 hover:border-purple-700 rounded-xl p-6 transition-all">
+                <div class="flex items-center space-x-3 mb-3">
+                    <div class="w-10 h-10 bg-purple-900/50 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-white font-medium group-hover:text-purple-400 transition-colors">GPU Compute</h3>
+                </div>
+                <p class="text-gray-400 text-sm">Rent out your GPU for AI inference and training workloads.</p>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

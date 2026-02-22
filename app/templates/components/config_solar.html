@@ -1,0 +1,35 @@
+<div class="space-y-4 p-4 bg-amber-900/10 border border-amber-900/30 rounded-lg">
+    <h4 class="text-sm font-medium text-amber-400">Solar Configuration</h4>
+    <div class="grid grid-cols-2 gap-4">
+        <div>
+            <label class="block text-xs font-medium text-gray-400">Inverter Brand</label>
+            <select name="config_inverter_brand"
+                class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white text-sm focus:border-brand-500 focus:outline-none">
+                <option value="">Select...</option>
+                <option value="enphase">Enphase</option>
+                <option value="solaredge">SolarEdge</option>
+                <option value="tesla">Tesla</option>
+                <option value="sma">SMA</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-400">System Capacity (kW)</label>
+            <input type="number" name="config_capacity_kw" step="0.1"
+                class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white text-sm focus:border-brand-500 focus:outline-none"
+                placeholder="10.0">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-400">Panel Count</label>
+            <input type="number" name="config_panel_count"
+                class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white text-sm focus:border-brand-500 focus:outline-none"
+                placeholder="24">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-400">Meter ID (optional)</label>
+            <input type="text" name="config_meter_id"
+                class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white text-sm focus:border-brand-500 focus:outline-none"
+                placeholder="MTR-XXXXX">
+        </div>
+    </div>
+</div>

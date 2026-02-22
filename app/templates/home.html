@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Resourceful — Monetize Your Idle Assets{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="relative isolate overflow-hidden">
+    <div class="mx-auto max-w-7xl px-6 py-24 sm:py-32 lg:px-8">
+        <div class="mx-auto max-w-2xl text-center">
+            <h1 class="text-4xl font-bold tracking-tight text-white sm:text-6xl">
+                Turn idle assets into
+                <span class="text-brand-400">revenue streams</span>
+            </h1>
+            <p class="mt-6 text-lg leading-8 text-gray-300">
+                Resourceful transforms your excess solar energy, unused bandwidth, and idle GPU compute into income. List what you have. We match buyers, verify resources, and handle payments.
+            </p>
+            <div class="mt-10 flex items-center justify-center gap-x-6">
+                <a href="/register" class="rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-brand-500 transition-colors">
+                    Start Earning
+                </a>
+                <a href="/marketplace" class="text-sm font-semibold leading-6 text-gray-300 hover:text-white transition-colors">
+                    Browse Marketplace &rarr;
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resource Types -->
+<div class="mx-auto max-w-7xl px-6 pb-24 lg:px-8">
+    <div class="mx-auto max-w-2xl text-center mb-16">
+        <h2 class="text-3xl font-bold text-white">Three resources. Infinite potential.</h2>
+        <p class="mt-4 text-gray-400">Every home has untapped value. We help you find and monetize it.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- Solar -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8 hover:border-amber-800 transition-all group">
+            <div class="w-14 h-14 bg-amber-900/50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-amber-900/70 transition-colors">
+                <svg class="w-8 h-8 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/>
+                </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-3">Solar Export</h3>
+            <p class="text-gray-400 mb-4">Sell your excess solar energy to neighbors, local buyers, or grid programs. Connect your smart meter and let the platform handle matching and settlement.</p>
+            <ul class="space-y-2 text-sm text-gray-400">
+                <li class="flex items-center"><span class="w-1.5 h-1.5 bg-amber-400 rounded-full mr-2"></span>Smart meter integration</li>
+                <li class="flex items-center"><span class="w-1.5 h-1.5 bg-amber-400 rounded-full mr-2"></span>Automated kWh tracking</li>
+                <li class="flex items-center"><span class="w-1.5 h-1.5 bg-amber-400 rounded-full mr-2"></span>Local buyer matching</li>
+            </ul>
+        </div>
+
+        <!-- Bandwidth -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8 hover:border-blue-800 transition-all group">
+            <div class="w-14 h-14 bg-blue-900/50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-blue-900/70 transition-colors">
+                <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"/>
+                </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-3">Bandwidth Leasing</h3>
+            <p class="text-gray-400 mb-4">Run a lightweight agent on your network to share excess bandwidth with CDN, caching, and edge compute services. Usage metered and billed automatically.</p>
+            <ul class="space-y-2 text-sm text-gray-400">
+                <li class="flex items-center"><span class="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2"></span>Cross-platform agent</li>
+                <li class="flex items-center"><span class="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2"></span>Usage-based billing</li>
+                <li class="flex items-center"><span class="w-1.5 h-1.5 bg-blue-400 rounded-full mr-2"></span>Quality verification</li>
+            </ul>
+        </div>
+
+        <!-- GPU -->
+        <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8 hover:border-purple-800 transition-all group">
+            <div class="w-14 h-14 bg-purple-900/50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-purple-900/70 transition-colors">
+                <svg class="w-8 h-8 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+                </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-3">GPU Compute</h3>
+            <p class="text-gray-400 mb-4">Rent out your idle GPU power for AI inference, model training, and rendering. Secure sandboxed execution with automated benchmarking.</p>
+            <ul class="space-y-2 text-sm text-gray-400">
+                <li class="flex items-center"><span class="w-1.5 h-1.5 bg-purple-400 rounded-full mr-2"></span>Docker containerized</li>
+                <li class="flex items-center"><span class="w-1.5 h-1.5 bg-purple-400 rounded-full mr-2"></span>GPU benchmarking</li>
+                <li class="flex items-center"><span class="w-1.5 h-1.5 bg-purple-400 rounded-full mr-2"></span>Per-hour billing</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- How it Works -->
+<div class="bg-gray-900 border-y border-gray-800">
+    <div class="mx-auto max-w-7xl px-6 py-24 lg:px-8">
+        <h2 class="text-3xl font-bold text-white text-center mb-16">How it works</h2>
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div class="text-center">
+                <div class="w-12 h-12 bg-brand-600 rounded-full flex items-center justify-center mx-auto mb-4 text-white font-bold text-lg">1</div>
+                <h3 class="text-white font-semibold mb-2">List Your Resource</h3>
+                <p class="text-gray-400 text-sm">Tell us what you have — solar panels, bandwidth, or GPU. Set your price and availability.</p>
+            </div>
+            <div class="text-center">
+                <div class="w-12 h-12 bg-brand-600 rounded-full flex items-center justify-center mx-auto mb-4 text-white font-bold text-lg">2</div>
+                <h3 class="text-white font-semibold mb-2">Get Verified</h3>
+                <p class="text-gray-400 text-sm">We verify your resource through smart meter data, speed tests, or GPU benchmarks.</p>
+            </div>
+            <div class="text-center">
+                <div class="w-12 h-12 bg-brand-600 rounded-full flex items-center justify-center mx-auto mb-4 text-white font-bold text-lg">3</div>
+                <h3 class="text-white font-semibold mb-2">Match with Buyers</h3>
+                <p class="text-gray-400 text-sm">Our matching engine connects you with the best buyers based on proximity, price, and demand.</p>
+            </div>
+            <div class="text-center">
+                <div class="w-12 h-12 bg-brand-600 rounded-full flex items-center justify-center mx-auto mb-4 text-white font-bold text-lg">4</div>
+                <h3 class="text-white font-semibold mb-2">Get Paid</h3>
+                <p class="text-gray-400 text-sm">Payments processed via Stripe Connect. Funds go directly to your account minus a small platform fee.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CTA -->
+<div class="mx-auto max-w-7xl px-6 py-24 lg:px-8 text-center">
+    <h2 class="text-3xl font-bold text-white mb-4">Ready to monetize your resources?</h2>
+    <p class="text-gray-400 mb-8 max-w-xl mx-auto">Join Resourceful today and start turning your idle assets into revenue. No commitments, transparent fees.</p>
+    <a href="/register" class="rounded-xl bg-brand-600 px-8 py-3.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-500 transition-colors">
+        Create Free Account
+    </a>
+</div>
+{% endblock %}

@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Resourceful{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4', 100: '#dcfce7', 200: '#bbf7d0',
+                            300: '#86efac', 400: '#4ade80', 500: '#22c55e',
+                            600: '#16a34a', 700: '#15803d', 800: '#166534',
+                            900: '#14532d', 950: '#052e16',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
+        .htmx-request .htmx-indicator { opacity: 1; }
+        .htmx-request.htmx-indicator { opacity: 1; }
+        @keyframes fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fade-in 0.3s ease-out; }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .pulse-dot { animation: pulse-dot 1.5s ease-in-out infinite; }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body class="h-full dark" hx-boost="true">
+    {% block body %}
+    <div class="min-h-full">
+        <!-- Navigation -->
+        <nav class="bg-gray-900 border-b border-gray-800">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="flex h-16 items-center justify-between">
+                    <div class="flex items-center">
+                        <a href="/" class="flex items-center space-x-2">
+                            <div class="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                            </div>
+                            <span class="text-white font-bold text-xl">Resourceful</span>
+                        </a>
+                        {% if user %}
+                        <div class="ml-10 flex items-baseline space-x-4">
+                            <a href="/dashboard" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors {% if active_page == 'dashboard' %}bg-gray-800 text-white{% endif %}">Dashboard</a>
+                            <a href="/marketplace" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors {% if active_page == 'marketplace' %}bg-gray-800 text-white{% endif %}">Marketplace</a>
+                            <a href="/listings/new" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors {% if active_page == 'new-listing' %}bg-gray-800 text-white{% endif %}">List Resource</a>
+                            <a href="/orders" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors {% if active_page == 'orders' %}bg-gray-800 text-white{% endif %}">Orders</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        {% if user %}
+                        <span class="text-gray-400 text-sm">{{ user.full_name }}</span>
+                        <a href="/logout" class="text-gray-400 hover:text-white text-sm font-medium transition-colors">Logout</a>
+                        {% else %}
+                        <a href="/login" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors">Login</a>
+                        <a href="/register" class="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Get Started</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Flash messages -->
+        {% if flash_message %}
+        <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mt-4">
+            <div class="rounded-lg p-4 {% if flash_type == 'error' %}bg-red-900/50 text-red-200 border border-red-800{% elif flash_type == 'success' %}bg-green-900/50 text-green-200 border border-green-800{% else %}bg-blue-900/50 text-blue-200 border border-blue-800{% endif %}" role="alert">
+                {{ flash_message }}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Main content -->
+        <main>
+            {% block content %}{% endblock %}
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-gray-900 border-t border-gray-800 mt-auto">
+            <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div>
+                        <h3 class="text-white font-semibold mb-3">Resourceful</h3>
+                        <p class="text-gray-400 text-sm">Transform idle home assets into revenue streams. Solar, bandwidth, GPU compute — monetized safely and automatically.</p>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-semibold mb-3">Resources</h3>
+                        <ul class="space-y-2 text-sm text-gray-400">
+                            <li>Solar Export</li>
+                            <li>Bandwidth Leasing</li>
+                            <li>GPU Compute</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-semibold mb-3">Disclaimers</h3>
+                        <p class="text-gray-500 text-xs">Platform provides tools only. Earnings not guaranteed. Solar export rules vary by utility and jurisdiction. Users are responsible for compliance with local regulations.</p>
+                    </div>
+                </div>
+                <div class="mt-8 border-t border-gray-800 pt-4">
+                    <p class="text-gray-500 text-xs text-center">&copy; 2026 Resourceful. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+    {% endblock %}
+</body>
+</html>

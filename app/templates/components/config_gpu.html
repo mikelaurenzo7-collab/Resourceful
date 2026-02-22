@@ -1,0 +1,37 @@
+<div class="space-y-4 p-4 bg-purple-900/10 border border-purple-900/30 rounded-lg">
+    <h4 class="text-sm font-medium text-purple-400">GPU Configuration</h4>
+    <div class="grid grid-cols-2 gap-4">
+        <div>
+            <label class="block text-xs font-medium text-gray-400">GPU Model</label>
+            <select name="config_gpu_model"
+                class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white text-sm focus:border-brand-500 focus:outline-none">
+                <option value="">Select...</option>
+                <option value="rtx_4090">NVIDIA RTX 4090</option>
+                <option value="rtx_4080">NVIDIA RTX 4080</option>
+                <option value="rtx_3090">NVIDIA RTX 3090</option>
+                <option value="a100">NVIDIA A100</option>
+                <option value="h100">NVIDIA H100</option>
+                <option value="rx_7900xtx">AMD RX 7900 XTX</option>
+                <option value="other">Other</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-400">VRAM (GB)</label>
+            <input type="number" name="config_vram_gb" step="1"
+                class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white text-sm focus:border-brand-500 focus:outline-none"
+                placeholder="24">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-400">CUDA Cores</label>
+            <input type="number" name="config_cuda_cores" step="1"
+                class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white text-sm focus:border-brand-500 focus:outline-none"
+                placeholder="16384">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-400">Driver Version</label>
+            <input type="text" name="config_driver_version"
+                class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white text-sm focus:border-brand-500 focus:outline-none"
+                placeholder="535.104.05">
+        </div>
+    </div>
+</div>

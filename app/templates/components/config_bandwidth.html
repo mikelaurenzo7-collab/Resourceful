@@ -1,0 +1,31 @@
+<div class="space-y-4 p-4 bg-blue-900/10 border border-blue-900/30 rounded-lg">
+    <h4 class="text-sm font-medium text-blue-400">Bandwidth Configuration</h4>
+    <div class="grid grid-cols-2 gap-4">
+        <div>
+            <label class="block text-xs font-medium text-gray-400">ISP</label>
+            <input type="text" name="config_isp"
+                class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white text-sm focus:border-brand-500 focus:outline-none"
+                placeholder="e.g., Comcast, AT&T">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-400">IP Type</label>
+            <select name="config_ip_type"
+                class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white text-sm focus:border-brand-500 focus:outline-none">
+                <option value="residential">Residential</option>
+                <option value="business">Business</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-400">Download Speed (Mbps)</label>
+            <input type="number" name="config_download_mbps" step="1"
+                class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white text-sm focus:border-brand-500 focus:outline-none"
+                placeholder="500">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-gray-400">Upload Speed (Mbps)</label>
+            <input type="number" name="config_upload_mbps" step="1"
+                class="mt-1 block w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-white text-sm focus:border-brand-500 focus:outline-none"
+                placeholder="50">
+        </div>
+    </div>
+</div>

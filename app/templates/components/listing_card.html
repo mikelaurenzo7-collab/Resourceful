@@ -1,0 +1,32 @@
+<a href="/marketplace/{{ listing.id }}" class="group block bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-xl p-6 transition-all">
+    <div class="flex items-center justify-between mb-3">
+        <span class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset
+            {% if listing.resource_type == 'solar' %}bg-amber-400/10 text-amber-400 ring-amber-400/30
+            {% elif listing.resource_type == 'bandwidth' %}bg-blue-400/10 text-blue-400 ring-blue-400/30
+            {% else %}bg-purple-400/10 text-purple-400 ring-purple-400/30{% endif %}">
+            {{ listing.resource_type_name or listing.resource_type }}
+        </span>
+        {% if listing.is_verified %}
+        <span class="inline-flex items-center text-xs text-green-400">
+            <svg class="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            Verified
+        </span>
+        {% endif %}
+    </div>
+    <h3 class="text-white font-medium group-hover:text-brand-400 transition-colors mb-1 truncate">{{ listing.title }}</h3>
+    {% if listing.owner_name %}
+    <p class="text-gray-500 text-xs mb-2">by {{ listing.owner_name }}</p>
+    {% endif %}
+    <p class="text-gray-400 text-sm mb-4 line-clamp-2">{{ listing.description or 'No description' }}</p>
+    <div class="flex items-center justify-between">
+        <div>
+            <span class="text-white font-bold text-lg">${{ "%.2f"|format(listing.price_per_unit) }}</span>
+            <span class="text-gray-400 text-xs">/{{ listing.resource_type_unit or 'unit' }}</span>
+        </div>
+        {% if listing.location %}
+        <span class="text-gray-500 text-xs">{{ listing.location }}</span>
+        {% endif %}
+    </div>
+</a>
