@@ -24,6 +24,8 @@ const hearingFormatEnum = z.enum(['in_person', 'virtual', 'both', 'written_only'
 // ─── Report Creation ────────────────────────────────────────────────────────
 
 export const reportCreateSchema = z.object({
+  client_email: z.string().email('Valid email is required'),
+  client_name: z.string().min(1, 'Name is required').optional(),
   property_address: z.string().min(1, 'Property address is required'),
   city: z.string().min(1, 'City is required'),
   state: z.string().length(2, 'State must be a 2-letter code'),
@@ -32,6 +34,11 @@ export const reportCreateSchema = z.object({
   pin: z.string().optional().nullable(),
   property_type: propertyTypeEnum,
   service_type: serviceTypeEnum,
+  // Onboarding wizard fields
+  photos_skipped: z.boolean().optional().default(false),
+  property_issues: z.array(z.string()).optional().default([]),
+  additional_notes: z.string().optional().default(''),
+  desired_outcome: z.string().optional().default(''),
 });
 
 export type ReportCreateInput = z.infer<typeof reportCreateSchema>;

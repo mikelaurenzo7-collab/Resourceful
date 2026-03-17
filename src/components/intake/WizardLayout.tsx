@@ -201,8 +201,7 @@ export const WIZARD_STEPS = [
   { number: 2, label: 'Property', path: '/start/property' },
   { number: 3, label: 'Situation', path: '/start/situation' },
   { number: 4, label: 'Photos', path: '/start/photos' },
-  { number: 5, label: 'Measure', path: '/start/measure' },
-  { number: 6, label: 'Payment', path: '/start/payment' },
+  { number: 5, label: 'Payment', path: '/start/payment' },
 ];
 
 // ─── Provider + Layout ──────────────────────────────────────────────────────

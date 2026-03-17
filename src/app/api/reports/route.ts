@@ -1,9 +1,9 @@
 // ─── Create Report API ──────────────────────────────────────────────────────
 // POST: Validate input, create report row with 'intake' status, create Stripe
 // PaymentIntent, and return report ID + client secret.
+// No authentication required — email-only identification.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { reportCreateSchema } from '@/lib/validations/report';
 import { createPaymentIntent } from '@/lib/services/stripe-service';
 import { getPriceCents } from '@/config/pricing';
@@ -16,19 +16,6 @@ export async function POST(request: NextRequest) {
     // ── Rate limit: 10 reports per 15 minutes per IP ─────────────────────
     const rateLimited = await applyRateLimit(request, { prefix: 'create-report', limit: 10, windowSeconds: 900 });
     if (rateLimited) return rateLimited;
-    // ── Authenticate user ──────────────────────────────────────────────────
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
-    }
 
     // ── Parse and validate input ───────────────────────────────────────────
     const body = await request.json();
@@ -42,6 +29,8 @@ export async function POST(request: NextRequest) {
     }
 
     const {
+      client_email,
+      client_name,
       property_address,
       city,
       state,
@@ -50,6 +39,10 @@ export async function POST(request: NextRequest) {
       pin,
       property_type,
       service_type,
+      photos_skipped,
+      property_issues,
+      additional_notes,
+      desired_outcome,
     } = parsed.data;
 
     // ── Calculate price ────────────────────────────────────────────────────
@@ -57,7 +50,9 @@ export async function POST(request: NextRequest) {
 
     // ── Create report row via repository ─────────────────────────────────
     const report = (await createReport({
-      user_id: user.id,
+      user_id: client_email, // email as user identifier (no auth account)
+      client_email,
+      client_name: client_name ?? null,
       status: 'intake',
       service_type,
       property_type,
@@ -75,6 +70,10 @@ export async function POST(request: NextRequest) {
       stripe_payment_intent_id: null,
       payment_status: null,
       amount_paid_cents: priceCents,
+      photos_skipped: photos_skipped ?? false,
+      property_issues: property_issues ?? [],
+      additional_notes: additional_notes ?? null,
+      desired_outcome: desired_outcome ?? null,
       pipeline_last_completed_stage: null,
       pipeline_error_log: null,
       pipeline_started_at: null,
@@ -87,7 +86,7 @@ export async function POST(request: NextRequest) {
     // ── Create Stripe PaymentIntent ────────────────────────────────────────
     const { data: payment, error: paymentError } = await createPaymentIntent({
       amountCents: priceCents,
-      customerEmail: user.email ?? '',
+      customerEmail: client_email,
       reportId: report.id,
       metadata: {
         service_type,

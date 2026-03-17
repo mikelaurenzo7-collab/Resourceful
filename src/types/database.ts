@@ -53,6 +53,8 @@ export type User = {
 export type Report = {
   id: string;
   user_id: string;
+  client_email: string;
+  client_name: string | null;
   service_type: ServiceType;
   property_type: PropertyType;
   status: ReportStatus;
@@ -70,6 +72,10 @@ export type Report = {
   stripe_payment_intent_id: string | null;
   payment_status: string | null;
   amount_paid_cents: number | null;
+  photos_skipped: boolean;
+  property_issues: string[] | null;
+  additional_notes: string | null;
+  desired_outcome: string | null;
   pipeline_last_completed_stage: string | null;
   pipeline_error_log: Record<string, unknown> | null;
   created_at: string;

@@ -1,233 +1,171 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { PropertyType, ServiceType } from '@/types/database';
-import { getPriceCents, formatPrice } from '@/config/pricing';
+import { useWizard } from '@/components/intake/WizardLayout';
 import Button from '@/components/ui/Button';
-import AddressInput from '@/components/intake/AddressInput';
-import PropertyTypeSelector from '@/components/intake/PropertyTypeSelector';
-import ServiceTypeSelector from '@/components/intake/ServiceTypeSelector';
-import AssessmentCard from '@/components/intake/AssessmentCard';
+import type { ServiceType } from '@/types/database';
 
-interface AddressData {
-  line1: string;
-  city: string;
-  state: string;
-  zip: string;
-  county: string;
-}
+const SERVICE_OPTIONS: {
+  id: ServiceType;
+  title: string;
+  subtitle: string;
+  description: string;
+  icon: React.ReactNode;
+}[] = [
+  {
+    id: 'tax_appeal',
+    title: 'Lower My Property Taxes',
+    subtitle: 'Tax Appeal Report',
+    description:
+      'We analyze your assessment, find comparable sales, and build a professional evidence package you can file to reduce your property taxes.',
+    icon: (
+      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  {
+    id: 'pre_purchase',
+    title: "I'm Buying a Property",
+    subtitle: 'Pre-Purchase Analysis',
+    description:
+      "Get an independent market analysis before you buy. We'll compare the asking price against recent sales so you know if it's a fair deal.",
+    icon: (
+      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+      </svg>
+    ),
+  },
+  {
+    id: 'pre_listing',
+    title: "I'm Selling a Property",
+    subtitle: 'Pre-Listing Report',
+    description:
+      "Know your property's true market value before you list. Our analysis helps you price it right and gives buyers confidence in your asking price.",
+    icon: (
+      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+    ),
+  },
+];
 
-interface AssessmentData {
-  assessedValue: number;
-  marketValueLow: number;
-  marketValueHigh: number;
-  assessmentRatio: number;
-  taxRate: number;
-}
-
-export default function StartPage() {
+export default function GoalsPage() {
   const router = useRouter();
-  const [address, setAddress] = useState<AddressData | null>(null);
-  const [propertyType, setPropertyType] = useState<PropertyType | null>(null);
-  const [serviceType, setServiceType] = useState<ServiceType | null>(null);
-  const [assessment, setAssessment] = useState<AssessmentData | null>(null);
-  const [assessmentLoading, setAssessmentLoading] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState('');
+  const { state, updateState, setCurrentStep } = useWizard();
 
-  const handleAddressSelect = (addr: AddressData) => {
-    setAddress(addr);
-    // Assessment data will be fetched after report is created
-  };
+  useEffect(() => {
+    setCurrentStep(1);
+  }, [setCurrentStep]);
 
-  const canContinue = address && propertyType && serviceType;
-
-  const handleContinue = async () => {
-    if (!canContinue) return;
-    setCreating(true);
-    setError('');
-
-    try {
-      // Create the report in the database + get Stripe payment intent
-      const response = await fetch('/api/reports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          property_address: address.line1,
-          city: address.city,
-          state: address.state,
-          county: address.county,
-          property_type: propertyType,
-          service_type: serviceType,
-        }),
-      });
-
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body.error || `Server error (${response.status})`);
-      }
-
-      const { reportId, clientSecret, priceCents } = await response.json();
-
-      // Store in sessionStorage for subsequent intake steps
-      sessionStorage.setItem(
-        'intake',
-        JSON.stringify({
-          reportId,
-          clientSecret,
-          address,
-          propertyType,
-          serviceType,
-          priceCents,
-        })
-      );
-
-      // Fetch real assessment data in background (non-blocking)
-      fetchAssessment(reportId);
-
-      router.push('/start/photos');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create report. Please try again.');
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const fetchAssessment = async (reportId: string) => {
-    setAssessmentLoading(true);
-    try {
-      const res = await fetch(`/api/reports/${reportId}/assessment`);
-      if (!res.ok) return;
-      const data = await res.json();
-      setAssessment({
-        assessedValue: data.assessedValue ?? 0,
-        marketValueLow: data.marketValueRange?.low ?? 0,
-        marketValueHigh: data.marketValueRange?.high ?? 0,
-        assessmentRatio: data.assessmentRatio ?? 0,
-        taxRate: data.taxAmount && data.assessedValue
-          ? data.taxAmount / data.assessedValue
-          : 0,
-      });
-    } catch {
-      // Non-critical — assessment card just won't show
-    } finally {
-      setAssessmentLoading(false);
-    }
+  const handleSelect = (id: ServiceType) => {
+    updateState({ serviceType: id });
   };
 
   return (
-    <div className="min-h-screen bg-pattern">
-      {/* Header */}
-      <header className="border-b border-gold/10 bg-navy-deep/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center">
-              <span className="text-navy-deep font-bold text-sm">R</span>
-            </div>
-            <span className="font-display text-lg text-cream">Resourceful</span>
-          </div>
-          <div className="flex items-center gap-2 text-xs text-cream/40">
-            <div className="w-6 h-6 rounded-full bg-gold flex items-center justify-center text-navy-deep font-bold">1</div>
-            <span className="text-gold font-medium">Property Info</span>
-            <div className="w-8 h-px bg-gold/20" />
-            <div className="w-6 h-6 rounded-full border border-gold/20 flex items-center justify-center text-cream/30 font-bold">2</div>
-            <span className="hidden sm:inline">Photos</span>
-            <div className="w-8 h-px bg-gold/20" />
-            <div className="w-6 h-6 rounded-full border border-gold/20 flex items-center justify-center text-cream/30 font-bold">3</div>
-            <span className="hidden sm:inline">Measure</span>
-            <div className="w-8 h-px bg-gold/20" />
-            <div className="w-6 h-6 rounded-full border border-gold/20 flex items-center justify-center text-cream/30 font-bold">4</div>
-            <span className="hidden sm:inline">Payment</span>
-          </div>
-        </div>
-      </header>
+    <main className="max-w-3xl mx-auto px-6 py-12">
+      <div className="text-center mb-10 animate-fade-in">
+        <h1 className="font-display text-3xl md:text-4xl text-cream mb-3">
+          How can we help you?
+        </h1>
+        <p className="text-cream/50 max-w-lg mx-auto">
+          Tell us what you&apos;re looking to accomplish and we&apos;ll guide you through the process.
+        </p>
+      </div>
 
-      <main className="max-w-4xl mx-auto px-6 py-12">
-        {/* Page title */}
-        <div className="text-center mb-12 animate-fade-in">
-          <h1 className="font-display text-3xl md:text-4xl text-cream mb-3">
-            Get Your Property Report
-          </h1>
-          <p className="text-cream/50 max-w-lg mx-auto">
-            Enter your property address and we&apos;ll analyze your assessment,
-            find comparable sales, and estimate your potential savings.
+      <div className="space-y-4 animate-slide-up">
+        {SERVICE_OPTIONS.map((opt) => {
+          const isSelected = state.serviceType === opt.id;
+          return (
+            <button
+              key={opt.id}
+              onClick={() => handleSelect(opt.id)}
+              className={`w-full text-left rounded-xl p-6 transition-all duration-300 border ${
+                isSelected
+                  ? 'border-gold/60 bg-gold/10 shadow-lg shadow-gold/5'
+                  : 'border-gold/10 bg-navy-light/50 hover:border-gold/30 hover:bg-navy-light'
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                <div
+                  className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    isSelected ? 'bg-gold/20 text-gold' : 'bg-gold/5 text-cream/40'
+                  }`}
+                >
+                  {opt.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3 mb-1">
+                    <h3 className={`font-display text-lg ${isSelected ? 'text-gold' : 'text-cream'}`}>
+                      {opt.title}
+                    </h3>
+                    <span className="text-xs text-cream/30 bg-cream/5 rounded px-2 py-0.5">
+                      {opt.subtitle}
+                    </span>
+                  </div>
+                  <p className="text-sm text-cream/50 leading-relaxed">{opt.description}</p>
+                </div>
+                <div
+                  className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-1 flex items-center justify-center ${
+                    isSelected ? 'border-gold bg-gold' : 'border-cream/20'
+                  }`}
+                >
+                  {isSelected && (
+                    <svg className="w-3 h-3 text-navy-deep" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Desired outcome — appears after selection */}
+      {state.serviceType === 'tax_appeal' && (
+        <div className="mt-8 animate-fade-in">
+          <label className="block text-sm text-cream/60 mb-2">
+            What outcome are you hoping for? <span className="text-cream/30">(optional)</span>
+          </label>
+          <textarea
+            value={state.desiredOutcome}
+            onChange={(e) => updateState({ desiredOutcome: e.target.value })}
+            placeholder="e.g., My taxes went up 40% last year and I think my home is over-assessed compared to my neighbors..."
+            rows={3}
+            className="w-full rounded-lg bg-navy-light border border-gold/15 px-4 py-3 text-sm text-cream placeholder-cream/25 focus:outline-none focus:border-gold/40 focus:ring-1 focus:ring-gold/20 resize-none"
+          />
+        </div>
+      )}
+
+      {/* Money-back guarantee banner */}
+      <div className="mt-8 rounded-xl border border-emerald-500/20 bg-emerald-950/20 p-4 flex items-start gap-3">
+        <svg className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+        </svg>
+        <div>
+          <p className="text-sm font-medium text-emerald-400">Money-Back Guarantee</p>
+          <p className="text-xs text-emerald-400/60 mt-0.5">
+            If your appeal is denied, we&apos;ll refund your full purchase price. Just provide the denial letter as proof.
+            Guarantee requires submitting property photos during intake.
           </p>
         </div>
+      </div>
 
-        <div className="space-y-10 animate-slide-up">
-          {/* Step 1: Address */}
-          <section>
-            <AddressInput onAddressSelect={handleAddressSelect} />
-          </section>
-
-          {/* Step 2: Property Type */}
-          <section className={`transition-all duration-500 ${address ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-            <PropertyTypeSelector selected={propertyType} onChange={setPropertyType} />
-          </section>
-
-          {/* Step 3: Service Type */}
-          <section className={`transition-all duration-500 ${propertyType ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-            <ServiceTypeSelector
-              selected={serviceType}
-              propertyType={propertyType}
-              onChange={setServiceType}
-            />
-          </section>
-
-          {/* Assessment Card - appears after assessment data fetched */}
-          {assessment && address && propertyType && serviceType && (
-            <section className="animate-slide-up">
-              <AssessmentCard
-                address={`${address.line1}, ${address.city}, ${address.state} ${address.zip}`}
-                assessedValue={assessment.assessedValue}
-                estimatedMarketValueLow={assessment.marketValueLow}
-                estimatedMarketValueHigh={assessment.marketValueHigh}
-                assessmentRatio={assessment.assessmentRatio}
-                taxRate={assessment.taxRate}
-                reportPrice={getPriceCents(serviceType, propertyType)}
-              />
-            </section>
-          )}
-
-          {assessmentLoading && (
-            <div className="flex items-center justify-center gap-3 py-4">
-              <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-              <span className="text-sm text-cream/40">Loading assessment data...</span>
-            </div>
-          )}
-
-          {/* Error */}
-          {error && (
-            <div className="rounded-lg bg-red-900/20 border border-red-500/20 p-4 text-sm text-red-400">
-              {error}
-            </div>
-          )}
-
-          {/* Continue button */}
-          <div className="pt-4">
-            <Button
-              size="lg"
-              fullWidth
-              disabled={!canContinue || creating}
-              loading={creating}
-              onClick={handleContinue}
-            >
-              {creating ? 'Setting up your report...' : 'Continue to Photos'}
-              {!creating && (
-                <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              )}
-            </Button>
-            {!canContinue && (
-              <p className="text-center text-xs text-cream/30 mt-3">
-                Complete all selections above to continue
-              </p>
-            )}
-          </div>
-        </div>
-      </main>
-    </div>
+      <div className="mt-8">
+        <Button
+          size="lg"
+          fullWidth
+          disabled={!state.serviceType}
+          onClick={() => router.push('/start/property')}
+        >
+          Continue
+          <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+          </svg>
+        </Button>
+      </div>
+    </main>
   );
 }

@@ -40,10 +40,11 @@ export async function runDelivery(
     return { success: false, error: `Failed to fetch report: ${reportError?.message}` };
   }
 
-  if (report.status !== 'pending_approval' && report.status !== 'approved') {
+  const deliverableStatuses = ['processing', 'pending_approval', 'approved'];
+  if (!deliverableStatuses.includes(report.status)) {
     return {
       success: false,
-      error: `Report status is '${report.status}' — must be 'pending_approval' or 'approved' to deliver`,
+      error: `Report status is '${report.status}' — must be processing, pending_approval, or approved to deliver`,
     };
   }
 
@@ -51,16 +52,11 @@ export async function runDelivery(
     return { success: false, error: 'No PDF storage path found on report. Run PDF assembly first.' };
   }
 
-  // ── Fetch client email from auth.users ────────────────────────────────
-  const { data: authUser, error: userError } = await supabase.auth.admin.getUserById(
-    report.user_id
-  );
-
-  if (userError || !authUser?.user?.email) {
-    return { success: false, error: `Failed to fetch user email: ${userError?.message ?? 'no email'}` };
+  // ── Get client email from report (no auth account required) ──────────
+  const clientEmail = (report as any).client_email;
+  if (!clientEmail) {
+    return { success: false, error: 'No client email found on report' };
   }
-
-  const clientEmail = authUser.user.email;
 
   // ── Generate signed URL (7-day expiry) ────────────────────────────────
   const { data: signedUrlData, error: signedUrlError } = await supabase

@@ -1,6 +1,6 @@
 // ─── Pipeline Orchestrator ───────────────────────────────────────────────────
-// Runs report generation stages 1-7 sequentially. Stage 8 (delivery) is
-// admin-triggered and not part of the automated pipeline.
+// Runs report generation stages 1-7 sequentially, then auto-delivers to the
+// client via Stage 8 (email with signed PDF URL).
 //
 // After each stage, writes completion to pipeline_last_completed_stage.
 // On failure, writes error to pipeline_error_log JSONB and halts.
@@ -8,6 +8,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendAdminNotification } from '@/lib/services/resend-email';
+import { runDelivery } from './stages/stage8-delivery';
 import type { PropertyType, Report } from '@/types/database';
 
 import { runDataCollection } from './stages/stage1-data-collection';
@@ -181,16 +182,35 @@ export async function runPipeline(
     }
   }
 
-  // ── Pipeline complete — set to pending_approval ───────────────────────
+  // ── Pipeline stages 1-7 complete — record completion ────────────────────
   await supabase
     .from('reports')
     .update({
-      status: 'pending_approval' as const,
       pipeline_completed_at: new Date().toISOString(),
     })
     .eq('id', reportId);
 
-  // ── Notify admin that report is ready for review ──────────────────────
+  // ── Auto-deliver: run Stage 8 to email the PDF to the client ──────────
+  console.log(`[pipeline] Stages 1-7 complete for report ${reportId}. Auto-delivering...`);
+  try {
+    const deliveryResult = await runDelivery(reportId, 'system-auto', supabase as any);
+    if (!deliveryResult.success) {
+      console.error(`[pipeline] Auto-delivery failed: ${deliveryResult.error}`);
+      // Mark as pending_approval so admin can manually deliver
+      await supabase
+        .from('reports')
+        .update({ status: 'pending_approval' as const })
+        .eq('id', reportId);
+    }
+  } catch (deliveryErr) {
+    console.error(`[pipeline] Auto-delivery threw:`, deliveryErr);
+    await supabase
+      .from('reports')
+      .update({ status: 'pending_approval' as const })
+      .eq('id', reportId);
+  }
+
+  // ── Notify admin (non-blocking, for monitoring) ───────────────────────
   try {
     const adminReviewUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/admin/reports/${reportId}/review`;
     await sendAdminNotification({
@@ -200,14 +220,13 @@ export async function runPipeline(
       reviewUrl: adminReviewUrl,
     });
   } catch (emailErr) {
-    // Log but don't fail the pipeline over an email error
     console.error(`[pipeline] Failed to send admin notification email:`, emailErr);
   }
 
   // ── Release pipeline lock ───────────────────────────────────────────────
   await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
 
-  console.log(`[pipeline] Pipeline complete for report ${reportId} — awaiting admin approval`);
+  console.log(`[pipeline] Pipeline complete and delivered for report ${reportId}`);
   return { success: true };
 }
 
