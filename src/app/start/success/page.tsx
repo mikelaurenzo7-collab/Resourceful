@@ -14,6 +14,8 @@ function SuccessContent() {
     estimatedOverassessment: number;
     estimatedAnnualSavings: number;
   } | null>(null);
+  const [deletingTaxBill, setDeletingTaxBill] = useState(false);
+  const [taxBillDeleted, setTaxBillDeleted] = useState(false);
 
   useEffect(() => {
     if (!reportId) {
@@ -179,6 +181,35 @@ function SuccessContent() {
           {' '}and{' '}
           <a href="/terms" className="underline hover:text-cream/30">Terms of Service</a>.
         </p>
+
+        {/* Subtle tax bill data deletion option */}
+        {reportId && !taxBillDeleted && (
+          <p className="text-[10px] text-cream/15 mt-4">
+            Uploaded a tax bill?{' '}
+            <button
+              type="button"
+              disabled={deletingTaxBill}
+              onClick={async () => {
+                setDeletingTaxBill(true);
+                try {
+                  const res = await fetch(`/api/reports/${reportId}/tax-bill-data`, {
+                    method: 'DELETE',
+                  });
+                  if (res.ok) setTaxBillDeleted(true);
+                } catch { /* non-critical */ }
+                setDeletingTaxBill(false);
+              }}
+              className="underline hover:text-cream/30 disabled:opacity-50"
+            >
+              {deletingTaxBill ? 'Removing...' : 'Request removal of your tax bill data'}
+            </button>
+          </p>
+        )}
+        {taxBillDeleted && (
+          <p className="text-[10px] text-cream/25 mt-4">
+            Your tax bill data has been removed.
+          </p>
+        )}
       </div>
     </div>
   );
