@@ -126,6 +126,7 @@ export async function runDelivery(
   console.log(`[stage8] Sending report delivery email to ${clientEmail}`);
   const emailResult = await sendReportDeliveryEmail({
     to: clientEmail,
+    reportId,
     propertyAddress,
     concludedValue,
     assessedValue,

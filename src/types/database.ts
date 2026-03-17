@@ -84,6 +84,12 @@ export type Report = {
   approved_at: string | null;
   approved_by: string | null;
   delivered_at: string | null;
+  // Filing tracking
+  filing_status: string;
+  filed_at: string | null;
+  filing_method: string | null;
+  appeal_outcome: string | null;
+  savings_amount_cents: number | null;
 };
 
 export type PropertyData = {
@@ -319,6 +325,36 @@ export type CountyRule = {
   assessor_api_documentation_url: string | null;
   assessor_api_notes: string | null;
   pro_se_tips: string | null;
+  // Filing schedule fields
+  assessment_cycle: string | null;
+  assessment_notices_mailed: string | null;
+  appeal_window_days: number | null;
+  appeal_window_start_month: number | null;
+  appeal_window_end_month: number | null;
+  appeal_window_end_day: number | null;
+  next_appeal_deadline: string | null;
+  current_tax_year: number | null;
+  // Filing steps and requirements
+  filing_steps: { step_number: number; title: string; description: string; url?: string; form_name?: string }[] | null;
+  required_documents: string[] | null;
+  informal_review_available: boolean;
+  informal_review_notes: string | null;
+  // Hearing details
+  hearing_duration_minutes: number | null;
+  hearing_scheduling_notes: string | null;
+  virtual_hearing_available: boolean;
+  virtual_hearing_platform: string | null;
+  // Representation rules
+  authorized_rep_allowed: boolean | null;
+  authorized_rep_form_url: string | null;
+  authorized_rep_types: string[] | null;
+  rep_restrictions_notes: string | null;
+  // Further appeal / escalation
+  further_appeal_body: string | null;
+  further_appeal_deadline_rule: string | null;
+  further_appeal_url: string | null;
+  further_appeal_fee_cents: number;
+  // Standard fields
   is_active: boolean;
   last_verified_date: string | null;
   verified_by: string | null;

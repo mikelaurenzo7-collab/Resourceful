@@ -28,8 +28,8 @@ function SuccessContent() {
 
         <p className="text-cream/40 text-sm mb-8 leading-relaxed">
           We&apos;re analyzing your property data, pulling comparable sales, and building your
-          professional report. You&apos;ll receive an email with your completed report and
-          step-by-step filing instructions within a few hours.
+          professional report. This typically takes a few hours. You&apos;ll receive an email
+          when it&apos;s ready, and you can view everything right here in the app.
         </p>
 
         {/* What happens next */}
@@ -49,8 +49,8 @@ function SuccessContent() {
               },
               {
                 step: '3',
-                title: 'Report Delivered',
-                desc: 'You receive a professional PDF report with evidence, filing forms, and step-by-step instructions for your county.',
+                title: 'Report Ready',
+                desc: 'View your complete report, download the PDF, and get county-specific filing instructions — all in the app.',
               },
             ].map((item) => (
               <div key={item.step} className="flex items-start gap-3">
@@ -67,14 +67,31 @@ function SuccessContent() {
         </div>
 
         {reportId && (
-          <p className="text-xs text-cream/25 mb-6">
-            Report ID: {reportId}
-          </p>
+          <>
+            <p className="text-xs text-cream/25 mb-6">
+              Report ID: {reportId}
+            </p>
+
+            {/* Primary CTA: go to report viewer (will show "in progress" until ready) */}
+            <div className="space-y-3">
+              <Button size="lg" fullWidth onClick={() => window.location.href = `/report/${reportId}`}>
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                View My Report
+              </Button>
+              <p className="text-xs text-cream/20">
+                Bookmark this link to check back anytime
+              </p>
+            </div>
+          </>
         )}
 
-        <Button size="lg" onClick={() => window.location.href = '/'}>
-          Back to Home
-        </Button>
+        {!reportId && (
+          <Button size="lg" onClick={() => window.location.href = '/'}>
+            Back to Home
+          </Button>
+        )}
 
         {/* Disclaimer */}
         <p className="text-[10px] text-cream/15 leading-relaxed mt-8 max-w-md mx-auto">

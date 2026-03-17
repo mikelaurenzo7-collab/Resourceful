@@ -81,6 +81,11 @@ export async function POST(request: NextRequest) {
       approved_at: null,
       approved_by: null,
       delivered_at: null,
+      filing_status: 'not_started',
+      filed_at: null,
+      filing_method: null,
+      appeal_outcome: null,
+      savings_amount_cents: null,
     })) as Report;
 
     // ── Create Stripe PaymentIntent ────────────────────────────────────────

@@ -112,6 +112,25 @@ export interface FilingGuidePayload {
   onlineFilingUrl?: string | null;
   assessorPhone?: string | null;
   appealFeeCents?: number | null;
+  // Enhanced filing schedule fields
+  assessmentCycle?: string | null;
+  assessmentNoticesMailed?: string | null;
+  appealWindowDays?: number | null;
+  nextAppealDeadline?: string | null;
+  currentTaxYear?: number | null;
+  filingSteps?: { step_number: number; title: string; description: string; url?: string; form_name?: string }[] | null;
+  requiredDocuments?: string[] | null;
+  informalReviewAvailable?: boolean;
+  informalReviewNotes?: string | null;
+  hearingDurationMinutes?: number | null;
+  hearingSchedulingNotes?: string | null;
+  virtualHearingAvailable?: boolean;
+  virtualHearingPlatform?: string | null;
+  authorizedRepAllowed?: boolean | null;
+  authorizedRepTypes?: string[] | null;
+  furtherAppealBody?: string | null;
+  furtherAppealDeadlineRule?: string | null;
+  furtherAppealUrl?: string | null;
 }
 
 // ─── Section Names ──────────────────────────────────────────────────────────
@@ -228,7 +247,49 @@ export async function generateNarratives(
 export async function generateFilingGuide(
   payload: FilingGuidePayload
 ): Promise<ServiceResult<FilingGuideResponse>> {
-  const systemPrompt = `You are a property tax appeal advisor. Generate a clear, actionable pro se filing guide for a homeowner appealing their property tax assessment. Include step-by-step instructions, deadlines, required documents, and tips for the hearing. Write in plain English suitable for someone without legal training. Format the output as a single text document with Markdown headings.`;
+  const systemPrompt = `You are a property tax appeal advisor generating a county-specific pro se filing guide. The homeowner will use this guide to file their own appeal — make it so thorough and clear that they feel fully prepared with zero guesswork.
+
+REQUIRED SECTIONS (use these exact Markdown headings):
+
+## Your Filing Window
+- State the exact deadline or window (from the data provided). If a specific next_appeal_deadline date is given, use it.
+- Explain assessment cycle (annual/biennial/triennial) so they understand when they can file again.
+- Warn about the consequence of missing the deadline.
+
+## How to File: Step-by-Step
+- Number each step clearly (1, 2, 3...). Use the filing_steps data if provided, otherwise construct logical steps.
+- If the county accepts online filing, lead with that and provide the portal URL prominently.
+- If email or mail filing, explain exactly what to send and where.
+- Include the appeal form name and download URL if available.
+- State the filing fee and how to pay it.
+
+## What to Include With Your Appeal
+- List every required document. Include our report, the appeal form, photos, and any county-specific requirements.
+- Explain how to organize the packet.
+
+## Informal Review (if available)
+- If the county offers informal review before formal hearing, explain how to request it and why it's recommended.
+
+## What to Expect at Your Hearing
+- Hearing format (in-person, virtual, written review). If virtual, name the platform.
+- How long the hearing typically lasts.
+- How hearings are scheduled after filing.
+- What to say, what to bring, how to present evidence.
+- Specific tips for making a strong case in the allotted time.
+
+## Your Three Strongest Arguments
+- Based on the appeal_argument_summary, distill the 3 most persuasive points to make at the hearing.
+- Frame each as a clear, quotable statement the homeowner can say to the board.
+
+## If You Disagree With the Decision
+- Explain the further appeal process (state-level board, court) with deadlines and costs.
+
+## Important Reminders
+- Filing deadline reiterated
+- Keep copies of everything
+- Disclaimer: this is informational guidance, not legal advice
+
+Write in plain English. Be specific, not generic. Use the county name and state throughout. If data fields are null, omit that section rather than guessing.`;
 
   const userMessage = JSON.stringify(payload, null, 2);
   const startMs = Date.now();

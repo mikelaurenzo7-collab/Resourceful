@@ -170,6 +170,25 @@ export async function runFilingGuide(
     stateAppealBoardName: countyRule?.state_appeal_board_name ?? null,
     stateAppealBoardUrl: countyRule?.state_appeal_board_url ?? null,
     appealArgumentSummary: appealContent || null,
+    // Enhanced filing schedule fields
+    assessmentCycle: countyRule?.assessment_cycle ?? null,
+    assessmentNoticesMailed: countyRule?.assessment_notices_mailed ?? null,
+    appealWindowDays: countyRule?.appeal_window_days ?? null,
+    nextAppealDeadline: countyRule?.next_appeal_deadline ?? null,
+    currentTaxYear: countyRule?.current_tax_year ?? null,
+    filingSteps: countyRule?.filing_steps ?? null,
+    requiredDocuments: countyRule?.required_documents ?? null,
+    informalReviewAvailable: countyRule?.informal_review_available ?? false,
+    informalReviewNotes: countyRule?.informal_review_notes ?? null,
+    hearingDurationMinutes: countyRule?.hearing_duration_minutes ?? null,
+    hearingSchedulingNotes: countyRule?.hearing_scheduling_notes ?? null,
+    virtualHearingAvailable: countyRule?.virtual_hearing_available ?? false,
+    virtualHearingPlatform: countyRule?.virtual_hearing_platform ?? null,
+    authorizedRepAllowed: countyRule?.authorized_rep_allowed ?? null,
+    authorizedRepTypes: countyRule?.authorized_rep_types ?? null,
+    furtherAppealBody: countyRule?.further_appeal_body ?? null,
+    furtherAppealDeadlineRule: countyRule?.further_appeal_deadline_rule ?? null,
+    furtherAppealUrl: countyRule?.further_appeal_url ?? null,
   };
 
   // ── Generate filing guide via AI ──────────────────────────────────────
