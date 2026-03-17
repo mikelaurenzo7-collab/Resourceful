@@ -1,23 +1,62 @@
 import type { Metadata } from "next";
 import Script from "next/script";
+import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/JsonLd";
 import "./globals.css";
 
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://resourceful.app";
+
 export const metadata: Metadata = {
-  title: "Resourceful | Professional Property Tax Appeal Reports",
+  metadataBase: new URL(baseUrl),
+  title: {
+    default: "Resourceful | Professional Property Tax Appeal Reports",
+    template: "%s | Resourceful",
+  },
   description:
-    "Expert-grade property tax appeal reports nationwide. Professional comparable analysis, assessment review, and pro se filing guidance. Save thousands on your property taxes.",
+    "Expert-grade property tax appeal reports nationwide. AI-powered comparable sales analysis, assessment review, and pro se filing guidance. Save hundreds to thousands on your property taxes with our money-back guarantee.",
   keywords: [
     "property tax appeal",
-    "tax assessment",
+    "property tax appeal report",
+    "tax assessment appeal",
     "property valuation",
     "tax reduction",
-    "pro se",
+    "pro se tax appeal",
+    "property tax protest",
+    "reduce property taxes",
+    "property tax savings",
+    "comparable sales analysis",
+    "over-assessed property",
+    "Board of Review appeal",
+    "assessment appeal",
+    "lower property taxes",
   ],
   openGraph: {
     title: "Resourceful | Professional Property Tax Appeal Reports",
     description:
-      "Expert-grade property tax appeal reports. Professional valuation evidence and step-by-step pro se filing guides for property owners nationwide.",
+      "Expert-grade property tax appeal reports. Professional valuation evidence, comparable sales analysis, and step-by-step pro se filing guides for property owners nationwide.",
     type: "website",
+    siteName: "Resourceful",
+    url: baseUrl,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Resourceful | Property Tax Appeal Reports",
+    description:
+      "Save hundreds to thousands on your property taxes. AI-powered appeal reports with money-back guarantee.",
+  },
+  alternates: {
+    canonical: baseUrl,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 };
 
@@ -37,6 +76,8 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700&display=swap"
           rel="stylesheet"
         />
+        <OrganizationJsonLd />
+        <WebSiteJsonLd />
       </head>
       <body className="font-sans antialiased bg-[#0f1419] text-[#f5f0e8] min-h-screen">
         {children}

@@ -75,6 +75,16 @@ function SuccessContent() {
         <Button size="lg" onClick={() => window.location.href = '/'}>
           Back to Home
         </Button>
+
+        {/* Disclaimer */}
+        <p className="text-[10px] text-cream/15 leading-relaxed mt-8 max-w-md mx-auto">
+          Reports are AI-generated informational tools, not legal advice or formal appraisals.
+          You are responsible for verifying all data and meeting your county&apos;s filing deadlines.
+          See our{' '}
+          <a href="/disclaimer" className="underline hover:text-cream/30">Disclaimer</a>
+          {' '}and{' '}
+          <a href="/terms" className="underline hover:text-cream/30">Terms of Service</a>.
+        </p>
       </div>
     </div>
   );

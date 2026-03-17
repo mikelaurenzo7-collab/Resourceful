@@ -3,11 +3,14 @@ import ServiceCards from '@/components/landing/ServiceCards';
 import HowItWorks from '@/components/landing/HowItWorks';
 import FAQ from '@/components/landing/FAQ';
 import Footer from '@/components/landing/Footer';
+import { ServiceJsonLd, FAQJsonLd } from '@/components/seo/JsonLd';
 import Link from 'next/link';
 
 export default function HomePage() {
   return (
     <main className="min-h-screen">
+      <ServiceJsonLd />
+      <FAQJsonLd />
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-gold/5 bg-navy-deep/80 backdrop-blur-lg">
         <div className="mx-auto max-w-6xl px-6 flex items-center justify-between h-16">

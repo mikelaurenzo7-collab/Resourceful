@@ -12,12 +12,11 @@ export default function Footer() {
             </Link>
             <p className="mt-4 text-sm text-cream/40 leading-relaxed max-w-sm">
               Professional property tax appeal reports for homeowners
-              who refuse to overpay. Built on real data, powered by AI,
-              reviewed by experts.
+              who refuse to overpay. Built on real data, powered by AI.
             </p>
           </div>
 
-          {/* Links */}
+          {/* Services */}
           <div>
             <h4 className="text-sm font-semibold uppercase tracking-wider text-cream/60 mb-4">
               Services
@@ -41,36 +40,54 @@ export default function Footer() {
             </ul>
           </div>
 
+          {/* Legal */}
           <div>
             <h4 className="text-sm font-semibold uppercase tracking-wider text-cream/60 mb-4">
-              Account
+              Legal
             </h4>
             <ul className="space-y-3">
               <li>
-                <Link href="/login" className="text-sm text-cream/40 hover:text-gold transition-colors">
-                  Sign In
+                <Link href="/terms" className="text-sm text-cream/40 hover:text-gold transition-colors">
+                  Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="/signup" className="text-sm text-cream/40 hover:text-gold transition-colors">
-                  Create Account
+                <Link href="/privacy" className="text-sm text-cream/40 hover:text-gold transition-colors">
+                  Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard" className="text-sm text-cream/40 hover:text-gold transition-colors">
-                  Dashboard
+                <Link href="/disclaimer" className="text-sm text-cream/40 hover:text-gold transition-colors">
+                  Disclaimer
                 </Link>
               </li>
             </ul>
           </div>
         </div>
 
-        <div className="mt-16 pt-8 border-t border-gold/5 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-cream/30">
-            &copy; {new Date().getFullYear()} Resourceful. All rights reserved.
-          </p>
-          <p className="text-xs text-cream/20">
-            Not legal advice. Reports are informational tools for property tax appeal proceedings.
+        {/* Disclaimer bar */}
+        <div className="mt-16 pt-8 border-t border-gold/5 space-y-3">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-cream/30">
+              &copy; {new Date().getFullYear()} Resourceful. All rights reserved.
+            </p>
+            <div className="flex items-center gap-4 text-xs text-cream/20">
+              <Link href="/terms" className="hover:text-cream/40 transition-colors">Terms</Link>
+              <span>&middot;</span>
+              <Link href="/privacy" className="hover:text-cream/40 transition-colors">Privacy</Link>
+              <span>&middot;</span>
+              <Link href="/disclaimer" className="hover:text-cream/40 transition-colors">Disclaimer</Link>
+            </div>
+          </div>
+          <p className="text-xs text-cream/20 text-center md:text-left leading-relaxed max-w-3xl">
+            Resourceful is not a law firm and does not provide legal advice. Reports are AI-generated
+            informational tools based on public property data, not formal appraisals. You are responsible for
+            verifying all data, meeting filing deadlines, and making your own decisions regarding property tax
+            appeals. See our{' '}
+            <Link href="/disclaimer" className="underline hover:text-cream/40 transition-colors">
+              full disclaimer
+            </Link>{' '}
+            for details.
           </p>
         </div>
       </div>

@@ -209,6 +209,15 @@ function CheckoutForm() {
           Your report will be generated and delivered to your email within a few hours.
           {state.serviceType === 'tax_appeal' && ' It includes step-by-step filing instructions for your county.'}
         </p>
+
+        <p className="text-center text-[10px] text-cream/15 leading-relaxed mt-2">
+          By completing this purchase you agree to our{' '}
+          <a href="/terms" target="_blank" className="underline hover:text-cream/30">Terms of Service</a>
+          {' '}and{' '}
+          <a href="/privacy" target="_blank" className="underline hover:text-cream/30">Privacy Policy</a>.
+          Reports are AI-generated informational tools, not legal advice or formal appraisals.
+          See our <a href="/disclaimer" target="_blank" className="underline hover:text-cream/30">Disclaimer</a>.
+        </p>
       </div>
     </form>
   );
