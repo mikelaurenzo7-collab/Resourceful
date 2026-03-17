@@ -120,7 +120,7 @@ export async function holdReport(reportId: string, notes: string) {
   const eventError = await insertApprovalEvent(supabase, {
     report_id: reportId,
     admin_user_id: adminUserId,
-    action: 'approved', // closest available action -- logged as hold via notes
+    action: 'hold_for_review',
     notes: `HOLD FOR REVIEW: ${notes}`,
   });
 

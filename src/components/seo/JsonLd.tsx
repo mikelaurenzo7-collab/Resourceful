@@ -48,6 +48,8 @@ export function WebSiteJsonLd() {
   );
 }
 
+import { PRICING } from '@/config/pricing';
+
 export function ServiceJsonLd() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app';
 
@@ -70,7 +72,7 @@ export function ServiceJsonLd() {
       {
         '@type': 'Offer',
         name: 'Residential Tax Appeal Report',
-        price: '69.00',
+        price: (PRICING.TAX_APPEAL_RESIDENTIAL / 100).toFixed(2),
         priceCurrency: 'USD',
         description:
           'Professional property tax appeal report for residential properties including comparable sales analysis, assessment review, and filing guide.',
@@ -78,7 +80,7 @@ export function ServiceJsonLd() {
       {
         '@type': 'Offer',
         name: 'Commercial Tax Appeal Report',
-        price: '129.00',
+        price: (PRICING.TAX_APPEAL_COMMERCIAL / 100).toFixed(2),
         priceCurrency: 'USD',
         description:
           'Commercial property tax appeal report with income analysis, comparable sales, and filing guide.',
@@ -86,7 +88,7 @@ export function ServiceJsonLd() {
       {
         '@type': 'Offer',
         name: 'Pre-Purchase Property Analysis',
-        price: '49.00',
+        price: (PRICING.PRE_PURCHASE / 100).toFixed(2),
         priceCurrency: 'USD',
         description:
           'Property analysis report for prospective buyers with valuation data and market comparables.',
@@ -94,7 +96,7 @@ export function ServiceJsonLd() {
       {
         '@type': 'Offer',
         name: 'Pre-Listing Property Report',
-        price: '49.00',
+        price: (PRICING.PRE_LISTING / 100).toFixed(2),
         priceCurrency: 'USD',
         description:
           'Property analysis report for sellers with market valuation and comparable sales data.',
