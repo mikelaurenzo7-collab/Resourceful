@@ -219,6 +219,15 @@ export async function runDataCollection(
   const taxBillTaxAmount = report.tax_bill_tax_amount;
   const taxBillTaxYear = report.tax_bill_tax_year;
 
+  if (hasTaxBill) {
+    notes.push(
+      `TAX BILL DATA: User provided assessed value ($${taxBillAssessed}) ` +
+      `${taxBillTaxAmount ? `and tax amount ($${taxBillTaxAmount})` : ''} ` +
+      `${taxBillTaxYear ? `for tax year ${taxBillTaxYear}` : ''}. ` +
+      `Using tax bill as primary assessment source.`
+    );
+  }
+
   const propertyDataPayload = {
     report_id: reportId,
     assessed_value: (hasTaxBill && taxBillAssessed)
@@ -244,15 +253,6 @@ export async function runDataCollection(
     fema_raw_response: femaResult as unknown as Record<string, unknown>,
     data_collection_notes: notes.length > 0 ? notes.join('\n') : null,
   };
-
-  if (hasTaxBill) {
-    notes.push(
-      `TAX BILL DATA: User provided assessed value ($${taxBillAssessed}) ` +
-      `${taxBillTaxAmount ? `and tax amount ($${taxBillTaxAmount})` : ''} ` +
-      `${taxBillTaxYear ? `for tax year ${taxBillTaxYear}` : ''}. ` +
-      `Using tax bill as primary assessment source.`
-    );
-  }
 
   // ── Update report with geocode coordinates + resolved county FIPS ──────
   // IMPORTANT: Only write county_fips if we actually resolved one.

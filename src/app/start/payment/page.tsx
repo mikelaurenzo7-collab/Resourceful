@@ -39,7 +39,6 @@ function CheckoutForm() {
         elements,
         confirmParams: {
           return_url: `${window.location.origin}/start/success?reportId=${state.reportId}`,
-          receipt_email: state.address ? undefined : undefined,
         },
         redirect: 'if_required',
       });

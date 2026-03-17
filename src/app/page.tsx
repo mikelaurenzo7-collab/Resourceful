@@ -71,8 +71,8 @@ export default function HomePage() {
               </svg>
             </div>
             <div>
-              <p className="font-display text-2xl text-cream">48 Hours</p>
-              <p className="text-xs text-cream/40">average report delivery time</p>
+              <p className="font-display text-2xl text-cream">Minutes</p>
+              <p className="text-xs text-cream/40">auto-report delivery time</p>
             </div>
           </div>
         </div>

@@ -97,7 +97,7 @@ export default function AssessmentCard({
               <div className="text-right">
                 <p className="text-xs text-cream/40">Potential Return</p>
                 <p className="font-display text-lg text-emerald-400">
-                  {Math.round(savingsLow / (reportPrice / 100))}x &ndash; {Math.round(savingsHigh / (reportPrice / 100))}x
+                  {reportPrice > 0 ? `${Math.round(savingsLow / (reportPrice / 100))}x` : '—'} &ndash; {reportPrice > 0 ? `${Math.round(savingsHigh / (reportPrice / 100))}x` : '—'}
                 </p>
               </div>
             </div>

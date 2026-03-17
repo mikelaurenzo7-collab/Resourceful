@@ -49,6 +49,7 @@ export async function POST(
 
     let assessedValue: number;
     let taxAmount: number;
+    let marketValue: number | null = null;
     let countyName: string | null = report.county;
 
     // ── Path A: Tax bill data provided — skip ATTOM ──────────────────────
@@ -75,6 +76,7 @@ export async function POST(
 
       assessedValue = propertyDetail.assessment.assessedValue;
       taxAmount = propertyDetail.assessment.taxAmount;
+      marketValue = propertyDetail.assessment.marketValue || null;
       countyName = propertyDetail.location.countyName || countyName;
     }
 
@@ -89,8 +91,11 @@ export async function POST(
     const conservativeErrorRate = 0.08;
     const minimumOverassessment = Math.round(assessedValue * conservativeErrorRate);
 
-    // If we have ATTOM data with a market value comparison, use the real delta
-    const overassessment = Math.max(minimumOverassessment, Math.round(assessedValue * conservativeErrorRate));
+    // If ATTOM provides a market value below the assessed value, use that real delta
+    const realDelta = (marketValue && marketValue < assessedValue)
+      ? Math.round(assessedValue - marketValue)
+      : 0;
+    const overassessment = Math.max(minimumOverassessment, realDelta);
 
     // Tax rate from actual data or county average
     const effectiveTaxRate =
