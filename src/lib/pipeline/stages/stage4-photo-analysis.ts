@@ -8,7 +8,6 @@
 // This approach:
 // 1. Eliminates AI vision API costs
 // 2. Ensures photo evidence accuracy (critical for county appeals)
-// 3. Builds a labeled dataset for future AI training
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, PhotoAiAnalysis, Photo, ComparableSale } from '@/types/database';

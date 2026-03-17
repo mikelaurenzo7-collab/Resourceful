@@ -335,7 +335,7 @@ export default function PhotoReviewForm({
                 Professional Caption
               </label>
               <p className="text-xs text-gray-500 mb-1">
-                Formal caption for the appraisal report. Emphasize condition concerns the county is missing.
+                Caption for the market value analysis report. Describe condition concerns the county assessment is missing.
               </p>
               <textarea
                 value={activeAnnotation.professional_caption}
@@ -466,7 +466,7 @@ export default function PhotoReviewForm({
                           Report Language
                         </label>
                         <p className="text-[10px] text-gray-400 mb-1">
-                          Formal statement for the appraisal report tying this defect to value impact.
+                          Statement for the analysis report explaining how this defect affects market value.
                         </p>
                         <textarea
                           value={defect.report_language}
