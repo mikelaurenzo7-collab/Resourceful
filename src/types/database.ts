@@ -156,6 +156,15 @@ export type PropertyData = {
   county_assessor_raw_response: Record<string, unknown> | null;
   fema_raw_response: Record<string, unknown> | null;
   data_collection_notes: string | null;
+  // Photo value attribution — tracks exactly how much photos moved the needle
+  concluded_value: number | null;
+  concluded_value_without_photos: number | null;
+  photo_impact_dollars: number | null;
+  photo_impact_pct: number | null;
+  photo_condition_adjustment_pct: number | null;
+  photo_defect_count: number;
+  photo_defect_count_significant: number;
+  photo_count: number;
   created_at: string;
 };
 

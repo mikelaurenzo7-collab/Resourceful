@@ -81,6 +81,16 @@ export interface NarrativePayload {
     professional_caption: string;
     comparable_adjustment_note: string;
   }>;
+  // Photo value attribution — how much the photos moved the needle
+  photoAttribution?: {
+    concludedValueWithPhotos: number;
+    concludedValueWithoutPhotos: number;
+    photoImpactDollars: number;
+    photoImpactPct: number;
+    photoConditionAdjustmentPct: number;
+    totalDefects: number;
+    significantDefects: number;
+  } | null;
   floodZone?: string | null;
   // Pre-computed overvaluation analysis — every angle the assessor may have missed
   overvaluationAnalysis?: {
@@ -443,7 +453,8 @@ export async function analyzePhoto(
  * This gives the AI a detailed, photo-by-photo breakdown it can cite directly.
  */
 function buildPhotoEvidenceBrief(
-  photos: NonNullable<NarrativePayload['photoAnalyses']>
+  photos: NonNullable<NarrativePayload['photoAnalyses']>,
+  attribution?: NarrativePayload['photoAttribution']
 ): string {
   const totalDefects = photos.reduce((sum, p) => sum + p.defects.length, 0);
   const significantDefects = photos.reduce(
@@ -501,6 +512,16 @@ HOW TO USE THIS EVIDENCE (CRITICAL INSTRUCTIONS):
 6. APPEAL ARGUMENTS: At least 2 of your numbered arguments MUST lead with photo evidence. Frame it as: "The assessor valued this property assuming [standard condition]. Our independent photographic analysis documents [X defects] including [most impactful]. This documented condition evidence supports a value of $Y, not the assessed $Z."
 
 The photos are your secret weapon. The assessor has spreadsheets. You have eyes on the property. Use them relentlessly.
+${attribution && attribution.photoImpactDollars > 0 ? `
+QUANTIFIED PHOTO IMPACT (cite these exact numbers):
+- Market-data-only value: $${attribution.concludedValueWithoutPhotos.toLocaleString()}
+- Value with photo condition evidence: $${attribution.concludedValueWithPhotos.toLocaleString()}
+- Photo evidence reduced the value by: $${attribution.photoImpactDollars.toLocaleString()} (${attribution.photoImpactPct.toFixed(1)}%)
+- This $${attribution.photoImpactDollars.toLocaleString()} represents savings the homeowner would NOT have gotten without submitting photos
+- Condition adjustment applied: ${attribution.photoConditionAdjustmentPct}%
+- Evidence basis: ${attribution.totalDefects} documented defects (${attribution.significantDefects} significant)
+
+In the executive summary and reconciliation, state: "Photographic evidence of property condition accounts for approximately $${attribution.photoImpactDollars.toLocaleString()} of the identified overassessment — evidence the assessor did not have access to when setting the assessed value."` : ''}
 ═══════════════════════════════════════════════════════════════════════`;
 }
 
@@ -611,7 +632,7 @@ ${payload.overvaluationAnalysis.assessedExceedsAttomRange ? `- INDEPENDENT CONFI
 ${payload.overvaluationAnalysis.marketTrendPct != null && payload.overvaluationAnalysis.marketTrendPct < -2 ? `- STALE DATA ALERT: Comparable sales show a ${Math.abs(payload.overvaluationAnalysis.marketTrendPct).toFixed(1)}% declining trend — the assessor appears to be using outdated valuations that don't reflect current market reality` : ''}
 ${payload.overvaluationAnalysis.dataAnomalies.length > 0 ? `- ASSESSOR DATA ERRORS:\n${payload.overvaluationAnalysis.dataAnomalies.map(a => `  → ${a}`).join('\n')}` : ''}
 ` : ''}
-${hasPhotos ? buildPhotoEvidenceBrief(payload.photoAnalyses!) : ''}
+${hasPhotos ? buildPhotoEvidenceBrief(payload.photoAnalyses!, payload.photoAttribution) : ''}
 ${payload.calibrationContext && payload.calibrationContext.sampleSize > 0
   ? `\nCALIBRATION CREDIBILITY: This valuation methodology has been validated against ${payload.calibrationContext.sampleSize} independent professional appraisals${payload.calibrationContext.meanAbsoluteErrorPct != null ? ` with a mean absolute error of only ${payload.calibrationContext.meanAbsoluteErrorPct.toFixed(1)}%` : ''}. Mention this in the executive summary — it demonstrates our analysis is professionally calibrated, not speculative.`
   : ''}

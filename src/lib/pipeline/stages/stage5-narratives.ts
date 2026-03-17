@@ -105,44 +105,135 @@ export async function runNarratives(
   // Use median adjusted_price_per_sqft * subject building sqft as primary value indicator
   const comps = (compsRes.data ?? []) as ComparableSale[];
   const rentals = (rentalsRes.data ?? []) as ComparableRental[];
-  let concludedValue = 0;
 
-  if (comps.length > 0) {
-    const adjustedPricesPerSqft = comps
-      .map((c) => c.adjusted_price_per_sqft)
+  // Helper: compute median value from an array of comp data using a price extractor
+  function computeMedianValue(
+    compList: ComparableSale[],
+    sqft: number | null,
+    getPricePerSqft: (c: ComparableSale) => number | null
+  ): number {
+    const prices = compList
+      .map(getPricePerSqft)
       .filter((p): p is number => p != null && p > 0)
       .sort((a, b) => a - b);
 
-    if (adjustedPricesPerSqft.length > 0 && propertyData.building_sqft_gross) {
-      const mid = Math.floor(adjustedPricesPerSqft.length / 2);
-      const medianPricePerSqft = adjustedPricesPerSqft.length % 2 === 0
-        ? (adjustedPricesPerSqft[mid - 1] + adjustedPricesPerSqft[mid]) / 2
-        : adjustedPricesPerSqft[mid];
-      concludedValue = Math.round(medianPricePerSqft * propertyData.building_sqft_gross);
-    } else {
-      // Fallback: use sale_price directly
-      const salePrices = comps
-        .map((c) => c.sale_price)
+    if (prices.length > 0 && sqft && sqft > 0) {
+      const mid = Math.floor(prices.length / 2);
+      const median = prices.length % 2 === 0
+        ? (prices[mid - 1] + prices[mid]) / 2
+        : prices[mid];
+      return Math.round(median * sqft);
+    }
+
+    // Fallback: use sale_price directly
+    const salePrices = compList
+      .map((c) => c.sale_price)
+      .filter((p): p is number => p != null && p > 0)
+      .sort((a, b) => a - b);
+    if (salePrices.length > 0) {
+      const mid = Math.floor(salePrices.length / 2);
+      return salePrices.length % 2 === 0
+        ? Math.round((salePrices[mid - 1] + salePrices[mid]) / 2)
+        : salePrices[mid];
+    }
+    return 0;
+  }
+
+  // ── Value WITH photo condition adjustments (the real concluded value) ──
+  let concludedValue = comps.length > 0
+    ? computeMedianValue(comps, propertyData.building_sqft_gross, (c) => c.adjusted_price_per_sqft)
+    : 0;
+
+  // ── Value WITHOUT photo condition adjustments (market data only) ───────
+  // Strip out the photo-based condition adjustment from each comp to see
+  // what the value would be using only market data + standard adjustments.
+  // Stage 4 stores the photo adjustment in adjustment_pct_condition on top
+  // of the base condition adjustment from stage 2. We need to reverse it.
+  let concludedValueWithoutPhotos = concludedValue; // same if no photos
+  let photoConditionAdjustmentPct: number | null = null;
+
+  if (photoAnalyses.length > 0 && comps.length > 0) {
+    // Re-derive the photo adjustment the same way stage4 does
+    const allPhotoDefects: Array<{ severity: string; value_impact: string }> = [];
+    for (const pa of photoAnalyses) {
+      for (const d of pa.defects) {
+        allPhotoDefects.push({ severity: d.severity, value_impact: d.value_impact });
+      }
+    }
+
+    const DEFECT_ADJ: Record<string, Record<string, number>> = {
+      minor:       { low: -0.5, medium: -1.0, high: -1.5 },
+      moderate:    { low: -1.0, medium: -2.0, high: -3.0 },
+      significant: { low: -2.0, medium: -3.5, high: -5.0 },
+    };
+
+    let defectAdj = 0;
+    for (const defect of allPhotoDefects) {
+      const severityMap = DEFECT_ADJ[defect.severity] ?? DEFECT_ADJ.minor;
+      defectAdj += severityMap[defect.value_impact] ?? severityMap.low;
+    }
+
+    // Condition ratings from photo analyses
+    const conditionRatings = photoAnalyses.map(p => p.condition_rating);
+    const overallCondition: string = conditionRatings.length > 0
+      ? (() => {
+          const freq: Record<string, number> = {};
+          for (const v of conditionRatings) freq[v] = (freq[v] ?? 0) + 1;
+          const order = ['poor', 'fair', 'average', 'good', 'excellent'];
+          let maxCount = 0;
+          let mode: string = conditionRatings[0];
+          for (const [val, count] of Object.entries(freq)) {
+            if (count > maxCount || (count === maxCount && order.indexOf(val) < order.indexOf(mode))) {
+              maxCount = count;
+              mode = val;
+            }
+          }
+          return mode;
+        })()
+      : 'average';
+
+    const baseOffset = overallCondition === 'poor' ? -3 : overallCondition === 'fair' ? -1.5 : 0;
+    photoConditionAdjustmentPct = Math.max(
+      Math.round((defectAdj + baseOffset) * 100) / 100,
+      -25
+    );
+
+    // Only compute the "without photos" value if photos actually changed anything
+    if (photoConditionAdjustmentPct !== 0) {
+      // Reverse the photo adjustment on each comp to get the pre-photo price
+      const pricesWithoutPhotos = comps
+        .map((c) => {
+          if (!c.adjusted_price_per_sqft || !c.sale_price || !c.building_sqft || c.building_sqft <= 0 || c.net_adjustment_pct == null) return null;
+          // The current net includes the photo adjustment. Remove it.
+          const netWithoutPhoto = c.net_adjustment_pct - photoConditionAdjustmentPct!;
+          return Math.round(((c.sale_price * (1 + netWithoutPhoto / 100)) / c.building_sqft) * 100) / 100;
+        })
         .filter((p): p is number => p != null && p > 0)
         .sort((a, b) => a - b);
-      if (salePrices.length > 0) {
-        const mid = Math.floor(salePrices.length / 2);
-        concludedValue = salePrices.length % 2 === 0
-          ? Math.round((salePrices[mid - 1] + salePrices[mid]) / 2)
-          : salePrices[mid];
+
+      if (pricesWithoutPhotos.length > 0 && propertyData.building_sqft_gross) {
+        const mid = Math.floor(pricesWithoutPhotos.length / 2);
+        const median = pricesWithoutPhotos.length % 2 === 0
+          ? (pricesWithoutPhotos[mid - 1] + pricesWithoutPhotos[mid]) / 2
+          : pricesWithoutPhotos[mid];
+        concludedValueWithoutPhotos = Math.round(median * propertyData.building_sqft_gross);
       }
     }
   }
 
   // Round to nearest $1,000
   concludedValue = Math.round(concludedValue / 1000) * 1000;
+  concludedValueWithoutPhotos = Math.round(concludedValueWithoutPhotos / 1000) * 1000;
 
-  // If income approach is available, weight it in
+  // If income approach is available, weight it in (apply to both)
   if (incomeData?.concluded_value_income_approach) {
     const incomeValue = incomeData.concluded_value_income_approach;
     // 70% sales comparison, 30% income approach for commercial/industrial
     concludedValue = Math.round(
       (concludedValue * 0.7 + incomeValue * 0.3) / 1000
+    ) * 1000;
+    concludedValueWithoutPhotos = Math.round(
+      (concludedValueWithoutPhotos * 0.7 + incomeValue * 0.3) / 1000
     ) * 1000;
   }
 
@@ -153,13 +244,49 @@ export async function runNarratives(
     supabase
   );
   if (calibration && calibration.value_bias_pct !== 0 && concludedValue > 0) {
+    const biasFactor = 1 - calibration.value_bias_pct / 100;
     const preBias = concludedValue;
     // Positive bias = system overvalues, so subtract; negative = undervalues, so add
-    concludedValue = Math.round(
-      (concludedValue * (1 - calibration.value_bias_pct / 100)) / 1000
-    ) * 1000;
+    concludedValue = Math.round((concludedValue * biasFactor) / 1000) * 1000;
+    concludedValueWithoutPhotos = Math.round((concludedValueWithoutPhotos * biasFactor) / 1000) * 1000;
     console.log(
       `[stage5] Applied value bias correction: ${preBias} → ${concludedValue} (bias: ${calibration.value_bias_pct}%, n=${calibration.sample_size})`
+    );
+  }
+
+  // ── Photo value attribution ────────────────────────────────────────────
+  const photoImpactDollars = concludedValueWithoutPhotos - concludedValue;
+  const photoImpactPct = concludedValueWithoutPhotos > 0
+    ? Math.round((photoImpactDollars / concludedValueWithoutPhotos) * 10000) / 100
+    : 0;
+
+  const totalDefects = photoAnalyses.reduce((sum, p) => sum + p.defects.length, 0);
+  const significantDefects = photoAnalyses.reduce(
+    (sum, p) => sum + p.defects.filter(d => d.severity === 'significant').length, 0
+  );
+
+  // Store attribution on property_data
+  const { error: attrUpdateError } = await supabase
+    .from('property_data')
+    .update({
+      concluded_value: concludedValue,
+      concluded_value_without_photos: concludedValueWithoutPhotos,
+      photo_impact_dollars: photoImpactDollars > 0 ? photoImpactDollars : 0,
+      photo_impact_pct: photoImpactPct > 0 ? photoImpactPct : 0,
+      photo_condition_adjustment_pct: photoConditionAdjustmentPct,
+      photo_defect_count: totalDefects,
+      photo_defect_count_significant: significantDefects,
+      photo_count: photoAnalyses.length,
+    })
+    .eq('report_id', reportId);
+
+  if (attrUpdateError) {
+    console.warn(`[stage5] Failed to store photo attribution: ${attrUpdateError.message}`);
+  }
+
+  if (photoAnalyses.length > 0) {
+    console.log(
+      `[stage5] Photo value attribution: $${concludedValueWithoutPhotos.toLocaleString()} (market only) → $${concludedValue.toLocaleString()} (with photos) = $${photoImpactDollars.toLocaleString()} impact (${photoImpactPct}%), ${totalDefects} defects (${significantDefects} significant), condition adj: ${photoConditionAdjustmentPct}%`
     );
   }
 
@@ -381,6 +508,17 @@ export async function runNarratives(
         },
     concludedValue,
     photoAnalyses: photoAnalyses.length > 0 ? photoAnalyses : undefined,
+    photoAttribution: photoAnalyses.length > 0 && photoImpactDollars > 0
+      ? {
+          concludedValueWithPhotos: concludedValue,
+          concludedValueWithoutPhotos,
+          photoImpactDollars,
+          photoImpactPct,
+          photoConditionAdjustmentPct: photoConditionAdjustmentPct ?? 0,
+          totalDefects,
+          significantDefects,
+        }
+      : null,
     floodZone: propertyData.flood_zone_designation,
     overvaluationAnalysis,
     calibrationContext: calibration && calibration.sample_size > 0
