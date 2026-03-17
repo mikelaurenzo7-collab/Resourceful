@@ -148,7 +148,10 @@ export default function GoalsPage() {
           <p className="text-sm font-medium text-emerald-400">Money-Back Guarantee</p>
           <p className="text-xs text-emerald-400/60 mt-0.5">
             If your appeal is denied, we&apos;ll refund your full purchase price. Just provide the denial letter as proof.
-            Guarantee requires submitting property photos during intake.
+          </p>
+          <p className="text-xs text-emerald-400/40 mt-1">
+            Guarantee requires submitting property photos — they document conditions the assessor has never inspected,
+            giving your appeal evidence that public data alone can&apos;t provide.
           </p>
         </div>
       </div>

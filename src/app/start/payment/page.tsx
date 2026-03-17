@@ -161,8 +161,16 @@ function CheckoutForm() {
               <>
                 <p className="text-sm font-medium text-amber-400/70">No Money-Back Guarantee</p>
                 <p className="text-xs text-amber-400/40 mt-0.5">
-                  Photos are required for guarantee eligibility. You can go back and add photos to qualify.
+                  Without photos, your report relies on the same public data your assessor already has.
+                  Photos document conditions the assessor has never seen — that&apos;s what makes the difference.
                 </p>
+                <button
+                  type="button"
+                  onClick={() => router.push('/start/photos')}
+                  className="mt-2 text-xs text-amber-400/70 underline hover:text-amber-400 transition-colors"
+                >
+                  Go back and add photos to qualify for the guarantee
+                </button>
               </>
             )}
           </div>

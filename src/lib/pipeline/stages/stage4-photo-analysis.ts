@@ -157,12 +157,57 @@ export async function runPhotoAnalysis(
     `[stage4] Overall condition: ${overallCondition} from ${conditionRatings.length} photos`
   );
 
-  // ── Reconsider condition-based comp adjustments if poor/fair ───────────
-  if (overallCondition === 'poor' || overallCondition === 'fair') {
-    console.log(
-      `[stage4] Condition is ${overallCondition} — adjusting comparable sales for condition`
-    );
+  // ── Compute per-defect condition adjustment ──────────────────────────
+  // Instead of a blanket -5%/-10%, sum granular per-defect impacts from
+  // photo evidence. This makes the adjustment proportional to documented
+  // issues rather than a single overall rating.
+  const allDefects: Array<{ severity: string; value_impact: string }> = [];
+  for (let i = 0; i < photos.length; i += BATCH_SIZE) {
+    const batch = photos.slice(i, i + BATCH_SIZE);
+    for (const photo of batch) {
+      const analysis = photo.ai_analysis as unknown as PhotoAiAnalysis | null;
+      if (analysis?.defects) {
+        for (const d of analysis.defects) {
+          allDefects.push({ severity: d.severity, value_impact: d.value_impact });
+        }
+      }
+    }
+  }
 
+  // Map each defect to an adjustment percentage based on severity + value_impact
+  const DEFECT_ADJUSTMENT: Record<string, Record<string, number>> = {
+    // severity → value_impact → adjustment %
+    minor:       { low: -0.5, medium: -1.0, high: -1.5 },
+    moderate:    { low: -1.0, medium: -2.0, high: -3.0 },
+    significant: { low: -2.0, medium: -3.5, high: -5.0 },
+  };
+
+  let defectBasedAdjustment = 0;
+  for (const defect of allDefects) {
+    const severityMap = DEFECT_ADJUSTMENT[defect.severity] ?? DEFECT_ADJUSTMENT.minor;
+    defectBasedAdjustment += severityMap[defect.value_impact] ?? severityMap.low;
+  }
+
+  // Also apply a base condition offset for overall poor/fair ratings
+  const baseConditionOffset =
+    overallCondition === 'poor' ? -3 :
+    overallCondition === 'fair' ? -1.5 : 0;
+
+  const totalConditionAdjustment = Math.round(
+    (defectBasedAdjustment + baseConditionOffset) * 100
+  ) / 100;
+
+  // Cap the total adjustment at -25% to avoid unreasonable values
+  const cappedAdjustment = Math.max(totalConditionAdjustment, -25);
+
+  console.log(
+    `[stage4] Condition adjustment: ${cappedAdjustment}% ` +
+    `(${allDefects.length} defects: ${defectBasedAdjustment}%, ` +
+    `base offset for "${overallCondition}": ${baseConditionOffset}%)`
+  );
+
+  // ── Apply condition adjustment to comparable sales ──────────────────
+  if (cappedAdjustment !== 0) {
     const { data: compsData } = await supabase
       .from('comparable_sales')
       .select('*')
@@ -170,11 +215,8 @@ export async function runPhotoAnalysis(
     const comps = (compsData ?? []) as ComparableSale[];
 
     if (comps.length > 0) {
-      // Apply additional condition adjustment: -5% for fair, -10% for poor
-      const conditionAdjustment = overallCondition === 'poor' ? -10 : -5;
-
       for (const comp of comps) {
-        const newConditionAdj = comp.adjustment_pct_condition + conditionAdjustment;
+        const newConditionAdj = comp.adjustment_pct_condition + cappedAdjustment;
         const newNet =
           comp.adjustment_pct_property_rights +
           comp.adjustment_pct_financing_terms +
@@ -208,7 +250,7 @@ export async function runPhotoAnalysis(
       }
 
       console.log(
-        `[stage4] Applied ${conditionAdjustment}% condition adjustment to ${comps.length} comps`
+        `[stage4] Applied ${cappedAdjustment}% condition adjustment to ${comps.length} comps`
       );
     }
   }

@@ -422,7 +422,12 @@ County assessment methodology: ${payload.countyRules.assessmentMethodology}
 ${payload.countyRules.assessmentRatioResidential != null ? `Assessment ratio (residential): ${payload.countyRules.assessmentRatioResidential}` : ''}
 ${payload.countyRules.assessmentRatioCommercial != null ? `Assessment ratio (commercial): ${payload.countyRules.assessmentRatioCommercial}` : ''}
 
-Write in a professional but accessible tone. Support claims with data from the comparables and property characteristics provided.`;
+Write in a professional but accessible tone. Support claims with data from the comparables and property characteristics provided.
+
+${payload.photoAnalyses && payload.photoAnalyses.length > 0
+  ? `PHOTO EVIDENCE: The property owner submitted ${payload.photoAnalyses.length} photo(s) with AI-analyzed condition data. Reference specific photo evidence (defects, condition ratings) in the property description, condition assessment, and reconciliation sections. This is evidence the assessor did not have access to — emphasize that documented conditions support the adjusted value conclusion.`
+  : `NO PHOTO EVIDENCE: The property owner did not submit photos. In the property description and reconciliation sections, note that condition is assumed to be average based on property age and class, since no interior/exterior condition evidence was provided. Note that the value conclusion is based solely on publicly available data — the same data the assessor used — and that interior condition evidence could further refine the analysis.`
+}`;
 }
 
 function buildNarrativeUserMessage(payload: NarrativePayload): string {
