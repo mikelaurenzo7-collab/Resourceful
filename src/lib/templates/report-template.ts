@@ -1,15 +1,14 @@
 // ─── Report PDF Template ─────────────────────────────────────────────────────
 // Generates the complete HTML string that Puppeteer renders to PDF.
-// The output must be indistinguishable from a professionally typeset
-// appraisal report: correct typography, precise layout, proper page breaks,
-// and production-quality styling throughout.
+// Premium branded design: navy + gold, Playfair Display + Inter,
+// clean data-driven property analysis with no AI/automated language.
 //
 // Design principles:
 //   - Every element in a block-level container (no overlap)
 //   - No absolute/fixed positioning over text
 //   - Inline styles for Puppeteer reliability
 //   - @page CSS for margins, page numbering
-//   - Google Fonts via @import for Playfair Display
+//   - Google Fonts via @import for Playfair Display + Inter
 
 import type {
   Report,
@@ -30,15 +29,10 @@ import {
   formatPercent,
   formatSqFt,
   formatLotSize,
-  formatNumber,
-  getConditionColor,
   escapeHtml,
   imageOrPlaceholder,
   formatPropertyType,
-  formatHearingFormat,
   fullAddress,
-  adjustmentLabel,
-  safeVal,
 } from './helpers';
 
 // ─── Data Interface ──────────────────────────────────────────────────────────
@@ -80,43 +74,29 @@ export interface ReportTemplateData {
   preparedBy?: string;
 }
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Brand Constants ─────────────────────────────────────────────────────────
 
-const NAVY = '#1a2744';
-const RED = '#b71c1c';
-const BODY_TEXT = '#1a1a1a';
-const LIGHT_BG = '#f8f9fa';
-const TABLE_ALT = '#f5f7fa';
+const NAVY = '#0f1d33';
+const NAVY_MID = '#1a2d4d';
+const GOLD = '#b8860b';
+const GOLD_LIGHT = '#d4a847';
+const BODY_TEXT = '#1c1c1c';
+const LIGHT_BG = '#f9fafb';
+const TABLE_ALT = '#f4f6f9';
 const TABLE_BORDER = '#d0d5dd';
-const PLATFORM_NAME = 'PROPERTY INTELLIGENCE';
-
-// ─── Adjustment Row Categories ───────────────────────────────────────────────
-// Individual adjustment fields are defined on ComparableSale as
-// adjustment_pct_* columns. The renderAdjustmentGrid function reads
-// them directly from the typed interface.
+const MUTED = '#6b7280';
 
 // ─── Main Export ─────────────────────────────────────────────────────────────
 
-/**
- * Generate the complete HTML document for the appraisal report PDF.
- * The returned string is a self-contained HTML page with embedded styles,
- * fonts, and all content ready for Puppeteer rendering.
- */
 export function generateReportHtml(data: ReportTemplateData): string {
   const {
     report,
-    property,
     photos,
     comparableSales,
     comparableRentals,
     incomeAnalysis,
     narratives,
-    countyRule,
-    maps,
     filingGuide,
-    concludedValue,
-    valuationDate,
-    reportDate,
   } = data;
 
   const addr = fullAddress(
@@ -136,35 +116,57 @@ export function generateReportHtml(data: ReportTemplateData): string {
     (p) => p.photo_type === 'exterior_front' || p.photo_type === 'aerial'
   );
 
-  // Determine which sections to render
   const hasIncome =
     incomeAnalysis != null &&
     (report.property_type === 'commercial' || report.property_type === 'industrial');
+
+  const clientName = report.client_name ?? 'Property Owner';
+
+  // Build section list for TOC
+  const tocSections: { num: string; title: string }[] = [
+    { num: 'I', title: 'Summary of Findings' },
+    { num: 'II', title: 'Property Description' },
+    { num: 'III', title: 'Site Description' },
+    { num: 'IV', title: 'Improvement Description' },
+    { num: 'V-A', title: 'Area Analysis — County' },
+    { num: 'V-B', title: 'Area Analysis — City' },
+    { num: 'V-C', title: 'Area Analysis — Neighborhood' },
+    { num: 'VI', title: 'Market Analysis' },
+    { num: 'VII-A', title: 'Highest & Best Use — As Vacant' },
+    { num: 'VII-B', title: 'Highest & Best Use — As Improved' },
+    { num: 'VIII', title: 'Sales Comparison Approach' },
+  ];
+  if (hasIncome) {
+    tocSections.push({ num: 'IX', title: 'Income Approach' });
+  }
+  tocSections.push({ num: hasIncome ? 'X' : 'IX', title: 'Reconciliation & Final Value' });
+  if (filingGuide) {
+    tocSections.push({ num: 'Addendum', title: 'Pro Se Filing Guide' });
+  }
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Appraisal Report - ${escapeHtml(addr)}</title>
+<title>Market Value Analysis - ${escapeHtml(addr)}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600;1,700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600;1,700&family=Inter:wght@300;400;500;600;700&display=swap');
 
   /* ── Page Setup ──────────────────────────────────────────────── */
   @page {
     size: Letter;
-    margin: 1in;
+    margin: 0.85in 0.9in 1in 0.9in;
+    @bottom-center {
+      content: none;
+    }
   }
 
-  /* Cover page: no page number */
   @page :first {
+    margin-top: 0;
+    margin-bottom: 0;
     @bottom-center { content: none; }
     @bottom-right { content: none; }
-  }
-
-  /* ── CSS Counter for Page Numbers ─────────────────────────────── */
-  html {
-    counter-reset: page-number;
   }
 
   /* ── Base Reset ──────────────────────────────────────────────── */
@@ -175,9 +177,9 @@ export function generateReportHtml(data: ReportTemplateData): string {
   }
 
   body {
-    font-family: 'Times New Roman', Times, Georgia, serif;
-    font-size: 11pt;
-    line-height: 1.6;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.65;
     color: ${BODY_TEXT};
     background: #ffffff;
     -webkit-print-color-adjust: exact;
@@ -192,10 +194,10 @@ export function generateReportHtml(data: ReportTemplateData): string {
     page-break-after: avoid;
   }
 
-  h1 { font-size: 26pt; font-weight: 700; }
-  h2 { font-size: 16pt; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-  h3 { font-size: 13pt; font-weight: 500; font-style: italic; }
-  h4 { font-size: 11pt; font-weight: 600; }
+  h1 { font-size: 28pt; font-weight: 700; }
+  h2 { font-size: 15pt; font-weight: 600; letter-spacing: 0.3px; }
+  h3 { font-size: 12pt; font-weight: 500; }
+  h4 { font-size: 10.5pt; font-weight: 600; }
 
   p {
     margin-bottom: 0.6em;
@@ -206,13 +208,13 @@ export function generateReportHtml(data: ReportTemplateData): string {
 
   /* ── Numerical Data ──────────────────────────────────────────── */
   .num {
-    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.01em;
   }
 
   .num-right {
-    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
     font-variant-numeric: tabular-nums;
     text-align: right;
     letter-spacing: -0.01em;
@@ -228,22 +230,22 @@ export function generateReportHtml(data: ReportTemplateData): string {
   }
 
   th, td {
-    padding: 6px 10px;
+    padding: 7px 10px;
     border: 1px solid ${TABLE_BORDER};
-    font-size: 10pt;
+    font-size: 9.5pt;
     vertical-align: top;
     word-wrap: break-word;
     overflow-wrap: break-word;
   }
 
   th {
-    background-color: ${NAVY};
+    background: linear-gradient(180deg, ${NAVY_MID} 0%, ${NAVY} 100%);
     color: #ffffff;
-    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
     font-weight: 600;
-    font-size: 9pt;
+    font-size: 8.5pt;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.4px;
     text-align: left;
   }
 
@@ -266,9 +268,20 @@ export function generateReportHtml(data: ReportTemplateData): string {
 
   /* ── Section Headers ─────────────────────────────────────────── */
   .section-header {
-    margin-bottom: 1em;
-    padding-bottom: 0.3em;
-    border-bottom: 2px solid ${NAVY};
+    margin-bottom: 1.2em;
+    padding-bottom: 0.4em;
+    border-bottom: 3px solid ${NAVY};
+    position: relative;
+  }
+
+  .section-header::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 0;
+    width: 80px;
+    height: 3px;
+    background: ${GOLD};
   }
 
   .section-header h2 {
@@ -276,11 +289,22 @@ export function generateReportHtml(data: ReportTemplateData): string {
     padding: 0;
   }
 
+  /* ── Gold Accent Bar ─────────────────────────────────────────── */
+  .gold-rule {
+    display: block;
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(90deg, ${GOLD}, ${GOLD_LIGHT});
+    border: none;
+    margin: 12px auto;
+  }
+
   /* ── Image Containers ────────────────────────────────────────── */
   .img-container {
     display: block;
     overflow: hidden;
     border: 1px solid ${TABLE_BORDER};
+    border-radius: 2px;
     margin-bottom: 0.5em;
     page-break-inside: avoid;
   }
@@ -294,13 +318,14 @@ export function generateReportHtml(data: ReportTemplateData): string {
 
   .img-caption {
     display: block;
-    padding: 4px 8px;
-    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
-    font-size: 8.5pt;
-    color: #555;
-    background: #fafafa;
+    padding: 5px 10px;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 8pt;
+    color: ${MUTED};
+    background: ${LIGHT_BG};
     border-top: 1px solid ${TABLE_BORDER};
     text-align: center;
+    letter-spacing: 0.2px;
   }
 
   /* ── Photo Grid ──────────────────────────────────────────────── */
@@ -328,38 +353,39 @@ export function generateReportHtml(data: ReportTemplateData): string {
 
   /* ── Value Box ───────────────────────────────────────────────── */
   .value-box {
-    border: 2px solid ${RED};
-    padding: 16px 20px;
-    margin: 1.2em 0;
+    border: 2px solid ${NAVY};
+    border-left: 5px solid ${GOLD};
+    padding: 18px 24px;
+    margin: 1.4em 0;
     text-align: center;
     page-break-inside: avoid;
+    background: linear-gradient(135deg, #fefefe 0%, ${LIGHT_BG} 100%);
   }
 
   .value-box .value-label {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-size: 11pt;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 9pt;
     font-weight: 600;
-    color: ${NAVY};
+    color: ${MUTED};
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 1.5px;
     margin-bottom: 6px;
   }
 
   .value-box .value-amount {
-    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
-    font-variant-numeric: tabular-nums;
-    font-size: 28pt;
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 30pt;
     font-weight: 700;
-    color: ${RED};
+    color: ${NAVY};
     line-height: 1.2;
     margin-bottom: 4px;
   }
 
   .value-box .value-words {
-    font-family: 'Times New Roman', Times, serif;
-    font-size: 10pt;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 9pt;
     font-style: italic;
-    color: #555;
+    color: ${MUTED};
   }
 
   /* ── Key Facts Grid ──────────────────────────────────────────── */
@@ -369,12 +395,13 @@ export function generateReportHtml(data: ReportTemplateData): string {
     gap: 0;
     margin-bottom: 1em;
     border: 1px solid ${TABLE_BORDER};
+    border-radius: 2px;
   }
 
   .facts-grid .fact-item {
     flex: 0 0 50%;
     max-width: 50%;
-    padding: 8px 12px;
+    padding: 9px 14px;
     border-bottom: 1px solid ${TABLE_BORDER};
     display: flex;
     align-items: baseline;
@@ -386,18 +413,18 @@ export function generateReportHtml(data: ReportTemplateData): string {
   }
 
   .fact-label {
-    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
-    font-size: 8.5pt;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 7.5pt;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
-    color: #666;
-    flex: 0 0 130px;
-    min-width: 130px;
+    letter-spacing: 0.5px;
+    color: ${MUTED};
+    flex: 0 0 120px;
+    min-width: 120px;
   }
 
   .fact-value {
-    font-size: 10.5pt;
+    font-size: 10pt;
     color: ${BODY_TEXT};
     font-weight: 500;
   }
@@ -407,15 +434,35 @@ export function generateReportHtml(data: ReportTemplateData): string {
     border: 1px solid ${TABLE_BORDER};
     margin-bottom: 1.2em;
     page-break-inside: avoid;
+    border-radius: 2px;
+    overflow: hidden;
   }
 
   .comp-card-header {
-    background: ${NAVY};
+    background: linear-gradient(135deg, ${NAVY} 0%, ${NAVY_MID} 100%);
     color: #fff;
-    padding: 8px 12px;
+    padding: 9px 14px;
     font-family: 'Playfair Display', Georgia, serif;
-    font-size: 11pt;
+    font-size: 10.5pt;
     font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .comp-card-header .comp-num {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
+    text-align: center;
+    background: ${GOLD};
+    color: ${NAVY};
+    font-family: 'Inter', sans-serif;
+    font-size: 10pt;
+    font-weight: 700;
+    border-radius: 50%;
+    flex-shrink: 0;
   }
 
   .comp-card-photo {
@@ -453,8 +500,8 @@ export function generateReportHtml(data: ReportTemplateData): string {
   }
 
   .comp-card-comments {
-    padding: 8px 12px;
-    font-size: 9.5pt;
+    padding: 8px 14px;
+    font-size: 9pt;
     color: #444;
     border-top: 1px solid ${TABLE_BORDER};
     background: ${LIGHT_BG};
@@ -462,53 +509,52 @@ export function generateReportHtml(data: ReportTemplateData): string {
 
   /* ── Adjustment Grid ─────────────────────────────────────────── */
   .adj-grid th {
-    font-size: 8pt;
+    font-size: 7.5pt;
     padding: 5px 6px;
     text-align: center;
   }
 
   .adj-grid td {
-    font-size: 9pt;
+    font-size: 8.5pt;
     padding: 4px 6px;
     text-align: center;
-    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
     font-variant-numeric: tabular-nums;
   }
 
   .adj-grid .row-label {
     text-align: left;
-    font-family: 'Times New Roman', Times, serif;
     font-weight: 500;
-    font-size: 9.5pt;
+    font-size: 9pt;
   }
 
   .adj-grid .group-header td {
-    background: #e8ecf1;
+    background: #e4e9f0;
     font-weight: 700;
-    font-size: 8.5pt;
+    font-size: 8pt;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.4px;
     text-align: left;
     color: ${NAVY};
     border-bottom: 2px solid ${NAVY};
   }
 
   .adj-grid .total-row td {
-    background: #e0e6ed;
+    background: #dce1e9;
     font-weight: 700;
     border-top: 2px solid ${NAVY};
-    font-size: 9.5pt;
+    font-size: 9pt;
   }
 
   .adj-grid .final-row td {
-    background: ${NAVY};
+    background: linear-gradient(135deg, ${NAVY} 0%, ${NAVY_MID} 100%);
     color: #ffffff;
     font-weight: 700;
-    font-size: 10pt;
+    font-size: 9.5pt;
   }
 
-  .adj-positive { color: #2e7d32; }
-  .adj-negative { color: ${RED}; }
+  .adj-positive { color: #1a7a2e; }
+  .adj-negative { color: #b91c1c; }
 
   /* ── Filing Guide / Addendum ─────────────────────────────────── */
   .filing-guide {
@@ -517,35 +563,36 @@ export function generateReportHtml(data: ReportTemplateData): string {
   }
 
   .filing-guide .guide-header {
-    background: #2e5090;
+    background: linear-gradient(135deg, ${NAVY} 0%, ${NAVY_MID} 100%);
     color: #ffffff;
-    padding: 16px 20px;
+    padding: 18px 24px;
     font-family: 'Playfair Display', Georgia, serif;
     font-size: 16pt;
     font-weight: 600;
     margin-bottom: 0;
+    border-bottom: 3px solid ${GOLD};
   }
 
   .filing-guide .guide-body {
-    padding: 20px 24px;
+    padding: 22px 26px;
   }
 
   .filing-guide .deadline-box {
     background: #ffffff;
-    border: 2px solid ${RED};
-    border-left: 6px solid ${RED};
-    padding: 14px 18px;
-    margin-bottom: 1.2em;
+    border: 2px solid ${NAVY};
+    border-left: 5px solid ${GOLD};
+    padding: 16px 20px;
+    margin-bottom: 1.4em;
     page-break-inside: avoid;
   }
 
   .filing-guide .deadline-box .deadline-label {
-    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
-    font-size: 9pt;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 8pt;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: ${RED};
+    letter-spacing: 1px;
+    color: ${GOLD};
     margin-bottom: 2px;
   }
 
@@ -564,7 +611,7 @@ export function generateReportHtml(data: ReportTemplateData): string {
   .filing-guide ol li {
     margin-bottom: 0.8em;
     line-height: 1.6;
-    font-size: 10.5pt;
+    font-size: 10pt;
   }
 
   .filing-guide ul {
@@ -575,16 +622,16 @@ export function generateReportHtml(data: ReportTemplateData): string {
 
   .filing-guide ul li {
     margin-bottom: 0.4em;
-    font-size: 10.5pt;
+    font-size: 10pt;
     line-height: 1.5;
   }
 
   .filing-guide .tip-box {
-    background: #e8f5e9;
+    background: #f0f7f0;
     border-left: 4px solid #2e7d32;
     padding: 10px 14px;
     margin-bottom: 0.8em;
-    font-size: 10pt;
+    font-size: 9.5pt;
     page-break-inside: avoid;
   }
 
@@ -592,60 +639,51 @@ export function generateReportHtml(data: ReportTemplateData): string {
   .cover-page {
     display: flex;
     flex-direction: column;
-    min-height: 9in;
+    min-height: 10.5in;
+    padding: 0.85in 0.9in;
     page-break-after: always;
   }
 
-  .cover-logo {
-    text-align: center;
-    padding: 20px 0 10px;
+  .cover-hero {
+    flex: 0 0 auto;
+    margin: 28px 0 20px;
   }
 
-  .cover-logo .logo-text {
-    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
-    font-size: 10pt;
-    font-weight: 700;
-    letter-spacing: 4px;
-    color: ${RED};
+  .cover-hero .report-type {
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 8pt;
+    font-weight: 600;
+    letter-spacing: 3px;
     text-transform: uppercase;
+    color: ${GOLD};
+    margin-bottom: 8px;
   }
 
-  .cover-logo .logo-bar {
-    display: block;
-    width: 60px;
-    height: 3px;
-    background: ${RED};
-    margin: 8px auto 0;
-  }
-
-  .cover-title {
-    text-align: center;
-    margin: 30px 0 20px;
-  }
-
-  .cover-title h1 {
+  .cover-hero h1 {
     font-family: 'Playfair Display', Georgia, serif;
-    font-style: italic;
-    font-size: 32pt;
+    font-size: 34pt;
     font-weight: 700;
     color: ${NAVY};
-    margin-bottom: 6px;
+    line-height: 1.15;
+    margin-bottom: 4px;
   }
 
-  .cover-title .cover-subtitle {
-    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
-    font-size: 9pt;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: #888;
+  .cover-hero .cover-subtitle {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 14pt;
+    font-weight: 400;
+    font-style: italic;
+    color: ${NAVY_MID};
+    margin-top: 2px;
   }
 
   .cover-photo {
     width: 100%;
-    height: 340px;
+    height: 300px;
     overflow: hidden;
     border: 1px solid ${TABLE_BORDER};
-    margin: 10px 0;
+    border-radius: 2px;
+    margin: 16px 0;
   }
 
   .cover-photo img {
@@ -656,49 +694,55 @@ export function generateReportHtml(data: ReportTemplateData): string {
   }
 
   .cover-details {
-    text-align: center;
-    margin: 20px 0;
+    margin: 16px 0;
     flex: 1;
   }
 
   .cover-address {
     font-family: 'Playfair Display', Georgia, serif;
-    font-size: 16pt;
-    font-weight: 700;
+    font-size: 15pt;
+    font-weight: 600;
     color: ${NAVY};
-    margin-bottom: 4px;
+    margin-bottom: 3px;
   }
 
-  .cover-prop-type {
-    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
+  .cover-city {
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
     font-size: 10pt;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
-    color: #666;
-    margin-bottom: 18px;
+    color: ${MUTED};
+    letter-spacing: 0.5px;
+    margin-bottom: 20px;
   }
 
-  .cover-dates {
+  .cover-meta-grid {
     display: flex;
-    justify-content: center;
-    gap: 40px;
-    margin-top: 10px;
+    gap: 0;
+    border: 1px solid ${TABLE_BORDER};
+    border-radius: 2px;
+    margin-top: 12px;
   }
 
-  .cover-date-item {
-    text-align: center;
+  .cover-meta-item {
+    flex: 1;
+    padding: 14px 16px;
+    border-right: 1px solid ${TABLE_BORDER};
   }
 
-  .cover-date-label {
-    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
-    font-size: 8pt;
+  .cover-meta-item:last-child {
+    border-right: none;
+  }
+
+  .cover-meta-label {
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 7pt;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    color: #888;
-    margin-bottom: 2px;
+    letter-spacing: 1.2px;
+    color: ${MUTED};
+    margin-bottom: 3px;
+    font-weight: 600;
   }
 
-  .cover-date-value {
+  .cover-meta-value {
     font-family: 'Playfair Display', Georgia, serif;
     font-size: 11pt;
     font-weight: 600;
@@ -707,33 +751,82 @@ export function generateReportHtml(data: ReportTemplateData): string {
 
   .cover-footer {
     text-align: center;
-    padding: 16px 0;
+    padding: 16px 0 0;
     border-top: 1px solid ${TABLE_BORDER};
     margin-top: auto;
   }
 
-  .cover-footer .footer-brand {
-    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
-    font-size: 8pt;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: ${RED};
-    font-weight: 700;
+  .cover-footer .footer-tagline {
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 7.5pt;
+    color: ${MUTED};
+    margin-top: 2px;
+    letter-spacing: 0.3px;
   }
 
-  .cover-footer .footer-contact {
-    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
-    font-size: 8pt;
-    color: #999;
-    margin-top: 2px;
+  /* ── TOC Page ──────────────────────────────────────────────────── */
+  .toc-page {
+    page-break-before: always;
+  }
+
+  .toc-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 20pt;
+    font-weight: 700;
+    color: ${NAVY};
+    margin-bottom: 6px;
+  }
+
+  .toc-list {
+    list-style: none;
+    padding: 0;
+    margin: 24px 0;
+  }
+
+  .toc-list li {
+    display: flex;
+    align-items: baseline;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 10.5pt;
+  }
+
+  .toc-num {
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    color: ${GOLD};
+    width: 65px;
+    flex-shrink: 0;
+    font-size: 9pt;
+    letter-spacing: 0.3px;
+  }
+
+  .toc-label {
+    font-family: 'Playfair Display', Georgia, serif;
+    color: ${NAVY};
+    font-weight: 500;
+    font-size: 11pt;
   }
 
   /* ── Income Table ────────────────────────────────────────────── */
   .income-table td:last-child,
   .income-table th:last-child {
     text-align: right;
-    font-family: 'Helvetica Neue', Arial, Helvetica, sans-serif;
+    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Page Footer ─────────────────────────────────────────────── */
+  .page-footer {
+    margin-top: 2em;
+    padding-top: 8px;
+    border-top: 1px solid ${TABLE_BORDER};
+    text-align: center;
+    font-size: 7pt;
+    color: ${MUTED};
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 600;
   }
 
   /* ── Print-specific ──────────────────────────────────────────── */
@@ -744,7 +837,9 @@ export function generateReportHtml(data: ReportTemplateData): string {
 </head>
 <body>
 
-${renderCoverPage(data, addr, subjectPhoto)}
+${renderCoverPage(data, addr, subjectPhoto, clientName)}
+
+${renderTableOfContents(tocSections)}
 
 ${renderSummarySection(data, addr, subjectPhoto, photos, narrativeMap)}
 
@@ -770,7 +865,7 @@ ${renderSalesComparisonSection(data, comparableSales, narrativeMap)}
 
 ${hasIncome ? renderIncomeSection(data, incomeAnalysis!, comparableRentals, narrativeMap) : ''}
 
-${renderReconciliationSection(data, narrativeMap)}
+${renderReconciliationSection(data, narrativeMap, clientName)}
 
 ${filingGuide ? renderFilingGuideAddendum(filingGuide) : ''}
 
@@ -783,7 +878,8 @@ ${filingGuide ? renderFilingGuideAddendum(filingGuide) : ''}
 function renderCoverPage(
   data: ReportTemplateData,
   addr: string,
-  subjectPhoto: Photo | undefined
+  subjectPhoto: Photo | undefined,
+  clientName: string
 ): string {
   const { report, valuationDate, reportDate } = data;
 
@@ -791,47 +887,72 @@ function renderCoverPage(
   const photoHtml = photoUrl
     ? `<div class="cover-photo"><img src="${escapeHtml(photoUrl)}" alt="Subject Property"></div>`
     : `<div class="cover-photo" style="background:${imageOrPlaceholder(null)}; display:flex; align-items:center; justify-content:center;">
-        <span style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:10pt; color:#999;">Subject Property Photo</span>
+        <span style="font-family:'Inter',Arial,sans-serif; font-size:9pt; color:#999;">Subject Property</span>
       </div>`;
 
   return `
   <div class="cover-page">
-    <div class="cover-logo">
-      <div class="logo-text">${PLATFORM_NAME}</div>
-      <span class="logo-bar"></span>
+    <div style="padding-bottom:20px; border-bottom:1px solid ${TABLE_BORDER};">
+      <span style="display:block; width:40px; height:2px; background:linear-gradient(90deg,${GOLD},${GOLD_LIGHT});"></span>
     </div>
 
-    <div class="cover-title">
-      <h1>Appraisal Report</h1>
-      <div class="cover-subtitle">Market Value Analysis</div>
+    <div class="cover-hero">
+      <div class="report-type">Property Tax Appeal</div>
+      <h1>Market Value<br>Analysis</h1>
+      <div class="cover-subtitle">${escapeHtml(formatPropertyType(report.property_type ?? ''))} Property</div>
     </div>
 
     ${photoHtml}
 
     <div class="cover-details">
       <div class="cover-address">${escapeHtml(report.property_address)}</div>
-      <div class="cover-prop-type">
-        ${escapeHtml(report.city ?? '')}, ${escapeHtml(report.state ?? '')}
-        &nbsp;&mdash;&nbsp;
-        ${escapeHtml(formatPropertyType(report.property_type ?? ''))} Property
-      </div>
+      <div class="cover-city">${escapeHtml(report.city ?? '')}, ${escapeHtml(report.state ?? '')}</div>
 
-      <div class="cover-dates">
-        <div class="cover-date-item">
-          <div class="cover-date-label">Valuation Date</div>
-          <div class="cover-date-value">${escapeHtml(formatDate(valuationDate))}</div>
+      <div class="cover-meta-grid">
+        <div class="cover-meta-item">
+          <div class="cover-meta-label">Prepared For</div>
+          <div class="cover-meta-value">${escapeHtml(clientName)}</div>
         </div>
-        <div class="cover-date-item">
-          <div class="cover-date-label">Report Date</div>
-          <div class="cover-date-value">${escapeHtml(formatDate(reportDate))}</div>
+        <div class="cover-meta-item">
+          <div class="cover-meta-label">Valuation Date</div>
+          <div class="cover-meta-value">${escapeHtml(formatDate(valuationDate))}</div>
+        </div>
+        <div class="cover-meta-item">
+          <div class="cover-meta-label">Report Date</div>
+          <div class="cover-meta-value">${escapeHtml(formatDate(reportDate))}</div>
         </div>
       </div>
     </div>
 
     <div class="cover-footer">
-      <div class="footer-brand">${PLATFORM_NAME}</div>
-      <div class="footer-contact">Automated Appraisal &amp; Tax Appeal Platform</div>
+      <div class="footer-tagline">Market Value Analysis</div>
     </div>
+  </div>`;
+}
+
+// ─── Table of Contents ──────────────────────────────────────────────────────
+
+function renderTableOfContents(
+  sections: { num: string; title: string }[]
+): string {
+  const items = sections
+    .map(
+      (s) => `
+      <li>
+        <span class="toc-num">${escapeHtml(s.num)}</span>
+        <span class="toc-label">${escapeHtml(s.title)}</span>
+      </li>`
+    )
+    .join('');
+
+  return `
+  <div class="toc-page">
+    <div class="toc-title">Contents</div>
+    <hr class="gold-rule" style="margin:8px 0 0;">
+    <ul class="toc-list">
+      ${items}
+    </ul>
+    <div class="page-footer"></div>
   </div>`;
 }
 
@@ -943,7 +1064,7 @@ function renderSummarySection(
       <div class="value-label">Concluded Market Value</div>
       <div class="value-amount">${formatCurrency(concludedValue)}</div>
       <div class="value-words">(${escapeHtml(formatCurrencyWords(concludedValue))})</div>
-      <div style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:8pt; color:#888; margin-top:6px;">
+      <div style="font-family:'Inter',Arial,sans-serif; font-size:7.5pt; color:${MUTED}; margin-top:6px; letter-spacing:0.3px;">
         As of ${escapeHtml(formatDate(valuationDate))}
       </div>
     </div>
@@ -951,6 +1072,8 @@ function renderSummarySection(
     ${mapsHtml}
 
     ${photosHtml}
+
+    <div class="page-footer"></div>
   </div>`;
 }
 
@@ -970,9 +1093,10 @@ function renderNarrativeSection(
     <div class="section-header">
       <h2>Section ${sectionNumber} &mdash; ${escapeHtml(title)}</h2>
     </div>
-    <div style="font-size:11pt; line-height:1.6;">
+    <div style="font-size:10.5pt; line-height:1.65;">
       ${narrative.content}
     </div>
+    <div class="page-footer"></div>
   </div>`;
 }
 
@@ -987,12 +1111,10 @@ function renderSalesComparisonSection(
 
   const narrative = narrativeMap.get('sales_comparison_narrative');
 
-  // Comparable cards
   const cardsHtml = comparableSales
     .map((comp, idx) => renderComparableCard(comp, idx + 1))
     .join('');
 
-  // Adjustment grid
   const adjustmentGridHtml = renderAdjustmentGrid(data, comparableSales);
 
   return `
@@ -1001,7 +1123,7 @@ function renderSalesComparisonSection(
       <h2>Section VIII &mdash; Sales Comparison Approach</h2>
     </div>
 
-    ${narrative ? `<div style="font-size:11pt; line-height:1.6; margin-bottom:1.5em;">${narrative.content}</div>` : ''}
+    ${narrative ? `<div style="font-size:10.5pt; line-height:1.65; margin-bottom:1.5em;">${narrative.content}</div>` : ''}
 
     <h3 style="margin-bottom:0.8em;">Comparable Sales</h3>
     ${cardsHtml}
@@ -1010,6 +1132,8 @@ function renderSalesComparisonSection(
       <h3 style="margin-bottom:0.8em;">Adjustment Grid</h3>
       ${adjustmentGridHtml}
     </div>
+
+    <div class="page-footer"></div>
   </div>`;
 }
 
@@ -1020,8 +1144,8 @@ function renderComparableCard(comp: ComparableSale, index: number): string {
 
   const photoSection = photoUrl
     ? `<div class="comp-card-photo"><img src="${escapeHtml(photoUrl)}" alt="Comparable ${index}"></div>`
-    : `<div class="comp-card-photo" style="background:linear-gradient(135deg,#e0e0e0 25%,#f5f5f5 50%,#e0e0e0 75%); display:flex; align-items:center; justify-content:center;">
-        <span style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:9pt; color:#999;">No Photo Available</span>
+    : `<div class="comp-card-photo" style="background:linear-gradient(135deg,#e8e8e8 25%,#f5f5f5 50%,#e8e8e8 75%); display:flex; align-items:center; justify-content:center;">
+        <span style="font-family:'Inter',Arial,sans-serif; font-size:8.5pt; color:#999;">No Photo Available</span>
       </div>`;
 
   const infoRows: [string, string][] = [
@@ -1051,7 +1175,10 @@ function renderComparableCard(comp: ComparableSale, index: number): string {
 
   return `
   <div class="comp-card avoid-break">
-    <div class="comp-card-header">Comparable ${index} &mdash; ${escapeHtml(comp.address ?? '')}</div>
+    <div class="comp-card-header">
+      <span class="comp-num">${index}</span>
+      ${escapeHtml(comp.address ?? '')}
+    </div>
     ${photoSection}
     <div class="comp-card-body">
       <table>
@@ -1083,7 +1210,7 @@ function renderComparableCard(comp: ComparableSale, index: number): string {
     <div class="comp-card-comments">
       <strong>Adjusted Price/SF:</strong> <span class="num">${formatCurrency(adjustedPriceSqft)}/SF</span>
       <strong style="margin-left:1em;">Net Adjustment:</strong> <span class="num">${formatPercent((comp.net_adjustment_pct ?? 0) / 100)}</span>
-      ${comp.is_weak_comparable ? '<span style="color:#c62828; margin-left:1em; font-weight:600;">[Weak Comparable]</span>' : ''}
+      ${comp.is_weak_comparable ? '<span style="color:#b91c1c; margin-left:1em; font-weight:600;">[Weak Comparable]</span>' : ''}
     </div>` : ''}
   </div>`;
 }
@@ -1095,9 +1222,8 @@ function renderAdjustmentGrid(
   comps: ComparableSale[]
 ): string {
   const { property } = data;
-  const colCount = comps.length + 1; // subject + comps
+  const colCount = comps.length + 1;
 
-  // Adjustment categories mapped to ComparableSale fields
   interface AdjustmentRow {
     label: string;
     field: keyof ComparableSale;
@@ -1116,7 +1242,6 @@ function renderAdjustmentGrid(
     { label: 'Other', field: 'adjustment_pct_other', isTransaction: false },
   ];
 
-  // Only show rows where at least one comp has a non-zero adjustment
   const activeRows = adjustmentRows.filter((row) =>
     comps.some((c) => (c[row.field] as number) !== 0)
   );
@@ -1131,7 +1256,6 @@ function renderAdjustmentGrid(
     return `<td style="text-align:right;" class="${cls}">${sign}${formatPercent(val / 100)}</td>`;
   }
 
-  // Subject column data
   const subjectData: Record<string, string> = {
     sale_price: '&mdash;',
     year_built: property.year_built ? String(property.year_built) : 'N/A',
@@ -1150,13 +1274,11 @@ function renderAdjustmentGrid(
     return dataMap[key] ?? '&mdash;';
   }
 
-  // Build column widths
   const labelWidth = Math.max(22, Math.round(100 / (colCount + 0.5)));
   const dataWidth = Math.round((100 - labelWidth) / colCount);
 
   let html = `<table class="adj-grid">`;
 
-  // Header row
   html += `<thead><tr>
     <th style="width:${labelWidth}%; text-align:left;">Element</th>
     <th style="width:${dataWidth}%;">Subject</th>
@@ -1165,47 +1287,42 @@ function renderAdjustmentGrid(
 
   html += `<tbody>`;
 
-  // Sale price row
   html += `<tr>
     <td class="row-label">Sale Price</td>
     <td style="text-align:center;">&mdash;</td>
     ${comps.map((c) => `<td style="text-align:right;" class="num">${formatCurrency(c.sale_price ?? 0)}</td>`).join('')}
   </tr>`;
 
-  // Sale date row
   html += `<tr>
     <td class="row-label">Sale Date</td>
     <td style="text-align:center;">&mdash;</td>
-    ${comps.map((c) => `<td style="text-align:center; font-size:8.5pt;">${c.sale_date ? formatDateShort(c.sale_date) : '&mdash;'}</td>`).join('')}
+    ${comps.map((c) => `<td style="text-align:center; font-size:8pt;">${c.sale_date ? formatDateShort(c.sale_date) : '&mdash;'}</td>`).join('')}
   </tr>`;
 
-  // Price per SF row
   html += `<tr>
     <td class="row-label">Price / SF</td>
     <td style="text-align:center;">&mdash;</td>
     ${comps.map((c) => `<td style="text-align:right;" class="num">${c.price_per_sqft ? formatCurrency(c.price_per_sqft) : '&mdash;'}</td>`).join('')}
   </tr>`;
 
-  // Property data rows (year built, building SF, lot size)
   html += `<tr>
     <td class="row-label">Year Built</td>
-    <td style="text-align:center; font-size:8.5pt;">${subjectData['year_built']}</td>
-    ${comps.map((c) => `<td style="text-align:center; font-size:8.5pt;">${compPropertyData(c, 'year_built')}</td>`).join('')}
+    <td style="text-align:center; font-size:8pt;">${subjectData['year_built']}</td>
+    ${comps.map((c) => `<td style="text-align:center; font-size:8pt;">${compPropertyData(c, 'year_built')}</td>`).join('')}
   </tr>`;
 
   html += `<tr>
     <td class="row-label">Building SF</td>
-    <td style="text-align:center; font-size:8.5pt;">${subjectData['building_sqft']}</td>
-    ${comps.map((c) => `<td style="text-align:center; font-size:8.5pt;">${compPropertyData(c, 'building_sqft')}</td>`).join('')}
+    <td style="text-align:center; font-size:8pt;">${subjectData['building_sqft']}</td>
+    ${comps.map((c) => `<td style="text-align:center; font-size:8pt;">${compPropertyData(c, 'building_sqft')}</td>`).join('')}
   </tr>`;
 
   html += `<tr>
     <td class="row-label">Lot Size</td>
-    <td style="text-align:center; font-size:8.5pt;">${subjectData['lot_size']}</td>
-    ${comps.map((c) => `<td style="text-align:center; font-size:8.5pt;">${compPropertyData(c, 'lot_size')}</td>`).join('')}
+    <td style="text-align:center; font-size:8pt;">${subjectData['lot_size']}</td>
+    ${comps.map((c) => `<td style="text-align:center; font-size:8pt;">${compPropertyData(c, 'lot_size')}</td>`).join('')}
   </tr>`;
 
-  // Transaction Adjustments group
   if (transactionRows.length > 0) {
     html += `<tr class="group-header"><td colspan="${colCount + 1}">Transaction Adjustments</td></tr>`;
     for (const row of transactionRows) {
@@ -1217,7 +1334,6 @@ function renderAdjustmentGrid(
     }
   }
 
-  // Property Adjustments group
   if (propertyAdjRows.length > 0) {
     html += `<tr class="group-header"><td colspan="${colCount + 1}">Property Adjustments</td></tr>`;
     for (const row of propertyAdjRows) {
@@ -1229,7 +1345,6 @@ function renderAdjustmentGrid(
     }
   }
 
-  // Net Adjustment % row
   html += `<tr class="total-row">
     <td class="row-label" style="font-weight:700;">Net Adjustment %</td>
     <td style="text-align:center;">&mdash;</td>
@@ -1241,7 +1356,6 @@ function renderAdjustmentGrid(
     }).join('')}
   </tr>`;
 
-  // Adjusted Price/SF row
   html += `<tr class="final-row">
     <td class="row-label" style="color:#fff; font-weight:700;">Adjusted Price/SF</td>
     <td style="text-align:center;">&mdash;</td>
@@ -1265,7 +1379,6 @@ function renderIncomeSection(
 ): string {
   const narrative = narrativeMap.get('income_approach_narrative');
 
-  // Pro forma table
   const proFormaRows: [string, string][] = [
     ['Concluded Market Rent ($/SF/Yr)', income.concluded_market_rent_per_sqft_yr ? formatCurrency(income.concluded_market_rent_per_sqft_yr) : 'N/A'],
     ['Potential Gross Income', income.potential_gross_income ? formatCurrency(income.potential_gross_income) : 'N/A'],
@@ -1281,7 +1394,6 @@ function renderIncomeSection(
     ['Net Operating Income (NOI)', income.net_operating_income ? formatCurrency(income.net_operating_income) : 'N/A'],
   ];
 
-  // Cap rate analysis
   const capRateRows: [string, string][] = [
     ['Market Cap Rate Range', (income.cap_rate_market_low != null && income.cap_rate_market_high != null) ? `${formatPercent(income.cap_rate_market_low / 100)} - ${formatPercent(income.cap_rate_market_high / 100)}` : 'N/A'],
     ['Investor Survey Average', income.cap_rate_investor_survey_avg != null ? formatPercent(income.cap_rate_investor_survey_avg / 100) : 'N/A'],
@@ -1291,7 +1403,6 @@ function renderIncomeSection(
     ['Income Approach Value', income.concluded_value_income_approach ? formatCurrency(income.concluded_value_income_approach) : 'N/A'],
   ];
 
-  // Rental comparables grid
   let rentalGridHtml = '';
   if (rentals.length > 0) {
     rentalGridHtml = `
@@ -1319,7 +1430,7 @@ function renderIncomeSection(
             <td class="num-right">${r.rent_per_sqft_yr ? formatCurrency(r.rent_per_sqft_yr) : 'N/A'}</td>
             <td>${escapeHtml(r.lease_type ?? 'N/A')}</td>
             <td class="num-right">${r.effective_net_rent_per_sqft ? formatCurrency(r.effective_net_rent_per_sqft) : 'N/A'}</td>
-            <td style="font-size:8.5pt;">${escapeHtml(r.adjustment_notes ?? '')}</td>
+            <td style="font-size:8pt;">${escapeHtml(r.adjustment_notes ?? '')}</td>
           </tr>`).join('')}
         </tbody>
       </table>`;
@@ -1331,7 +1442,7 @@ function renderIncomeSection(
       <h2>Income Approach</h2>
     </div>
 
-    ${narrative ? `<div style="font-size:11pt; line-height:1.6; margin-bottom:1.5em;">${narrative.content}</div>` : ''}
+    ${narrative ? `<div style="font-size:10.5pt; line-height:1.65; margin-bottom:1.5em;">${narrative.content}</div>` : ''}
 
     <h3 style="margin-bottom:0.6em;">Pro Forma Income Statement</h3>
     <table class="income-table">
@@ -1379,6 +1490,8 @@ function renderIncomeSection(
     </div>` : ''}
 
     ${rentalGridHtml}
+
+    <div class="page-footer"></div>
   </div>`;
 }
 
@@ -1386,7 +1499,8 @@ function renderIncomeSection(
 
 function renderReconciliationSection(
   data: ReportTemplateData,
-  narrativeMap: Map<string, ReportNarrative>
+  narrativeMap: Map<string, ReportNarrative>,
+  clientName: string
 ): string {
   const narrative = narrativeMap.get('reconciliation_narrative');
   const { concludedValue, valuationDate } = data;
@@ -1397,24 +1511,28 @@ function renderReconciliationSection(
       <h2>Reconciliation &amp; Final Value Conclusion</h2>
     </div>
 
-    ${narrative ? `<div style="font-size:11pt; line-height:1.6; margin-bottom:1.5em;">${narrative.content}</div>` : ''}
+    ${narrative ? `<div style="font-size:10.5pt; line-height:1.65; margin-bottom:1.5em;">${narrative.content}</div>` : ''}
 
     <div class="value-box">
       <div class="value-label">Final Concluded Market Value</div>
       <div class="value-amount">${formatCurrency(concludedValue)}</div>
       <div class="value-words">(${escapeHtml(formatCurrencyWords(concludedValue))})</div>
-      <div style="font-family:'Helvetica Neue',Arial,sans-serif; font-size:8.5pt; color:#888; margin-top:8px;">
+      <div style="font-family:'Inter',Arial,sans-serif; font-size:8pt; color:${MUTED}; margin-top:8px; letter-spacing:0.3px;">
         Effective Date of Valuation: ${escapeHtml(formatDate(valuationDate))}
       </div>
     </div>
 
-    <div style="margin-top:2em; padding-top:1em; border-top:1px solid ${TABLE_BORDER};">
-      <p style="font-size:10pt; color:#555; text-align:center; font-style:italic;">
-        This appraisal report has been prepared in accordance with the Uniform Standards of Professional
-        Appraisal Practice (USPAP) and is intended for use in property tax assessment appeals. The concluded
-        value represents the appraiser's opinion of market value as of the effective date stated above.
+    <div style="margin-top:2.5em; padding:20px 24px; background:${LIGHT_BG}; border:1px solid ${TABLE_BORDER}; border-radius:2px;">
+      <p style="font-size:9.5pt; color:${MUTED}; text-align:center; line-height:1.7; margin:0;">
+        This market value analysis was prepared for <strong style="color:${NAVY};">${escapeHtml(clientName)}</strong>
+        for the purpose of supporting a property tax assessment appeal. The concluded value represents an
+        opinion of market value based on analysis of comparable sales data, property characteristics,
+        and prevailing market conditions as of the effective date stated above. This report is not intended
+        to serve as a certified appraisal for lending, insurance, or legal purposes beyond the stated scope.
       </p>
     </div>
+
+    <div class="page-footer"></div>
   </div>`;
 }
 
@@ -1470,6 +1588,8 @@ function renderFilingGuideAddendum(guide: FilingGuide): string {
       <h3 style="color:${NAVY}; margin:1.2em 0 0.6em; font-style:normal;">Tips for a Successful Appeal</h3>
       ${tipsHtml}` : ''}
     </div>
+
+    <div class="page-footer" style="margin:0; padding:16px 26px 20px;"></div>
   </div>`;
 }
 
@@ -1498,7 +1618,6 @@ function renderMapImage(map: MapImage): string {
 }
 
 function formatPhotoType(type: string): string {
-  // Labels must match the PhotoType enum values in the database schema
   const labels: Record<string, string> = {
     exterior_front: 'Front Exterior',
     exterior_rear: 'Rear Exterior',
