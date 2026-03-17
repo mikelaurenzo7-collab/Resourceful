@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { measurementSchema } from '@/lib/validations/report';
 import { getReportById } from '@/lib/repository/reports';
+import { applyRateLimit } from '@/lib/rate-limit';
 import type { MeasurementInsert } from '@/types/database';
 
 export async function POST(
@@ -14,6 +15,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // ── Rate limit: 30 measurements per 15 minutes per IP ────────────────
+    const rateLimited = applyRateLimit(request, { prefix: 'measurement', limit: 30, windowSeconds: 900 });
+    if (rateLimited) return rateLimited;
+
     const { id: reportId } = await params;
 
     // ── Authenticate user ──────────────────────────────────────────────────

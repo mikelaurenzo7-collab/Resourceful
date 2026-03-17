@@ -42,7 +42,7 @@ export default function RootLayout({
         {children}
         {googleMapsKey && (
           <Script
-            src={`https://maps.googleapis.com/maps/api/js?key=${googleMapsKey}&libraries=places`}
+            src={`https://maps.googleapis.com/maps/api/js?key=${googleMapsKey}&libraries=places,drawing,geometry`}
             strategy="lazyOnload"
           />
         )}

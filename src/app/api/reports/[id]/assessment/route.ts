@@ -8,12 +8,17 @@ import { createClient } from '@/lib/supabase/server';
 import { getReportById } from '@/lib/repository/reports';
 import { getPropertyDetail } from '@/lib/services/attom';
 import { getCountyByName } from '@/lib/repository/county-rules';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // ── Rate limit: 30 assessment lookups per 15 minutes per IP ──────────
+    const rateLimited = applyRateLimit(_request, { prefix: 'assessment', limit: 30, windowSeconds: 900 });
+    if (rateLimited) return rateLimited;
+
     const { id: reportId } = await params;
 
     // ── Authenticate user ──────────────────────────────────────────────────

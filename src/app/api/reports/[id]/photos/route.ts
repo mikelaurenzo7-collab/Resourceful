@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { photoUploadSchema } from '@/lib/validations/report';
 import { getReportById } from '@/lib/repository/reports';
+import { applyRateLimit } from '@/lib/rate-limit';
 import type { PhotoInsert } from '@/types/database';
 
 export async function POST(
@@ -14,6 +15,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // ── Rate limit: 60 photo uploads per 15 minutes per IP ───────────────
+    const rateLimited = applyRateLimit(request, { prefix: 'photo-upload', limit: 60, windowSeconds: 900 });
+    if (rateLimited) return rateLimited;
+
     const { id: reportId } = await params;
 
     // ── Authenticate user ──────────────────────────────────────────────────

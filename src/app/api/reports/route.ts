@@ -8,10 +8,14 @@ import { reportCreateSchema } from '@/lib/validations/report';
 import { createPaymentIntent } from '@/lib/services/stripe-service';
 import { getPriceCents } from '@/config/pricing';
 import { createReport, updateReport } from '@/lib/repository/reports';
+import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report } from '@/types/database';
 
 export async function POST(request: NextRequest) {
   try {
+    // ── Rate limit: 10 reports per 15 minutes per IP ─────────────────────
+    const rateLimited = applyRateLimit(request, { prefix: 'create-report', limit: 10, windowSeconds: 900 });
+    if (rateLimited) return rateLimited;
     // ── Authenticate user ──────────────────────────────────────────────────
     const supabase = await createClient();
     const {
