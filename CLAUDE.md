@@ -3,8 +3,8 @@
 ## What This Is
 A nationwide web app that generates professional property tax appeal reports using AI analysis, public property data APIs, and owner-provided photographs. Reports are auto-delivered to clients after pipeline completion.
 
-## Delivery Model
-Reports are automatically delivered to clients after the pipeline completes all stages (1-8). Stage 8 sends the PDF and filing guide via email. If auto-delivery fails, the report falls back to status = 'pending_approval' for admin manual delivery. Admin can still review, reject, or re-run reports via the admin dashboard.
+## Delivery Model — Admin Approval Required
+ALL reports are routed to admin for quality review after the pipeline completes stages 1-7. No reports are auto-delivered to clients. Stage 8 (delivery) runs ONLY when an admin explicitly approves the report via the admin dashboard. This manual gate exists to maintain quality control while the AI model is being trained toward full autonomy. Admin can review, approve, reject, or re-run any report.
 
 ## Nationwide Architecture Rule
 This platform serves every county in every state. ATTOM is the universal data source that covers the entire country. No county-specific logic is hardcoded in application code. All county-specific behavior comes from the county_rules database table: assessment ratios, appeal board names, filing deadlines, form names, hearing formats. The data-router supports future county-specific API adapters via county_rules.assessor_api_url, but none are required — ATTOM handles everything.
@@ -120,7 +120,7 @@ scripts/seed-counties.ts        # Seeds ~3,143 US counties from Census Bureau AP
 - Report IDs are UUIDs — the report viewer (`/report/[id]`) requires no auth
 
 ## Pipeline Stages
-The orchestrator (`lib/pipeline/orchestrator.ts`) runs stages 1-8 sequentially with stage locking to prevent concurrent execution. Stages can be skipped by property/service type. Errors are recorded in `pipeline_error_log` JSONB.
+The orchestrator (`lib/pipeline/orchestrator.ts`) runs stages 1-7 sequentially with stage locking to prevent concurrent execution, then routes to admin for approval. Stage 8 (delivery) is admin-triggered only. Stages can be skipped by property/service type. Errors are recorded in `pipeline_error_log` JSONB.
 
 | Stage | File | Purpose |
 |-------|------|---------|
@@ -131,15 +131,16 @@ The orchestrator (`lib/pipeline/orchestrator.ts`) runs stages 1-8 sequentially w
 | 5 | stage-5-narratives.ts | AI-generated report sections (8 narrative types) |
 | 6 | stage-6-filing.ts | County-specific filing instructions & deadlines (tax appeals only) |
 | 7 | stage-7-pdf.ts | Puppeteer PDF generation with styled narratives |
-| 8 | stage-8-delivery.ts | Email delivery with 7-day signed PDF URL |
+| 8 | stage-8-delivery.ts | Email delivery with 7-day signed PDF URL (admin-triggered only) |
 
 ## Payment Flow
 1. `POST /api/reports` → Creates report + Stripe PaymentIntent
 2. `/start/payment` → Stripe Elements checkout
 3. `POST /api/webhooks/stripe` → `payment_intent.succeeded` is the ONLY pipeline trigger
-4. Pipeline runs stages 1-8 → status becomes `pending_approval`
-5. `POST /api/admin/reports/[id]/approve` → Triggers Stage 8 delivery
-6. Client receives email via Resend with signed PDF URL
+4. Pipeline runs stages 1-7 → status becomes `pending_approval`
+5. Admin reviews report in dashboard → approves, rejects, or re-runs
+6. `POST /api/admin/reports/[id]/approve` → Triggers Stage 8 delivery
+7. Client receives email via Resend with signed PDF URL
 
 ## Database Schema (Key Tables)
 - **reports** — Status, payment, pipeline tracking, approval workflow
@@ -181,7 +182,8 @@ If a county is corrupt or wrong, ATTOM inherits that same bad data. Therefore:
   The real numbers come from the full pipeline with comparable sales.
 
 ## What NOT To Do
-- Never skip Stage 8 auto-delivery (if delivery fails, fall back to pending_approval)
+- Never auto-deliver reports — all reports must go through admin approval before Stage 8 runs
+- Never bypass the admin approval gate in the pipeline orchestrator
 - Never hardcode county-specific logic in application code
 - Never hardcode AI model names anywhere except config/ai.ts
 - Never use NEXT_PUBLIC_ prefix on service role keys or secret keys
