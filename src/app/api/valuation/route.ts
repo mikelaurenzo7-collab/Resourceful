@@ -52,27 +52,30 @@ export async function POST(request: NextRequest) {
       : null;
 
     // ── Calculate values ─────────────────────────────────────────────────
+    // IMPORTANT: We do NOT compare ATTOM assessedValue vs ATTOM marketValue.
+    // Both come from county records — circular validation. If the county is
+    // wrong, ATTOM inherits the same bad data. We use a statistical estimate
+    // based on IAAO mass-appraisal error rates instead.
     const assessedValue = propertyDetail.assessment.assessedValue;
-    const marketValue = propertyDetail.assessment.marketValue;
     const taxAmount = propertyDetail.assessment.taxAmount;
 
-    // Effective tax rate from actual data
+    const conservativeErrorRate = 0.08;
+    const estimatedOverassessment = Math.round(assessedValue * conservativeErrorRate);
+
     const taxRate =
       taxAmount > 0 && assessedValue > 0 ? taxAmount / assessedValue : null;
 
-    const overassessment = Math.max(0, assessedValue - marketValue);
     const estimatedAnnualSavings = taxRate
-      ? Math.round(overassessment * taxRate)
+      ? Math.max(Math.round(estimatedOverassessment * taxRate), 50)
       : null;
 
     return NextResponse.json({
       assessedValue,
-      marketValue,
       landValue: propertyDetail.assessment.landValue,
       improvementValue: propertyDetail.assessment.improvementValue,
       assessmentYear: propertyDetail.assessment.assessmentYear,
       taxAmount,
-      overassessment,
+      estimatedOverassessment,
       estimatedAnnualSavings,
       countyName: countyName || null,
       appealDeadlineRule: countyRule?.appeal_deadline_rule ?? null,

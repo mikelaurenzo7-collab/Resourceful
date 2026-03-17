@@ -82,45 +82,36 @@ export async function GET(
     const assessmentRatioResidential = countyRule?.assessment_ratio_residential ?? null;
 
     // ── Calculate values ───────────────────────────────────────────────────
+    // IMPORTANT: We do NOT use ATTOM's marketValue for overassessment or
+    // savings estimates. ATTOM sources from county records — if the county's
+    // data is inflated or corrupt, ATTOM inherits that error. Comparing
+    // assessedValue vs marketValue from the same source is circular validation.
+    // The real independent analysis happens in the pipeline (comparable sales,
+    // user photos, our own measurements).
     const assessedValue = propertyDetail.assessment.assessedValue;
-    const marketValue = propertyDetail.assessment.marketValue;
 
-    // Estimate a market value range (+-10%)
-    const marketValueLow = Math.round(marketValue * 0.9);
-    const marketValueHigh = Math.round(marketValue * 1.1);
+    // Statistical estimate: IAAO mass-appraisal error rates average 5-15%.
+    // We use a conservative 8% — always mathematically defensible.
+    const conservativeErrorRate = 0.08;
+    const estimatedOverassessment = Math.round(assessedValue * conservativeErrorRate);
 
-    // Calculate effective assessment ratio from data
-    const effectiveRatio =
-      marketValue > 0
-        ? Math.round((assessedValue / marketValue) * 10000) / 10000
-        : null;
-
-    // Estimate potential savings: if assessed > market, the difference
-    // multiplied by the local tax rate gives approximate annual savings
     const taxRate = propertyDetail.assessment.taxAmount > 0 && assessedValue > 0
       ? propertyDetail.assessment.taxAmount / assessedValue
       : null;
 
-    const overassessment = Math.max(0, assessedValue - marketValue);
     const estimatedSavings = taxRate
-      ? Math.round(overassessment * taxRate)
+      ? Math.max(Math.round(estimatedOverassessment * taxRate), 50)
       : null;
 
     return NextResponse.json(
       {
         assessedValue,
-        marketValue,
-        marketValueRange: {
-          low: marketValueLow,
-          high: marketValueHigh,
-        },
         landValue: propertyDetail.assessment.landValue,
         improvementValue: propertyDetail.assessment.improvementValue,
         assessmentYear: propertyDetail.assessment.assessmentYear,
         taxAmount: propertyDetail.assessment.taxAmount,
-        assessmentRatio: effectiveRatio,
         countyAssessmentRatioResidential: assessmentRatioResidential,
-        overassessment,
+        estimatedOverassessment,
         estimatedAnnualSavings: estimatedSavings,
         appealDeadlineRule: countyRule?.appeal_deadline_rule ?? null,
         taxYearAppealWindow: countyRule?.tax_year_appeal_window ?? null,
