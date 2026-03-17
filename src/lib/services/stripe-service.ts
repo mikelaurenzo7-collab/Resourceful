@@ -16,7 +16,15 @@ function getStripeClient(): Stripe {
   return _stripe;
 }
 
-const WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET ?? '';
+// Validated at call time — must be set in production or webhook verification
+// will correctly reject all events (empty string causes Stripe to throw).
+function getWebhookSecret(): string {
+  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  if (!secret) {
+    throw new Error('STRIPE_WEBHOOK_SECRET is not set — cannot verify webhook signatures');
+  }
+  return secret;
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -87,7 +95,7 @@ export function constructWebhookEvent(
   signature: string
 ): ServiceResult<Stripe.Event> {
   try {
-    const event = getStripeClient().webhooks.constructEvent(body, signature, WEBHOOK_SECRET);
+    const event = getStripeClient().webhooks.constructEvent(body, signature, getWebhookSecret());
     return { data: event, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

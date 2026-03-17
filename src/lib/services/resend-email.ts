@@ -17,6 +17,14 @@ function getResend(): Resend {
 const FROM_ADDRESS = process.env.RESEND_FROM_ADDRESS ?? 'reports@resourceful.app';
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL ?? 'admin@resourceful.app';
 
+// Warn at init time if email config is using defaults — prevents silent misconfiguration
+if (!process.env.RESEND_FROM_ADDRESS) {
+  console.warn('[resend] WARNING: RESEND_FROM_ADDRESS not set, using default: reports@resourceful.app');
+}
+if (!process.env.ADMIN_NOTIFICATION_EMAIL) {
+  console.warn('[resend] WARNING: ADMIN_NOTIFICATION_EMAIL not set, using default: admin@resourceful.app');
+}
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface ReportDeliveryParams {
@@ -61,6 +69,16 @@ function formatDollarValue(value: number): string {
   return `$${value.toLocaleString('en-US', { minimumFractionDigits: 0 })}`;
 }
 
+/** Escape HTML entities to prevent XSS in email templates */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
@@ -78,7 +96,7 @@ export async function sendReportDeliveryEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #1a1a1a; font-size: 24px;">Your Report is Ready</h1>
-          <p>Your property assessment report for <strong>${params.propertyAddress}</strong> is complete.</p>
+          <p>Your property assessment report for <strong>${escapeHtml(params.propertyAddress)}</strong> is complete.</p>
 
           <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
             <table style="width: 100%; border-collapse: collapse;">
@@ -104,7 +122,7 @@ export async function sendReportDeliveryEmail(
           ${params.filingGuide ? `
           <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #eee;">
             <h2 style="font-size: 18px; color: #1a1a1a;">Filing Guide</h2>
-            <div style="white-space: pre-wrap; font-size: 14px; color: #333; line-height: 1.6;">${params.filingGuide}</div>
+            <div style="white-space: pre-wrap; font-size: 14px; color: #333; line-height: 1.6;">${escapeHtml(params.filingGuide)}</div>
           </div>
           ` : ''}
 
@@ -152,7 +170,7 @@ export async function sendAdminNotification(
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #666;">Property</td>
-                <td style="padding: 8px 0; text-align: right;">${params.propertyAddress}</td>
+                <td style="padding: 8px 0; text-align: right;">${escapeHtml(params.propertyAddress)}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #666;">Type</td>
@@ -205,14 +223,14 @@ export async function sendReportRejectionAlert(
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #666;">Property</td>
-                <td style="padding: 8px 0; text-align: right;">${params.propertyAddress}</td>
+                <td style="padding: 8px 0; text-align: right;">${escapeHtml(params.propertyAddress)}</td>
               </tr>
             </table>
           </div>
 
           <div style="background: #fff7ed; border-left: 4px solid #f97316; padding: 16px; margin: 24px 0;">
             <strong>Rejection Notes:</strong>
-            <p style="margin: 8px 0 0 0; white-space: pre-wrap;">${params.notes}</p>
+            <p style="margin: 8px 0 0 0; white-space: pre-wrap;">${escapeHtml(params.notes)}</p>
           </div>
         </div>
       `,
