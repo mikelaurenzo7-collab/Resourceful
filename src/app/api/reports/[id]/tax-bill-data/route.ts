@@ -3,7 +3,9 @@
 // Clears the tax bill fields from the report but preserves the report itself.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { getReportById } from '@/lib/repository/reports';
 
 export async function DELETE(
   _request: NextRequest,
@@ -12,24 +14,44 @@ export async function DELETE(
   const { id: reportId } = await params;
 
   try {
-    const supabase = createAdminClient();
+    // ── Authenticate user ──────────────────────────────────────────────────
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-    // Verify the report exists
-    const { data: report, error: fetchError } = await supabase
-      .from('reports')
-      .select('id, has_tax_bill')
-      .eq('id', reportId)
-      .single();
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
-    if (fetchError || !report) {
+    // ── Verify report ownership ────────────────────────────────────────────
+    const report = await getReportById(reportId);
+
+    if (!report) {
       return NextResponse.json(
         { error: 'Report not found' },
         { status: 404 }
       );
     }
 
-    // Clear tax bill data fields
-    const { error: updateError } = await supabase
+    const ownsReport =
+      (report.user_id && report.user_id === user.id) ||
+      (report.client_email && report.client_email === user.email);
+
+    if (!ownsReport) {
+      return NextResponse.json(
+        { error: 'Not authorized to modify this report' },
+        { status: 403 }
+      );
+    }
+
+    // ── Clear tax bill data fields ─────────────────────────────────────────
+    const admin = createAdminClient();
+    const { error: updateError } = await admin
       .from('reports')
       .update({
         has_tax_bill: false,

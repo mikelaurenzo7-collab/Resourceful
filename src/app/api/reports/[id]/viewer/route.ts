@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report, PropertyData, CountyRule, ReportNarrative } from '@/types/database';
 
 const SIGNED_URL_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
@@ -13,6 +14,10 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // ── Rate limit: 30 views per 15 minutes per IP ──────────────────────────
+  const rateLimited = await applyRateLimit(_req, { prefix: 'report-viewer', limit: 30, windowSeconds: 900 });
+  if (rateLimited) return rateLimited;
+
   const { id: reportId } = await params;
 
   if (!reportId) {

@@ -57,6 +57,20 @@ export async function POST(
       );
     }
 
+    // ── Enforce max photos per report (50) ─────────────────────────────────
+    const admin = createAdminClient();
+    const { count: photoCount } = await admin
+      .from('photos')
+      .select('id', { count: 'exact', head: true })
+      .eq('report_id', reportId);
+
+    if ((photoCount ?? 0) >= 50) {
+      return NextResponse.json(
+        { error: 'Maximum of 50 photos per report reached' },
+        { status: 400 }
+      );
+    }
+
     // ── Parse multipart form data ──────────────────────────────────────────
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
@@ -104,7 +118,6 @@ export async function POST(
     }
 
     // ── Upload to Supabase Storage ─────────────────────────────────────────
-    const admin = createAdminClient();
     const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
     const storagePath = `photos/${reportId}/${filename}`;
 

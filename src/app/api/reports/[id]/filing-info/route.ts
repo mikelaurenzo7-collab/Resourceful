@@ -4,12 +4,17 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report, CountyRule } from '@/types/database';
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // ── Rate limit: 30 requests per 15 minutes per IP ───────────────────────
+  const rateLimited = await applyRateLimit(_req, { prefix: 'filing-info', limit: 30, windowSeconds: 900 });
+  if (rateLimited) return rateLimited;
+
   const { id: reportId } = await params;
 
   if (!reportId) {

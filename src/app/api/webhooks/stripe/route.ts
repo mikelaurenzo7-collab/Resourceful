@@ -80,6 +80,20 @@ async function handlePaymentIntentSucceeded(
 
   const supabase = createAdminClient();
 
+  // ── Idempotency: skip if report is already paid/processing/completed ──
+  const { data: existingReport } = await supabase
+    .from('reports')
+    .select('status')
+    .eq('id', reportId)
+    .single();
+
+  if (existingReport && existingReport.status !== 'intake') {
+    console.log(
+      `[webhook/stripe] Report ${reportId} already in status '${existingReport.status}' — skipping duplicate webhook`
+    );
+    return;
+  }
+
   // ── Update report to 'paid' status with payment fields ──────────────
   const { error: updateError } = await supabase
     .from('reports')
@@ -89,7 +103,8 @@ async function handlePaymentIntentSucceeded(
       payment_status: 'succeeded',
       amount_paid_cents: paymentIntent.amount,
     })
-    .eq('id', reportId);
+    .eq('id', reportId)
+    .eq('status', 'intake'); // Only transition from intake → paid (atomic guard)
 
   if (updateError) {
     console.error(
