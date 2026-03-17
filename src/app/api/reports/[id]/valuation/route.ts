@@ -49,7 +49,6 @@ export async function POST(
 
     let assessedValue: number;
     let taxAmount: number;
-    let marketValue: number | null = null;
     let countyName: string | null = report.county;
 
     // ── Path A: Tax bill data provided — skip ATTOM ──────────────────────
@@ -76,7 +75,6 @@ export async function POST(
 
       assessedValue = propertyDetail.assessment.assessedValue;
       taxAmount = propertyDetail.assessment.taxAmount;
-      marketValue = propertyDetail.assessment.marketValue || null;
       countyName = propertyDetail.location.countyName || countyName;
     }
 
@@ -86,16 +84,16 @@ export async function POST(
       : null;
 
     // ── Calculate optimistic result ──────────────────────────────────────
-    // Human error in assessments averages 5-15%. We use a conservative 8%
-    // floor to ensure we always have something meaningful to show.
+    // This is based on pure statistics, NOT on any third-party "market value."
+    // Human error in mass appraisals averages 5-15% (IAAO standards allow up
+    // to 10-15% COD). We use a conservative 8% — this is always mathematically
+    // defensible regardless of the county's data quality or potential corruption.
+    // We deliberately do NOT compare against ATTOM's marketValue here because
+    // ATTOM often sources from the same county records — if the county is wrong,
+    // ATTOM inherits that error. The real analysis happens in the full pipeline
+    // with comparable sales, not here.
     const conservativeErrorRate = 0.08;
-    const minimumOverassessment = Math.round(assessedValue * conservativeErrorRate);
-
-    // If ATTOM provides a market value below the assessed value, use that real delta
-    const realDelta = (marketValue && marketValue < assessedValue)
-      ? Math.round(assessedValue - marketValue)
-      : 0;
-    const overassessment = Math.max(minimumOverassessment, realDelta);
+    const overassessment = Math.round(assessedValue * conservativeErrorRate);
 
     // Tax rate from actual data or county average
     const effectiveTaxRate =
