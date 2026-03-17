@@ -37,6 +37,8 @@ export type ApprovalAction =
 
 export type MeasurementSource = 'google_earth' | 'user_submitted' | 'attom' | 'county';
 
+export type ReviewTier = 'auto' | 'expert_reviewed';
+
 // ─── Table Row Types ─────────────────────────────────────────────────────────
 // These types match the database migration exactly (001_initial_schema.sql)
 // IMPORTANT: Use `type` instead of `interface` so they extend Record<string, unknown>
@@ -84,6 +86,8 @@ export type Report = {
   approved_at: string | null;
   approved_by: string | null;
   delivered_at: string | null;
+  // Review tier
+  review_tier: ReviewTier;
   // Filing tracking
   filing_status: string;
   filed_at: string | null;
@@ -618,6 +622,7 @@ export type Database = {
       photo_type: PhotoType;
       approval_action: ApprovalAction;
       measurement_source: MeasurementSource;
+      review_tier: ReviewTier;
     };
   };
 };

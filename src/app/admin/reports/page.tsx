@@ -146,7 +146,14 @@ export default async function ReportsQueuePage({
                     {report.property_type ?? '--'}
                   </td>
                   <td className="px-4 py-3">
-                    <ReportStatusBadge status={report.status} />
+                    <div className="flex items-center gap-1.5">
+                      <ReportStatusBadge status={report.status} />
+                      {report.review_tier === 'expert_reviewed' && (
+                        <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 ring-1 ring-inset ring-purple-600/20">
+                          Expert
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
                     {formatCents(report.amount_paid_cents)}

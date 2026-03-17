@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import type { PropertyType, ServiceType } from '@/types/database';
+import type { PropertyType, ServiceType, ReviewTier } from '@/types/database';
 
 // ─── Wizard State ────────────────────────────────────────────────────────────
 
@@ -40,6 +40,8 @@ export interface WizardState {
   // Step 5: Measurements
   measurementSkipped: boolean;
   measurementComplete: boolean;
+  // Review tier
+  reviewTier: ReviewTier;
   // Backend IDs
   reportId: string | null;
   clientSecret: string | null;
@@ -61,6 +63,7 @@ const INITIAL_STATE: WizardState = {
   streetViewUrls: [],
   measurementSkipped: false,
   measurementComplete: false,
+  reviewTier: 'auto',
   reportId: null,
   clientSecret: null,
   priceCents: 0,

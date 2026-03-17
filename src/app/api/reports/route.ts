@@ -39,14 +39,15 @@ export async function POST(request: NextRequest) {
       pin,
       property_type,
       service_type,
+      review_tier,
       photos_skipped,
       property_issues,
       additional_notes,
       desired_outcome,
     } = parsed.data;
 
-    // ── Calculate price ────────────────────────────────────────────────────
-    const priceCents = getPriceCents(service_type, property_type);
+    // ── Calculate price (tier-aware) ─────────────────────────────────────
+    const priceCents = getPriceCents(service_type, property_type, review_tier);
 
     // ── Create report row via repository ─────────────────────────────────
     const report = (await createReport({
@@ -70,6 +71,7 @@ export async function POST(request: NextRequest) {
       stripe_payment_intent_id: null,
       payment_status: null,
       amount_paid_cents: priceCents,
+      review_tier: review_tier ?? 'auto',
       photos_skipped: photos_skipped ?? false,
       property_issues: property_issues ?? [],
       additional_notes: additional_notes ?? null,

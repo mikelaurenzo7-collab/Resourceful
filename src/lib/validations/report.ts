@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 const propertyTypeEnum = z.enum(['residential', 'commercial', 'industrial', 'land']);
 const serviceTypeEnum = z.enum(['tax_appeal', 'pre_purchase', 'pre_listing']);
+const reviewTierEnum = z.enum(['auto', 'expert_reviewed']);
 const photoTypeEnum = z.enum([
   'exterior_front', 'exterior_rear',
   'exterior_north', 'exterior_south', 'exterior_east', 'exterior_west',
@@ -34,6 +35,7 @@ export const reportCreateSchema = z.object({
   pin: z.string().optional().nullable(),
   property_type: propertyTypeEnum,
   service_type: serviceTypeEnum,
+  review_tier: reviewTierEnum.optional().default('auto'),
   // Onboarding wizard fields
   photos_skipped: z.boolean().optional().default(false),
   property_issues: z.array(z.string()).optional().default([]),

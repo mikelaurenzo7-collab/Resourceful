@@ -184,7 +184,7 @@ export async function runPipeline(
     }
   }
 
-  // ── Pipeline stages 1-7 complete — auto-deliver ────────────────────────
+  // ── Pipeline stages 1-7 complete ────────────────────────────────────────
   await supabase
     .from('reports')
     .update({
@@ -192,22 +192,33 @@ export async function runPipeline(
     })
     .eq('id', reportId);
 
-  console.log(`[pipeline] Stages 1-7 complete for report ${reportId}. Auto-delivering...`);
-  try {
-    const deliveryResult = await runDelivery(reportId, 'system-auto', supabase as any);
-    if (!deliveryResult.success) {
-      console.error(`[pipeline] Auto-delivery failed: ${deliveryResult.error}`);
+  // Route based on review tier:
+  // - 'auto': auto-deliver immediately via stage 8
+  // - 'expert_reviewed': route to pending_approval for admin review
+  if (report.review_tier === 'expert_reviewed') {
+    console.log(`[pipeline] Stages 1-7 complete for report ${reportId}. Expert-reviewed tier — routing to admin for review.`);
+    await supabase
+      .from('reports')
+      .update({ status: 'pending_approval' as const })
+      .eq('id', reportId);
+  } else {
+    console.log(`[pipeline] Stages 1-7 complete for report ${reportId}. Auto tier — delivering...`);
+    try {
+      const deliveryResult = await runDelivery(reportId, 'system-auto', supabase as any);
+      if (!deliveryResult.success) {
+        console.error(`[pipeline] Auto-delivery failed: ${deliveryResult.error}`);
+        await supabase
+          .from('reports')
+          .update({ status: 'pending_approval' as const })
+          .eq('id', reportId);
+      }
+    } catch (deliveryErr) {
+      console.error(`[pipeline] Auto-delivery threw:`, deliveryErr);
       await supabase
         .from('reports')
         .update({ status: 'pending_approval' as const })
         .eq('id', reportId);
     }
-  } catch (deliveryErr) {
-    console.error(`[pipeline] Auto-delivery threw:`, deliveryErr);
-    await supabase
-      .from('reports')
-      .update({ status: 'pending_approval' as const })
-      .eq('id', reportId);
   }
 
   // ── Notify admin (non-blocking, for monitoring) ───────────────────────
