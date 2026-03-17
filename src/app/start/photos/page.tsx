@@ -42,7 +42,7 @@ export default function PhotosPage() {
     router.push('/start/payment');
   };
 
-  const handleFileUpload = async (file: File, photoType: PhotoType): Promise<boolean> => {
+  const handleFileUpload = async (file: File, photoType: PhotoType, caption: string): Promise<boolean> => {
     if (!state.reportId) return false;
     setUploading(true);
     setUploadError('');
@@ -52,6 +52,7 @@ export default function PhotosPage() {
       formData.append('file', file);
       formData.append('photo_type', photoType);
       formData.append('sort_order', String(state.photoCount));
+      if (caption) formData.append('caption', caption);
 
       const res = await fetch(`/api/reports/${state.reportId}/photos`, {
         method: 'POST',
@@ -75,9 +76,12 @@ export default function PhotosPage() {
   return (
     <main className="max-w-3xl mx-auto px-6 py-12">
       <div className="text-center mb-10 animate-fade-in">
-        <h1 className="font-display text-3xl text-cream mb-3">Property Photos</h1>
-        <p className="text-cream/50 max-w-lg mx-auto">
-          Photos are your strongest evidence. We&apos;ve already captured your exterior — now document any interior issues.
+        <h1 className="font-display text-3xl text-cream mb-3">Your Property, Your Evidence</h1>
+        <p className="text-cream/50 max-w-lg mx-auto leading-relaxed">
+          You know your property better than anyone — and you&apos;re the only one with access inside.
+          County assessors assume average condition from a desk. They&apos;ve never walked your basement,
+          seen your roof up close, or noticed the water damage behind the furnace.
+          <span className="text-gold/70"> Your photos change that.</span>
         </p>
       </div>
 
@@ -129,14 +133,17 @@ export default function PhotosPage() {
 
           {/* General photo tips */}
           <div className="rounded-xl border border-gold/15 bg-navy-light/50 p-5">
-            <h3 className="text-sm font-medium text-cream mb-3">Photo Tips for Best Results</h3>
+            <h3 className="text-sm font-medium text-cream mb-3">How to Take Photos That Win Appeals</h3>
             <ul className="space-y-2">
               {[
+                'Basement and crawl space photos are some of the most powerful evidence — water stains, cracks, mold, and aging mechanicals are common and the assessor has never seen them',
                 'Include a ruler, coin, or your hand for scale on damage photos',
                 'Take both a close-up AND a wide-angle shot of each issue',
                 'Use natural lighting when possible — open blinds, turn on lights',
-                'Don\'t clean up first — show the property as-is',
-                'Photograph all four exterior sides if possible (we got the front)',
+                'Don\'t clean up first — show the property as-is, that\'s the point',
+                'Photograph utility rooms, water heaters, furnaces, and electrical panels — age and condition of systems matters',
+                'Describe each photo when you upload — tell us what we\'re looking at and why it matters',
+                'There\'s no limit — the more you upload, the more evidence we have to work with',
               ].map((tip, i) => (
                 <li key={i} className="flex items-start gap-2 text-xs text-cream/50">
                   <span className="text-gold/50 mt-0.5">&#x2022;</span>
@@ -152,10 +159,12 @@ export default function PhotosPage() {
       {selectedIssues.length === 0 && !showUploader && (
         <div className="mb-8 animate-slide-up">
           <div className="card-premium rounded-xl p-6 text-center">
-            <p className="text-sm text-cream/60 mb-2">No specific issues selected</p>
-            <p className="text-xs text-cream/40">
-              You can still upload photos of your property to strengthen your report.
-              Exterior photos, kitchen, bathrooms, and any deferred maintenance are most impactful.
+            <p className="text-sm text-cream/60 mb-2">No specific issues selected — that&apos;s fine</p>
+            <p className="text-xs text-cream/40 leading-relaxed">
+              Even without specific problems, photos of your property&apos;s actual condition
+              are powerful evidence. The assessor assumed &quot;average&quot; without ever stepping inside.
+              Show us your kitchen, bathrooms, basement, and any areas showing age or wear.
+              The more photos you provide, the stronger your case.
             </p>
           </div>
         </div>
@@ -200,7 +209,7 @@ export default function PhotosPage() {
               onClick={handleSkip}
               className="w-full text-center py-3 text-sm text-cream/40 hover:text-cream/60 transition-colors"
             >
-              Skip photos — data-only analysis
+              Skip for now — continue with data-only analysis
             </button>
 
             {/* Why photos strengthen your report */}
@@ -210,15 +219,15 @@ export default function PhotosPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div>
-                  <p className="text-sm font-medium text-cream">Why Photos Strengthen Your Report</p>
+                  <p className="text-sm font-medium text-cream">You Have Access the Assessor Never Had</p>
                   <p className="text-xs text-cream/40 mt-1 leading-relaxed">
-                    Your county assessor has <span className="text-cream/60">never been inside your property</span>. They assume average condition based on age, size, and neighborhood — nothing more.
+                    County assessment systems are built on assumptions, not inspections. Assessors value your property from a desk using age, size, and neighborhood averages. They&apos;ve <span className="text-cream/60">never walked your basement, checked your roof, or seen the water damage behind the walls</span>.
                   </p>
                   <p className="text-xs text-cream/40 mt-1.5 leading-relaxed">
-                    Photos let us document what the assessor can&apos;t see: aging roofs, deferred maintenance, outdated kitchens, water damage, foundation issues. This is evidence that directly reduces your assessed value — and evidence the assessor simply doesn&apos;t have.
+                    That&apos;s exactly why your photos matter. You&apos;re the only person with access to the inside of your property. Every photo of a cracked foundation, leaking pipe, outdated kitchen, or aging mechanical system is evidence the assessor never collected — and the Board of Review has never seen.
                   </p>
                   <p className="text-xs text-cream/40 mt-1.5 leading-relaxed">
-                    Without photos, we argue based on public data alone. With photos, we build a case backed by evidence the assessor never collected. Reports with photos are significantly stronger.
+                    <span className="text-gold/60 font-medium">Upload as many as you can.</span> Basements, crawl spaces, utility rooms, damaged areas — the more you document, the stronger your case. Describe what each photo shows so our analysts can reference it precisely in your report.
                   </p>
                 </div>
               </div>
