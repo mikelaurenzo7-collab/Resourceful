@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
+import { runDelivery } from '@/lib/pipeline/stages/stage8-delivery';
 import { sendReportRejectionAlert } from '@/lib/services/resend-email';
 import type {
   ApprovalAction,
@@ -54,40 +55,13 @@ export async function approveReport(reportId: string) {
   const adminUserId = await getAdminUserId();
   const supabase = createAdminClient();
 
-  // Record approval event
-  const eventError = await insertApprovalEvent(supabase, {
-    report_id: reportId,
-    admin_user_id: adminUserId,
-    action: 'approved',
-    notes: 'Report approved for delivery',
-  });
+  // Run Stage 8: generates signed PDF URL, emails client, updates status,
+  // and records approval event — all in one atomic flow.
+  const result = await runDelivery(reportId, adminUserId, supabase as any);
 
-  if (eventError) throw new Error(`Failed to record approval: ${eventError.message}`);
-
-  const now = new Date().toISOString();
-
-  // Set status to approved with audit fields
-  const { error: approveError } = await supabase
-    .from('reports')
-    .update({
-      status: 'approved' as ReportStatus,
-      approved_at: now,
-      approved_by: adminUserId,
-    } as never)
-    .eq('id', reportId);
-
-  if (approveError) throw new Error(`Failed to approve report: ${approveError.message}`);
-
-  // Trigger Stage 8 delivery - set status to delivered
-  const { error: deliverError } = await supabase
-    .from('reports')
-    .update({
-      status: 'delivered' as ReportStatus,
-      delivered_at: now,
-    } as never)
-    .eq('id', reportId);
-
-  if (deliverError) throw new Error(`Failed to deliver report: ${deliverError.message}`);
+  if (!result.success) {
+    throw new Error(`Delivery failed: ${result.error}`);
+  }
 
   revalidatePath('/admin/reports');
   revalidatePath(`/admin/reports/${reportId}/review`);
