@@ -1,6 +1,6 @@
 // ─── Pipeline Orchestrator ───────────────────────────────────────────────────
-// Runs report generation stages 1-8 sequentially, auto-delivering the
-// completed report to the client via email with a signed PDF URL.
+// Runs report generation stages 1-7 sequentially, then routes to admin
+// for approval. Stage 8 (delivery) is admin-triggered, not automated.
 //
 // After each stage, writes completion to pipeline_last_completed_stage.
 // On failure, writes error to pipeline_error_log JSONB and halts.
@@ -216,7 +216,7 @@ export async function runPipeline(
   // ── Release pipeline lock ───────────────────────────────────────────────
   await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
 
-  console.log(`[pipeline] Pipeline complete and delivered for report ${reportId}`);
+  console.log(`[pipeline] Pipeline complete for report ${reportId}. Awaiting admin approval.`);
   return { success: true };
 }
 

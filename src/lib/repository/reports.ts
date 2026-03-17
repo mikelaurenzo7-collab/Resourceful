@@ -191,6 +191,19 @@ export async function getReportsByStatus(
   return (data ?? []) as unknown as Report[];
 }
 
+export async function deleteReport(
+  id: string,
+  supabase?: SupabaseAdmin
+) {
+  const client = getClient(supabase);
+  const { error } = await client
+    .from('reports')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw new Error(`Failed to delete report: ${error.message}`);
+}
+
 export async function updateReport(
   id: string,
   data: ReportUpdate,

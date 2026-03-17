@@ -10,6 +10,7 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
   const { id: reportId } = await params;
 
   if (!reportId) {
@@ -118,4 +119,12 @@ export async function GET(
     authorizedRepTypes: countyRule.authorized_rep_types,
     repRestrictionsNotes: countyRule.rep_restrictions_notes,
   });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[api/reports/filing-info] Unhandled error:', message);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
 }

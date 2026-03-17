@@ -112,6 +112,13 @@ export async function POST(request: NextRequest) {
 
     if (paymentError || !payment) {
       console.error('[api/reports] Failed to create payment intent:', paymentError);
+      // Clean up the orphaned report row since payment failed
+      try {
+        const { deleteReport } = await import('@/lib/repository/reports');
+        await deleteReport(report.id);
+      } catch (cleanupErr) {
+        console.error('[api/reports] Failed to clean up orphaned report:', cleanupErr);
+      }
       return NextResponse.json(
         { error: 'Failed to create payment intent' },
         { status: 500 }

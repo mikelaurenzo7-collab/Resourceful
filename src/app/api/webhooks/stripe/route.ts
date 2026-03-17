@@ -80,6 +80,27 @@ async function handlePaymentIntentSucceeded(
 
   const supabase = createAdminClient();
 
+  // ── Idempotency guard: only process reports still in 'intake' status ──
+  // Stripe can deliver webhooks multiple times. If the report has already
+  // moved past 'intake', this is a duplicate — skip silently.
+  const { data: existingReport } = await supabase
+    .from('reports')
+    .select('status')
+    .eq('id', reportId)
+    .single();
+
+  if (!existingReport) {
+    console.error(`[webhook/stripe] Report ${reportId} not found`);
+    return;
+  }
+
+  if (existingReport.status !== 'intake') {
+    console.log(
+      `[webhook/stripe] Report ${reportId} already in '${existingReport.status}' status — skipping duplicate webhook`
+    );
+    return;
+  }
+
   // ── Update report to 'paid' status with payment fields ──────────────
   const { error: updateError } = await supabase
     .from('reports')

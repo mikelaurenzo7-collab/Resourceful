@@ -46,6 +46,17 @@ export async function POST(
       );
     }
 
+    // ── Guard: only allow rerun for reports that have been paid ──────────
+    const rerunAllowedStatuses = ['paid', 'processing', 'pending_approval', 'approved', 'delivered', 'rejected', 'failed'];
+    if (!rerunAllowedStatuses.includes(report.status)) {
+      return NextResponse.json(
+        {
+          error: `Report status is '${report.status}' — cannot rerun pipeline for unpaid reports`,
+        },
+        { status: 400 }
+      );
+    }
+
     // ── Reset report to 'paid' status ──────────────────────────────────────
     await updateReport(reportId, {
       status: 'paid',

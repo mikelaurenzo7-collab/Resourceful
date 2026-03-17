@@ -13,6 +13,7 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  try {
   const { id: reportId } = await params;
 
   if (!reportId) {
@@ -34,8 +35,9 @@ export async function GET(
 
   const report = reportData as Report;
 
-  // Only show reports that have been delivered
-  if (!['delivered', 'approved', 'pending_approval'].includes(report.status)) {
+  // Only show reports that have been delivered or approved — never pending_approval
+  // (admin must approve before client can see the report)
+  if (!['delivered', 'approved'].includes(report.status)) {
     return NextResponse.json({
       status: report.status,
       ready: false,
@@ -133,4 +135,12 @@ export async function GET(
       proSeTips: countyRule.pro_se_tips,
     } : null,
   });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[api/reports/viewer] Unhandled error:', message);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
 }

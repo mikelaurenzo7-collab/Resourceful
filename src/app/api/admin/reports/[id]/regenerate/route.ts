@@ -62,6 +62,17 @@ export async function POST(
       );
     }
 
+    // ── Guard: only allow regeneration for reports that have pipeline data ─
+    const regenerateAllowedStatuses = ['pending_approval', 'approved', 'delivered', 'rejected'];
+    if (!regenerateAllowedStatuses.includes(report.status)) {
+      return NextResponse.json(
+        {
+          error: `Report status is '${report.status}' — must be pending_approval, approved, delivered, or rejected to regenerate`,
+        },
+        { status: 400 }
+      );
+    }
+
     const admin = createAdminClient();
 
     // ── Snapshot the current narrative for the approval event notes ───────
