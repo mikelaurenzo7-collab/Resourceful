@@ -5,9 +5,14 @@
 // is poor/fair.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, PhotoAiAnalysis, Photo, ComparableSale } from '@/types/database';
+import type { Database, PhotoAiAnalysis, Photo, ComparableSale, PropertyData } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { analyzePhoto } from '@/lib/services/anthropic';
+import {
+  computeEffectiveAge,
+  computePhysicalDepreciation,
+  ECONOMIC_LIFE,
+} from '@/config/valuation';
 
 // ─── Photo Analysis System Prompt ───────────────────────────────────────────
 
@@ -110,7 +115,7 @@ export async function runPhotoAnalysis(
   reportId: string,
   supabase: SupabaseClient<Database>
 ): Promise<StageResult> {
-  // ── Fetch report to know property type ───────────────────────────────
+  // ── Fetch report and property_data ───────────────────────────────────
   const { data: reportData } = await supabase
     .from('reports')
     .select('property_type')
@@ -118,6 +123,13 @@ export async function runPhotoAnalysis(
     .single();
 
   const propertyType = (reportData?.property_type as string) ?? 'residential';
+
+  const { data: pdData } = await supabase
+    .from('property_data')
+    .select('year_built, property_subtype, property_class')
+    .eq('report_id', reportId)
+    .single();
+  const propertyDataForAge = pdData as Pick<PropertyData, 'year_built' | 'property_subtype' | 'property_class'> | null;
 
   // ── Fetch photos for this report ──────────────────────────────────────
   const { data: photosData, error: photoError } = await supabase
@@ -237,6 +249,42 @@ export async function runPhotoAnalysis(
   console.log(
     `[stage4] Overall condition: ${overallCondition} from ${conditionRatings.length} photos`
   );
+
+  // ── Refine effective age from photo-observed condition ─────────────────
+  // Stage 1 set a baseline using chronological age (average condition assumed).
+  // Now that we have actual photo evidence, update with the true effective age.
+  if (propertyDataForAge?.year_built) {
+    const photoAdjustedEffectiveAge = computeEffectiveAge(
+      propertyDataForAge.year_built,
+      overallCondition
+    );
+    const subtype = propertyDataForAge.property_subtype
+      ?? `${propertyType}_general`;
+    const economicLife = ECONOMIC_LIFE[subtype] ?? 45;
+    const updatedDepreciationPct = computePhysicalDepreciation(photoAdjustedEffectiveAge, subtype);
+    const updatedRemainingLife = Math.max(economicLife - photoAdjustedEffectiveAge, 0);
+
+    const { error: ageUpdateError } = await supabase
+      .from('property_data')
+      .update({
+        effective_age: photoAdjustedEffectiveAge,
+        effective_age_source: 'photo_adjusted',
+        physical_depreciation_pct: updatedDepreciationPct,
+        remaining_economic_life: updatedRemainingLife,
+        overall_condition: overallCondition,
+      })
+      .eq('report_id', reportId);
+
+    if (ageUpdateError) {
+      console.warn(`[stage4] Failed to update effective age: ${ageUpdateError.message}`);
+    } else {
+      console.log(
+        `[stage4] Effective age updated: ${propertyDataForAge.year_built} built, ` +
+        `condition="${overallCondition}" → effective_age=${photoAdjustedEffectiveAge}yr, ` +
+        `depreciation=${updatedDepreciationPct}%, remaining_life=${updatedRemainingLife}yr`
+      );
+    }
+  }
 
   // ── Compute per-defect condition adjustment ──────────────────────────
   // Sum granular per-defect impacts from photo evidence, making the

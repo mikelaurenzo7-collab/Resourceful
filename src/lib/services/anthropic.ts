@@ -35,8 +35,15 @@ export interface NarrativePayload {
     market_value_estimate_low: number | null;
     market_value_estimate_high: number | null;
     property_class: string | null;
+    property_subtype?: string | null;
     zoning_designation: string | null;
     flood_zone_designation: string | null;
+    // Depreciation intelligence (populated by Stage 1 + refined by Stage 4)
+    effective_age?: number | null;
+    effective_age_source?: string | null;
+    physical_depreciation_pct?: number | null;
+    remaining_economic_life?: number | null;
+    economic_life_years?: number | null;
   };
   comparableSales: Array<{
     address: string;
@@ -105,8 +112,16 @@ export interface NarrativePayload {
     assessedExceedsAttomRange: boolean; // true if assessed > ATTOM high estimate
     marketTrendPct: number | null; // negative = declining market
     effectiveAge: number | null;
+    physicalDepreciationPct?: number | null; // computed depreciation %
+    remainingEconomicLife?: number | null;   // years of useful life remaining
     buildingSqftFromAssessor: number | null;
-    dataAnomalies: string[]; // human-readable flags like "Assessor records show 2,400 sqft but comps average 1,800 sqft"
+    dataAnomalies: string[];
+    // Two-way analysis
+    isUnderassessed?: boolean;
+    underassessmentPct?: number | null;
+    // Case intelligence
+    caseStrengthScore?: number;
+    caseValueAtStake?: number;
   };
   calibrationContext?: {
     sampleSize: number;

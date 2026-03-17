@@ -7,11 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, ComparableRentalInsert, PropertyType, Report, PropertyData, ComparableSale } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { getRentalComparables } from '@/lib/services/attom';
-
-// ─── Pro Forma Defaults ─────────────────────────────────────────────────────
-
-const DEFAULT_VACANCY_RATE = 0.05; // 5%
-const DEFAULT_EXPENSE_RATIO = 0.35; // 35% of EGI
+import { INCOME_PARAMS, resolvePropertySubtype } from '@/config/valuation';
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
 
@@ -58,6 +54,21 @@ export async function runIncomeAnalysis(
   }
 
   const buildingSqFt = propertyData.building_sqft_gross ?? 0;
+
+  // ── Resolve subtype-specific income parameters ────────────────────────
+  const subtype = propertyData.property_subtype
+    ?? resolvePropertySubtype(propertyData.property_class, report.property_type);
+  const incomeParams = INCOME_PARAMS[subtype] ?? INCOME_PARAMS['commercial_general'];
+  const DEFAULT_VACANCY_RATE = incomeParams.vacancy_rate;
+  const DEFAULT_EXPENSE_RATIO = incomeParams.expense_ratio;
+  const FALLBACK_RENT = incomeParams.rent_fallback_per_sqft_yr;
+  const DEFAULT_CAP_RATE = incomeParams.cap_rate_default;
+
+  console.log(
+    `[stage3] Income params for subtype="${subtype}": vacancy=${DEFAULT_VACANCY_RATE * 100}%, ` +
+    `expenses=${DEFAULT_EXPENSE_RATIO * 100}%, fallbackRent=$${FALLBACK_RENT}/sf/yr, ` +
+    `defaultCap=${DEFAULT_CAP_RATE * 100}%`
+  );
 
   // ── Query rental comparables from ATTOM ───────────────────────────────
   const rentalResult = await getRentalComparables({
@@ -122,10 +133,10 @@ export async function runIncomeAnalysis(
       `[stage3] Found ${rentalResult.data.length} rental comps, median rent/sqft/yr: $${concludedMarketRentPerSqFtYr}`
     );
   } else {
-    // Fallback: estimate rent from building sqft at a rough $/sqft/yr rate
-    concludedMarketRentPerSqFtYr = report.property_type === 'industrial' ? 6 : 12;
+    // Fallback: subtype-specific estimate from valuation config
+    concludedMarketRentPerSqFtYr = FALLBACK_RENT;
     console.warn(
-      `[stage3] No rental comps found. Using estimated rate: $${concludedMarketRentPerSqFtYr}/sqft/yr`
+      `[stage3] No rental comps found. Using subtype fallback rate: $${concludedMarketRentPerSqFtYr}/sqft/yr for "${subtype}"`
     );
   }
 
@@ -162,7 +173,7 @@ export async function runIncomeAnalysis(
     .eq('report_id', reportId);
   const salesComps = (salesCompsData ?? []) as ComparableSale[];
 
-  let concludedCapRate = report.property_type === 'industrial' ? 0.08 : 0.07; // defaults
+  let concludedCapRate = DEFAULT_CAP_RATE; // subtype-specific default
   let capRateMarketLow: number | null = null;
   let capRateMarketHigh: number | null = null;
 

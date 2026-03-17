@@ -12,6 +12,7 @@ import {
 } from '@/lib/services/anthropic';
 import { AI_MODELS } from '@/config/ai';
 import { getCalibrationParams } from '@/lib/calibration/recalculate';
+import { ECONOMIC_LIFE, CASE_STRENGTH } from '@/config/valuation';
 
 // ─── Section Mapping ────────────────────────────────────────────────────────
 
@@ -290,6 +291,75 @@ export async function runNarratives(
     );
   }
 
+  // ── Two-way analysis: overassessment vs. underassessment ──────────────
+  const assessedForTwoWay = propertyData.assessed_value ?? 0;
+  const overassessmentDollars = concludedValue > 0 && assessedForTwoWay > concludedValue
+    ? assessedForTwoWay - concludedValue
+    : 0;
+  const underassessmentPct = concludedValue > 0 && assessedForTwoWay > 0 && concludedValue > assessedForTwoWay
+    ? Math.round(((concludedValue - assessedForTwoWay) / concludedValue) * 1000) / 10
+    : 0;
+  const isUnderassessed = underassessmentPct > 5; // meaningful underassessment threshold
+
+  // ── Case strength score (0-100) ────────────────────────────────────────
+  // Weights: overassessment magnitude, comp count, photo evidence, calibration confidence.
+  let strengthScore = 0;
+
+  // Overassessment magnitude (0-40 pts): 2 pts per % overassessed, capped at 40
+  if (overassessmentDollars > 0 && concludedValue > 0) {
+    const overPct = (overassessmentDollars / concludedValue) * 100;
+    strengthScore += Math.min(
+      Math.round(overPct * CASE_STRENGTH.overassessment_pts_per_pct),
+      CASE_STRENGTH.overassessment_max_pts
+    );
+  }
+
+  // Comparable support (0-20 pts): 4 pts per comp, up to 5 comps
+  const nonWeakComps = comps.filter((c) => !c.is_weak_comparable).length;
+  strengthScore += Math.min(
+    nonWeakComps * CASE_STRENGTH.comp_pts_each,
+    CASE_STRENGTH.comp_max_pts
+  );
+
+  // Photo evidence (0-25 pts): significant defects + total defects
+  strengthScore += Math.min(
+    significantDefects * CASE_STRENGTH.sig_defect_pts_each,
+    CASE_STRENGTH.sig_defect_max_pts
+  );
+  strengthScore += Math.min(
+    totalDefects * CASE_STRENGTH.defect_pts_each,
+    CASE_STRENGTH.defect_max_pts
+  );
+
+  // Calibration confidence (0-15 pts)
+  const calibSampleSize = calibration?.sample_size ?? 0;
+  if (calibSampleSize >= 50)      strengthScore += CASE_STRENGTH.calibration_pts_50plus;
+  else if (calibSampleSize >= 10) strengthScore += CASE_STRENGTH.calibration_pts_10to49;
+  else if (calibSampleSize >= 5)  strengthScore += CASE_STRENGTH.calibration_pts_5to9;
+
+  strengthScore = Math.min(Math.round(strengthScore), 100);
+
+  // Store case intelligence on the report
+  const { error: reportIntelError } = await supabase
+    .from('reports')
+    .update({
+      case_strength_score: strengthScore,
+      case_value_at_stake: overassessmentDollars > 0 ? overassessmentDollars : 0,
+      is_underassessed: isUnderassessed,
+      underassessment_pct: isUnderassessed ? underassessmentPct : null,
+    })
+    .eq('id', reportId);
+
+  if (reportIntelError) {
+    console.warn(`[stage5] Failed to store case intelligence: ${reportIntelError.message}`);
+  }
+
+  console.log(
+    `[stage5] Case intelligence: strength=${strengthScore}/100, ` +
+    `value_at_stake=$${overassessmentDollars.toLocaleString()}, ` +
+    `is_underassessed=${isUnderassessed}${isUnderassessed ? ` (${underassessmentPct}% under)` : ''}`
+  );
+
   // ── Determine assessment ratio based on property type ──────────────────
   let assessmentRatio: number | null = null;
   if (countyRule) {
@@ -394,10 +464,21 @@ export async function runNarratives(
     }
   }
 
-  if (propertyData.year_built && propertyData.year_built < 1970 && !propertyData.effective_age) {
-    dataAnomalies.push(
-      `Property built in ${propertyData.year_built} (${new Date().getFullYear() - propertyData.year_built}+ years old) with no effective age recorded — physical depreciation may not be reflected in the assessment`
-    );
+  if (propertyData.year_built && propertyData.year_built < 1970) {
+    const actualAge = new Date().getFullYear() - propertyData.year_built;
+    const depreciationPct = propertyData.physical_depreciation_pct;
+    if (depreciationPct != null && depreciationPct >= 50) {
+      dataAnomalies.push(
+        `Property built in ${propertyData.year_built} (${actualAge} years old) has accumulated ${depreciationPct.toFixed(1)}% physical depreciation ` +
+        `against its ${propertyData.property_subtype ?? 'building category'} economic life — ` +
+        `assessor must account for this depreciation in the assessment`
+      );
+    } else if (!depreciationPct) {
+      dataAnomalies.push(
+        `Property built in ${propertyData.year_built} (${actualAge}+ years old) — ` +
+        `physical depreciation may not be reflected in the assessment`
+      );
+    }
   }
 
   if (propertyData.flood_zone_designation && !['X', 'C'].includes(propertyData.flood_zone_designation)) {
@@ -424,8 +505,16 @@ export async function runNarratives(
     assessedExceedsAttomRange,
     marketTrendPct,
     effectiveAge: propertyData.effective_age,
+    physicalDepreciationPct: propertyData.physical_depreciation_pct,
+    remainingEconomicLife: propertyData.remaining_economic_life,
     buildingSqftFromAssessor: buildingSqft,
     dataAnomalies,
+    // Two-way analysis
+    isUnderassessed,
+    underassessmentPct: isUnderassessed ? underassessmentPct : null,
+    // Case intelligence
+    caseStrengthScore: strengthScore,
+    caseValueAtStake: overassessmentDollars,
   };
 
   console.log(
@@ -453,8 +542,17 @@ export async function runNarratives(
       market_value_estimate_low: propertyData.market_value_estimate_low,
       market_value_estimate_high: propertyData.market_value_estimate_high,
       property_class: propertyData.property_class,
+      property_subtype: propertyData.property_subtype,
       zoning_designation: propertyData.zoning_designation,
       flood_zone_designation: propertyData.flood_zone_designation,
+      // Depreciation facts — computed by Stage 1 (year_built) + refined by Stage 4 (photos)
+      effective_age: propertyData.effective_age,
+      effective_age_source: propertyData.effective_age_source,
+      physical_depreciation_pct: propertyData.physical_depreciation_pct,
+      remaining_economic_life: propertyData.remaining_economic_life,
+      economic_life_years: propertyData.property_subtype
+        ? (ECONOMIC_LIFE[propertyData.property_subtype] ?? null)
+        : null,
     },
     comparableSales: comps.map((c) => ({
       address: c.address ?? '',

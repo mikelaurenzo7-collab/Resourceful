@@ -99,6 +99,11 @@ export type Report = {
   filing_method: string | null;
   appeal_outcome: string | null;
   savings_amount_cents: number | null;
+  // Case intelligence — strength score and two-way analysis (migration 009)
+  case_strength_score: number | null;
+  case_value_at_stake: number | null;
+  is_underassessed: boolean;
+  underassessment_pct: number | null;
 };
 
 export type PropertyData = {
@@ -156,6 +161,10 @@ export type PropertyData = {
   county_assessor_raw_response: Record<string, unknown> | null;
   fema_raw_response: Record<string, unknown> | null;
   data_collection_notes: string | null;
+  // Valuation intelligence — depreciation and subtype (migration 009)
+  property_subtype: string | null;
+  physical_depreciation_pct: number | null;
+  effective_age_source: string | null;
   // Photo value attribution — tracks exactly how much photos moved the needle
   concluded_value: number | null;
   concluded_value_without_photos: number | null;
@@ -249,6 +258,10 @@ export type ComparableSale = {
   adjusted_price_per_sqft: number | null;
   is_weak_comparable: boolean;
   comparable_photo_url: string | null;
+  // Arms-length screening and effective age (migration 009)
+  is_distressed_sale: boolean;
+  sale_condition_notes: string | null;
+  comp_effective_age: number | null;
   created_at: string;
 };
 
@@ -455,9 +468,14 @@ export type CalibrationParams = {
 
 // ─── Insert Types (omit server-generated fields) ────────────────────────────
 
-export type ReportInsert = Omit<Report, 'id' | 'created_at'> & {
+export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_score' | 'case_value_at_stake' | 'is_underassessed' | 'underassessment_pct'> & {
   id?: string;
   created_at?: string;
+  // Computed by Stage 5 — not needed at creation time; DB defaults apply
+  case_strength_score?: number | null;
+  case_value_at_stake?: number | null;
+  is_underassessed?: boolean;
+  underassessment_pct?: number | null;
 };
 
 export type PropertyDataInsert = Omit<PropertyData, 'id' | 'created_at'> & {
@@ -475,9 +493,11 @@ export type PhotoInsert = Omit<Photo, 'id' | 'uploaded_at'> & {
   uploaded_at?: string;
 };
 
-export type ComparableSaleInsert = Omit<ComparableSale, 'id' | 'created_at'> & {
+export type ComparableSaleInsert = Omit<ComparableSale, 'id' | 'created_at' | 'is_distressed_sale'> & {
   id?: string;
   created_at?: string;
+  // DB default false; explicitly set by Stage 2 arms-length screening
+  is_distressed_sale?: boolean;
 };
 
 export type ComparableRentalInsert = Omit<ComparableRental, 'id' | 'created_at'> & {

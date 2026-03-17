@@ -10,6 +10,12 @@ import type { StageResult } from '../orchestrator';
 import { getSalesComparables, type AttomSaleComp } from '@/lib/services/attom';
 import { getStreetViewUrl } from '@/lib/services/google-maps';
 import { getCalibrationParams } from '@/lib/calibration/recalculate';
+import {
+  EFFECTIVE_AGE_ADJ_RATE_PER_YEAR,
+  EFFECTIVE_AGE_ADJ_MAX_PCT,
+  LOCATION_ADJ_BY_DISTANCE,
+  LOCATION_ADJ_MAX_PCT,
+} from '@/config/valuation';
 
 // ─── Search Tiers by Property Type ──────────────────────────────────────────
 
@@ -43,10 +49,27 @@ const MAX_COMPS = 10;
 
 // ─── Adjustment Calculations ────────────────────────────────────────────────
 
+// Distressed sale keywords — matched against ATTOM saleTransType (case-insensitive)
+const DISTRESSED_KEYWORDS = [
+  'foreclosure', 'reo', 'real estate owned', 'bank owned', 'short sale',
+  'sheriff', 'trustee', 'distressed', 'deed in lieu',
+];
+
+function classifySaleCondition(comp: AttomSaleComp): { isDistressed: boolean; notes: string | null } {
+  // ATTOM doesn't always expose saleTransType in the comp feed.
+  // We check the propertyType field as a proxy when available.
+  const raw = ((comp as unknown as Record<string, unknown>).saleTransType as string | undefined) ?? '';
+  const lower = raw.toLowerCase();
+  const isDistressed = DISTRESSED_KEYWORDS.some((kw) => lower.includes(kw));
+  const notes = isDistressed ? `Non-arms-length transfer: ${raw || 'distressed indicator'}` : null;
+  return { isDistressed, notes };
+}
+
 interface SubjectData {
   buildingSqFt: number;
   lotSqFt: number;
   yearBuilt: number;
+  effectiveAge: number;   // from property_data.effective_age (Stage 1 baseline)
 }
 
 interface AdjustmentResult {
@@ -75,12 +98,24 @@ function calculateAdjustments(
   const adjustment_pct_property_rights = 0;
   const adjustment_pct_financing_terms = 0;
   const adjustment_pct_conditions_of_sale = 0;
-  const adjustment_pct_location = 0;
   const adjustment_pct_other = 0;
 
-  // Market trend adjustment: ~0.5% per month since sale, capped at ±10%.
-  // Adjusts older sales toward current market value. Positive = market has
-  // risen since comp sold (comp price needs upward adjustment), negative = declined.
+  // Location adjustment: comps beyond 0.5 miles may be in different sub-markets.
+  // We apply a conservative, distance-proportional adjustment using the
+  // LOCATION_ADJ_BY_DISTANCE table. The AI narrative provides the qualitative
+  // location analysis; this gives a defensible numeric starting point.
+  let adjustment_pct_location = 0;
+  if (comp.distanceMiles != null && comp.distanceMiles > 0.5) {
+    const tier = LOCATION_ADJ_BY_DISTANCE.find((t) => comp.distanceMiles! <= t.maxMiles)
+      ?? LOCATION_ADJ_BY_DISTANCE[LOCATION_ADJ_BY_DISTANCE.length - 1];
+    // Normalise distance to a 0-1 risk score within the tier
+    const distanceRisk = Math.min(comp.distanceMiles / 7, 1);
+    const rawLocationAdj = -(distanceRisk * tier.adjFactor * 100);
+    adjustment_pct_location = Math.round(
+      Math.max(rawLocationAdj, -LOCATION_ADJ_MAX_PCT) * 100
+    ) / 100;
+  }
+
   let adjustment_pct_market_trends = 0;
   if (comp.saleDate) {
     const saleDate = new Date(comp.saleDate);
@@ -105,11 +140,32 @@ function calculateAdjustments(
     }
   }
 
-  // Age/condition adjustment: +/-5% per decade difference
-  if (subject.yearBuilt > 0 && comp.yearBuilt && comp.yearBuilt > 0) {
+  // Age/condition adjustment using IAAO-defensible effective age differential.
+  // We use the subject's photo-adjusted effective age (from property_data) and
+  // estimate the comp's effective age from its year_built (average condition assumed
+  // since we have no photos for comps). Rate: 0.35% per year of effective age
+  // difference, capped at ±EFFECTIVE_AGE_ADJ_MAX_PCT.
+  //
+  // Direction: comp effectively older than subject → comp is INFERIOR → positive
+  // adjustment (comp would have sold for more in subject's superior condition).
+  // Comp effectively newer → comp is SUPERIOR → negative adjustment.
+  if (subject.effectiveAge > 0 && comp.yearBuilt && comp.yearBuilt > 0) {
+    const currentYear = new Date().getFullYear();
+    const compActualAge = currentYear - comp.yearBuilt;
+    // Use comp's chronological age as its effective age (no photo evidence for comps)
+    const compEffectiveAge = Math.max(compActualAge, 0);
+    const effectiveAgeDiff = compEffectiveAge - subject.effectiveAge;
+    const rawAdj = effectiveAgeDiff * EFFECTIVE_AGE_ADJ_RATE_PER_YEAR;
+    adjustment_pct_condition = Math.round(
+      Math.max(Math.min(rawAdj, EFFECTIVE_AGE_ADJ_MAX_PCT), -EFFECTIVE_AGE_ADJ_MAX_PCT) * 100
+    ) / 100;
+  } else if (subject.yearBuilt > 0 && comp.yearBuilt && comp.yearBuilt > 0) {
+    // Fallback: subject has no effective age — use chronological age difference
     const ageDiffYears = comp.yearBuilt - subject.yearBuilt;
-    const decadeDiff = ageDiffYears / 10;
-    adjustment_pct_condition = Math.round(decadeDiff * -5 * 100) / 100;
+    const rawAdj = ageDiffYears * EFFECTIVE_AGE_ADJ_RATE_PER_YEAR;
+    adjustment_pct_condition = Math.round(
+      Math.max(Math.min(rawAdj, EFFECTIVE_AGE_ADJ_MAX_PCT), -EFFECTIVE_AGE_ADJ_MAX_PCT) * 100
+    ) / 100;
   }
 
   // Land-to-building ratio adjustment
@@ -233,6 +289,9 @@ export async function runComparables(
     buildingSqFt: correctedBuildingSqft,
     lotSqFt: propertyData.lot_size_sqft ?? 0,
     yearBuilt: propertyData.year_built ?? 0,
+    effectiveAge: propertyData.effective_age ?? (propertyData.year_built
+      ? new Date().getFullYear() - propertyData.year_built
+      : 0),
   };
 
   const tiers = SEARCH_TIERS[propertyType] ?? SEARCH_TIERS.residential;
@@ -284,8 +343,15 @@ export async function runComparables(
     return { success: false, error: `Failed to delete existing comps: ${deleteError.message}` };
   }
 
+  // ── Sort: prefer non-distressed comps when we have enough ────────────
+  const nonDistressed = selectedComps.filter((c) => !classifySaleCondition(c).isDistressed);
+  const distressed    = selectedComps.filter((c) =>  classifySaleCondition(c).isDistressed);
+  const sortedComps   = nonDistressed.length >= MIN_COMPS
+    ? [...nonDistressed, ...distressed].slice(0, MAX_COMPS)
+    : selectedComps; // not enough clean comps — use all
+
   // ── Calculate adjustments and write to DB ─────────────────────────────
-  const compInserts: ComparableSaleInsert[] = selectedComps.map((comp) => {
+  const compInserts: ComparableSaleInsert[] = sortedComps.map((comp) => {
     const adj = calculateAdjustments(subject, comp, calibration);
 
     const pricePerSqft = comp.buildingSquareFeet && comp.buildingSquareFeet > 0
@@ -311,6 +377,11 @@ export async function runComparables(
         })
       : null;
 
+    const { isDistressed, notes: saleNotes } = classifySaleCondition(comp);
+    const compActualAge = comp.yearBuilt
+      ? new Date().getFullYear() - comp.yearBuilt
+      : null;
+
     return {
       report_id: reportId,
       address: comp.address,
@@ -330,6 +401,9 @@ export async function runComparables(
       overhead_door_count: null,
       clearance_height_ft: null,
       condition_notes: null,
+      is_distressed_sale: isDistressed,
+      sale_condition_notes: saleNotes,
+      comp_effective_age: compActualAge,
       adjustment_pct_property_rights: adj.adjustment_pct_property_rights,
       adjustment_pct_financing_terms: adj.adjustment_pct_financing_terms,
       adjustment_pct_conditions_of_sale: adj.adjustment_pct_conditions_of_sale,

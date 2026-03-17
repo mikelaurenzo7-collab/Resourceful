@@ -20,6 +20,12 @@ import type { Database, Report, PropertyData, CountyRule } from '@/types/databas
 import type { StageResult } from '../orchestrator';
 import { geocodeAddress } from '@/lib/services/google-maps';
 import { getPropertyDetail } from '@/lib/services/attom';
+import {
+  resolvePropertySubtype,
+  computeEffectiveAge,
+  computePhysicalDepreciation,
+  ECONOMIC_LIFE,
+} from '@/config/valuation';
 
 // ─── FEMA Flood Zone API ────────────────────────────────────────────────────
 
@@ -228,6 +234,20 @@ export async function runDataCollection(
     );
   }
 
+  // ── Compute valuation intelligence fields ─────────────────────────────
+  const propertySubtype = resolvePropertySubtype(
+    attom?.summary.propertyClass,
+    report.property_type
+  );
+  const yearBuilt = attom?.summary.yearBuilt || null;
+  // Stage 1 baseline: assume average condition (refined by photos in Stage 4)
+  const baselineEffectiveAge = computeEffectiveAge(yearBuilt, 'average');
+  const baselineDepreciationPct = computePhysicalDepreciation(baselineEffectiveAge, propertySubtype);
+  const economicLife = ECONOMIC_LIFE[propertySubtype] ?? 0;
+  const remainingEconomicLife = economicLife > 0
+    ? Math.max(economicLife - baselineEffectiveAge, 0)
+    : null;
+
   const propertyDataPayload = {
     report_id: reportId,
     assessed_value: (hasTaxBill && taxBillAssessed)
@@ -237,7 +257,7 @@ export async function runDataCollection(
     building_sqft_gross: attom?.summary.buildingSquareFeet || null,
     building_sqft_living_area: attom?.summary.livingSquareFeet || null,
     lot_size_sqft: attom?.lot.lotSquareFeet || null,
-    year_built: attom?.summary.yearBuilt || null,
+    year_built: yearBuilt,
     property_class: attom?.summary.propertyClass || null,
     property_class_description: attom?.summary.propertyClassDescription || null,
     zoning_designation: attom?.lot.zoning || null,
@@ -252,6 +272,12 @@ export async function runDataCollection(
     county_assessor_raw_response: null,
     fema_raw_response: femaResult as unknown as Record<string, unknown>,
     data_collection_notes: notes.length > 0 ? notes.join('\n') : null,
+    // Valuation intelligence (migration 009)
+    property_subtype: propertySubtype,
+    effective_age: baselineEffectiveAge > 0 ? baselineEffectiveAge : null,
+    effective_age_source: 'year_built_baseline',
+    physical_depreciation_pct: baselineEffectiveAge > 0 ? baselineDepreciationPct : null,
+    remaining_economic_life: remainingEconomicLife,
   };
 
   // ── Update report with geocode coordinates + resolved county FIPS ──────
@@ -310,6 +336,7 @@ export async function runDataCollection(
   console.log(
     `[stage1] Data collection complete for report ${reportId}. ` +
     `County: ${countyRule?.county_name ?? resolvedCountyName ?? 'unknown'} (${resolvedFips ?? 'no FIPS'}). ` +
+    `Subtype: ${propertySubtype}, effective age: ${baselineEffectiveAge}yr, depreciation: ${baselineDepreciationPct}%. ` +
     `Notes: ${notes.length} flags.`
   );
 
