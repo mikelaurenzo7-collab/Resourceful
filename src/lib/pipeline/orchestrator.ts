@@ -1,6 +1,6 @@
 // ─── Pipeline Orchestrator ───────────────────────────────────────────────────
-// Runs report generation stages 1-7 sequentially, then auto-delivers to the
-// client via Stage 8 (email with signed PDF URL).
+// Runs report generation stages 1-8 sequentially, auto-delivering the
+// completed report to the client via email with a signed PDF URL.
 //
 // After each stage, writes completion to pipeline_last_completed_stage.
 // On failure, writes error to pipeline_error_log JSONB and halts.
@@ -31,8 +31,8 @@ type SupabaseAdmin = ReturnType<typeof createAdminClient>;
 interface StageDefinition {
   number: number;
   name: string;
-  /** Return true to skip this stage for the given property type */
-  skipWhen?: (propertyType: PropertyType) => boolean;
+  /** Return true to skip this stage for the given property/service type */
+  skipWhen?: (propertyType: PropertyType, serviceType: string) => boolean;
   run: (reportId: string, supabase: SupabaseAdmin) => Promise<StageResult>;
 }
 
@@ -55,7 +55,7 @@ const STAGES: StageDefinition[] = [
     number: 3,
     name: 'stage-3-income',
     // Only run for commercial and industrial properties
-    skipWhen: (pt) => pt !== 'commercial' && pt !== 'industrial',
+    skipWhen: (pt, _st) => pt !== 'commercial' && pt !== 'industrial',
     run: runIncomeAnalysis,
   },
   {
@@ -71,6 +71,8 @@ const STAGES: StageDefinition[] = [
   {
     number: 6,
     name: 'stage-6-filing',
+    // Filing guide is only relevant for tax appeals
+    skipWhen: (_pt, st) => st !== 'tax_appeal',
     run: runFilingGuide,
   },
   {
@@ -142,8 +144,8 @@ export async function runPipeline(
       continue;
     }
 
-    // Skip stages that don't apply to this property type
-    if (stage.skipWhen?.(report.property_type as PropertyType)) {
+    // Skip stages that don't apply to this property/service type
+    if (stage.skipWhen?.(report.property_type as PropertyType, report.service_type ?? 'tax_appeal')) {
       console.log(
         `[pipeline] Skipping stage ${stage.number} (${stage.name}) — not applicable for ${report.property_type}`
       );
@@ -182,7 +184,7 @@ export async function runPipeline(
     }
   }
 
-  // ── Pipeline stages 1-7 complete — record completion ────────────────────
+  // ── Pipeline stages 1-7 complete — auto-deliver ────────────────────────
   await supabase
     .from('reports')
     .update({
@@ -190,13 +192,11 @@ export async function runPipeline(
     })
     .eq('id', reportId);
 
-  // ── Auto-deliver: run Stage 8 to email the PDF to the client ──────────
   console.log(`[pipeline] Stages 1-7 complete for report ${reportId}. Auto-delivering...`);
   try {
     const deliveryResult = await runDelivery(reportId, 'system-auto', supabase as any);
     if (!deliveryResult.success) {
       console.error(`[pipeline] Auto-delivery failed: ${deliveryResult.error}`);
-      // Mark as pending_approval so admin can manually deliver
       await supabase
         .from('reports')
         .update({ status: 'pending_approval' as const })
