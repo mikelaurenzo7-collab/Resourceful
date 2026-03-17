@@ -897,7 +897,11 @@ function renderCoverPage(
     </div>
 
     <div class="cover-hero">
-      <div class="report-type">Property Tax Appeal</div>
+      <div class="report-type">${escapeHtml(
+        report.service_type === 'pre_purchase' ? 'Pre-Purchase Analysis'
+        : report.service_type === 'pre_listing' ? 'Pre-Listing Analysis'
+        : 'Property Tax Appeal'
+      )}</div>
       <h1>Market Value<br>Analysis</h1>
       <div class="cover-subtitle">${escapeHtml(formatPropertyType(report.property_type ?? ''))} Property</div>
     </div>

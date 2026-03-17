@@ -136,16 +136,16 @@ async function collectFromCountyApi(
 
 function attomToCollected(detail: AttomPropertyDetail): CollectedPropertyData {
   return {
-    assessed_value: detail.assessment.assessedValue || null,
+    assessed_value: detail.assessment.assessedValue ?? null,
     assessed_value_source: 'attom',
     market_value_estimate_low: null,
     market_value_estimate_high: null,
     assessment_ratio: null,
     assessment_methodology: null,
-    lot_size_sqft: detail.lot.lotSquareFeet || null,
-    building_sqft_gross: detail.summary.buildingSquareFeet || null,
-    building_sqft_living_area: null, // ATTOM does not separate living area
-    year_built: detail.summary.yearBuilt || null,
+    lot_size_sqft: detail.lot.lotSquareFeet ?? null,
+    building_sqft_gross: detail.summary.buildingSquareFeet ?? null,
+    building_sqft_living_area: detail.summary.livingSquareFeet ?? null,
+    year_built: detail.summary.yearBuilt ?? null,
     property_class: null,
     property_class_description: detail.summary.propertyType || null,
     zoning_designation: detail.lot.zoning,
@@ -154,17 +154,17 @@ function attomToCollected(detail: AttomPropertyDetail): CollectedPropertyData {
     flood_zone_designation: null, // Populated separately by FEMA service
     flood_map_panel_number: null,
     flood_map_panel_date: null,
-    tax_year_in_appeal: detail.assessment.assessmentYear || null,
+    tax_year_in_appeal: detail.assessment.assessmentYear ?? null,
     assessment_history: null,
     deed_history: null,
     attom_raw_response: detail as unknown as Record<string, unknown>,
     county_assessor_raw_response: null,
     data_collection_notes: null,
 
-    latitude: detail.location.latitude || null,
-    longitude: detail.location.longitude || null,
-    countyFips: detail.location.countyFips || null,
-    countyName: detail.location.countyName || null,
+    latitude: detail.location.latitude ?? null,
+    longitude: detail.location.longitude ?? null,
+    countyFips: detail.location.countyFips ?? null,
+    countyName: detail.location.countyName ?? null,
   };
 }
 
