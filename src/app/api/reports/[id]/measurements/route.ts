@@ -16,7 +16,7 @@ export async function POST(
 ) {
   try {
     // ── Rate limit: 30 measurements per 15 minutes per IP ────────────────
-    const rateLimited = applyRateLimit(request, { prefix: 'measurement', limit: 30, windowSeconds: 900 });
+    const rateLimited = await applyRateLimit(request, { prefix: 'measurement', limit: 30, windowSeconds: 900 });
     if (rateLimited) return rateLimited;
 
     const { id: reportId } = await params;

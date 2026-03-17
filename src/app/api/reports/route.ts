@@ -14,7 +14,7 @@ import type { Report } from '@/types/database';
 export async function POST(request: NextRequest) {
   try {
     // ── Rate limit: 10 reports per 15 minutes per IP ─────────────────────
-    const rateLimited = applyRateLimit(request, { prefix: 'create-report', limit: 10, windowSeconds: 900 });
+    const rateLimited = await applyRateLimit(request, { prefix: 'create-report', limit: 10, windowSeconds: 900 });
     if (rateLimited) return rateLimited;
     // ── Authenticate user ──────────────────────────────────────────────────
     const supabase = await createClient();

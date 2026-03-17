@@ -16,7 +16,7 @@ export async function GET(
 ) {
   try {
     // ── Rate limit: 30 assessment lookups per 15 minutes per IP ──────────
-    const rateLimited = applyRateLimit(_request, { prefix: 'assessment', limit: 30, windowSeconds: 900 });
+    const rateLimited = await applyRateLimit(_request, { prefix: 'assessment', limit: 30, windowSeconds: 900 });
     if (rateLimited) return rateLimited;
 
     const { id: reportId } = await params;

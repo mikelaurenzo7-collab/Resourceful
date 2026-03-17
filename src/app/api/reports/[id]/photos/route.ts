@@ -16,7 +16,7 @@ export async function POST(
 ) {
   try {
     // ── Rate limit: 60 photo uploads per 15 minutes per IP ───────────────
-    const rateLimited = applyRateLimit(request, { prefix: 'photo-upload', limit: 60, windowSeconds: 900 });
+    const rateLimited = await applyRateLimit(request, { prefix: 'photo-upload', limit: 60, windowSeconds: 900 });
     if (rateLimited) return rateLimited;
 
     const { id: reportId } = await params;
@@ -62,6 +62,24 @@ export async function POST(
     if (!file) {
       return NextResponse.json(
         { error: 'No file provided' },
+        { status: 400 }
+      );
+    }
+
+    // ── Validate file size (max 50MB) ────────────────────────────────────
+    const MAX_FILE_SIZE = 50 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: 'File too large. Maximum size is 50MB.' },
+        { status: 413 }
+      );
+    }
+
+    // ── Validate file type ───────────────────────────────────────────────
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return NextResponse.json(
+        { error: 'Invalid file type. Accepted: JPEG, PNG, WebP, HEIC.' },
         { status: 400 }
       );
     }

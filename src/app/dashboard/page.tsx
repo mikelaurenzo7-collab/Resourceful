@@ -59,12 +59,13 @@ export default async function DashboardPage() {
     redirect('/login?redirect=/dashboard');
   }
 
-  // Fetch user's reports from the database
+  // Fetch user's reports — only fields needed for dashboard rendering
   const { data: reports, error } = await supabase
     .from('reports')
-    .select('*')
+    .select('id, status, service_type, property_type, property_address, city, state, county, pipeline_last_completed_stage, report_pdf_storage_path, created_at')
     .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(50);
 
   const userReports = (reports ?? []) as Report[];
 

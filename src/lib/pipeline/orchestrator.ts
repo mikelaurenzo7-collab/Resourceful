@@ -93,6 +93,16 @@ export async function runPipeline(
 ): Promise<StageResult> {
   const supabase = createAdminClient();
 
+  // ── Acquire pipeline lock (prevents concurrent runs for same report) ──
+  const { data: lockAcquired } = await (supabase.rpc as any)('acquire_pipeline_lock', {
+    p_report_id: reportId,
+  });
+
+  if (!lockAcquired) {
+    console.warn(`[pipeline] Could not acquire lock for report ${reportId} — pipeline already running`);
+    return { success: false, error: 'Pipeline already running for this report' };
+  }
+
   // ── Fetch report ────────────────────────────────────────────────────────
   const { data, error: fetchError } = await supabase
     .from('reports')
@@ -105,6 +115,7 @@ export async function runPipeline(
   if (fetchError || !report) {
     const msg = `Failed to fetch report ${reportId}: ${fetchError?.message ?? 'not found'}`;
     console.error(`[pipeline] ${msg}`);
+    await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
     return { success: false, error: msg };
   }
 
@@ -146,6 +157,7 @@ export async function runPipeline(
 
       if (!result.success) {
         await handleStageFailure(supabase, reportId, stage, result.error ?? 'Unknown error');
+        await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
         return { success: false, error: `Stage ${stage.number} (${stage.name}) failed: ${result.error}` };
       }
 
@@ -164,6 +176,7 @@ export async function runPipeline(
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await handleStageFailure(supabase, reportId, stage, message);
+      await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
       return { success: false, error: `Stage ${stage.number} (${stage.name}) threw: ${message}` };
     }
   }
@@ -190,6 +203,9 @@ export async function runPipeline(
     // Log but don't fail the pipeline over an email error
     console.error(`[pipeline] Failed to send admin notification email:`, emailErr);
   }
+
+  // ── Release pipeline lock ───────────────────────────────────────────────
+  await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
 
   console.log(`[pipeline] Pipeline complete for report ${reportId} — awaiting admin approval`);
   return { success: true };

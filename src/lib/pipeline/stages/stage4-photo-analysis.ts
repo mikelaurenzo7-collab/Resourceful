@@ -87,53 +87,67 @@ export async function runPhotoAnalysis(
 
   console.log(`[stage4] Analyzing ${photos.length} photos for report ${reportId}`);
 
-  // ── Analyze each photo ────────────────────────────────────────────────
+  // ── Analyze photos in parallel batches of 3 ──────────────────────────
   const conditionRatings: string[] = [];
+  const BATCH_SIZE = 3;
 
-  for (const photo of photos) {
-    // Get a signed URL if the photo is in Supabase storage
-    let imageUrl: string | null = null;
+  for (let i = 0; i < photos.length; i += BATCH_SIZE) {
+    const batch = photos.slice(i, i + BATCH_SIZE);
 
-    if (photo.storage_path) {
-      const { data: signedUrl } = await supabase
-        .storage
-        .from('photos')
-        .createSignedUrl(photo.storage_path, 3600); // 1 hour
+    const batchResults = await Promise.allSettled(
+      batch.map(async (photo) => {
+        // Get a signed URL if the photo is in Supabase storage
+        let imageUrl: string | null = null;
 
-      imageUrl = signedUrl?.signedUrl ?? null;
-    }
+        if (photo.storage_path) {
+          const { data: signedUrl } = await supabase
+            .storage
+            .from('photos')
+            .createSignedUrl(photo.storage_path, 3600); // 1 hour
 
-    if (!imageUrl) {
-      console.warn(`[stage4] No URL available for photo ${photo.id}, skipping`);
-      continue;
-    }
+          imageUrl = signedUrl?.signedUrl ?? null;
+        }
 
-    const result = await analyzePhoto(imageUrl, PHOTO_ANALYSIS_SYSTEM_PROMPT);
+        if (!imageUrl) {
+          console.warn(`[stage4] No URL available for photo ${photo.id}, skipping`);
+          return null;
+        }
 
-    if (result.error || !result.data) {
-      console.warn(`[stage4] Photo analysis failed for ${photo.id}: ${result.error}`);
-      continue;
-    }
+        const result = await analyzePhoto(imageUrl, PHOTO_ANALYSIS_SYSTEM_PROMPT);
 
-    const analysis = result.data as unknown as PhotoAiAnalysis;
-    conditionRatings.push(analysis.condition_rating);
+        if (result.error || !result.data) {
+          console.warn(`[stage4] Photo analysis failed for ${photo.id}: ${result.error}`);
+          return null;
+        }
 
-    // Update photo record with analysis results (ai_analysis is JSONB)
-    const { error: photoUpdateError } = await supabase
-      .from('photos')
-      .update({
-        ai_analysis: analysis as any,
-        caption: analysis.professional_caption,
+        const analysis = result.data as unknown as PhotoAiAnalysis;
+
+        // Update photo record with analysis results (ai_analysis is JSONB)
+        const { error: photoUpdateError } = await supabase
+          .from('photos')
+          .update({
+            ai_analysis: analysis as any,
+            caption: analysis.professional_caption,
+          })
+          .eq('id', photo.id);
+
+        if (photoUpdateError) {
+          console.warn(`[stage4] Failed to update photo ${photo.id}: ${photoUpdateError.message}`);
+        }
+
+        console.log(
+          `[stage4] Photo ${photo.id} (${photo.photo_type}): condition=${analysis.condition_rating}, defects=${analysis.defects.length}`
+        );
+
+        return analysis;
       })
-      .eq('id', photo.id);
-
-    if (photoUpdateError) {
-      console.warn(`[stage4] Failed to update photo ${photo.id}: ${photoUpdateError.message}`);
-    }
-
-    console.log(
-      `[stage4] Photo ${photo.id} (${photo.photo_type}): condition=${analysis.condition_rating}, defects=${analysis.defects.length}`
     );
+
+    for (const result of batchResults) {
+      if (result.status === 'fulfilled' && result.value) {
+        conditionRatings.push(result.value.condition_rating);
+      }
+    }
   }
 
   // ── Compute overall condition ─────────────────────────────────────────

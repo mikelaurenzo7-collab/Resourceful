@@ -55,45 +55,54 @@ export default async function MetricsPage() {
     supabase
       .from('reports')
       .select('id, pipeline_completed_at')
-      .eq('status', 'pending_approval'),
+      .eq('status', 'pending_approval')
+      .limit(1000),
     supabase
       .from('reports')
       .select('id')
       .eq('status', 'delivered')
-      .gte('delivered_at', todayStart),
+      .gte('delivered_at', todayStart)
+      .limit(1000),
     supabase
       .from('reports')
       .select('id')
       .eq('status', 'delivered')
-      .gte('delivered_at', weekStart),
+      .gte('delivered_at', weekStart)
+      .limit(1000),
     supabase
       .from('reports')
       .select('pipeline_started_at, pipeline_completed_at')
       .not('pipeline_started_at', 'is', null)
-      .not('pipeline_completed_at', 'is', null),
+      .not('pipeline_completed_at', 'is', null)
+      .limit(5000),
     supabase
       .from('reports')
       .select('id, pipeline_last_completed_stage')
-      .eq('status', 'failed'),
+      .eq('status', 'failed')
+      .limit(1000),
     supabase
       .from('reports')
       .select('id')
-      .not('pipeline_started_at', 'is', null),
+      .not('pipeline_started_at', 'is', null)
+      .limit(5000),
     supabase
       .from('reports')
       .select('amount_paid_cents')
       .not('amount_paid_cents', 'is', null)
-      .gte('created_at', todayStart),
+      .gte('created_at', todayStart)
+      .limit(1000),
     supabase
       .from('reports')
       .select('amount_paid_cents')
       .not('amount_paid_cents', 'is', null)
-      .gte('created_at', monthStart),
+      .gte('created_at', monthStart)
+      .limit(5000),
     supabase
       .from('approval_events')
       .select('created_at, action, report_id')
       .eq('action', 'approved')
-      .gte('created_at', monthStart),
+      .gte('created_at', monthStart)
+      .limit(5000),
   ]);
 
   // Cast results

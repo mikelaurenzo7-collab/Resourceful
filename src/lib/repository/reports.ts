@@ -132,28 +132,38 @@ export async function updateReportStatus(
 
 export async function getReportsByUser(
   userId: string,
+  options?: { limit?: number; offset?: number },
   supabase?: SupabaseAdmin
 ): Promise<Report[]> {
   const client = getClient(supabase);
+  const limit = options?.limit ?? 50;
+  const offset = options?.offset ?? 0;
+
   const { data, error } = await client
     .from('reports')
     .select('*')
     .eq('user_id', userId)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
   if (error) throw new Error(`Failed to fetch user reports: ${error.message}`);
   return (data ?? []) as unknown as Report[];
 }
 
 export async function getPendingApprovalReports(
+  options?: { limit?: number; offset?: number },
   supabase?: SupabaseAdmin
 ): Promise<Report[]> {
   const client = getClient(supabase);
+  const limit = options?.limit ?? 100;
+  const offset = options?.offset ?? 0;
+
   const { data, error } = await client
     .from('reports')
     .select('*')
     .eq('status', 'pending_approval')
-    .order('pipeline_completed_at', { ascending: true });
+    .order('pipeline_completed_at', { ascending: true })
+    .range(offset, offset + limit - 1);
 
   if (error)
     throw new Error(`Failed to fetch pending reports: ${error.message}`);
@@ -162,14 +172,19 @@ export async function getPendingApprovalReports(
 
 export async function getReportsByStatus(
   status: ReportStatus,
+  options?: { limit?: number; offset?: number },
   supabase?: SupabaseAdmin
 ): Promise<Report[]> {
   const client = getClient(supabase);
+  const limit = options?.limit ?? 100;
+  const offset = options?.offset ?? 0;
+
   const { data, error } = await client
     .from('reports')
     .select('*')
     .eq('status', status)
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
 
   if (error)
     throw new Error(`Failed to fetch reports by status: ${error.message}`);
