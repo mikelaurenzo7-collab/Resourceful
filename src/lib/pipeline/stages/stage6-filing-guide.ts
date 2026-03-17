@@ -192,18 +192,37 @@ export async function runFilingGuide(
     furtherAppealUrl: countyRule?.further_appeal_url ?? null,
   };
 
-  // ── Generate filing guide via AI ──────────────────────────────────────
-  console.log(`[stage6] Generating filing guide for ${report.county ?? 'unknown'}, ${report.state ?? 'unknown'}`);
-  const guideResult = await generateFilingGuide(payload);
+  // ── Generate filing guide (AI or template) ──────────────────────────
+  const useTemplate = process.env.SKIP_FILING_AI === 'true';
+  let guide: string;
+  let modelUsed: string;
+  let promptTokens: number | null = null;
+  let completionTokens: number | null = null;
+  let generationDurationMs: number | null = null;
 
-  if (guideResult.error || !guideResult.data) {
-    return {
-      success: false,
-      error: `Filing guide generation failed: ${guideResult.error}`,
-    };
+  if (useTemplate) {
+    // ── Template-based filing guide (zero AI cost) ─────────────────────
+    console.log(`[stage6] Generating template-based filing guide for ${report.county ?? 'unknown'}, ${report.state ?? 'unknown'}`);
+    guide = buildTemplateFilingGuide(payload);
+    modelUsed = 'template';
+  } else {
+    // ── AI-generated filing guide ──────────────────────────────────────
+    console.log(`[stage6] Generating AI filing guide for ${report.county ?? 'unknown'}, ${report.state ?? 'unknown'}`);
+    const guideResult = await generateFilingGuide(payload);
+
+    if (guideResult.error || !guideResult.data) {
+      return {
+        success: false,
+        error: `Filing guide generation failed: ${guideResult.error}`,
+      };
+    }
+
+    guide = guideResult.data.guide;
+    modelUsed = AI_MODELS.FAST;
+    promptTokens = guideResult.data.prompt_tokens;
+    completionTokens = guideResult.data.completion_tokens;
+    generationDurationMs = guideResult.data.generation_duration_ms;
   }
-
-  const { guide, prompt_tokens, completion_tokens, generation_duration_ms } = guideResult.data;
 
   // ── Delete existing filing guide narrative ────────────────────────────
   await supabase
@@ -219,10 +238,10 @@ export async function runFilingGuide(
       report_id: reportId,
       section_name: 'pro_se_filing_guide',
       content: guide,
-      model_used: AI_MODELS.FAST,
-      prompt_tokens,
-      completion_tokens,
-      generation_duration_ms,
+      model_used: modelUsed,
+      prompt_tokens: promptTokens,
+      completion_tokens: completionTokens,
+      generation_duration_ms: generationDurationMs,
       admin_edited: false,
       admin_edited_content: null,
     });
@@ -235,8 +254,160 @@ export async function runFilingGuide(
   }
 
   console.log(
-    `[stage6] Filing guide generated in ${generation_duration_ms}ms for report ${reportId}`
+    `[stage6] Filing guide generated (${useTemplate ? 'template' : 'AI'}) for report ${reportId}`
   );
 
   return { success: true };
+}
+
+// ─── Template-Based Filing Guide ─────────────────────────────────────────────
+// Generates a structured filing guide from county_rules data without AI.
+// All data comes from the FilingGuidePayload (sourced from county_rules table).
+
+function buildTemplateFilingGuide(p: FilingGuidePayload): string {
+  const sections: string[] = [];
+  const fmt = (n: number) => `$${n.toLocaleString('en-US')}`;
+
+  // Header
+  sections.push(`# Pro Se Filing Guide: ${p.countyName}, ${p.state}`);
+  sections.push(`## Property: ${p.propertyAddress}`);
+  sections.push('');
+
+  // Key findings
+  sections.push('## Key Findings');
+  sections.push(`- **Current Assessed Value:** ${fmt(p.assessedValue)}`);
+  sections.push(`- **Our Concluded Market Value:** ${fmt(p.concludedValue)}`);
+  if (p.potentialSavings > 0) {
+    sections.push(`- **Potential Reduction:** ${fmt(p.potentialSavings)}`);
+  }
+  sections.push('');
+
+  // Deadline
+  if (p.appealDeadline || p.nextAppealDeadline) {
+    sections.push('## Appeal Deadline');
+    if (p.nextAppealDeadline) {
+      sections.push(`**Next Deadline: ${p.nextAppealDeadline}**`);
+    }
+    if (p.appealDeadline) {
+      sections.push(p.appealDeadline);
+    }
+    if (p.assessmentNoticesMailed) {
+      sections.push(`Assessment notices are typically mailed: ${p.assessmentNoticesMailed}`);
+    }
+    if (p.appealWindowDays) {
+      sections.push(`You have ${p.appealWindowDays} days from receipt of your assessment notice to file.`);
+    }
+    sections.push('');
+  }
+
+  // Where to file
+  sections.push('## Where to File');
+  if (p.appealBoardName) {
+    sections.push(`**${p.appealBoardName}**`);
+  }
+  if (p.appealBoardAddress) {
+    sections.push(`Address: ${p.appealBoardAddress}`);
+  }
+  if (p.appealBoardPhone) {
+    sections.push(`Phone: ${p.appealBoardPhone}`);
+  }
+  if (p.acceptsOnlineFiling && p.portalUrl) {
+    sections.push(`Online Filing: ${p.portalUrl}`);
+  }
+  if (p.acceptsEmailFiling && p.filingEmail) {
+    sections.push(`Email Filing: ${p.filingEmail}`);
+  }
+  if (p.requiresMailFiling) {
+    sections.push('This county requires filing by mail.');
+  }
+  sections.push('');
+
+  // Filing steps
+  if (p.filingSteps && Array.isArray(p.filingSteps) && p.filingSteps.length > 0) {
+    sections.push('## Step-by-Step Filing Instructions');
+    for (const step of p.filingSteps as { step_number: number; title: string; description: string }[]) {
+      sections.push(`**Step ${step.step_number}: ${step.title}**`);
+      sections.push(step.description);
+    }
+    sections.push('');
+  }
+
+  // Required documents
+  if (p.requiredDocuments && Array.isArray(p.requiredDocuments) && p.requiredDocuments.length > 0) {
+    sections.push('## Required Documents');
+    for (const doc of p.requiredDocuments as string[]) {
+      sections.push(`- ${doc}`);
+    }
+    sections.push('');
+  }
+
+  // Forms and fees
+  if (p.appealFormName || p.filingFeeCents) {
+    sections.push('## Forms and Fees');
+    if (p.appealFormName) {
+      sections.push(`**Required Form:** ${p.appealFormName}`);
+    }
+    if (p.formDownloadUrl) {
+      sections.push(`Download: ${p.formDownloadUrl}`);
+    }
+    if (p.filingFeeCents != null) {
+      const fee = p.filingFeeCents === 0 ? 'Waived' : `$${(p.filingFeeCents / 100).toFixed(2)}`;
+      sections.push(`**Filing Fee:** ${fee}`);
+    }
+    if (p.filingFeeNotes) {
+      sections.push(p.filingFeeNotes);
+    }
+    sections.push('');
+  }
+
+  // Hearing info
+  if (p.hearingTypicallyRequired) {
+    sections.push('## Hearing Information');
+    sections.push('A hearing is typically required for this county.');
+    if (p.hearingFormat) {
+      sections.push(`**Format:** ${p.hearingFormat}`);
+    }
+    if (p.hearingDurationMinutes) {
+      sections.push(`**Expected Duration:** ${p.hearingDurationMinutes} minutes`);
+    }
+    if (p.virtualHearingAvailable) {
+      sections.push(`**Virtual Hearing:** Available${p.virtualHearingPlatform ? ` via ${p.virtualHearingPlatform}` : ''}`);
+    }
+    if (p.hearingSchedulingNotes) {
+      sections.push(p.hearingSchedulingNotes);
+    }
+    sections.push('');
+  }
+
+  // Informal review
+  if (p.informalReviewAvailable) {
+    sections.push('## Informal Review');
+    sections.push('An informal review is available before the formal appeal process.');
+    if (p.informalReviewNotes) {
+      sections.push(p.informalReviewNotes);
+    }
+    sections.push('');
+  }
+
+  // Tips
+  if (p.proSeTips) {
+    sections.push('## Tips for a Successful Appeal');
+    sections.push(p.proSeTips);
+    sections.push('');
+  }
+
+  // Further appeal
+  if (p.furtherAppealBody) {
+    sections.push('## Further Appeal Options');
+    sections.push(`If your initial appeal is denied, you may escalate to: **${p.furtherAppealBody}**`);
+    if (p.furtherAppealDeadlineRule) {
+      sections.push(`Deadline: ${p.furtherAppealDeadlineRule}`);
+    }
+    if (p.furtherAppealUrl) {
+      sections.push(`More information: ${p.furtherAppealUrl}`);
+    }
+    sections.push('');
+  }
+
+  return sections.join('\n');
 }

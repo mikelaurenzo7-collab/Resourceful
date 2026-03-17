@@ -11,6 +11,7 @@ import {
   editSection,
   regenerateSection,
   rerunPipeline,
+  triggerPipeline,
 } from './actions';
 
 interface ReviewControlsProps {
@@ -70,10 +71,23 @@ export default function ReviewControls({
     startTransition(async () => {
       try {
         await approveReport(reportId);
-        setMessage({ type: 'success', text: 'Report approved and delivered.' });
+        setMessage({ type: 'success', text: 'Report approved — client notified to pay and unlock.' });
         router.refresh();
       } catch (err) {
         setMessage({ type: 'error', text: `Failed to approve: ${err instanceof Error ? err.message : 'Unknown error'}` });
+      }
+    });
+  }
+
+  function handleStartPipeline() {
+    if (!confirm('Start the report generation pipeline for this submission?')) return;
+    startTransition(async () => {
+      try {
+        await triggerPipeline(reportId);
+        setMessage({ type: 'success', text: 'Pipeline started. Report will move to pending approval when complete.' });
+        router.refresh();
+      } catch (err) {
+        setMessage({ type: 'error', text: `Failed to start pipeline: ${err instanceof Error ? err.message : 'Unknown error'}` });
       }
     });
   }
@@ -112,6 +126,7 @@ export default function ReviewControls({
   }
 
   const isActionable = reportStatus === 'pending_approval';
+  const isSubmitted = reportStatus === 'submitted';
 
   return (
     <>
@@ -132,6 +147,27 @@ export default function ReviewControls({
             Dismiss
           </button>
         </div>
+      )}
+
+      {/* Start Pipeline (for submitted reports) */}
+      {isSubmitted && (
+        <section className="rounded-xl border-2 border-blue-200 bg-blue-50 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Submission Awaiting Pipeline</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                This report has been submitted but the pipeline hasn&apos;t run yet. Start the pipeline to generate the analysis.
+              </p>
+            </div>
+            <button
+              onClick={handleStartPipeline}
+              disabled={isPending}
+              className="rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-50 flex-shrink-0"
+            >
+              {isPending ? 'Starting...' : 'Start Pipeline'}
+            </button>
+          </div>
+        </section>
       )}
 
       {/* Section Review */}
@@ -219,7 +255,7 @@ export default function ReviewControls({
               disabled={isPending}
               className="flex-1 rounded-xl bg-green-700 px-6 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-green-800 disabled:opacity-50"
             >
-              {isPending ? 'Processing...' : 'APPROVE AND SEND'}
+              {isPending ? 'Processing...' : 'APPROVE & NOTIFY'}
             </button>
             <button
               onClick={() => setRejectOpen(true)}

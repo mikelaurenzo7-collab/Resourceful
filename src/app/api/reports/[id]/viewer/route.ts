@@ -39,12 +39,30 @@ export async function GET(
 
   const report = reportData as Report;
 
-  // Only show reports that have been delivered
-  if (!['delivered', 'approved', 'pending_approval'].includes(report.status)) {
+  // Show progress for reports still in pipeline
+  if (!['delivered', 'approved', 'pending_approval', 'submitted'].includes(report.status)) {
+    if (report.status === 'processing' || report.status === 'paid') {
+      return NextResponse.json({
+        status: report.status,
+        ready: false,
+        message: 'Your report is being generated. Check back shortly.',
+      });
+    }
     return NextResponse.json({
       status: report.status,
       ready: false,
-      message: 'Your report is still being generated. Check back shortly.',
+      message: report.status === 'failed'
+        ? 'There was an issue generating your report. Our team has been notified.'
+        : 'Report status: ' + report.status,
+    });
+  }
+
+  // Submitted but pipeline hasn't run yet
+  if (report.status === 'submitted') {
+    return NextResponse.json({
+      status: 'submitted',
+      ready: false,
+      message: 'Your submission has been received. We\'ll email you when your report is ready.',
     });
   }
 
@@ -91,6 +109,10 @@ export async function GET(
     pdfUrl = signedUrlData?.signedUrl ?? null;
   }
 
+  // Payment gating: approved reports require payment to access full content
+  const paymentRequired = report.status === 'approved';
+  const isPaid = report.status === 'delivered';
+
   return NextResponse.json({
     ready: true,
     status: report.status,
@@ -100,9 +122,13 @@ export async function GET(
     assessedValue: propertyData?.assessed_value ?? 0,
     concludedValue,
     potentialSavings: Math.max(0, (propertyData?.assessed_value ?? 0) - concludedValue),
-    pdfUrl,
-    filingGuide,
+    // Lock PDF and filing guide behind payment
+    pdfUrl: isPaid ? pdfUrl : null,
+    filingGuide: isPaid ? filingGuide : null,
     deliveredAt: report.delivered_at,
+    // Payment info for paywall
+    paymentRequired,
+    priceCents: paymentRequired ? (report.amount_paid_cents ?? 0) : null,
     // County filing info
     county: countyRule ? {
       name: countyRule.county_name,

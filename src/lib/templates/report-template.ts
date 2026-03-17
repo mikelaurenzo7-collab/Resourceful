@@ -68,6 +68,7 @@ export interface ReportTemplateData {
     parcel?: MapImage;
   };
   filingGuide: FilingGuide | null;
+  filingGuideMarkdown?: string | null;
   concludedValue: number;
   valuationDate: string;
   reportDate: string;
@@ -97,6 +98,7 @@ export function generateReportHtml(data: ReportTemplateData): string {
     incomeAnalysis,
     narratives,
     filingGuide,
+    filingGuideMarkdown,
   } = data;
 
   const addr = fullAddress(
@@ -140,7 +142,7 @@ export function generateReportHtml(data: ReportTemplateData): string {
     tocSections.push({ num: 'IX', title: 'Income Approach' });
   }
   tocSections.push({ num: hasIncome ? 'X' : 'IX', title: 'Reconciliation & Final Value' });
-  if (filingGuide) {
+  if (filingGuide || filingGuideMarkdown) {
     tocSections.push({ num: 'Addendum', title: 'Pro Se Filing Guide' });
   }
 
@@ -867,7 +869,7 @@ ${hasIncome ? renderIncomeSection(data, incomeAnalysis!, comparableRentals, narr
 
 ${renderReconciliationSection(data, narrativeMap, clientName)}
 
-${filingGuide ? renderFilingGuideAddendum(filingGuide) : ''}
+${filingGuide ? renderFilingGuideAddendum(filingGuide) : filingGuideMarkdown ? renderMarkdownFilingGuide(filingGuideMarkdown) : ''}
 
 </body>
 </html>`;
@@ -1589,6 +1591,49 @@ function renderFilingGuideAddendum(guide: FilingGuide): string {
       ${tipsHtml}` : ''}
     </div>
 
+    <div class="page-footer" style="margin:0; padding:16px 26px 20px;"></div>
+  </div>`;
+}
+
+// ─── Markdown Filing Guide Renderer ──────────────────────────────────────────
+// Renders AI-generated or template Markdown filing guides as styled HTML.
+
+function renderMarkdownFilingGuide(markdown: string): string {
+  // Convert Markdown to basic HTML
+  let html = escapeHtml(markdown);
+
+  // Headers
+  html = html.replace(/^### (.+)$/gm, `<h4 style="color:${NAVY}; margin:1em 0 0.4em;">$1</h4>`);
+  html = html.replace(/^## (.+)$/gm, `<h3 style="color:${NAVY}; margin:1.2em 0 0.6em; font-style:normal;">$1</h3>`);
+  html = html.replace(/^# (.+)$/gm, `<h2 style="color:${NAVY}; margin:1.5em 0 0.8em;">$1</h2>`);
+
+  // Bold
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+  // Unordered lists
+  html = html.replace(/^- \[ \] (.+)$/gm, '<li style="list-style-type:none;">&#9744; $1</li>');
+  html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+
+  // Ordered list items (simple numbered)
+  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+  // Wrap consecutive <li> items in <ul> or <ol>
+  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul style="margin:0.5em 0 1em 1.5em;">$1</ul>');
+
+  // Paragraphs — convert double newlines to paragraph breaks
+  html = html.replace(/\n\n/g, '</p><p style="margin:0.5em 0;">');
+
+  // Single newlines within content
+  html = html.replace(/\n/g, '<br>');
+
+  return `
+  <div class="page-break filing-guide">
+    <div class="guide-header">
+      Pro Se Filing Guide
+    </div>
+    <div class="guide-body" style="padding:20px 26px;">
+      <p style="margin:0.5em 0;">${html}</p>
+    </div>
     <div class="page-footer" style="margin:0; padding:16px 26px 20px;"></div>
   </div>`;
 }

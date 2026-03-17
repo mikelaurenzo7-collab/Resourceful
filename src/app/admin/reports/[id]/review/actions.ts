@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
-import { runDelivery } from '@/lib/pipeline/stages/stage8-delivery';
+import { sendReportReadyEmail } from '@/lib/services/resend-email';
 import { sendReportRejectionAlert } from '@/lib/services/resend-email';
 import type {
   ApprovalAction,
@@ -51,17 +51,139 @@ async function insertApprovalEvent(
   return error;
 }
 
+// ─── Approve Report (Pay-After Model) ────────────────────────────────────────
+// Sets status to 'approved' and sends "report ready" email to client.
+// Client pays at /report/[id] to unlock full access.
+// No longer triggers stage 8 delivery — payment webhook handles that.
+
 export async function approveReport(reportId: string) {
   const adminUserId = await getAdminUserId();
   const supabase = createAdminClient();
 
-  // Run Stage 8: generates signed PDF URL, emails client, updates status,
-  // and records approval event — all in one atomic flow.
-  const result = await runDelivery(reportId, adminUserId, supabase as any);
+  // Fetch report for email
+  const { data: reportData } = await supabase
+    .from('reports')
+    .select('client_email, property_address, city, state, amount_paid_cents')
+    .eq('id', reportId)
+    .single();
 
-  if (!result.success) {
-    throw new Error(`Delivery failed: ${result.error}`);
+  const report = reportData as {
+    client_email: string;
+    property_address: string;
+    city: string;
+    state: string;
+    amount_paid_cents: number;
+  } | null;
+
+  if (!report?.client_email) {
+    throw new Error('Report not found or missing client email');
   }
+
+  // Fetch concluded value from comps
+  const { data: propertyRes } = await supabase
+    .from('property_data')
+    .select('assessed_value, building_sqft_gross')
+    .eq('report_id', reportId)
+    .single();
+
+  const { data: compsRes } = await supabase
+    .from('comparable_sales')
+    .select('adjusted_price_per_sqft')
+    .eq('report_id', reportId);
+
+  const property = propertyRes as { assessed_value: number | null; building_sqft_gross: number | null } | null;
+  const comps = (compsRes ?? []) as { adjusted_price_per_sqft: number | null }[];
+
+  let concludedValue = 0;
+  if (comps.length > 0 && property?.building_sqft_gross) {
+    const prices = comps
+      .map((c) => c.adjusted_price_per_sqft)
+      .filter((p): p is number => p != null && p > 0)
+      .sort((a, b) => a - b);
+    if (prices.length > 0) {
+      const mid = Math.floor(prices.length / 2);
+      const median = prices.length % 2 === 0 ? (prices[mid - 1] + prices[mid]) / 2 : prices[mid];
+      concludedValue = Math.round((median * property.building_sqft_gross) / 1000) * 1000;
+    }
+  }
+
+  const assessedValue = property?.assessed_value ?? 0;
+  const potentialSavings = Math.max(0, assessedValue - concludedValue);
+
+  // Update status to approved
+  const { error: updateError } = await supabase
+    .from('reports')
+    .update({
+      status: 'approved' as ReportStatus,
+      approved_at: new Date().toISOString(),
+      approved_by: adminUserId,
+    } as never)
+    .eq('id', reportId);
+
+  if (updateError) throw new Error(`Failed to approve report: ${updateError.message}`);
+
+  // Record approval event
+  await insertApprovalEvent(supabase, {
+    report_id: reportId,
+    admin_user_id: adminUserId,
+    action: 'approved',
+    notes: 'Report approved — awaiting client payment',
+  });
+
+  // Send "report ready" email to client
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
+  try {
+    await sendReportReadyEmail({
+      to: report.client_email,
+      reportId,
+      propertyAddress: [report.property_address, report.city, report.state].filter(Boolean).join(', '),
+      concludedValue,
+      assessedValue,
+      potentialSavings,
+      reportUrl: `${appUrl}/report/${reportId}`,
+      priceCents: report.amount_paid_cents,
+    });
+  } catch (emailErr) {
+    console.error('[admin/approve] Failed to send report ready email:', emailErr);
+  }
+
+  revalidatePath('/admin/reports');
+  revalidatePath(`/admin/reports/${reportId}/review`);
+}
+
+// ─── Trigger Pipeline (for submitted reports) ────────────────────────────────
+// Admin manually triggers the pipeline for a submitted report.
+
+export async function triggerPipeline(reportId: string) {
+  const adminUserId = await getAdminUserId();
+  const supabase = createAdminClient();
+
+  // Verify report is in submitted status
+  const { data: reportData } = await supabase
+    .from('reports')
+    .select('status')
+    .eq('id', reportId)
+    .single();
+
+  const report = reportData as { status: string } | null;
+  if (!report) throw new Error('Report not found');
+
+  if (report.status !== 'submitted') {
+    throw new Error(`Report status is '${report.status}' — must be 'submitted' to trigger pipeline`);
+  }
+
+  // Record event
+  await insertApprovalEvent(supabase, {
+    report_id: reportId,
+    admin_user_id: adminUserId,
+    action: 'rerun_pipeline',
+    notes: 'Pipeline triggered for submitted report',
+  });
+
+  // Fire-and-forget pipeline
+  runPipeline(reportId, 1).catch((err) => {
+    console.error(`[admin] Pipeline failed for report ${reportId}:`, err);
+  });
 
   revalidatePath('/admin/reports');
   revalidatePath(`/admin/reports/${reportId}/review`);
@@ -71,7 +193,6 @@ export async function rejectReport(reportId: string, notes: string) {
   const adminUserId = await getAdminUserId();
   const supabase = createAdminClient();
 
-  // Record rejection event
   const eventError = await insertApprovalEvent(supabase, {
     report_id: reportId,
     admin_user_id: adminUserId,
@@ -81,7 +202,6 @@ export async function rejectReport(reportId: string, notes: string) {
 
   if (eventError) throw new Error(`Failed to record rejection: ${eventError.message}`);
 
-  // Set status to rejected
   const { error: rejectError } = await supabase
     .from('reports')
     .update({
@@ -92,14 +212,12 @@ export async function rejectReport(reportId: string, notes: string) {
 
   if (rejectError) throw new Error(`Failed to reject report: ${rejectError.message}`);
 
-  // Fetch report address for notification
   const { data: reportData } = await supabase
     .from('reports')
     .select('property_address')
     .eq('id', reportId)
     .single();
 
-  // Send rejection alert email (non-blocking)
   sendReportRejectionAlert({
     reportId,
     propertyAddress: (reportData as { property_address: string } | null)?.property_address ?? 'Unknown',
@@ -116,17 +234,15 @@ export async function holdReport(reportId: string, notes: string) {
   const adminUserId = await getAdminUserId();
   const supabase = createAdminClient();
 
-  // Record hold event -- status stays the same (pending_approval)
   const eventError = await insertApprovalEvent(supabase, {
     report_id: reportId,
     admin_user_id: adminUserId,
-    action: 'approved', // closest available action -- logged as hold via notes
+    action: 'approved',
     notes: `HOLD FOR REVIEW: ${notes}`,
   });
 
   if (eventError) throw new Error(`Failed to record hold: ${eventError.message}`);
 
-  // Update admin_notes but keep status unchanged
   const { error: updateError } = await supabase
     .from('reports')
     .update({
@@ -147,7 +263,6 @@ export async function editSection(
   const adminUserId = await getAdminUserId();
   const supabase = createAdminClient();
 
-  // Get current content for audit
   const { data: rawNarrative } = await supabase
     .from('report_narratives')
     .select('content, section_name')
@@ -156,7 +271,6 @@ export async function editSection(
 
   const currentNarrative = rawNarrative as unknown as Pick<ReportNarrative, 'content' | 'section_name'> | null;
 
-  // Update the narrative with admin edit
   const { error: updateError } = await supabase
     .from('report_narratives')
     .update({
@@ -167,7 +281,6 @@ export async function editSection(
 
   if (updateError) throw new Error(`Failed to update section: ${updateError.message}`);
 
-  // Record edit event
   await insertApprovalEvent(supabase, {
     report_id: reportId,
     admin_user_id: adminUserId,
@@ -176,8 +289,6 @@ export async function editSection(
     notes: 'Section content edited by admin',
   });
 
-  // Re-run PDF assembly (stage 7) to pick up the edited content
-  // Set resume point to stage 6 (filing) so pipeline runs stage 7 (pdf)
   await supabase
     .from('reports')
     .update({
@@ -187,7 +298,6 @@ export async function editSection(
     } as never)
     .eq('id', reportId);
 
-  // Fire-and-forget pipeline from stage 7
   runPipeline(reportId, 7).catch((err) => {
     console.error(`[admin] PDF regeneration failed for report ${reportId}:`, err);
   });
@@ -199,7 +309,6 @@ export async function regenerateSection(reportId: string, sectionName: string) {
   const adminUserId = await getAdminUserId();
   const supabase = createAdminClient();
 
-  // Record regeneration event
   await insertApprovalEvent(supabase, {
     report_id: reportId,
     admin_user_id: adminUserId,
@@ -208,7 +317,6 @@ export async function regenerateSection(reportId: string, sectionName: string) {
     notes: `Triggered regeneration of section: ${sectionName}`,
   });
 
-  // Re-run from stage 5 (narratives) which will regenerate all narratives then PDF
   await supabase
     .from('reports')
     .update({
@@ -218,7 +326,6 @@ export async function regenerateSection(reportId: string, sectionName: string) {
     } as never)
     .eq('id', reportId);
 
-  // Fire-and-forget pipeline from stage 5
   runPipeline(reportId, 5).catch((err) => {
     console.error(`[admin] Section regeneration failed for report ${reportId}:`, err);
   });
@@ -230,7 +337,6 @@ export async function rerunPipeline(reportId: string) {
   const adminUserId = await getAdminUserId();
   const supabase = createAdminClient();
 
-  // Record rerun event
   await insertApprovalEvent(supabase, {
     report_id: reportId,
     admin_user_id: adminUserId,
@@ -238,7 +344,6 @@ export async function rerunPipeline(reportId: string) {
     notes: 'Full pipeline rerun triggered by admin',
   });
 
-  // Reset report to processing status
   const { error: updateError } = await supabase
     .from('reports')
     .update({
@@ -252,11 +357,145 @@ export async function rerunPipeline(reportId: string) {
 
   if (updateError) throw new Error(`Failed to reset pipeline: ${updateError.message}`);
 
-  // Fire-and-forget full pipeline rerun from stage 1
   runPipeline(reportId, 1).catch((err) => {
     console.error(`[admin] Pipeline rerun failed for report ${reportId}:`, err);
   });
 
   revalidatePath('/admin/reports');
+  revalidatePath(`/admin/reports/${reportId}/review`);
+}
+
+// ─── Admin Valuation Controls ────────────────────────────────────────────────
+// These let the admin manually adjust valuations based on photo review.
+
+export async function updatePhotoCaption(
+  reportId: string,
+  photoId: string,
+  caption: string
+) {
+  const adminUserId = await getAdminUserId();
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from('photos')
+    .update({ caption } as never)
+    .eq('id', photoId)
+    .eq('report_id', reportId);
+
+  if (error) throw new Error(`Failed to update photo caption: ${error.message}`);
+
+  await insertApprovalEvent(supabase, {
+    report_id: reportId,
+    admin_user_id: adminUserId,
+    action: 'edit_section',
+    notes: `Updated photo caption: ${caption.slice(0, 100)}`,
+  });
+
+  revalidatePath(`/admin/reports/${reportId}/review`);
+}
+
+export async function updateCompAdjustment(
+  reportId: string,
+  compId: string,
+  field: string,
+  value: number
+) {
+  const adminUserId = await getAdminUserId();
+  const supabase = createAdminClient();
+
+  // Validate field name to prevent injection
+  const allowedFields = [
+    'adjustment_pct_property_rights',
+    'adjustment_pct_financing',
+    'adjustment_pct_sale_conditions',
+    'adjustment_pct_market_trends',
+    'adjustment_pct_location',
+    'adjustment_pct_size',
+    'adjustment_pct_land_to_building',
+    'adjustment_pct_condition',
+    'adjustment_pct_other',
+  ];
+
+  if (!allowedFields.includes(field)) {
+    throw new Error(`Invalid adjustment field: ${field}`);
+  }
+
+  const { error } = await supabase
+    .from('comparable_sales')
+    .update({ [field]: value } as never)
+    .eq('id', compId)
+    .eq('report_id', reportId);
+
+  if (error) throw new Error(`Failed to update comp adjustment: ${error.message}`);
+
+  // Recalculate adjusted_price_per_sqft for this comp
+  const { data: compData } = await supabase
+    .from('comparable_sales')
+    .select('sale_price, building_sqft, adjustment_pct_property_rights, adjustment_pct_financing, adjustment_pct_sale_conditions, adjustment_pct_market_trends, adjustment_pct_location, adjustment_pct_size, adjustment_pct_land_to_building, adjustment_pct_condition, adjustment_pct_other')
+    .eq('id', compId)
+    .single();
+
+  if (compData) {
+    const comp = compData as unknown as Record<string, number | null>;
+    const totalAdj = (comp.adjustment_pct_property_rights ?? 0) +
+      (comp.adjustment_pct_financing ?? 0) +
+      (comp.adjustment_pct_sale_conditions ?? 0) +
+      (comp.adjustment_pct_market_trends ?? 0) +
+      (comp.adjustment_pct_location ?? 0) +
+      (comp.adjustment_pct_size ?? 0) +
+      (comp.adjustment_pct_land_to_building ?? 0) +
+      (comp.adjustment_pct_condition ?? 0) +
+      (comp.adjustment_pct_other ?? 0);
+
+    const salePrice = comp.sale_price ?? 0;
+    const sqft = comp.building_sqft ?? 1;
+    const pricePerSqft = salePrice / sqft;
+    const adjustedPricePerSqft = pricePerSqft * (1 + totalAdj / 100);
+
+    await supabase
+      .from('comparable_sales')
+      .update({
+        net_adjustment_pct: totalAdj,
+        adjusted_price_per_sqft: Math.round(adjustedPricePerSqft * 100) / 100,
+      } as never)
+      .eq('id', compId);
+  }
+
+  await insertApprovalEvent(supabase, {
+    report_id: reportId,
+    admin_user_id: adminUserId,
+    action: 'edit_section',
+    notes: `Updated comp ${compId.slice(0, 8)} ${field}: ${value}%`,
+  });
+
+  revalidatePath(`/admin/reports/${reportId}/review`);
+}
+
+export async function overrideConcludedValue(
+  reportId: string,
+  concludedValue: number,
+  justification: string
+) {
+  const adminUserId = await getAdminUserId();
+  const supabase = createAdminClient();
+
+  // Store override in property_data
+  const { error } = await supabase
+    .from('property_data')
+    .update({
+      concluded_value_override: concludedValue,
+      concluded_value_override_notes: justification,
+    } as never)
+    .eq('report_id', reportId);
+
+  if (error) throw new Error(`Failed to override concluded value: ${error.message}`);
+
+  await insertApprovalEvent(supabase, {
+    report_id: reportId,
+    admin_user_id: adminUserId,
+    action: 'edit_section',
+    notes: `Concluded value override: $${concludedValue.toLocaleString()} — ${justification}`,
+  });
+
   revalidatePath(`/admin/reports/${reportId}/review`);
 }

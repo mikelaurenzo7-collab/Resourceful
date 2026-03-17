@@ -1,8 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 interface CountyInfo {
   name: string;
@@ -51,6 +55,8 @@ interface ReportData {
   pdfUrl: string | null;
   filingGuide: string | null;
   deliveredAt: string | null;
+  paymentRequired?: boolean;
+  priceCents?: number | null;
   county: CountyInfo | null;
 }
 
@@ -61,6 +67,189 @@ function formatDollar(value: number): string {
 function formatFee(cents: number): string {
   if (cents === 0) return 'Waived';
   return `$${(cents / 100).toFixed(2)}`;
+}
+
+// ─── Stripe Checkout Form (inline on report page) ──────────────────────────
+
+function CheckoutForm({ reportId, onSuccess }: { reportId: string; onSuccess: () => void }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [submitting, setSubmitting] = useState(false);
+  const [payError, setPayError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+
+    setSubmitting(true);
+    setPayError('');
+
+    const { error } = await stripe.confirmPayment({
+      elements,
+      confirmParams: {
+        return_url: `${window.location.origin}/report/${reportId}`,
+      },
+    });
+
+    if (error) {
+      setPayError(error.message ?? 'Payment failed. Please try again.');
+      setSubmitting(false);
+    }
+    // If successful, Stripe redirects — onSuccess is for webhook-driven state change
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <PaymentElement />
+      {payError && (
+        <p className="text-sm text-red-400">{payError}</p>
+      )}
+      <button
+        type="submit"
+        disabled={!stripe || submitting}
+        className="w-full py-3 rounded-lg font-semibold text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark hover:shadow-gold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {submitting ? 'Processing...' : 'Unlock Full Report'}
+      </button>
+    </form>
+  );
+}
+
+function PaywallSection({ data, reportId, onUnlocked }: { data: ReportData; reportId: string; onUnlocked: () => void }) {
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [loadingPayment, setLoadingPayment] = useState(false);
+  const [payInitError, setPayInitError] = useState('');
+  const priceDollars = data.priceCents ? `$${(data.priceCents / 100).toFixed(0)}` : '';
+
+  const initPayment = useCallback(async () => {
+    setLoadingPayment(true);
+    setPayInitError('');
+    try {
+      const res = await fetch(`/api/reports/${reportId}/pay`, { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) {
+        setPayInitError(json.error || 'Could not initialize payment.');
+        return;
+      }
+      setClientSecret(json.clientSecret);
+    } catch {
+      setPayInitError('Could not connect to payment service. Please try again.');
+    } finally {
+      setLoadingPayment(false);
+    }
+  }, [reportId]);
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      {/* Savings teaser */}
+      {data.potentialSavings > 0 && (
+        <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-8 text-center">
+          <p className="text-sm text-emerald-400/70 mb-2">We found potential overassessment of</p>
+          <p className="font-display text-4xl text-emerald-400 mb-2">{formatDollar(data.potentialSavings)}</p>
+          <p className="text-xs text-emerald-400/50">Unlock your full report to see the evidence and filing instructions.</p>
+        </div>
+      )}
+
+      {/* Value summary cards */}
+      <div className="grid md:grid-cols-3 gap-4">
+        <div className="card-premium rounded-xl p-6">
+          <p className="text-xs uppercase tracking-widest text-cream/40 mb-1">Assessed Value</p>
+          <p className="font-display text-2xl text-cream">{formatDollar(data.assessedValue)}</p>
+        </div>
+        <div className="card-premium rounded-xl p-6">
+          <p className="text-xs uppercase tracking-widest text-cream/40 mb-1">Our Concluded Value</p>
+          <p className="font-display text-2xl text-gold">{formatDollar(data.concludedValue)}</p>
+        </div>
+        {data.potentialSavings > 0 && (
+          <div className="card-premium rounded-xl p-6 border border-emerald-500/20">
+            <p className="text-xs uppercase tracking-widest text-emerald-400/60 mb-1">Potential Savings</p>
+            <p className="font-display text-2xl text-emerald-400">{formatDollar(data.potentialSavings)}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Locked content indicators */}
+      <div className="card-premium rounded-xl p-6 border border-gold/10">
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center flex-shrink-0">
+            <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="text-cream font-medium mb-1">Your Full Report is Ready</p>
+            <p className="text-sm text-cream/40 mb-4">
+              Unlock access to your complete evidence package:
+            </p>
+            <ul className="space-y-2 text-sm text-cream/50">
+              <li className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-gold/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" /></svg>
+                Professional PDF with comparable sales analysis
+              </li>
+              <li className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-gold/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" /></svg>
+                Property condition documentation with photos
+              </li>
+              <li className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-gold/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" /></svg>
+                Step-by-step filing instructions for your county
+              </li>
+              <li className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-gold/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4" /></svg>
+                Deadline reminders and required forms
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      {/* Payment section */}
+      <div className="card-premium rounded-xl overflow-hidden border border-gold/20">
+        <div className="border-b border-gold/10 px-6 py-4 bg-gold/5 flex items-center justify-between">
+          <p className="text-sm font-medium text-gold">Unlock Your Report</p>
+          {priceDollars && <p className="text-lg font-display text-gold">{priceDollars}</p>}
+        </div>
+        <div className="p-6">
+          {clientSecret ? (
+            <Elements stripe={stripePromise} options={{ clientSecret, appearance: {
+              theme: 'night',
+              variables: {
+                colorPrimary: '#D4A853',
+                colorBackground: '#1a1f36',
+                colorText: '#F5F0E8',
+                colorDanger: '#ef4444',
+                fontFamily: 'Inter, system-ui, sans-serif',
+                borderRadius: '8px',
+              },
+            }}}>
+              <CheckoutForm reportId={reportId} onSuccess={onUnlocked} />
+            </Elements>
+          ) : (
+            <div className="text-center">
+              {payInitError && <p className="text-sm text-red-400 mb-4">{payInitError}</p>}
+              <button
+                onClick={initPayment}
+                disabled={loadingPayment}
+                className="w-full py-3 rounded-lg font-semibold text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark hover:shadow-gold transition-all disabled:opacity-50"
+              >
+                {loadingPayment ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-navy-deep border-t-transparent rounded-full animate-spin" />
+                    Loading...
+                  </span>
+                ) : (
+                  `Unlock for ${priceDollars}`
+                )}
+              </button>
+              <p className="text-xs text-cream/30 mt-3">
+                Secure payment powered by Stripe. One-time charge — no subscriptions.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function ReportViewerPage() {
@@ -159,7 +348,44 @@ export default function ReportViewerPage() {
 
   const county = data.county;
   const isTaxAppeal = data.serviceType === 'tax_appeal';
+  const showPaywall = data.paymentRequired && data.status === 'approved';
 
+  const handleUnlocked = () => {
+    // Reload to get fresh data after payment
+    window.location.reload();
+  };
+
+  // ─── Paywall view (approved but not yet paid) ───────────────────────────
+  if (showPaywall) {
+    return (
+      <main className="min-h-screen bg-pattern">
+        <nav className="border-b border-gold/5 bg-navy-deep/80 backdrop-blur-lg sticky top-0 z-50">
+          <div className="mx-auto max-w-5xl px-6 flex items-center justify-between h-16">
+            <Link href="/" className="font-display text-xl text-gold">
+              Resourceful
+            </Link>
+          </div>
+        </nav>
+        <div className="mx-auto max-w-5xl px-6 py-10">
+          <div className="mb-8">
+            <h1 className="font-display text-2xl md:text-3xl text-cream mb-1">{data.propertyAddress}</h1>
+            <p className="text-sm text-cream/40">
+              {isTaxAppeal ? 'Tax Appeal Report' : data.serviceType === 'pre_purchase' ? 'Pre-Purchase Analysis' : 'Pre-Listing Report'}
+              {' — '}Report Ready
+            </p>
+          </div>
+          <PaywallSection data={data} reportId={reportId} onUnlocked={handleUnlocked} />
+          <p className="text-[10px] text-cream/15 leading-relaxed mt-12 max-w-2xl mx-auto text-center">
+            This report is an informational analysis tool, not legal advice or a formal appraisal.
+            See our <a href="/disclaimer" className="underline hover:text-cream/30">Disclaimer</a> and{' '}
+            <a href="/terms" className="underline hover:text-cream/30">Terms of Service</a>.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
+  // ─── Full report view (delivered / paid) ────────────────────────────────
   return (
     <main className="min-h-screen bg-pattern">
       {/* Nav */}

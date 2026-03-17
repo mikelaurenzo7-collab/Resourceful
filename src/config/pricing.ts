@@ -6,24 +6,24 @@ import type { ReviewTier } from '@/types/database';
 // ─── Base Prices (Auto-Report tier) ─────────────────────────────────────────
 
 export const PRICING = {
-  TAX_APPEAL_RESIDENTIAL: 4900, // $49
-  TAX_APPEAL_COMMERCIAL: 9900, // $99
-  TAX_APPEAL_INDUSTRIAL: 9900, // $99
-  TAX_APPEAL_LAND: 4900, // $49
-  PRE_PURCHASE: 5900, // $59
-  PRE_LISTING: 5900, // $59
+  TAX_APPEAL_RESIDENTIAL: 5900, // $59
+  TAX_APPEAL_COMMERCIAL: 11900, // $119
+  TAX_APPEAL_INDUSTRIAL: 11900, // $119
+  TAX_APPEAL_LAND: 5900, // $59
+  PRE_PURCHASE: 6900, // $69
+  PRE_LISTING: 6900, // $69
 } as const;
 
 // ─── Expert-Reviewed Tier Pricing ───────────────────────────────────────────
 // Professional appraiser reviews the report before delivery.
 
 export const PRICING_EXPERT = {
-  TAX_APPEAL_RESIDENTIAL: 14900, // $149
-  TAX_APPEAL_COMMERCIAL: 24900, // $249
-  TAX_APPEAL_INDUSTRIAL: 24900, // $249
-  TAX_APPEAL_LAND: 14900, // $149
-  PRE_PURCHASE: 17900, // $179
-  PRE_LISTING: 17900, // $179
+  TAX_APPEAL_RESIDENTIAL: 17900, // $179
+  TAX_APPEAL_COMMERCIAL: 29900, // $299
+  TAX_APPEAL_INDUSTRIAL: 29900, // $299
+  TAX_APPEAL_LAND: 17900, // $179
+  PRE_PURCHASE: 19900, // $199
+  PRE_LISTING: 19900, // $199
 } as const;
 
 // ─── Tax Bill Discount ──────────────────────────────────────────────────────

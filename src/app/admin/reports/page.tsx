@@ -5,8 +5,10 @@ import type { Report, ReportStatus } from '@/types/database';
 
 const tabs: { key: ReportStatus | 'all'; label: string }[] = [
   { key: 'pending_approval', label: 'Pending Approval' },
+  { key: 'submitted', label: 'Submitted' },
   { key: 'all', label: 'All Reports' },
   { key: 'delivered', label: 'Delivered' },
+  { key: 'approved', label: 'Awaiting Payment' },
   { key: 'rejected', label: 'Rejected' },
   { key: 'failed', label: 'Failed' },
   { key: 'processing', label: 'In Progress' },

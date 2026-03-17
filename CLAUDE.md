@@ -3,8 +3,22 @@
 ## What This Is
 A nationwide web app that generates professional property tax appeal reports using AI analysis, public property data APIs, and owner-provided photographs. All reports are routed to admin for quality review before delivery.
 
-## Delivery Model — Admin Approval Required
-ALL reports are routed to admin for quality review after the pipeline completes stages 1-7. No reports are auto-delivered to clients. Stage 8 (delivery) runs ONLY when an admin explicitly approves the report via the admin dashboard. This manual gate exists to maintain quality control while the AI model is being trained toward full autonomy. Admin can review, approve, reject, or re-run any report.
+## Business Model — Pay-After (Submit Free, Pay to Unlock)
+Users submit property info for free. The pipeline runs on the platform's schedule (admin-triggered). Admin reviews every report before notifying the client. Clients receive a "report ready" email with a savings teaser. They visit `/report/[id]`, see the summary (assessed value, concluded value, potential savings), and pay to unlock the full PDF + filing guide.
+
+### Status Flow
+```
+submitted → processing → pending_approval → approved → delivered
+                └→ failed                    └→ rejected
+```
+- `submitted`: User completed intake, no payment yet
+- `processing`: Pipeline stages running
+- `pending_approval`: Pipeline complete, awaiting admin review
+- `approved`: Admin approved, "report ready" email sent, awaiting client payment
+- `delivered`: Client paid, full report access unlocked
+
+### Admin Approval Required
+ALL reports are routed to admin for quality review after the pipeline completes stages 1-7. Admin can review, approve, reject, re-run, or manually adjust valuations. Approval triggers a "report ready" email — NOT direct delivery. The client must pay at `/report/[id]` to unlock full access. The Stripe webhook handler transitions `approved → delivered`.
 
 ## Nationwide Architecture Rule
 This platform serves every county in every state. ATTOM is the universal data source that covers the entire country. No county-specific logic is hardcoded in application code. All county-specific behavior comes from the county_rules database table: assessment ratios, appeal board names, filing deadlines, form names, hearing formats. The data-router supports future county-specific API adapters via county_rules.assessor_api_url, but none are required — ATTOM handles everything.
@@ -29,8 +43,10 @@ This platform serves every county in every state. ATTOM is the universal data so
 
 ## User Intake Model — Email-Only (No Accounts)
 Users do NOT create accounts. The intake flow collects an email address, not auth credentials. Reports are identified by UUID and `client_email`. The user-facing flow is:
-1. Intake wizard → payment → pipeline runs → admin reviews → delivery email
-2. Client receives email with link to `/report/[id]` (no auth required)
+1. Intake wizard (service type → address → situation → photos) → submit (email + review tier, NO PAYMENT) → confirmation page
+2. Admin triggers pipeline → stages run → admin reviews → approves
+3. Client receives "report ready" email with savings teaser → visits `/report/[id]`
+4. Client sees summary + paywall → pays via Stripe → full report unlocked
 
 The `/dashboard` page requires Supabase Auth login and queries `user_id`, but email-only users have `user_id = null`. The dashboard is currently non-functional for email-only users — clients use the emailed report link instead.
 
@@ -145,14 +161,14 @@ The orchestrator (`lib/pipeline/orchestrator.ts`) runs stages 1-7 sequentially w
 | 7 | stage-7-pdf.ts | Puppeteer PDF generation with styled narratives |
 | 8 | stage-8-delivery.ts | Email delivery with 7-day signed PDF URL (admin-triggered only) |
 
-## Payment Flow
-1. `POST /api/reports` → Creates report + Stripe PaymentIntent
-2. `/start/payment` → Stripe Elements checkout
-3. `POST /api/webhooks/stripe` → `payment_intent.succeeded` is the ONLY pipeline trigger
+## Payment Flow (Pay-After Model)
+1. `POST /api/reports` → Creates report with `status: 'submitted'` (NO Stripe PaymentIntent)
+2. `/start/payment` → Collects email + review tier, calls API, redirects to `/start/success`
+3. Admin triggers pipeline via dashboard → `POST /api/admin/reports/[id]/run-pipeline`
 4. Pipeline runs stages 1-7 → status becomes `pending_approval`
-5. Admin reviews report in dashboard → approves, rejects, or re-runs
-6. `POST /api/admin/reports/[id]/approve` → Triggers Stage 8 delivery
-7. Client receives email via Resend with signed PDF URL
+5. Admin reviews → approves → `POST /api/admin/reports/[id]/approve` → sends "report ready" email → status `approved`
+6. Client visits `/report/[id]` → sees savings teaser + paywall → initiates payment via `POST /api/reports/[id]/pay`
+7. `POST /api/webhooks/stripe` → `payment_intent.succeeded` transitions `approved → delivered` (unlocks full report)
 
 ## Database Schema (Key Tables)
 - **reports** — Status, payment, pipeline tracking, approval workflow
@@ -184,14 +200,16 @@ If a county is corrupt or wrong, ATTOM inherits that same bad data. Therefore:
   county sources.
 
 ## Payment & Messaging Rules — CRITICAL
-- ALL payments happen BEFORE the valuation is shown. No exceptions.
-- Never use the word "free" anywhere in user-facing copy. Use "run the numbers"
-  or similar. Saying "free" then charging is a trust violation.
+- Users submit for analysis without paying. Payment happens AFTER the report is
+  generated and approved — at `/report/[id]` when status is `approved`.
+- Never use the word "free" anywhere in user-facing copy. Use "submit for analysis"
+  or similar. The service is not free — payment comes later.
 - Tax bill uploaders get 15% off (TAX_BILL_DISCOUNT in config/pricing.ts).
 - Tax bill uploaders skip redundant ATTOM assessment lookups (we already have
   their assessed value). ATTOM is still called for building details and comps.
-- The post-payment optimistic result is a teaser, not the real analysis.
-  The real numbers come from the full pipeline with comparable sales.
+- The "report ready" email shows concluded value and savings as a teaser to
+  motivate payment. Full PDF and filing guide are locked behind payment.
+- Prices are ~20% higher than original tiers to absorb non-converting submissions.
 
 ## What NOT To Do
 - Never auto-deliver reports — all reports must go through admin approval before Stage 8 runs
@@ -202,5 +220,5 @@ If a county is corrupt or wrong, ATTOM inherits that same bad data. Therefore:
 - Never use ATTOM marketValue as ground truth for valuations or comparisons
 - Never trust county assessment data as accurate — always verify independently
 - Never say "free" in any user-facing text
-- Never bypass Stripe webhook as pipeline trigger — it is the only entry point
+- Never bypass Stripe webhook for report unlock — it is the only path from `approved` to `delivered`
 - Never expose the service role Supabase client to client-side code

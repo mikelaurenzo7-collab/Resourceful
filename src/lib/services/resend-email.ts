@@ -45,6 +45,17 @@ export interface AdminNotificationParams {
   reviewUrl: string;
 }
 
+export interface ReportReadyParams {
+  to: string;
+  reportId: string;
+  propertyAddress: string;
+  concludedValue: number;
+  assessedValue: number;
+  potentialSavings: number;
+  reportUrl: string;
+  priceCents: number;
+}
+
 export interface ReportRejectionAlertParams {
   reportId: string;
   propertyAddress: string;
@@ -147,6 +158,68 @@ export async function sendReportDeliveryEmail(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[resend] sendReportDeliveryEmail error: ${message}`);
+    return { data: null, error: `Email send failed: ${message}` };
+  }
+}
+
+/**
+ * Notify client that their report is ready — they can pay to unlock it.
+ * This is the pay-after model: report is approved by admin, client pays to access.
+ */
+export async function sendReportReadyEmail(
+  params: ReportReadyParams
+): Promise<ServiceResult<EmailResult>> {
+  try {
+    const priceStr = `$${(params.priceCents / 100).toFixed(0)}`;
+    const savingsStr = params.potentialSavings > 0
+      ? formatDollarValue(params.potentialSavings)
+      : null;
+
+    const { data, error } = await getResend().emails.send({
+      from: FROM_ADDRESS,
+      to: params.to,
+      subject: `Your Property Report is Ready — ${params.propertyAddress}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #1a1a1a; font-size: 24px;">Your Report is Ready</h1>
+          <p>Great news! Your property assessment report for <strong>${escapeHtml(params.propertyAddress)}</strong> has been completed and reviewed by our team.</p>
+
+          ${savingsStr ? `
+          <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 24px 0; text-align: center;">
+            <p style="color: #166534; font-size: 14px; margin: 0 0 8px 0;">We found potential overassessment of</p>
+            <p style="color: #15803d; font-size: 32px; font-weight: 700; margin: 0;">${savingsStr}</p>
+            <p style="color: #166534; font-size: 13px; margin: 8px 0 0 0;">Unlock your full report to see the evidence and filing instructions.</p>
+          </div>
+          ` : `
+          <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <p style="color: #333; margin: 0;">Your detailed analysis with comparable sales, market data, and filing instructions is ready for review.</p>
+          </div>
+          `}
+
+          <a href="${params.reportUrl}" style="display: inline-block; background: #2563eb; color: #fff; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px;">
+            View Report &amp; Unlock for ${priceStr}
+          </a>
+
+          <p style="margin-top: 16px; font-size: 13px; color: #666;">
+            Your report includes a full PDF with comparable sales analysis, property condition documentation, and step-by-step filing instructions for your county.
+          </p>
+
+          <p style="margin-top: 32px; font-size: 12px; color: #999;">
+            This is an automated notification from Resourceful. If you did not request a property assessment report, please disregard this email.
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error(`[resend] sendReportReadyEmail error:`, error);
+      return { data: null, error: `Email send failed: ${error.message}` };
+    }
+
+    return { data: { id: data?.id ?? '' }, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[resend] sendReportReadyEmail error: ${message}`);
     return { data: null, error: `Email send failed: ${message}` };
   }
 }

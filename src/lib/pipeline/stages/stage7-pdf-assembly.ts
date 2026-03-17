@@ -184,22 +184,28 @@ export async function runPdfAssembly(
   }
 
   // ── Parse filing guide from narrative ─────────────────────────────────
+  // The filing guide can be:
+  // 1. Structured JSON (legacy) → parsed into FilingGuide object
+  // 2. Markdown text (AI-generated or template) → rendered directly as HTML
   let filingGuide: FilingGuide | null = null;
-  if (filingGuideNarrative?.content && countyRule) {
+  let filingGuideMarkdown: string | null = null;
+
+  if (filingGuideNarrative?.content) {
     try {
       const parsed = JSON.parse(filingGuideNarrative.content);
       filingGuide = {
-        appeal_board_name: parsed.appeal_board_name ?? countyRule.appeal_board_name ?? 'Board of Review',
-        filing_deadline: parsed.filing_deadline ?? countyRule.appeal_deadline_rule ?? 'Contact your county',
+        appeal_board_name: parsed.appeal_board_name ?? countyRule?.appeal_board_name ?? 'Board of Review',
+        filing_deadline: parsed.filing_deadline ?? countyRule?.appeal_deadline_rule ?? 'Contact your county',
         steps: parsed.steps ?? [],
         required_documents: parsed.required_documents ?? [],
         tips: parsed.tips ?? [],
-        online_filing_url: parsed.online_filing_url ?? countyRule.portal_url,
-        fee_amount: parsed.fee_amount ?? (countyRule.filing_fee_cents ? `$${(countyRule.filing_fee_cents / 100).toFixed(2)}` : null),
-        hearing_format: parsed.hearing_format ?? countyRule.hearing_format,
+        online_filing_url: parsed.online_filing_url ?? countyRule?.portal_url,
+        fee_amount: parsed.fee_amount ?? (countyRule?.filing_fee_cents ? `$${(countyRule.filing_fee_cents / 100).toFixed(2)}` : null),
+        hearing_format: parsed.hearing_format ?? countyRule?.hearing_format,
       };
-    } catch (err) {
-      console.warn(`[stage7] Failed to parse filing guide JSON, skipping addendum:`, err);
+    } catch {
+      // Not JSON — treat as Markdown (AI-generated or template-based)
+      filingGuideMarkdown = filingGuideNarrative.content;
     }
   }
 
@@ -219,6 +225,7 @@ export async function runPdfAssembly(
       neighborhood: { url: compsMapUrl, caption: 'Comparable Sales Map' },
     },
     filingGuide,
+    filingGuideMarkdown,
     concludedValue,
     valuationDate: report.created_at ?? now.toISOString(),
     reportDate: now.toISOString(),

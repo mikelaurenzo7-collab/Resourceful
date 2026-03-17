@@ -1,6 +1,7 @@
 // ─── Enum Types ──────────────────────────────────────────────────────────────
 
 export type ReportStatus =
+  | 'submitted'
   | 'intake'
   | 'paid'
   | 'data_pull'

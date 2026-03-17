@@ -1,56 +1,12 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect, Suspense } from 'react';
+import { Suspense } from 'react';
 import Button from '@/components/ui/Button';
 
 function SuccessContent() {
   const searchParams = useSearchParams();
   const reportId = searchParams.get('reportId');
-
-  // ── Run valuation after payment ────────────────────────────────────────
-  const [valuationLoading, setValuationLoading] = useState(true);
-  const [valuationResult, setValuationResult] = useState<{
-    estimatedOverassessment: number;
-    estimatedAnnualSavings: number;
-  } | null>(null);
-  const [deletingTaxBill, setDeletingTaxBill] = useState(false);
-  const [taxBillDeleted, setTaxBillDeleted] = useState(false);
-
-  useEffect(() => {
-    if (!reportId) {
-      setValuationLoading(false);
-      return;
-    }
-
-    // Call the valuation API to get the optimistic result
-    const runValuation = async () => {
-      try {
-        const res = await fetch(`/api/reports/${reportId}/valuation`, {
-          method: 'POST',
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setValuationResult(data);
-        }
-      } catch {
-        // Valuation preview is non-critical — pipeline will still run
-      } finally {
-        setValuationLoading(false);
-      }
-    };
-
-    // Small delay so the user sees the confirmation first
-    const timer = setTimeout(runValuation, 1500);
-    return () => clearTimeout(timer);
-  }, [reportId]);
-
-  const formatDollars = (n: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(n);
 
   return (
     <div className="min-h-screen bg-pattern flex items-center justify-center px-6">
@@ -63,46 +19,16 @@ function SuccessContent() {
         </div>
 
         <h1 className="font-display text-3xl md:text-4xl text-cream mb-4">
-          Payment Confirmed
+          Submission Received
         </h1>
 
-        {/* Valuation result — optimistic messaging */}
-        {valuationLoading ? (
-          <div className="card-premium rounded-xl p-8 mb-8 animate-pulse">
-            <div className="flex items-center justify-center gap-3 mb-3">
-              <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-              <p className="text-cream/60 text-sm">Running the numbers on your property...</p>
-            </div>
-          </div>
-        ) : valuationResult ? (
-          <div className="card-premium rounded-xl p-8 mb-8 border border-gold/20 animate-slide-up">
-            <p className="text-xs uppercase tracking-widest text-gold/70 mb-4">
-              Initial Assessment
-            </p>
-            <p className="text-cream/70 text-sm mb-4 leading-relaxed">
-              We found reason to believe your tax bill could be incorrect by up to
-            </p>
-            <p className="font-display text-4xl text-gold-gradient mb-2">
-              {formatDollars(valuationResult.estimatedOverassessment)}
-            </p>
-            <p className="text-cream/50 text-sm mb-6">
-              which could save you up to{' '}
-              <span className="text-gold font-semibold">
-                {formatDollars(valuationResult.estimatedAnnualSavings)}/year
-              </span>
-            </p>
-            <div className="h-px bg-gold/10 mb-4" />
-            <p className="text-xs text-cream/40 leading-relaxed">
-              We&apos;re now conducting a final review for accuracy — pulling comparable sales,
-              analyzing market data, and building your full evidence package. You&apos;ll receive
-              your complete report with verified numbers and your options.
-            </p>
-          </div>
-        ) : (
-          <p className="text-cream/50 text-lg mb-2">
-            Your report is being generated now.
-          </p>
-        )}
+        <p className="text-cream/60 text-lg mb-2">
+          We&apos;re on it. Our team will analyze your property and build your evidence package.
+        </p>
+
+        <p className="text-cream/40 text-sm mb-8">
+          You&apos;ll receive an email when your report is ready to view.
+        </p>
 
         {/* What happens next */}
         <div className="card-premium rounded-xl p-6 text-left mb-8">
@@ -111,20 +37,20 @@ function SuccessContent() {
             {[
               {
                 step: '1',
-                title: 'Final Review for Accuracy',
-                desc: 'We verify your assessment data against comparable sales and real market conditions to lock in the exact numbers.',
+                title: 'We Analyze Your Property',
+                desc: 'We pull comparable sales, verify assessment data, analyze your photos, and build your case against real market conditions.',
                 active: true,
               },
               {
                 step: '2',
-                title: 'Evidence Package Built',
-                desc: 'Comparable sales analysis, condition documentation, and a professional narrative — everything the Board of Review expects.',
+                title: 'Quality Review',
+                desc: 'Every report is personally reviewed by our team to ensure accuracy before reaching you.',
                 active: false,
               },
               {
                 step: '3',
-                title: 'Report Delivered',
-                desc: 'Your complete report with verified savings, filing instructions, and step-by-step hearing guidance — delivered to your inbox.',
+                title: 'Report Ready Email',
+                desc: 'We\'ll email you with your results. Pay to unlock your full report with filing instructions and PDF evidence package.',
                 active: false,
               },
             ].map((item) => (
@@ -158,10 +84,10 @@ function SuccessContent() {
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                View My Report
+                Track My Report
               </Button>
               <p className="text-xs text-cream/20">
-                Bookmark this link to check back anytime
+                Bookmark this link to check progress anytime
               </p>
             </div>
           </>
@@ -181,35 +107,6 @@ function SuccessContent() {
           {' '}and{' '}
           <a href="/terms" className="underline hover:text-cream/30">Terms of Service</a>.
         </p>
-
-        {/* Subtle tax bill data deletion option */}
-        {reportId && !taxBillDeleted && (
-          <p className="text-[10px] text-cream/15 mt-4">
-            Uploaded a tax bill?{' '}
-            <button
-              type="button"
-              disabled={deletingTaxBill}
-              onClick={async () => {
-                setDeletingTaxBill(true);
-                try {
-                  const res = await fetch(`/api/reports/${reportId}/tax-bill-data`, {
-                    method: 'DELETE',
-                  });
-                  if (res.ok) setTaxBillDeleted(true);
-                } catch { /* non-critical */ }
-                setDeletingTaxBill(false);
-              }}
-              className="underline hover:text-cream/30 disabled:opacity-50"
-            >
-              {deletingTaxBill ? 'Removing...' : 'Request removal of your tax bill data'}
-            </button>
-          </p>
-        )}
-        {taxBillDeleted && (
-          <p className="text-[10px] text-cream/25 mt-4">
-            Your tax bill data has been removed.
-          </p>
-        )}
       </div>
     </div>
   );

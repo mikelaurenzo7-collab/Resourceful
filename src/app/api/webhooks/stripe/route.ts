@@ -1,12 +1,11 @@
 // ─── Stripe Webhook Handler ──────────────────────────────────────────────────
 // Verifies Stripe signature and processes payment events.
-// CRITICAL: This is the ONLY trigger for report generation pipeline.
-// Never trigger pipeline from the frontend.
+// In the pay-after model, payment happens AFTER the report is approved.
+// This webhook unlocks the report for the user (approved → delivered).
 
 import { NextRequest, NextResponse } from 'next/server';
 import { constructWebhookEvent } from '@/lib/services/stripe-service';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { runPipeline } from '@/lib/pipeline/orchestrator';
 import type Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
@@ -80,48 +79,61 @@ async function handlePaymentIntentSucceeded(
 
   const supabase = createAdminClient();
 
-  // ── Idempotency: skip if report is already paid/processing/completed ──
+  // ── Fetch report to verify it's in the right state ────────────────────
   const { data: existingReport } = await supabase
     .from('reports')
     .select('status')
     .eq('id', reportId)
     .single();
 
-  if (existingReport && existingReport.status !== 'intake') {
+  if (!existingReport) {
+    console.error(`[webhook/stripe] Report ${reportId} not found`);
+    return;
+  }
+
+  // ── Idempotency: skip if already delivered or not in approved state ───
+  if (existingReport.status === 'delivered') {
     console.log(
-      `[webhook/stripe] Report ${reportId} already in status '${existingReport.status}' — skipping duplicate webhook`
+      `[webhook/stripe] Report ${reportId} already delivered — skipping duplicate webhook`
     );
     return;
   }
 
-  // ── Update report to 'paid' status with payment fields ──────────────
+  if (existingReport.status !== 'approved') {
+    console.warn(
+      `[webhook/stripe] Report ${reportId} in status '${existingReport.status}' — expected 'approved'. Recording payment but not unlocking.`
+    );
+    // Still record the payment even if status is unexpected
+    await supabase
+      .from('reports')
+      .update({
+        stripe_payment_intent_id: paymentIntent.id,
+        payment_status: 'succeeded',
+        amount_paid_cents: paymentIntent.amount,
+      })
+      .eq('id', reportId);
+    return;
+  }
+
+  // ── Unlock report: approved → delivered ───────────────────────────────
   const { error: updateError } = await supabase
     .from('reports')
     .update({
-      status: 'paid',
+      status: 'delivered',
       stripe_payment_intent_id: paymentIntent.id,
       payment_status: 'succeeded',
       amount_paid_cents: paymentIntent.amount,
+      delivered_at: new Date().toISOString(),
     })
     .eq('id', reportId)
-    .eq('status', 'intake'); // Only transition from intake → paid (atomic guard)
+    .eq('status', 'approved'); // Atomic guard — only transition approved → delivered
 
   if (updateError) {
     console.error(
-      `[webhook/stripe] Failed to update report ${reportId}: ${updateError.message}`
+      `[webhook/stripe] Failed to unlock report ${reportId}: ${updateError.message}`
     );
-    throw new Error(`Failed to update report: ${updateError.message}`);
+    throw new Error(`Failed to unlock report: ${updateError.message}`);
   }
 
-  // ── Trigger the report generation pipeline ──────────────────────────
-  // This is the ONLY place the pipeline should be triggered.
-  console.log(`[webhook/stripe] Triggering pipeline for report ${reportId}`);
-
-  // Fire-and-forget: pipeline runs asynchronously. Errors are recorded
-  // in the report's pipeline_error_log field by the orchestrator.
-  runPipeline(reportId).catch((err) => {
-    console.error(
-      `[webhook/stripe] Pipeline failed for report ${reportId}: ${err}`
-    );
-  });
+  console.log(`[webhook/stripe] Report ${reportId} unlocked (delivered) after payment`);
 }

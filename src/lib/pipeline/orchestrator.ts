@@ -41,6 +41,7 @@ interface StageDefinition {
 
 // Stage keys stored in pipeline_last_completed_stage (text column).
 // These match the spec's naming convention exactly.
+//
 const STAGES: StageDefinition[] = [
   {
     number: 1,

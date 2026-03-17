@@ -1,6 +1,7 @@
 import type { ReportStatus } from '@/types/database';
 
 const statusConfig: Record<ReportStatus, { label: string; className: string }> = {
+  submitted: { label: 'Submitted', className: 'bg-sky-100 text-sky-700' },
   intake: { label: 'Intake', className: 'bg-gray-100 text-gray-700' },
   paid: { label: 'Paid', className: 'bg-blue-100 text-blue-700' },
   data_pull: { label: 'Data Pull', className: 'bg-indigo-100 text-indigo-700' },

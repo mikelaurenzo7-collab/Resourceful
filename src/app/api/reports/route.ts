@@ -1,13 +1,12 @@
 // ─── Create Report API ──────────────────────────────────────────────────────
-// POST: Validate input, create report row with 'intake' status, create Stripe
-// PaymentIntent, and return report ID + client secret.
+// POST: Validate input, create report row with 'submitted' status.
+// No payment at submission time — users pay after report is ready.
 // No authentication required — email-only identification.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { reportCreateSchema } from '@/lib/validations/report';
-import { createPaymentIntent } from '@/lib/services/stripe-service';
 import { getPriceCents } from '@/config/pricing';
-import { createReport, updateReport } from '@/lib/repository/reports';
+import { createReport } from '@/lib/repository/reports';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report } from '@/types/database';
 
@@ -51,7 +50,7 @@ export async function POST(request: NextRequest) {
       tax_bill_pin,
     } = parsed.data;
 
-    // ── Calculate price (tier-aware, tax bill discount applied) ──────────
+    // ── Calculate price (stored for later payment, not charged now) ──────
     const priceCents = getPriceCents(service_type, property_type, review_tier, has_tax_bill);
 
     // ── Create report row via repository ─────────────────────────────────
@@ -59,7 +58,7 @@ export async function POST(request: NextRequest) {
       user_id: null, // nullable — email-only intake, no auth account
       client_email,
       client_name: client_name ?? null,
-      status: 'intake',
+      status: 'submitted',
       service_type,
       property_type,
       property_address,
@@ -99,35 +98,10 @@ export async function POST(request: NextRequest) {
       savings_amount_cents: null,
     })) as Report;
 
-    // ── Create Stripe PaymentIntent ────────────────────────────────────────
-    const { data: payment, error: paymentError } = await createPaymentIntent({
-      amountCents: priceCents,
-      customerEmail: client_email,
-      reportId: report.id,
-      metadata: {
-        service_type,
-        property_type,
-      },
-    });
-
-    if (paymentError || !payment) {
-      console.error('[api/reports] Failed to create payment intent:', paymentError);
-      return NextResponse.json(
-        { error: 'Failed to create payment intent' },
-        { status: 500 }
-      );
-    }
-
-    // ── Store PaymentIntent ID on report ───────────────────────────────────
-    await updateReport(report.id, {
-      stripe_payment_intent_id: payment.id,
-    });
-
-    // ── Return report ID and client secret ─────────────────────────────────
+    // ── Return report ID (no Stripe client secret — payment comes later) ─
     return NextResponse.json(
       {
         reportId: report.id,
-        clientSecret: payment.clientSecret,
         priceCents,
       },
       { status: 201 }
