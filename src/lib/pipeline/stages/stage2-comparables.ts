@@ -238,7 +238,7 @@ export async function runComparables(
   const tiers = SEARCH_TIERS[propertyType] ?? SEARCH_TIERS.residential;
 
   // ── Progressive radius/time expansion ─────────────────────────────────
-  let allComps: AttomSaleComp[] = [];
+  const allComps: AttomSaleComp[] = [];
 
   for (const tier of tiers) {
     const minSqft = Math.round(subject.buildingSqFt * (1 - tier.gbaVariance));

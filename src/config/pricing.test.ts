@@ -4,6 +4,7 @@ import {
   getPriceCents,
   formatPrice,
   PRICING,
+  PRICING_GUIDED,
   PRICING_EXPERT,
   TAX_BILL_DISCOUNT,
 } from './pricing';
@@ -13,7 +14,7 @@ import {
 describe('formatPrice', () => {
   it('converts cents to dollar string', () => {
     expect(formatPrice(4900)).toBe('$49');
-    expect(formatPrice(14900)).toBe('$149');
+    expect(formatPrice(14700)).toBe('$147');
     expect(formatPrice(100)).toBe('$1');
   });
 });
@@ -26,9 +27,9 @@ describe('TAX_BILL_DISCOUNT', () => {
   });
 });
 
-// ─── getPriceForReport (auto tier) ──────────────────────────────────────────
+// ─── getPriceForReport (auto / pro se tier) ─────────────────────────────────
 
-describe('getPriceForReport — auto tier', () => {
+describe('getPriceForReport — auto tier (pro se)', () => {
   it('returns correct price for residential tax appeal', () => {
     expect(getPriceForReport('tax_appeal', 'residential')).toBe(4900);
   });
@@ -55,19 +56,35 @@ describe('getPriceForReport — auto tier', () => {
   });
 });
 
-// ─── getPriceForReport (expert tier) ────────────────────────────────────────
+// ─── getPriceForReport (guided tier — 2x pro se) ───────────────────────────
+
+describe('getPriceForReport — guided tier', () => {
+  it('returns guided price for residential tax appeal', () => {
+    expect(getPriceForReport('tax_appeal', 'residential', 'guided_filing')).toBe(9800);
+  });
+
+  it('returns guided price for commercial tax appeal', () => {
+    expect(getPriceForReport('tax_appeal', 'commercial', 'guided_filing')).toBe(19800);
+  });
+
+  it('returns guided price for pre_purchase', () => {
+    expect(getPriceForReport('pre_purchase', 'residential', 'guided_filing')).toBe(11800);
+  });
+});
+
+// ─── getPriceForReport (expert tier — 3x pro se) ───────────────────────────
 
 describe('getPriceForReport — expert tier', () => {
   it('returns expert price for residential tax appeal', () => {
-    expect(getPriceForReport('tax_appeal', 'residential', 'expert_reviewed')).toBe(14900);
+    expect(getPriceForReport('tax_appeal', 'residential', 'expert_reviewed')).toBe(14700);
   });
 
   it('returns expert price for commercial tax appeal', () => {
-    expect(getPriceForReport('tax_appeal', 'commercial', 'expert_reviewed')).toBe(24900);
+    expect(getPriceForReport('tax_appeal', 'commercial', 'expert_reviewed')).toBe(29700);
   });
 
   it('returns expert price for pre_purchase', () => {
-    expect(getPriceForReport('pre_purchase', 'residential', 'expert_reviewed')).toBe(17900);
+    expect(getPriceForReport('pre_purchase', 'residential', 'expert_reviewed')).toBe(17700);
   });
 });
 
@@ -85,8 +102,8 @@ describe('getPriceForReport — tax bill discount', () => {
   });
 
   it('applies discount to expert tier', () => {
-    // $149 * 0.85 = $126.65 → rounds to $127 → 12700 cents
-    expect(getPriceForReport('tax_appeal', 'residential', 'expert_reviewed', true)).toBe(12700);
+    // $147 * 0.85 = $124.95 → rounds to $125 → 12500 cents
+    expect(getPriceForReport('tax_appeal', 'residential', 'expert_reviewed', true)).toBe(12500);
   });
 
   it('applies discount to pre_purchase', () => {
@@ -118,10 +135,31 @@ describe('pricing constants', () => {
     }
   });
 
-  it('expert prices are higher than auto for every key', () => {
+  it('guided prices are 2x auto for every key', () => {
     const keys = Object.keys(PRICING) as (keyof typeof PRICING)[];
     for (const key of keys) {
-      expect(PRICING_EXPERT[key]).toBeGreaterThan(PRICING[key]);
+      expect(PRICING_GUIDED[key]).toBe(PRICING[key] * 2);
+    }
+  });
+
+  it('expert prices are 3x auto for every key', () => {
+    const keys = Object.keys(PRICING) as (keyof typeof PRICING)[];
+    for (const key of keys) {
+      expect(PRICING_EXPERT[key]).toBe(PRICING[key] * 3);
+    }
+  });
+
+  it('guided prices are higher than auto for every key', () => {
+    const keys = Object.keys(PRICING) as (keyof typeof PRICING)[];
+    for (const key of keys) {
+      expect(PRICING_GUIDED[key]).toBeGreaterThan(PRICING[key]);
+    }
+  });
+
+  it('expert prices are higher than guided for every key', () => {
+    const keys = Object.keys(PRICING) as (keyof typeof PRICING)[];
+    for (const key of keys) {
+      expect(PRICING_EXPERT[key]).toBeGreaterThan(PRICING_GUIDED[key]);
     }
   });
 });

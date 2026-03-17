@@ -14,44 +14,31 @@ export const PRICING = {
   PRE_LISTING: 5900, // $59
 } as const;
 
-// ─── Expert-Reviewed Tier Pricing ───────────────────────────────────────────
-// Professional appraiser reviews the report before delivery.
-
-export const PRICING_EXPERT = {
-  TAX_APPEAL_RESIDENTIAL: 14900, // $149
-  TAX_APPEAL_COMMERCIAL: 24900, // $249
-  TAX_APPEAL_INDUSTRIAL: 24900, // $249
-  TAX_APPEAL_LAND: 14900, // $149
-  PRE_PURCHASE: 17900, // $179
-  PRE_LISTING: 17900, // $179
-} as const;
-
-// ─── Guided Filing Tier Pricing ─────────────────────────────────────────────
+// ─── Guided Filing Tier Pricing (2x Pro Se) ─────────────────────────────────
 // Report + live guided filing session. We walk the homeowner through the form,
 // evidence prep, and hearing prep on a call/screen-share.
 // Only available for tax_appeal service type.
 
 export const PRICING_GUIDED = {
-  TAX_APPEAL_RESIDENTIAL: 19900, // $199
-  TAX_APPEAL_COMMERCIAL: 34900, // $349
-  TAX_APPEAL_INDUSTRIAL: 34900, // $349
-  TAX_APPEAL_LAND: 19900, // $199
-  PRE_PURCHASE: 17900, // $179 (same as expert — no filing guidance for non-appeal)
-  PRE_LISTING: 17900, // $179
+  TAX_APPEAL_RESIDENTIAL: 9800, // $98
+  TAX_APPEAL_COMMERCIAL: 19800, // $198
+  TAX_APPEAL_INDUSTRIAL: 19800, // $198
+  TAX_APPEAL_LAND: 9800, // $98
+  PRE_PURCHASE: 11800, // $118
+  PRE_LISTING: 11800, // $118
 } as const;
 
-// ─── Full Representation (POA) Tier Pricing ─────────────────────────────────
-// Report + we file on their behalf + attend the hearing as authorized rep.
-// Only available in counties where authorized_rep_allowed = true.
-// Only available for tax_appeal service type.
+// ─── Expert-Reviewed Tier Pricing (3x Pro Se) ───────────────────────────────
+// Professional appraiser reviews the report before delivery.
+// We file on their behalf + attend the hearing as authorized rep where allowed.
 
-export const PRICING_FULL_REPRESENTATION = {
-  TAX_APPEAL_RESIDENTIAL: 39900, // $399
-  TAX_APPEAL_COMMERCIAL: 59900, // $599
-  TAX_APPEAL_INDUSTRIAL: 59900, // $599
-  TAX_APPEAL_LAND: 39900, // $399
-  PRE_PURCHASE: 17900, // $179 (same as expert — no filing for non-appeal)
-  PRE_LISTING: 17900, // $179
+export const PRICING_EXPERT = {
+  TAX_APPEAL_RESIDENTIAL: 14700, // $147
+  TAX_APPEAL_COMMERCIAL: 29700, // $297
+  TAX_APPEAL_INDUSTRIAL: 29700, // $297
+  TAX_APPEAL_LAND: 14700, // $147
+  PRE_PURCHASE: 17700, // $177
+  PRE_LISTING: 17700, // $177
 } as const;
 
 // ─── Tax Bill Discount ──────────────────────────────────────────────────────
@@ -68,13 +55,11 @@ export function getPriceForReport(
   reviewTier: ReviewTier = 'auto',
   hasTaxBill: boolean = false
 ): number {
-  const table = reviewTier === 'full_representation'
-    ? PRICING_FULL_REPRESENTATION
+  const table = reviewTier === 'expert_reviewed'
+    ? PRICING_EXPERT
     : reviewTier === 'guided_filing'
       ? PRICING_GUIDED
-      : reviewTier === 'expert_reviewed'
-        ? PRICING_EXPERT
-        : PRICING;
+      : PRICING;
   let base: number;
   if (serviceType === 'pre_purchase') base = table.PRE_PURCHASE;
   else if (serviceType === 'pre_listing') base = table.PRE_LISTING;

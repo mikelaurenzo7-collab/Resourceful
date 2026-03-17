@@ -37,7 +37,7 @@ export type ApprovalAction =
 
 export type MeasurementSource = 'google_earth' | 'user_submitted' | 'attom' | 'county';
 
-export type ReviewTier = 'auto' | 'expert_reviewed' | 'guided_filing' | 'full_representation';
+export type ReviewTier = 'auto' | 'expert_reviewed' | 'guided_filing';
 
 // ─── Table Row Types ─────────────────────────────────────────────────────────
 // These types match the database migration exactly (001_initial_schema.sql)
