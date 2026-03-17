@@ -198,8 +198,8 @@ export async function runPdfAssembly(
         fee_amount: parsed.fee_amount ?? (countyRule.filing_fee_cents ? `$${(countyRule.filing_fee_cents / 100).toFixed(2)}` : null),
         hearing_format: parsed.hearing_format ?? countyRule.hearing_format,
       };
-    } catch {
-      // Filing guide content wasn't valid JSON — skip
+    } catch (err) {
+      console.warn(`[stage7] Failed to parse filing guide JSON, skipping addendum:`, err);
     }
   }
 

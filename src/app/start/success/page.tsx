@@ -44,7 +44,7 @@ function SuccessContent() {
               },
               {
                 step: '2',
-                title: 'AI Analysis',
+                title: 'Property Analysis',
                 desc: 'Our system analyzes the data, identifies over-assessment evidence, and generates professional narratives.',
               },
               {
@@ -95,7 +95,7 @@ function SuccessContent() {
 
         {/* Disclaimer */}
         <p className="text-[10px] text-cream/15 leading-relaxed mt-8 max-w-md mx-auto">
-          Reports are AI-generated informational tools, not legal advice or formal appraisals.
+          Reports are informational analysis tools, not legal advice or formal appraisals.
           You are responsible for verifying all data and meeting your county&apos;s filing deadlines.
           See our{' '}
           <a href="/disclaimer" className="underline hover:text-cream/30">Disclaimer</a>

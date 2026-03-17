@@ -549,7 +549,7 @@ export default function ReportViewerPage() {
 
         {/* Disclaimer */}
         <p className="text-[10px] text-cream/15 leading-relaxed mt-12 max-w-2xl mx-auto text-center">
-          This report is an AI-generated informational tool, not legal advice or a formal appraisal.
+          This report is an informational analysis tool, not legal advice or a formal appraisal.
           You are responsible for verifying all data and meeting filing deadlines. Confirm all deadlines and
           requirements directly with your county&apos;s assessment office.
           See our <a href="/disclaimer" className="underline hover:text-cream/30">Disclaimer</a> and{' '}

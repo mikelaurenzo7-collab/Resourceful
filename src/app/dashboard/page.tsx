@@ -19,7 +19,7 @@ const STATUS_MESSAGES: Partial<Record<ReportStatus, { title: string; description
   },
   photo_pending: {
     title: 'Analyzing Photos',
-    description: 'Our AI is analyzing your property photos for condition assessment and documentation.',
+    description: 'Your property photos are being analyzed for condition assessment and documentation.',
   },
   processing: {
     title: 'Generating Your Report',

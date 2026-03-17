@@ -7,7 +7,7 @@ export function OrganizationJsonLd() {
     name: 'Resourceful',
     url: baseUrl,
     description:
-      'Professional AI-generated property tax appeal reports for homeowners nationwide. Comparable sales analysis, assessment review, and pro se filing guidance.',
+      'Professional property tax appeal reports for homeowners nationwide. Comparable sales analysis, assessment review, and pro se filing guidance.',
     contactPoint: {
       '@type': 'ContactPoint',
       email: 'support@resourceful.app',
@@ -32,7 +32,7 @@ export function WebSiteJsonLd() {
     '@type': 'WebSite',
     name: 'Resourceful',
     url: baseUrl,
-    description: 'Professional property tax appeal reports powered by AI.',
+    description: 'Professional property tax appeal reports with data-driven analysis.',
     potentialAction: {
       '@type': 'SearchAction',
       target: `${baseUrl}/start`,
@@ -65,7 +65,7 @@ export function ServiceJsonLd() {
       name: 'United States',
     },
     description:
-      'AI-generated property tax appeal reports with comparable sales analysis, assessment review, and county-specific pro se filing instructions. Money-back guarantee with photo documentation.',
+      'Property tax appeal reports with comparable sales analysis, assessment review, and county-specific pro se filing instructions. Money-back guarantee with photo documentation.',
     offers: [
       {
         '@type': 'Offer',

@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: "%s | Resourceful",
   },
   description:
-    "Expert-grade property tax appeal reports nationwide. AI-powered comparable sales analysis, assessment review, and pro se filing guidance. Save hundreds to thousands on your property taxes with our money-back guarantee.",
+    "Expert-grade property tax appeal reports nationwide. Comparable sales analysis, assessment review, and pro se filing guidance. Save hundreds to thousands on your property taxes with our money-back guarantee.",
   keywords: [
     "property tax appeal",
     "property tax appeal report",
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Resourceful | Property Tax Appeal Reports",
     description:
-      "Save hundreds to thousands on your property taxes. AI-powered appeal reports with money-back guarantee.",
+      "Save hundreds to thousands on your property taxes. Professional appeal reports with money-back guarantee.",
   },
   alternates: {
     canonical: baseUrl,

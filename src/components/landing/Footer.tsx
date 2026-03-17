@@ -12,7 +12,7 @@ export default function Footer() {
             </Link>
             <p className="mt-4 text-sm text-cream/40 leading-relaxed max-w-sm">
               Professional property tax appeal reports for homeowners
-              who refuse to overpay. Built on real data, powered by AI.
+              who refuse to overpay. Built on real data, powered by professional analysis.
             </p>
           </div>
 
@@ -80,7 +80,7 @@ export default function Footer() {
             </div>
           </div>
           <p className="text-xs text-cream/20 text-center md:text-left leading-relaxed max-w-3xl">
-            Resourceful is not a law firm and does not provide legal advice. Reports are AI-generated
+            Resourceful is not a law firm and does not provide legal advice. Reports are data-driven
             informational tools based on public property data, not formal appraisals. You are responsible for
             verifying all data, meeting filing deadlines, and making your own decisions regarding property tax
             appeals. See our{' '}

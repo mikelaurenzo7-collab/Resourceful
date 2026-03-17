@@ -53,7 +53,7 @@ export async function runDelivery(
   }
 
   // ── Get client email from report (no auth account required) ──────────
-  const clientEmail = (report as any).client_email;
+  const clientEmail = report.client_email;
   if (!clientEmail) {
     return { success: false, error: 'No client email found on report' };
   }

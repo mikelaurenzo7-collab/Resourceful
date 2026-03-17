@@ -7,7 +7,7 @@ const services = [
     service: 'tax_appeal' as const,
     description:
       'Comprehensive evidence package for your property tax appeal. Comparable sales analysis, condition documentation, and a professional narrative — everything the Board of Review expects.',
-    features: ['5+ comparable sales with adjustments', 'AI condition analysis from your photos', 'Filing instructions for your county', 'Pro se hearing guidance'],
+    features: ['5+ comparable sales with adjustments', 'Condition analysis from your photos', 'Filing instructions for your county', 'Pro se hearing guidance'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
@@ -51,7 +51,7 @@ export default function ServiceCards() {
           Choose Your Report
         </h2>
         <p className="mt-4 text-cream/50 max-w-xl mx-auto">
-          Each report is built from real data, analyzed by AI, and reviewed by our team
+          Each report is built from real market data, professionally analyzed, and reviewed
           before delivery.
         </p>
       </div>

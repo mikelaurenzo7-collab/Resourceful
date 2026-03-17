@@ -54,7 +54,7 @@ export type User = {
 
 export type Report = {
   id: string;
-  user_id: string;
+  user_id: string | null;
   client_email: string;
   client_name: string | null;
   service_type: ServiceType;

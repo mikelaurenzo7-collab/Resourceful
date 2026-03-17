@@ -4,12 +4,13 @@
 // section in report_narratives with model/token/duration metadata.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Report, PropertyData, ComparableSale, ComparableRental, IncomeAnalysis, Photo, CountyRule, PhotoAiAnalysis } from '@/types/database';
+import type { Database, Report, PropertyData, ComparableSale, ComparableRental, IncomeAnalysis, Photo, CountyRule, PhotoAiAnalysis, PropertyType } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import {
   generateNarratives,
   type NarrativePayload,
 } from '@/lib/services/anthropic';
+import { AI_MODELS } from '@/config/ai';
 import { getCalibrationParams } from '@/lib/calibration/recalculate';
 
 // ─── Section Mapping ────────────────────────────────────────────────────────
@@ -146,7 +147,7 @@ export async function runNarratives(
 
   // Apply calibration value bias correction (learned from real appraisal feedback)
   const calibration = await getCalibrationParams(
-    report.property_type as 'residential' | 'commercial' | 'industrial' | 'land',
+    report.property_type as PropertyType,
     report.county_fips ?? null,
     supabase
   );
@@ -408,7 +409,7 @@ export async function runNarratives(
     report_id: reportId,
     section_name: section.section_name,
     content: section.content,
-    model_used: process.env.AI_MODEL_PRIMARY ?? 'claude-sonnet-4-6',
+    model_used: AI_MODELS.PRIMARY,
     prompt_tokens,
     completion_tokens,
     generation_duration_ms,

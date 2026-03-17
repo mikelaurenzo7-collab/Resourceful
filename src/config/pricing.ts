@@ -3,7 +3,7 @@
 
 import type { ReviewTier } from '@/types/database';
 
-// ─── Base Prices (AI Auto-Report tier) ──────────────────────────────────────
+// ─── Base Prices (Auto-Report tier) ─────────────────────────────────────────
 
 export const PRICING = {
   TAX_APPEAL_RESIDENTIAL: 4900, // $49
@@ -15,7 +15,7 @@ export const PRICING = {
 } as const;
 
 // ─── Expert-Reviewed Tier Pricing ───────────────────────────────────────────
-// Professional appraiser reviews the AI-generated report before delivery.
+// Professional appraiser reviews the report before delivery.
 
 export const PRICING_EXPERT = {
   TAX_APPEAL_RESIDENTIAL: 14900, // $149

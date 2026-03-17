@@ -35,7 +35,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-semibold text-cream mb-3">1. Overview</h2>
             <p>
-              Resourceful (&quot;we,&quot; &quot;us,&quot; &quot;our&quot;) provides AI-generated property analysis
+              Resourceful (&quot;we,&quot; &quot;us,&quot; &quot;our&quot;) provides data-driven property analysis
               reports, including property tax appeal reports, pre-purchase analyses, and pre-listing reports
               (collectively, &quot;Reports&quot;). By purchasing or using a Report, you (&quot;you,&quot;
               &quot;client,&quot; &quot;user&quot;) agree to these Terms of Service.
@@ -46,7 +46,7 @@ export default function TermsPage() {
             <h2 className="text-lg font-semibold text-cream mb-3">2. Nature of Services</h2>
             <p>
               <strong className="text-cream/80">Reports are informational tools, not legal advice.</strong> Our
-              Reports compile publicly available property data, comparable sales, and AI-generated analysis to
+              Reports compile publicly available property data, comparable sales, and professional analysis to
               support your independent decision-making. We are not a law firm, we do not practice law, and
               nothing in our Reports or communications constitutes legal advice or creates an attorney-client
               relationship.
@@ -136,7 +136,7 @@ export default function TermsPage() {
             <p>
               You receive a personal, non-transferable license to use your Report for its intended purpose
               (e.g., filing a tax appeal, evaluating a property). You may not resell, redistribute, or
-              commercially repurpose Reports. The report format, methodology, and AI analysis remain our
+              commercially repurpose Reports. The report format, methodology, and analysis remain our
               intellectual property.
             </p>
           </section>

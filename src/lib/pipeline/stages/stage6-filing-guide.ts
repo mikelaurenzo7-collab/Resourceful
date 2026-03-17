@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Report, CountyRule, ReportNarrative, PropertyData, IncomeAnalysis } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { generateFilingGuide, type FilingGuidePayload } from '@/lib/services/anthropic';
+import { AI_MODELS } from '@/config/ai';
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
 
@@ -218,7 +219,7 @@ export async function runFilingGuide(
       report_id: reportId,
       section_name: 'pro_se_filing_guide',
       content: guide,
-      model_used: process.env.AI_MODEL_FAST ?? 'claude-haiku-4-5-20251001',
+      model_used: AI_MODELS.FAST,
       prompt_tokens,
       completion_tokens,
       generation_duration_ms,

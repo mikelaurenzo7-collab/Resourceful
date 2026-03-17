@@ -75,9 +75,9 @@ export default function PrivacyPage() {
                 your completed Report and any related communications.
               </li>
               <li>
-                <strong className="text-cream/80">AI analysis:</strong> Property data and photos are processed
-                by our AI system (powered by Anthropic) to generate valuation analysis and narrative content.
-                Your data is not used to train AI models.
+                <strong className="text-cream/80">Report analysis:</strong> Property data and photos are processed
+                by our analysis system to generate valuation analysis and narrative content.
+                Your data is not used to train machine learning models.
               </li>
               <li>
                 <strong className="text-cream/80">Payment processing:</strong> Payment data is handled
@@ -116,7 +116,7 @@ export default function PrivacyPage() {
                 </a>.
               </li>
               <li>
-                <strong className="text-cream/80">Anthropic</strong> — AI analysis and report generation.
+                <strong className="text-cream/80">Anthropic</strong> — Data analysis and report generation.
                 Your data is processed per Anthropic&apos;s commercial API terms and is not used for model
                 training.
               </li>
@@ -151,7 +151,7 @@ export default function PrivacyPage() {
               <li>We do not sell your personal information to third parties.</li>
               <li>We do not use your data for targeted advertising.</li>
               <li>We do not share your photos or property details with other users.</li>
-              <li>We do not use your data to train AI models.</li>
+              <li>We do not use your data to train machine learning models.</li>
               <li>We do not store credit card details on our servers.</li>
             </ul>
           </section>
