@@ -1,7 +1,7 @@
 # Property Intelligence Platform — CLAUDE.md
 
 ## What This Is
-A nationwide web app that generates professional property tax appeal reports using AI analysis, public property data APIs, and owner-provided photographs. Reports are auto-delivered to clients after pipeline completion.
+A nationwide web app that generates professional property tax appeal reports using AI analysis, public property data APIs, and owner-provided photographs. All reports are routed to admin for quality review before delivery.
 
 ## Delivery Model — Admin Approval Required
 ALL reports are routed to admin for quality review after the pipeline completes stages 1-7. No reports are auto-delivered to clients. Stage 8 (delivery) runs ONLY when an admin explicitly approves the report via the admin dashboard. This manual gate exists to maintain quality control while the AI model is being trained toward full autonomy. Admin can review, approve, reject, or re-run any report.
@@ -21,11 +21,23 @@ This platform serves every county in every state. ATTOM is the universal data so
 - Deployed on Vercel
 
 ## Commands
-- `pnpm dev` — start development server
-- `pnpm build` — production build
-- `pnpm lint` — ESLint check
+- `npm run dev` — start development server
+- `npm run build` — production build
+- `npm run lint` — ESLint check
 - `supabase db push` — push schema changes
 - `supabase gen types typescript` — regenerate TypeScript types from schema
+
+## User Intake Model — Email-Only (No Accounts)
+Users do NOT create accounts. The intake flow collects an email address, not auth credentials. Reports are identified by UUID and `client_email`. The user-facing flow is:
+1. Intake wizard → payment → pipeline runs → admin reviews → delivery email
+2. Client receives email with link to `/report/[id]` (no auth required)
+
+The `/dashboard` page requires Supabase Auth login and queries `user_id`, but email-only users have `user_id = null`. The dashboard is currently non-functional for email-only users — clients use the emailed report link instead.
+
+## Admin Setup
+1. Create a user in Supabase Auth (email + password)
+2. Insert into `admin_users` table: `(user_id, email, name, is_super_admin) = (auth-user-uuid, 'your@email', 'Name', true)`
+3. Log in at `/login`, then navigate to `/admin`
 
 ## Project Structure
 
