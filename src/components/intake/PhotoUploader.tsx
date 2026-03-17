@@ -56,34 +56,48 @@ interface UploadedPhoto {
   type: PhotoType;
   name: string;
   preview: string;
+  caption: string;
 }
 
 interface PhotoUploaderProps {
   propertyType: PropertyType;
   onPhotosChange: (photos: UploadedPhoto[]) => void;
   /** If provided, uploads each photo to the API. Return true on success. */
-  onFileUpload?: (file: File, type: PhotoType) => Promise<boolean>;
+  onFileUpload?: (file: File, type: PhotoType, caption: string) => Promise<boolean>;
 }
 
 export default function PhotoUploader({ propertyType, onPhotosChange, onFileUpload }: PhotoUploaderProps) {
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
   const [uploadingType, setUploadingType] = useState<PhotoType | null>(null);
+  const [captions, setCaptions] = useState<Record<string, string>>({});
   const requirements = requirementsByPropertyType[propertyType];
-  const minRequired = requirements.length;
 
   const handleFileSelect = async (type: PhotoType, file: File) => {
+    const caption = captions[type] ?? '';
+
     // If API upload callback is provided, upload first
     if (onFileUpload) {
       setUploadingType(type);
-      const success = await onFileUpload(file, type);
+      const success = await onFileUpload(file, type, caption);
       setUploadingType(null);
       if (!success) return; // Upload failed — don't add to local state
     }
 
     const preview = URL.createObjectURL(file);
-    const updated = [...photos.filter((p) => p.type !== type), { type, name: file.name, preview }];
+    const updated = [...photos.filter((p) => p.type !== type), { type, name: file.name, preview, caption }];
     setPhotos(updated);
     onPhotosChange(updated);
+  };
+
+  const handleCaptionChange = (type: PhotoType, value: string) => {
+    setCaptions((prev) => ({ ...prev, [type]: value }));
+    // Update caption on already-uploaded photo
+    const existing = photos.find((p) => p.type === type);
+    if (existing) {
+      const updated = photos.map((p) => p.type === type ? { ...p, caption: value } : p);
+      setPhotos(updated);
+      onPhotosChange(updated);
+    }
   };
 
   const isUploaded = (type: PhotoType) => photos.some((p) => p.type === type);
@@ -94,22 +108,20 @@ export default function PhotoUploader({ propertyType, onPhotosChange, onFileUplo
       {/* Progress */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-cream/60">
-          <span className="text-gold font-semibold">{uploadedCount}</span> of{' '}
-          <span className="font-semibold">{minRequired}</span> photos uploaded
+          <span className="text-gold font-semibold">{uploadedCount}</span> photo{uploadedCount !== 1 ? 's' : ''} uploaded
         </p>
-        {uploadedCount >= minRequired && (
-          <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
-            Minimum met
+        {uploadedCount > 0 && (
+          <span className="text-xs font-medium text-gold/70 bg-gold/5 border border-gold/15 px-3 py-1 rounded-full">
+            More photos = stronger case
           </span>
         )}
       </div>
 
-      {/* Progress bar */}
-      <div className="h-1.5 rounded-full bg-navy-deep/80 overflow-hidden">
-        <div
-          className="h-full rounded-full bg-gradient-to-r from-gold-light via-gold to-gold-dark transition-all duration-500"
-          style={{ width: `${Math.min(100, (uploadedCount / minRequired) * 100)}%` }}
-        />
+      {/* Encouragement banner */}
+      <div className="rounded-lg bg-gold/5 border border-gold/10 px-4 py-3">
+        <p className="text-xs text-cream/50 leading-relaxed">
+          Upload as many photos as you can. You have access the county assessor never had — especially inside your property. Every photo of damage, wear, or outdated conditions becomes evidence in your appeal.
+        </p>
       </div>
 
       {/* Photo items */}

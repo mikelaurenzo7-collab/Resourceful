@@ -1,56 +1,15 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, Suspense } from 'react';
 import Button from '@/components/ui/Button';
 
 function SuccessContent() {
   const searchParams = useSearchParams();
   const reportId = searchParams.get('reportId');
 
-  // ── Run valuation after payment ────────────────────────────────────────
-  const [valuationLoading, setValuationLoading] = useState(true);
-  const [valuationResult, setValuationResult] = useState<{
-    estimatedOverassessment: number;
-    estimatedAnnualSavings: number;
-  } | null>(null);
   const [deletingTaxBill, setDeletingTaxBill] = useState(false);
   const [taxBillDeleted, setTaxBillDeleted] = useState(false);
-
-  useEffect(() => {
-    if (!reportId) {
-      setValuationLoading(false);
-      return;
-    }
-
-    // Call the valuation API to get the optimistic result
-    const runValuation = async () => {
-      try {
-        const res = await fetch(`/api/reports/${reportId}/valuation`, {
-          method: 'POST',
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setValuationResult(data);
-        }
-      } catch {
-        // Valuation preview is non-critical — pipeline will still run
-      } finally {
-        setValuationLoading(false);
-      }
-    };
-
-    // Small delay so the user sees the confirmation first
-    const timer = setTimeout(runValuation, 1500);
-    return () => clearTimeout(timer);
-  }, [reportId]);
-
-  const formatDollars = (n: number) =>
-    new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0,
-    }).format(n);
 
   return (
     <div className="min-h-screen bg-pattern flex items-center justify-center px-6">
@@ -66,43 +25,14 @@ function SuccessContent() {
           Payment Confirmed
         </h1>
 
-        {/* Valuation result — optimistic messaging */}
-        {valuationLoading ? (
-          <div className="card-premium rounded-xl p-8 mb-8 animate-pulse">
-            <div className="flex items-center justify-center gap-3 mb-3">
-              <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-              <p className="text-cream/60 text-sm">Running the numbers on your property...</p>
-            </div>
-          </div>
-        ) : valuationResult ? (
-          <div className="card-premium rounded-xl p-8 mb-8 border border-gold/20 animate-slide-up">
-            <p className="text-xs uppercase tracking-widest text-gold/70 mb-4">
-              Initial Assessment
-            </p>
-            <p className="text-cream/70 text-sm mb-4 leading-relaxed">
-              We found reason to believe your tax bill could be incorrect by up to
-            </p>
-            <p className="font-display text-4xl text-gold-gradient mb-2">
-              {formatDollars(valuationResult.estimatedOverassessment)}
-            </p>
-            <p className="text-cream/50 text-sm mb-6">
-              which could save you up to{' '}
-              <span className="text-gold font-semibold">
-                {formatDollars(valuationResult.estimatedAnnualSavings)}/year
-              </span>
-            </p>
-            <div className="h-px bg-gold/10 mb-4" />
-            <p className="text-xs text-cream/40 leading-relaxed">
-              We&apos;re now conducting a final review for accuracy — pulling comparable sales,
-              analyzing market data, and building your full evidence package. You&apos;ll receive
-              your complete report with verified numbers and your options.
-            </p>
-          </div>
-        ) : (
-          <p className="text-cream/50 text-lg mb-2">
-            Your report is being generated now.
-          </p>
-        )}
+        <p className="text-cream/50 text-lg mb-2">
+          Your report is now being built by our team.
+        </p>
+        <p className="text-cream/40 text-sm mb-8 max-w-md mx-auto leading-relaxed">
+          We&apos;re pulling comparable sales, analyzing your photos and property data,
+          and building your full evidence package. Every report is reviewed for accuracy
+          before it reaches you.
+        </p>
 
         {/* What happens next */}
         <div className="card-premium rounded-xl p-6 text-left mb-8">
@@ -111,14 +41,14 @@ function SuccessContent() {
             {[
               {
                 step: '1',
-                title: 'Final Review for Accuracy',
-                desc: 'We verify your assessment data against comparable sales and real market conditions to lock in the exact numbers.',
+                title: 'Data Collection & Analysis',
+                desc: 'We pull comparable sales, analyze your photos, and build a complete evidence package using independent market data.',
                 active: true,
               },
               {
                 step: '2',
-                title: 'Evidence Package Built',
-                desc: 'Comparable sales analysis, condition documentation, and a professional narrative — everything the Board of Review expects.',
+                title: 'Expert Review',
+                desc: 'Every report is reviewed by our team for accuracy and completeness before it reaches you. We stand behind our numbers.',
                 active: false,
               },
               {
