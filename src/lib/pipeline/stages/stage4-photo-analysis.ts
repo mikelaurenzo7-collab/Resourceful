@@ -11,29 +11,68 @@ import { analyzePhoto } from '@/lib/services/anthropic';
 
 // ─── Photo Analysis System Prompt ───────────────────────────────────────────
 
-const PHOTO_ANALYSIS_SYSTEM_PROMPT = `You are an investigative property condition analyst working on behalf of a homeowner who believes their property is over-assessed. Your job is to document every visible condition issue, deficiency, and sign of deterioration that would REDUCE the property's market value. This evidence will be used in a formal tax assessment appeal.
+const PHOTO_ANALYSIS_SYSTEM_PROMPT = `You are a property tax appeal advocate and certified property condition analyst. Your client is a property owner who is filing a pro se tax assessment appeal — they are representing themselves against a government assessor who never set foot inside their property. You work FOR this owner. They are paying for expert-level advocacy and they deserve it.
 
-You are thorough, meticulous, and advocate for the homeowner. If something looks even slightly worn, aged, damaged, or substandard — document it. Assessors typically assume "average" condition without physically inspecting the property. Your photos prove otherwise.
+Your mission is twofold:
+1. Accurately document visible condition deficiencies that support a lower assessed value.
+2. Give the owner the benefit of the doubt whenever evidence is ambiguous or incomplete.
+
+OWNER ADVOCACY PHILOSOPHY:
+- Assessors mass-appraise thousands of properties using desktop tools. They rarely inspect. They default to "average" condition because it's the easiest assumption. Your job is to prove that assumption wrong.
+- When a condition issue is visible but ambiguous (e.g., staining that could be old or active, paint that might just be aged), document it. The owner is not the one who needs to prove perfect condition — the assessor bears the burden of justifying the assessment.
+- If the owner provided a written description of what the photo shows, treat it as high-trust firsthand testimony. Homeowners know their own property. A stain the owner identifies as a recurring water leak is a recurring water leak — document it with that context.
+- When in doubt between two condition ratings (e.g., "average" vs "fair"), select the lower one. Err toward the owner.
+- For deferred maintenance: if the owner describes or the photo shows an unresolved issue, document it as an active deficiency, not a theoretical one. Deferred maintenance is real, ongoing economic harm.
+
+GIVE FAIR, PROPORTIONATE DEDUCTIONS — NOT INFLATED, BUT NEVER UNDERSTATED:
+- Minor cosmetic issues (peeling paint, dated finishes, minor wear): document accurately
+- Moderate issues (aging systems, functional but outdated features, moderate deterioration): document with clear value impact
+- Significant issues (structural concerns, major system failures, health/safety deficiencies): document with strong value impact language
+- Severe issues (active water intrusion, structural movement, hazardous materials, major deferred repairs): these warrant aggressive deductions — do not soften these
 
 Return a JSON object matching the PhotoAiAnalysis interface:
-- "condition_rating": one of "excellent", "good", "average", "fair", "poor" — err on the conservative (lower) side when evidence supports it
-- "defects": array of objects with { type, description, severity ("minor"|"moderate"|"significant"), value_impact ("low"|"medium"|"high"), report_language }. The "report_language" field should be a formal, professional statement suitable for an appraisal report that clearly ties the defect to value impact.
+- "condition_rating": one of "excellent", "good", "average", "fair", "poor" — when evidence is ambiguous, select the lower rating
+- "defects": array of objects with { type, description, severity ("minor"|"moderate"|"significant"), value_impact ("low"|"medium"|"high"), report_language }. The "report_language" field must be formal appraisal language that clearly ties the defect to market value impact and would withstand scrutiny at a Board of Review hearing.
 - "inferred_direction": string describing the apparent direction/angle of the photo (e.g. "front elevation facing north")
-- "professional_caption": a professional caption for the appraisal report that subtly emphasizes condition concerns
-- "comparable_adjustment_note": explain how this condition would require negative adjustments when comparing to sales of properties in better condition
+- "professional_caption": a professional caption for the appraisal report that objectively but forcefully documents the condition evidence shown
+- "comparable_adjustment_note": explain specifically how this condition evidence requires negative adjustments when comparing to sales of properties in superior condition
 
-INVESTIGATE THOROUGHLY — check for ALL of the following:
-- Structural: foundation cracks (even hairline), settling, bowing walls, sagging ridgeline, uneven floors visible through windows
+DOCUMENT THOROUGHLY — investigate for:
+- Structural: foundation cracks (even hairline), settling, bowing walls, sagging ridgeline, uneven surfaces
 - Roof: missing/curling/cracked shingles, moss/algae growth, worn flashing, rusted vents, sagging gutters, ponding evidence
-- Exterior envelope: peeling/fading paint, rotting wood, cracked siding, deteriorating mortar joints, staining, efflorescence on masonry
-- Windows/doors: fogged double-pane glass (seal failure), cracked panes, rotting frames, outdated single-pane windows, worn weatherstripping visible
-- Systems indicators: rust stains (failing pipes/HVAC), outdated electrical panels visible, window AC units (no central air), visible ductwork patches
-- Drainage/grading: negative grading toward foundation, standing water, erosion, cracked/heaving walkways, failed retaining walls
-- Age indicators: architectural style dating, original windows/doors, outdated materials (asbestos siding, aluminum wiring indicators)
-- Functional obsolescence: awkward additions, mismatched materials suggesting unpermitted work, outdated design features
-- External obsolescence: visible power lines, adjacent commercial properties, busy road proximity, neighboring property conditions
+- Exterior envelope: peeling/fading/failing paint, rotting wood, cracked siding, deteriorating mortar, staining, efflorescence on masonry
+- Windows/doors: fogged double-pane glass (seal failure), cracked panes, rotting frames, outdated single-pane, worn weatherstripping
+- Systems indicators: rust stains (failing pipes/HVAC), outdated panels, window AC units (no central air), visible ductwork issues
+- Drainage/grading: negative grading toward foundation, erosion, cracked/heaving walkways, failed retaining walls
+- Age indicators: original windows/doors, outdated materials, deferred capital replacements
+- Functional obsolescence: awkward layout, mismatched materials, outdated design, ceiling height limitations
+- External obsolescence: power lines, adjacent commercial, busy road proximity, neighboring property deterioration
 
-Be specific and evidence-based. Reference exactly what you see — "visible hairline crack in foundation wall, approximately 3 feet long, running diagonally from window corner" is better than "foundation crack." Every defect you document is ammunition for the homeowner's appeal.`;
+Be specific and evidence-based. "Visible hairline crack in foundation wall, approximately 3 feet long, running diagonally from window corner" is better than "foundation crack." If the owner's description adds context that strengthens the defect documentation, incorporate it directly into the report_language.
+
+Remember: this owner chose to fight for themselves. You are the expert they hired. Give them your full professional advocacy.`;
+
+// ─── Required photo types per property type ──────────────────────────────────
+// Mirrors PhotoUploader requirementsByPropertyType. Used to determine whether
+// the owner submitted a "complete" photo package (all required types present).
+
+const REQUIRED_PHOTO_TYPES: Record<string, string[]> = {
+  residential: [
+    'exterior_front', 'exterior_rear', 'exterior_east', 'exterior_west',
+    'interior_kitchen', 'interior_bathroom', 'interior_living', 'deferred_maintenance',
+  ],
+  commercial: [
+    'exterior_front', 'exterior_rear', 'exterior_east', 'exterior_west',
+    'interior_kitchen', 'interior_bathroom', 'interior_living', 'deferred_maintenance',
+    'interior_garage', 'aerial',
+  ],
+  industrial: [
+    'exterior_front', 'exterior_rear', 'exterior_east', 'exterior_west',
+    'interior_kitchen', 'interior_living', 'interior_bathroom', 'deferred_maintenance',
+    'interior_garage', 'structural_detail',
+  ],
+  land: ['exterior_front', 'exterior_east', 'exterior_west', 'aerial'],
+};
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -71,6 +110,15 @@ export async function runPhotoAnalysis(
   reportId: string,
   supabase: SupabaseClient<Database>
 ): Promise<StageResult> {
+  // ── Fetch report to know property type ───────────────────────────────
+  const { data: reportData } = await supabase
+    .from('reports')
+    .select('property_type')
+    .eq('id', reportId)
+    .single();
+
+  const propertyType = (reportData?.property_type as string) ?? 'residential';
+
   // ── Fetch photos for this report ──────────────────────────────────────
   const { data: photosData, error: photoError } = await supabase
     .from('photos')
@@ -89,10 +137,29 @@ export async function runPhotoAnalysis(
     return { success: true };
   }
 
+  // ── Determine photo package completeness ─────────────────────────────
+  // A "complete" package means the owner submitted all required photo types
+  // AND provided descriptions for at least half of them.
+  const uploadedTypes = new Set(photos.map((p) => p.photo_type).filter(Boolean));
+  const required = REQUIRED_PHOTO_TYPES[propertyType] ?? REQUIRED_PHOTO_TYPES.residential;
+  const hasAllRequiredTypes = required.every((t) => uploadedTypes.has(t as any));
+  const photosWithDescriptions = photos.filter((p) => p.caption && p.caption.trim().length > 10);
+  const descriptionCoverage = photos.length > 0 ? photosWithDescriptions.length / photos.length : 0;
+  // "Complete package" = all required types + descriptions on at least half of photos
+  const hasCompletePackage = hasAllRequiredTypes && descriptionCoverage >= 0.5;
+
+  console.log(
+    `[stage4] Photo package: ${photos.length} photos, ` +
+    `required types covered: ${hasAllRequiredTypes}, ` +
+    `description coverage: ${Math.round(descriptionCoverage * 100)}%, ` +
+    `complete package: ${hasCompletePackage}`
+  );
+
   console.log(`[stage4] Analyzing ${photos.length} photos for report ${reportId}`);
 
   // ── Analyze photos in parallel batches of 3 ──────────────────────────
   const conditionRatings: string[] = [];
+  const analyzedPhotos: PhotoAiAnalysis[] = [];
   const BATCH_SIZE = 3;
 
   for (let i = 0; i < photos.length; i += BATCH_SIZE) {
@@ -117,7 +184,12 @@ export async function runPhotoAnalysis(
           return null;
         }
 
-        const result = await analyzePhoto(imageUrl, PHOTO_ANALYSIS_SYSTEM_PROMPT);
+        // Pass the owner's description as high-trust context to the AI.
+        // This is firsthand testimony from the person who lives in / owns
+        // the property — the AI should factor it in directly.
+        const userContext = photo.caption?.trim() || undefined;
+
+        const result = await analyzePhoto(imageUrl, PHOTO_ANALYSIS_SYSTEM_PROMPT, userContext);
 
         if (result.error || !result.data) {
           console.warn(`[stage4] Photo analysis failed for ${photo.id}: ${result.error}`);
@@ -126,12 +198,16 @@ export async function runPhotoAnalysis(
 
         const analysis = result.data as unknown as PhotoAiAnalysis;
 
-        // Update photo record with analysis results (ai_analysis is JSONB)
+        // Update photo record with analysis results.
+        // We preserve the owner's original caption in the caption field if no
+        // professional_caption was generated, otherwise use the AI caption.
         const { error: photoUpdateError } = await supabase
           .from('photos')
           .update({
             ai_analysis: analysis as any,
-            caption: analysis.professional_caption,
+            // Keep owner's original description if meaningful; AI professional
+            // caption is stored inside ai_analysis.professional_caption.
+            caption: (photo.caption?.trim() || analysis.professional_caption),
           })
           .eq('id', photo.id);
 
@@ -150,6 +226,7 @@ export async function runPhotoAnalysis(
     for (const result of batchResults) {
       if (result.status === 'fulfilled' && result.value) {
         conditionRatings.push(result.value.condition_rating);
+        analyzedPhotos.push(result.value);
       }
     }
   }
@@ -162,28 +239,30 @@ export async function runPhotoAnalysis(
   );
 
   // ── Compute per-defect condition adjustment ──────────────────────────
-  // Instead of a blanket -5%/-10%, sum granular per-defect impacts from
-  // photo evidence. This makes the adjustment proportional to documented
-  // issues rather than a single overall rating.
+  // Sum granular per-defect impacts from photo evidence, making the
+  // adjustment proportional to documented issues.
+  //
+  // When the owner submitted a complete photo package with descriptions,
+  // we apply a benefit-of-the-doubt multiplier — they did everything right
+  // and their firsthand knowledge of the property supports higher confidence
+  // in the defect estimates.
   const allDefects: Array<{ severity: string; value_impact: string }> = [];
-  for (let i = 0; i < photos.length; i += BATCH_SIZE) {
-    const batch = photos.slice(i, i + BATCH_SIZE);
-    for (const photo of batch) {
-      const analysis = photo.ai_analysis as unknown as PhotoAiAnalysis | null;
-      if (analysis?.defects) {
-        for (const d of analysis.defects) {
-          allDefects.push({ severity: d.severity, value_impact: d.value_impact });
-        }
+  for (const analysis of analyzedPhotos) {
+    if (analysis?.defects) {
+      for (const d of analysis.defects) {
+        allDefects.push({ severity: d.severity, value_impact: d.value_impact });
       }
     }
   }
 
-  // Map each defect to an adjustment percentage based on severity + value_impact
+  // Map each defect to an adjustment percentage based on severity + value_impact.
+  // Ranges reflect market evidence: appraisers typically apply 5-25% condition
+  // adjustments in comparable sales grids.
   const DEFECT_ADJUSTMENT: Record<string, Record<string, number>> = {
     // severity → value_impact → adjustment %
     minor:       { low: -0.5, medium: -1.0, high: -1.5 },
     moderate:    { low: -1.0, medium: -2.0, high: -3.0 },
-    significant: { low: -2.0, medium: -3.5, high: -5.0 },
+    significant: { low: -2.5, medium: -4.0, high: -6.0 },
   };
 
   let defectBasedAdjustment = 0;
@@ -192,21 +271,30 @@ export async function runPhotoAnalysis(
     defectBasedAdjustment += severityMap[defect.value_impact] ?? severityMap.low;
   }
 
-  // Also apply a base condition offset for overall poor/fair ratings
+  // Base condition offset for overall poor/fair ratings.
+  // These reflect the assessor's "average" assumption baseline — a fair/poor
+  // property needs a meaningful additional deduction to overcome that baseline.
   const baseConditionOffset =
-    overallCondition === 'poor' ? -3 :
-    overallCondition === 'fair' ? -1.5 : 0;
+    overallCondition === 'poor' ? -4 :
+    overallCondition === 'fair' ? -2 : 0;
+
+  // Benefit-of-the-doubt multiplier when the owner submitted a complete
+  // package (all required types + descriptions on half or more photos).
+  // We apply a modest uplift — 10% more — to reflect confidence that
+  // the owner's firsthand knowledge supports the documented defects.
+  const completenessMultiplier = hasCompletePackage ? 1.10 : 1.0;
 
   const totalConditionAdjustment = Math.round(
-    (defectBasedAdjustment + baseConditionOffset) * 100
+    ((defectBasedAdjustment * completenessMultiplier) + baseConditionOffset) * 100
   ) / 100;
 
-  // Cap the total adjustment at -25% to avoid unreasonable values
-  const cappedAdjustment = Math.max(totalConditionAdjustment, -25);
+  // Cap the total adjustment at -30% — severe deferred maintenance cases
+  // can legitimately reach this range (vs the old -25% which was too conservative).
+  const cappedAdjustment = Math.max(totalConditionAdjustment, -30);
 
   console.log(
     `[stage4] Condition adjustment: ${cappedAdjustment}% ` +
-    `(${allDefects.length} defects: ${defectBasedAdjustment}%, ` +
+    `(${allDefects.length} defects: ${defectBasedAdjustment}% × ${completenessMultiplier} completeness, ` +
     `base offset for "${overallCondition}": ${baseConditionOffset}%)`
   );
 

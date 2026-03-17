@@ -393,12 +393,21 @@ Write in plain, encouraging English. Be specific to ${county} County — never g
  * Analyze a property photo using Claude's vision capabilities.
  * Returns structured PhotoAiAnalysis matching the database interface:
  *   condition_rating, defects[], inferred_direction, professional_caption, comparable_adjustment_note
+ *
+ * @param userContext  Optional caption/description the property owner provided.
+ *                     Treated as high-trust firsthand testimony from the person
+ *                     who lives in/owns the property.
  */
 export async function analyzePhoto(
   imageUrl: string,
-  systemPrompt: string
+  systemPrompt: string,
+  userContext?: string
 ): Promise<ServiceResult<PhotoAnalysisResponse>> {
   const startMs = Date.now();
+
+  const ownerContext = userContext?.trim()
+    ? `\n\nOWNER'S DESCRIPTION OF THIS PHOTO:\n"${userContext.trim()}"\n\nTreat the owner's description as firsthand testimony. They live in and own this property — they know issues that may not be fully visible in a photograph. If they identify a specific defect or condition, document it even if it's only partially visible or the photo angle limits your view.`
+    : '';
 
   try {
     const response = await getClient().messages.create({
@@ -415,7 +424,9 @@ export async function analyzePhoto(
             },
             {
               type: 'text',
-              text: `Analyze this property photo. Return a JSON object with:
+              text: `Analyze this property photo.${ownerContext}
+
+Return a JSON object with:
 - "condition_rating": one of "excellent", "good", "average", "fair", "poor"
 - "defects": array of objects, each with { "type": string, "description": string, "severity": "minor"|"moderate"|"significant", "value_impact": "low"|"medium"|"high", "report_language": string }
 - "inferred_direction": string describing the apparent direction/angle of the photo (e.g. "front elevation facing north")

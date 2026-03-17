@@ -192,9 +192,13 @@ export async function runPipeline(
     })
     .eq('id', reportId);
 
-  // ALL reports route to admin for approval — no auto-delivery.
-  // Admin must review and approve every report before it reaches the client.
-  console.log(`[pipeline] Stages 1-7 complete for report ${reportId}. Routing to admin for approval (review_tier: ${report.review_tier}).`);
+  // ALL reports route to admin for approval after Stage 7.
+  // This is intentional during the quality-control training phase: the admin
+  // reviews the AI's photo analysis and report narrative before the client
+  // receives anything. Once real-appraisal training data is established,
+  // high-confidence reports can be auto-delivered. Until then, every report
+  // lands in the admin dashboard for a final human check.
+  console.log(`[pipeline] Stages 1-7 complete for report ${reportId}. Routing to admin for approval.`);
   await supabase
     .from('reports')
     .update({ status: 'pending_approval' as const })
