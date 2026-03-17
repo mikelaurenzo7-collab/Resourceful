@@ -125,11 +125,7 @@ function CheckoutForm() {
                     : `${state.photoCount} uploaded`}
                 </p>
               </div>
-              {guaranteeEligible && (
-                <span className="text-xs bg-emerald-500/10 text-emerald-400 rounded-full px-3 py-1 border border-emerald-500/20">
-                  Guarantee eligible
-                </span>
-              )}
+              {/* Photo status indicator */}
             </div>
 
             <div className="h-px bg-gold/10" />
@@ -137,42 +133,6 @@ function CheckoutForm() {
               <span className="text-cream font-medium">Total</span>
               <span className="font-display text-2xl text-gold">{formatPrice(priceCents)}</span>
             </div>
-          </div>
-        </div>
-
-        {/* Guarantee banner */}
-        <div className={`rounded-xl border p-4 flex items-start gap-3 ${
-          guaranteeEligible
-            ? 'border-emerald-500/20 bg-emerald-950/20'
-            : 'border-amber-500/15 bg-amber-950/10'
-        }`}>
-          <svg className={`w-5 h-5 flex-shrink-0 mt-0.5 ${guaranteeEligible ? 'text-emerald-400' : 'text-amber-400/60'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-          </svg>
-          <div>
-            {guaranteeEligible ? (
-              <>
-                <p className="text-sm font-medium text-emerald-400">Money-Back Guarantee Active</p>
-                <p className="text-xs text-emerald-400/60 mt-0.5">
-                  If your appeal is denied, send us the denial letter and we&apos;ll refund your full purchase price.
-                </p>
-              </>
-            ) : (
-              <>
-                <p className="text-sm font-medium text-amber-400/70">No Money-Back Guarantee</p>
-                <p className="text-xs text-amber-400/40 mt-0.5">
-                  Without photos, your report relies on the same public data your assessor already has.
-                  Photos document conditions the assessor has never seen — that&apos;s what makes the difference.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => router.push('/start/photos')}
-                  className="mt-2 text-xs text-amber-400/70 underline hover:text-amber-400 transition-colors"
-                >
-                  Go back and add photos to qualify for the guarantee
-                </button>
-              </>
-            )}
           </div>
         </div>
 
@@ -216,6 +176,9 @@ function CheckoutForm() {
         <p className="text-center text-xs text-cream/25 leading-relaxed">
           Your report will be generated and delivered to your email within a few hours.
           {state.serviceType === 'tax_appeal' && ' It includes step-by-step filing instructions for your county.'}
+          {state.serviceType === 'tax_appeal' && guaranteeEligible && (
+            <> Photo-backed tax appeal reports are covered by our <a href="/terms" target="_blank" className="underline hover:text-cream/40">money-back guarantee</a>.</>
+          )}
         </p>
 
         <p className="text-center text-[10px] text-cream/15 leading-relaxed mt-2">

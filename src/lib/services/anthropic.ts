@@ -76,6 +76,22 @@ export interface NarrativePayload {
     professional_caption: string;
   }>;
   floodZone?: string | null;
+  // Pre-computed overvaluation analysis — every angle the assessor may have missed
+  overvaluationAnalysis?: {
+    assessedValuePerSqft: number | null;
+    medianCompPricePerSqft: number | null;
+    overvaluationPct: number | null; // positive = over-assessed
+    assessmentRatioImplied: number | null; // assessed / concluded — what ratio would justify the assessment
+    assessmentRatioExpected: number | null; // from county_rules — what the ratio should be
+    assessmentRatioMismatch: boolean; // true if implied ratio is materially higher than expected
+    attomMarketRangeLow: number | null;
+    attomMarketRangeHigh: number | null;
+    assessedExceedsAttomRange: boolean; // true if assessed > ATTOM high estimate
+    marketTrendPct: number | null; // negative = declining market
+    effectiveAge: number | null;
+    buildingSqftFromAssessor: number | null;
+    dataAnomalies: string[]; // human-readable flags like "Assessor records show 2,400 sqft but comps average 1,800 sqft"
+  };
 }
 
 export interface FilingGuidePayload {
@@ -424,9 +440,29 @@ ${payload.countyRules.assessmentRatioCommercial != null ? `Assessment ratio (com
 
 Write in a professional but accessible tone. Support claims with data from the comparables and property characteristics provided.
 
+CRITICAL INSTRUCTION — ASSESSOR CHALLENGE ANALYSIS:
+Assessors are human. They make mistakes, use stale data, apply incorrect ratios, miss market trends, and sometimes entire counties systematically over-assess. Your job is to find EVERY legitimate angle where the assessor may have missed the mark. This applies to ALL reports — with or without photos.
+
+You MUST analyze and report on ALL of the following in the appeal_argument_summary and reconciliation_narrative sections:
+1. ASSESSED VALUE vs MARKET VALUE: Compare the assessed value per square foot against comparable sale prices per square foot. If the assessor's implied value exceeds what the market supports, call it out with specific numbers.
+2. ASSESSMENT RATIO VALIDATION: If an assessment ratio is provided, verify it was applied correctly. Calculate: assessed_value ÷ concluded_market_value. If this implied ratio exceeds the county's statutory ratio, the assessment is mathematically over-stated.
+3. MARKET TRENDS: If comparable sales show declining prices over time (older sales higher, recent sales lower), the assessor may be using stale valuations. Note any downward trend.
+4. DATA ERRORS: Look for anomalies in the assessor's property records — square footage that seems wrong for the property type, year built discrepancies, lot size issues. If the data looks suspect, say so.
+5. ATTOM MARKET RANGE: If the assessed value exceeds even the high end of independent market value estimates (ATTOM AVM), this is strong evidence of over-assessment.
+6. EFFECTIVE AGE vs ACTUAL AGE: Older properties with no renovation history should reflect physical depreciation. If the assessment doesn't account for age-related depreciation, challenge it.
+7. FLOOD ZONE / ENVIRONMENTAL: Properties in flood zones or with environmental concerns warrant value reductions that assessors often miss.
+
+${payload.overvaluationAnalysis ? `
+OVERVALUATION ANALYSIS (pre-computed — cite these specific numbers):
+${payload.overvaluationAnalysis.overvaluationPct != null ? `- Assessed value per sqft: $${payload.overvaluationAnalysis.assessedValuePerSqft}/sqft vs median comp: $${payload.overvaluationAnalysis.medianCompPricePerSqft}/sqft (${payload.overvaluationAnalysis.overvaluationPct > 0 ? `OVER-ASSESSED by ${payload.overvaluationAnalysis.overvaluationPct.toFixed(1)}%` : `within market range`})` : ''}
+${payload.overvaluationAnalysis.assessmentRatioMismatch ? `- ASSESSMENT RATIO ERROR: Implied ratio is ${payload.overvaluationAnalysis.assessmentRatioImplied?.toFixed(3)} but county statutory ratio is ${payload.overvaluationAnalysis.assessmentRatioExpected?.toFixed(3)} — the assessment exceeds what the ratio allows` : ''}
+${payload.overvaluationAnalysis.assessedExceedsAttomRange ? `- Assessed value EXCEEDS independent AVM high estimate ($${payload.overvaluationAnalysis.attomMarketRangeHigh?.toLocaleString()}) — strong overvaluation signal` : ''}
+${payload.overvaluationAnalysis.marketTrendPct != null && payload.overvaluationAnalysis.marketTrendPct < -2 ? `- DECLINING MARKET: Comp sales show ${payload.overvaluationAnalysis.marketTrendPct.toFixed(1)}% trend — assessor may be using stale valuations` : ''}
+${payload.overvaluationAnalysis.dataAnomalies.length > 0 ? `- DATA ANOMALIES:\n${payload.overvaluationAnalysis.dataAnomalies.map(a => `  * ${a}`).join('\n')}` : ''}
+` : ''}
 ${payload.photoAnalyses && payload.photoAnalyses.length > 0
   ? `PHOTO EVIDENCE: The property owner submitted ${payload.photoAnalyses.length} photo(s) with AI-analyzed condition data. Reference specific photo evidence (defects, condition ratings) in the property description, condition assessment, and reconciliation sections. This is evidence the assessor did not have access to — emphasize that documented conditions support the adjusted value conclusion.`
-  : `NO PHOTO EVIDENCE: The property owner did not submit photos. In the property description and reconciliation sections, note that condition is assumed to be average based on property age and class, since no interior/exterior condition evidence was provided. Note that the value conclusion is based solely on publicly available data — the same data the assessor used — and that interior condition evidence could further refine the analysis.`
+  : `NO PHOTO EVIDENCE: The property owner did not submit photos. This does NOT weaken your analysis — fight just as hard using market data, assessment ratio math, comparable sales, and any data anomalies. The assessor's value must still be justified by market evidence, and if it isn't, say so clearly.`
 }`;
 }
 
@@ -442,6 +478,7 @@ function buildNarrativeUserMessage(payload: NarrativePayload): string {
       incomeAnalysis: payload.incomeAnalysis ?? null,
       concludedValue: payload.concludedValue,
       photoAnalyses: payload.photoAnalyses ?? [],
+      overvaluationAnalysis: payload.overvaluationAnalysis ?? null,
     },
     null,
     2

@@ -73,9 +73,24 @@ function calculateAdjustments(
   const adjustment_pct_property_rights = 0;
   const adjustment_pct_financing_terms = 0;
   const adjustment_pct_conditions_of_sale = 0;
-  const adjustment_pct_market_trends = 0;
   const adjustment_pct_location = 0;
   const adjustment_pct_other = 0;
+
+  // Market trend adjustment: ~0.5% per month since sale, capped at ±10%.
+  // Adjusts older sales toward current market value. Positive = market has
+  // risen since comp sold (comp price needs upward adjustment), negative = declined.
+  let adjustment_pct_market_trends = 0;
+  if (comp.saleDate) {
+    const saleDate = new Date(comp.saleDate);
+    const now = new Date();
+    const monthsSinceSale = (now.getFullYear() - saleDate.getFullYear()) * 12 +
+      (now.getMonth() - saleDate.getMonth());
+    // Conservative 0.3% per month appreciation — the AI narrative will
+    // analyze actual trend direction from the comp data set
+    if (monthsSinceSale > 6) {
+      adjustment_pct_market_trends = Math.round(Math.min(monthsSinceSale * 0.3, 10) * 100) / 100;
+    }
+  }
 
   // Size adjustment: -3% per 10% larger, +5% per 10% smaller
   if (subject.buildingSqFt > 0 && comp.buildingSquareFeet && comp.buildingSquareFeet > 0) {
