@@ -20,22 +20,22 @@ const SECTION_SORT_ORDER: Record<string, { title: string; order: number }> = {
   property_description: { title: 'Property Description', order: 2 },
   site_description_narrative: { title: 'Site Description', order: 3 },
   improvement_description_narrative: { title: 'Improvement Description', order: 4 },
-  area_analysis_county: { title: 'County Area Analysis', order: 5 },
-  area_analysis_city: { title: 'City Area Analysis', order: 6 },
-  area_analysis_neighborhood: { title: 'Neighborhood Analysis', order: 7 },
-  market_analysis: { title: 'Market Analysis', order: 8 },
-  hbu_as_vacant: { title: 'Highest & Best Use — As Vacant', order: 9 },
-  hbu_as_improved: { title: 'Highest & Best Use — As Improved', order: 10 },
-  sales_comparison_narrative: { title: 'Sales Comparison Approach', order: 11 },
-  adjustment_grid_narrative: { title: 'Adjustment Grid Analysis', order: 12 },
-  income_approach_narrative: { title: 'Income Approach', order: 13 },
-  reconciliation_narrative: { title: 'Reconciliation & Final Value', order: 14 },
-  appeal_argument_summary: { title: 'Appeal Argument Summary', order: 15 },
+  condition_assessment: { title: 'Property Condition Evidence', order: 5 },
+  area_analysis_county: { title: 'County Area Analysis', order: 6 },
+  area_analysis_city: { title: 'City Area Analysis', order: 7 },
+  area_analysis_neighborhood: { title: 'Neighborhood Analysis', order: 8 },
+  market_analysis: { title: 'Market Analysis', order: 9 },
+  hbu_as_vacant: { title: 'Highest & Best Use — As Vacant', order: 10 },
+  hbu_as_improved: { title: 'Highest & Best Use — As Improved', order: 11 },
+  sales_comparison_narrative: { title: 'Sales Comparison Approach', order: 12 },
+  adjustment_grid_narrative: { title: 'Adjustment Grid Analysis', order: 13 },
+  income_approach_narrative: { title: 'Income Approach', order: 14 },
+  reconciliation_narrative: { title: 'Reconciliation & Final Value', order: 15 },
+  appeal_argument_summary: { title: 'Appeal Argument Summary', order: 16 },
   // legacy aliases
-  neighborhood_analysis: { title: 'Neighborhood Analysis', order: 7 },
-  value_conclusion: { title: 'Reconciliation & Final Value', order: 14 },
-  condition_assessment: { title: 'Condition Assessment', order: 12 },
-  assessment_equity: { title: 'Assessment Equity Analysis', order: 15 },
+  neighborhood_analysis: { title: 'Neighborhood Analysis', order: 8 },
+  value_conclusion: { title: 'Reconciliation & Final Value', order: 15 },
+  assessment_equity: { title: 'Assessment Equity Analysis', order: 16 },
 };
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
@@ -97,6 +97,7 @@ export async function runNarratives(
         condition_rating: analysis?.condition_rating ?? 'average',
         defects: analysis?.defects ?? [],
         professional_caption: analysis?.professional_caption ?? '',
+        comparable_adjustment_note: analysis?.comparable_adjustment_note ?? '',
       };
     });
 

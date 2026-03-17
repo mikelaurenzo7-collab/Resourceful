@@ -79,6 +79,7 @@ export interface NarrativePayload {
     condition_rating: string;
     defects: PhotoDefect[];
     professional_caption: string;
+    comparable_adjustment_note: string;
   }>;
   floodZone?: string | null;
   // Pre-computed overvaluation analysis — every angle the assessor may have missed
@@ -167,6 +168,7 @@ const NARRATIVE_SECTION_NAMES = [
   'property_description',
   'site_description_narrative',
   'improvement_description_narrative',
+  'condition_assessment',
   'area_analysis_county',
   'area_analysis_city',
   'area_analysis_neighborhood',
@@ -436,6 +438,72 @@ export async function analyzePhoto(
 
 // ─── Prompt Builders ─────────────────────────────────────────────────────────
 
+/**
+ * Build a structured photo evidence brief for the system prompt.
+ * This gives the AI a detailed, photo-by-photo breakdown it can cite directly.
+ */
+function buildPhotoEvidenceBrief(
+  photos: NonNullable<NarrativePayload['photoAnalyses']>
+): string {
+  const totalDefects = photos.reduce((sum, p) => sum + p.defects.length, 0);
+  const significantDefects = photos.reduce(
+    (sum, p) => sum + p.defects.filter(d => d.severity === 'significant').length, 0
+  );
+  const moderateDefects = photos.reduce(
+    (sum, p) => sum + p.defects.filter(d => d.severity === 'moderate').length, 0
+  );
+  const highImpactDefects = photos.reduce(
+    (sum, p) => sum + p.defects.filter(d => d.value_impact === 'high').length, 0
+  );
+
+  // Build per-photo detail
+  const photoDetails = photos.map((photo, idx) => {
+    const defectSummary = photo.defects.length > 0
+      ? photo.defects.map(d =>
+          `    - [${d.severity.toUpperCase()}/${d.value_impact} impact] ${d.type}: ${d.description}${d.report_language ? `\n      Report language: "${d.report_language}"` : ''}`
+        ).join('\n')
+      : '    - No defects identified in this view';
+
+    return `  Photo ${idx + 1} (${photo.photo_type}): condition = ${photo.condition_rating}
+    Caption: "${photo.professional_caption}"
+${defectSummary}
+    Comparable adjustment note: ${photo.comparable_adjustment_note || 'N/A'}`;
+  }).join('\n\n');
+
+  return `
+═══════════════════════════════════════════════════════════════════════
+PROPRIETARY PHOTO EVIDENCE — OUR COMPETITIVE ADVANTAGE
+This is firsthand evidence the assessor NEVER had access to.
+The county assessed this property from a desk. We have eyes on the ground.
+═══════════════════════════════════════════════════════════════════════
+
+EVIDENCE SUMMARY:
+- ${photos.length} photographs analyzed by AI vision
+- ${totalDefects} total condition issues documented
+- ${significantDefects} significant defects, ${moderateDefects} moderate defects
+- ${highImpactDefects} defects with HIGH value impact
+- Overall condition ratings: ${photos.map(p => `${p.photo_type}: ${p.condition_rating}`).join(', ')}
+
+DETAILED PHOTO-BY-PHOTO EVIDENCE:
+${photoDetails}
+
+HOW TO USE THIS EVIDENCE (CRITICAL INSTRUCTIONS):
+1. CONDITION ASSESSMENT SECTION: This section is your showcase. Walk through each photo methodically. For every defect, explain what it means for value in plain language a board member can understand. Use the report_language from each defect — it's pre-written for formal use.
+
+2. EXECUTIVE SUMMARY: Open with the fact that this analysis includes ${photos.length} independently analyzed photographs documenting property condition — evidence the assessor did not have. This immediately establishes credibility over the assessor's desk-based valuation.
+
+3. PROPERTY/IMPROVEMENT DESCRIPTIONS: Reference specific photo evidence when describing the property. Don't just say "the roof shows wear" — say "as documented in the roof photograph, [specific defect] was identified with [severity] severity, indicating [value impact]."
+
+4. SALES COMPARISON: When applying condition adjustments to comparables, tie EVERY adjustment back to specific photographed evidence. "A ${photos.reduce((sum, p) => sum + p.defects.filter(d => d.severity !== 'minor').length, 0)} documented condition issues warrant a negative condition adjustment of [X]% relative to [comp address], which sold in [assumed better] condition."
+
+5. RECONCILIATION: State clearly that the concluded value incorporates documented physical condition that reduces value below what the assessor assumed. The assessor used standard assumptions; we have photographic proof.
+
+6. APPEAL ARGUMENTS: At least 2 of your numbered arguments MUST lead with photo evidence. Frame it as: "The assessor valued this property assuming [standard condition]. Our independent photographic analysis documents [X defects] including [most impactful]. This documented condition evidence supports a value of $Y, not the assessed $Z."
+
+The photos are your secret weapon. The assessor has spreadsheets. You have eyes on the property. Use them relentlessly.
+═══════════════════════════════════════════════════════════════════════`;
+}
+
 function buildNarrativeSystemPrompt(payload: NarrativePayload): string {
   const county = payload.countyRules.countyName;
   const state = payload.countyRules.state;
@@ -468,6 +536,8 @@ function buildNarrativeSystemPrompt(payload: NarrativePayload): string {
     countyExpertise.push(`County-specific pro se tips: ${payload.countyRules.proSeTips}`);
   }
 
+  const hasPhotos = payload.photoAnalyses && payload.photoAnalyses.length > 0;
+
   return `You are a relentless, investigative property valuation analyst who specializes in ${county} County, ${state}. You have spent years studying how ${county} County's assessor operates — their methodology, their common errors, their tendencies to over-assess, and the specific pressure points that win appeals before ${payload.countyRules.appealBoardName || 'the local board of review'}.
 
 You work FOR the property owner. Your mission is to build the strongest possible case by uncovering every legitimate piece of evidence that the assessment is wrong. You are thorough, aggressive in advocacy, and meticulous with data. You leave no stone unturned. If there is an angle that helps the homeowner, you find it and you quantify it.
@@ -482,21 +552,31 @@ You must return valid JSON — an array of objects with these keys:
 - "content": the narrative text (may include Markdown)
 
 Required section_name values (generate ALL that apply, in this order):
-1. "executive_summary" — lead with the dollar amount the homeowner is being overcharged, the concluded market value, and a confident summary of why the assessment is wrong
-2. "property_description" — physical description emphasizing any characteristics that would LOWER value (age, deferred maintenance, functional obsolescence, layout inefficiencies)
-3. "site_description_narrative" — site description noting any adverse factors (flood zone, noise, traffic, easements, irregular lot shape, proximity to commercial/industrial)
-4. "improvement_description_narrative" — improvement description, emphasizing depreciation, outdated systems, and any features that don't add proportional value
-5. "area_analysis_county" — ${county} County market context, noting any factors that suppress values (tax burden, population trends, economic conditions, inventory levels)
-6. "area_analysis_city" — city-level analysis with focus on factors that limit appreciation
-7. "area_analysis_neighborhood" — hyperlocal neighborhood analysis — competing listings, days on market, any negative externalities
-8. "market_analysis" — market conditions and trends, emphasizing any softness, rising inventory, or declining price trends
-9. "hbu_as_vacant" — highest and best use as if vacant
-10. "hbu_as_improved" — highest and best use as improved
-11. "sales_comparison_narrative" — aggressive comparable sales analysis: explain why each comp supports a LOWER value than the assessor's, call out every adjustment that works in the homeowner's favor
-12. "adjustment_grid_narrative" — methodical explanation of every adjustment, framed to support the lower concluded value
-${payload.comparableRentals?.length ? '13. "income_approach_narrative" — rental income analysis showing the income-derived value is below the assessed value' : ''}
-14. "reconciliation_narrative" — final value reconciliation: state the concluded value with conviction, quantify the exact overassessment in dollars and percentage, and recommend the assessment be reduced
-${payload.serviceType === 'tax_appeal' ? `15. "appeal_argument_summary" — the homeowner's battle plan: 5-7 numbered arguments, each a specific, quotable statement they can read to ${payload.countyRules.appealBoardName || 'the board'}. Lead with the strongest argument. Include exact dollar figures. End with a clear ask: "I respectfully request the assessed value be reduced from $X to $Y."` : ''}
+1. "executive_summary" — lead with the dollar amount the homeowner is being overcharged, the concluded market value, and a confident summary of why the assessment is wrong${hasPhotos ? '. Mention that the analysis includes firsthand photographic evidence of property condition that the assessor never reviewed.' : ''}
+2. "property_description" — physical description emphasizing any characteristics that would LOWER value (age, deferred maintenance, functional obsolescence, layout inefficiencies)${hasPhotos ? '. Weave in specific observations from the photo evidence — reference individual photos by type (e.g., "as shown in the front elevation photograph") when describing condition.' : ''}
+3. "site_description_narrative" — site description noting any adverse factors (flood zone, noise, traffic, easements, irregular lot shape, proximity to commercial/industrial)${hasPhotos ? '. Reference any site-level issues visible in exterior photos (drainage, grading, neighboring conditions).' : ''}
+4. "improvement_description_narrative" — improvement description, emphasizing depreciation, outdated systems, and any features that don't add proportional value${hasPhotos ? '. Cite specific photo evidence of deterioration, deferred maintenance, and age-related wear documented in the condition analysis.' : ''}
+${hasPhotos ? `5. "condition_assessment" — THIS IS YOUR MOST POWERFUL SECTION. The assessor valued this property without setting foot inside or examining it up close. The homeowner's photographs tell the REAL story. For each photo submitted:
+   - State what the photo shows (type: front, rear, interior, roof, etc.)
+   - List every defect identified with severity and estimated value impact
+   - Explain in plain language why this condition reduces value below what the assessor assumed
+   - Quantify: "This level of [defect] typically warrants a [X-Y]% condition adjustment in comparable sales analysis"
+   - Reference the comparable_adjustment_note for each photo
+
+   End with a summary: total number of documented defects, overall condition rating, and the aggregate value impact. Frame this as: "The assessor's records assume [assumed condition]. Our on-site photographic evidence documents [actual condition]. This discrepancy alone accounts for approximately $[X] in overassessment."
+
+   This section should be substantial — it is evidence the county does not have and cannot refute.` : ''}
+${hasPhotos ? '6' : '5'}. "area_analysis_county" — ${county} County market context, noting any factors that suppress values (tax burden, population trends, economic conditions, inventory levels)
+${hasPhotos ? '7' : '6'}. "area_analysis_city" — city-level analysis with focus on factors that limit appreciation
+${hasPhotos ? '8' : '7'}. "area_analysis_neighborhood" — hyperlocal neighborhood analysis — competing listings, days on market, any negative externalities
+${hasPhotos ? '9' : '8'}. "market_analysis" — market conditions and trends, emphasizing any softness, rising inventory, or declining price trends
+${hasPhotos ? '10' : '9'}. "hbu_as_vacant" — highest and best use as if vacant
+${hasPhotos ? '11' : '10'}. "hbu_as_improved" — highest and best use as improved
+${hasPhotos ? '12' : '11'}. "sales_comparison_narrative" — aggressive comparable sales analysis: explain why each comp supports a LOWER value than the assessor's, call out every adjustment that works in the homeowner's favor${hasPhotos ? '. When discussing condition adjustments, explicitly tie them back to the photographic evidence: "Based on the documented [defect type] shown in the property photographs, a condition adjustment of [X]% is warranted when comparing to [comp address]."' : ''}
+${hasPhotos ? '13' : '12'}. "adjustment_grid_narrative" — methodical explanation of every adjustment, framed to support the lower concluded value${hasPhotos ? '. The condition adjustment line item should reference the photo evidence summary.' : ''}
+${payload.comparableRentals?.length ? `${hasPhotos ? '14' : '13'}. "income_approach_narrative" — rental income analysis showing the income-derived value is below the assessed value` : ''}
+${hasPhotos ? '15' : '14'}. "reconciliation_narrative" — final value reconciliation: state the concluded value with conviction, quantify the exact overassessment in dollars and percentage, and recommend the assessment be reduced${hasPhotos ? '. Explicitly state that the concluded value reflects documented property condition from firsthand photographic evidence — evidence the assessor did not have when setting the assessed value.' : ''}
+${payload.serviceType === 'tax_appeal' ? `${hasPhotos ? '16' : '15'}. "appeal_argument_summary" — the homeowner's battle plan: 5-7 numbered arguments, each a specific, quotable statement they can read to ${payload.countyRules.appealBoardName || 'the board'}. Lead with the strongest argument. Include exact dollar figures. End with a clear ask: "I respectfully request the assessed value be reduced from $X to $Y."${hasPhotos ? ' At least 2 of the arguments MUST reference the photographic evidence directly — these are your most persuasive points because the board can see the evidence with their own eyes.' : ''}` : ''}
 
 INVESTIGATIVE MANDATE — LEAVE NO STONE UNTURNED:
 You are an investigator, not a reporter. Do not merely describe the data — interrogate it. For every data point, ask: "Does this help the homeowner's case?" If yes, amplify it with context. If no, explain why it's irrelevant or misleading.
@@ -531,10 +611,7 @@ ${payload.overvaluationAnalysis.assessedExceedsAttomRange ? `- INDEPENDENT CONFI
 ${payload.overvaluationAnalysis.marketTrendPct != null && payload.overvaluationAnalysis.marketTrendPct < -2 ? `- STALE DATA ALERT: Comparable sales show a ${Math.abs(payload.overvaluationAnalysis.marketTrendPct).toFixed(1)}% declining trend — the assessor appears to be using outdated valuations that don't reflect current market reality` : ''}
 ${payload.overvaluationAnalysis.dataAnomalies.length > 0 ? `- ASSESSOR DATA ERRORS:\n${payload.overvaluationAnalysis.dataAnomalies.map(a => `  → ${a}`).join('\n')}` : ''}
 ` : ''}
-${payload.photoAnalyses && payload.photoAnalyses.length > 0
-  ? `PHOTO EVIDENCE ARSENAL: The homeowner submitted ${payload.photoAnalyses.length} photo(s) with AI-analyzed condition data. This is evidence the assessor NEVER saw. Reference specific defects, condition ratings, and visual evidence throughout the report. In the appeal_argument_summary, explain how each documented condition issue impacts value. Photos of deferred maintenance, structural concerns, or cosmetic deterioration are powerful — the board can see what the assessor couldn't.`
-  : `NO PHOTO EVIDENCE — FIGHT HARDER WITH DATA: The homeowner did not submit photos. Compensate by being even more aggressive with market data, assessment ratio math, comparable sales analysis, and data anomaly detection. The numbers alone must build an overwhelming case. The assessor's value must be justified by market evidence, and if it isn't, make that undeniably clear.`
-}
+${hasPhotos ? buildPhotoEvidenceBrief(payload.photoAnalyses!) : ''}
 ${payload.calibrationContext && payload.calibrationContext.sampleSize > 0
   ? `\nCALIBRATION CREDIBILITY: This valuation methodology has been validated against ${payload.calibrationContext.sampleSize} independent professional appraisals${payload.calibrationContext.meanAbsoluteErrorPct != null ? ` with a mean absolute error of only ${payload.calibrationContext.meanAbsoluteErrorPct.toFixed(1)}%` : ''}. Mention this in the executive summary — it demonstrates our analysis is professionally calibrated, not speculative.`
   : ''}
