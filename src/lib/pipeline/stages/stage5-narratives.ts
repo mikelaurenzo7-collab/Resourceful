@@ -10,6 +10,7 @@ import {
   generateNarratives,
   type NarrativePayload,
 } from '@/lib/services/anthropic';
+import { getCalibrationParams } from '@/lib/calibration/recalculate';
 
 // ─── Section Mapping ────────────────────────────────────────────────────────
 
@@ -141,6 +142,23 @@ export async function runNarratives(
     concludedValue = Math.round(
       (concludedValue * 0.7 + incomeValue * 0.3) / 1000
     ) * 1000;
+  }
+
+  // Apply calibration value bias correction (learned from real appraisal feedback)
+  const calibration = await getCalibrationParams(
+    report.property_type as 'residential' | 'commercial' | 'industrial' | 'land',
+    report.county_fips ?? null,
+    supabase
+  );
+  if (calibration && calibration.value_bias_pct !== 0 && concludedValue > 0) {
+    const preBias = concludedValue;
+    // Positive bias = system overvalues, so subtract; negative = undervalues, so add
+    concludedValue = Math.round(
+      (concludedValue * (1 - calibration.value_bias_pct / 100)) / 1000
+    ) * 1000;
+    console.log(
+      `[stage5] Applied value bias correction: ${preBias} → ${concludedValue} (bias: ${calibration.value_bias_pct}%, n=${calibration.sample_size})`
+    );
   }
 
   // ── Determine assessment ratio based on property type ──────────────────
@@ -353,6 +371,13 @@ export async function runNarratives(
     photoAnalyses: photoAnalyses.length > 0 ? photoAnalyses : undefined,
     floodZone: propertyData.flood_zone_designation,
     overvaluationAnalysis,
+    calibrationContext: calibration && calibration.sample_size > 0
+      ? {
+          sampleSize: calibration.sample_size,
+          meanAbsoluteErrorPct: calibration.mean_absolute_error_pct,
+          valueBiasPct: calibration.value_bias_pct,
+        }
+      : undefined,
   };
 
   // ── Call Anthropic to generate narratives ──────────────────────────────

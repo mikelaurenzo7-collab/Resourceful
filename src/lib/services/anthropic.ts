@@ -92,6 +92,11 @@ export interface NarrativePayload {
     buildingSqftFromAssessor: number | null;
     dataAnomalies: string[]; // human-readable flags like "Assessor records show 2,400 sqft but comps average 1,800 sqft"
   };
+  calibrationContext?: {
+    sampleSize: number;
+    meanAbsoluteErrorPct: number | null;
+    valueBiasPct: number;
+  };
 }
 
 export interface FilingGuidePayload {
@@ -463,7 +468,10 @@ ${payload.overvaluationAnalysis.dataAnomalies.length > 0 ? `- DATA ANOMALIES:\n$
 ${payload.photoAnalyses && payload.photoAnalyses.length > 0
   ? `PHOTO EVIDENCE: The property owner submitted ${payload.photoAnalyses.length} photo(s) with AI-analyzed condition data. Reference specific photo evidence (defects, condition ratings) in the property description, condition assessment, and reconciliation sections. This is evidence the assessor did not have access to — emphasize that documented conditions support the adjusted value conclusion.`
   : `NO PHOTO EVIDENCE: The property owner did not submit photos. This does NOT weaken your analysis — fight just as hard using market data, assessment ratio math, comparable sales, and any data anomalies. The assessor's value must still be justified by market evidence, and if it isn't, say so clearly.`
-}`;
+}
+${payload.calibrationContext && payload.calibrationContext.sampleSize > 0
+  ? `\nCALIBRATION NOTE: This valuation has been calibrated against ${payload.calibrationContext.sampleSize} professional appraisals${payload.calibrationContext.meanAbsoluteErrorPct != null ? ` with a mean absolute error of ${payload.calibrationContext.meanAbsoluteErrorPct.toFixed(1)}%` : ''}. The concluded value incorporates learned adjustments from real-world appraisal feedback.`
+  : ''}`;
 }
 
 function buildNarrativeUserMessage(payload: NarrativePayload): string {

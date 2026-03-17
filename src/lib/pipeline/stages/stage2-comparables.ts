@@ -5,10 +5,11 @@
 // comparable_sales table.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, PropertyType, ComparableSaleInsert, Report, PropertyData } from '@/types/database';
+import type { Database, PropertyType, ComparableSaleInsert, Report, PropertyData, CalibrationParams } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { getSalesComparables, type AttomSaleComp } from '@/lib/services/attom';
 import { getStreetViewUrl } from '@/lib/services/google-maps';
+import { getCalibrationParams } from '@/lib/calibration/recalculate';
 
 // ─── Search Tiers by Property Type ──────────────────────────────────────────
 
@@ -65,7 +66,8 @@ interface AdjustmentResult {
 
 function calculateAdjustments(
   subject: SubjectData,
-  comp: AttomSaleComp
+  comp: AttomSaleComp,
+  calibration?: CalibrationParams | null
 ): AdjustmentResult {
   let adjustment_pct_size = 0;
   let adjustment_pct_condition = 0;
@@ -125,6 +127,14 @@ function calculateAdjustments(
     if (Math.abs(ratioDiffPct) > 20) {
       adjustment_pct_land_to_building = Math.round((ratioDiffPct / 20) * -1 * 100) / 100;
     }
+  }
+
+  // Apply calibration multipliers (learned from real appraisal feedback)
+  if (calibration) {
+    adjustment_pct_size = Math.round(adjustment_pct_size * calibration.size_multiplier * 100) / 100;
+    adjustment_pct_condition = Math.round(adjustment_pct_condition * calibration.condition_multiplier * 100) / 100;
+    adjustment_pct_market_trends = Math.round(adjustment_pct_market_trends * calibration.market_trend_multiplier * 100) / 100;
+    adjustment_pct_land_to_building = Math.round(adjustment_pct_land_to_building * calibration.land_ratio_multiplier * 100) / 100;
   }
 
   // Calculate net adjustment
@@ -197,13 +207,34 @@ export async function runComparables(
     return { success: false, error: 'No geocode coordinates found on report' };
   }
 
+  const propertyType = report.property_type as PropertyType;
+
+  // ── Load calibration params (learned from real appraisal feedback) ─────
+  const calibration = await getCalibrationParams(
+    propertyType,
+    report.county_fips ?? null,
+    supabase
+  );
+
+  // Apply sqft correction factor if calibration data exists
+  const sqftCorrection = calibration?.sqft_correction_factor ?? 1.0;
+  const rawBuildingSqft = propertyData.building_sqft_gross ?? 0;
+  const correctedBuildingSqft = sqftCorrection !== 1.0 && rawBuildingSqft > 0
+    ? Math.round(rawBuildingSqft / sqftCorrection)
+    : rawBuildingSqft;
+
+  if (sqftCorrection !== 1.0 && rawBuildingSqft > 0) {
+    console.log(
+      `[stage2] Applied sqft correction: ${rawBuildingSqft} → ${correctedBuildingSqft} (factor: ${sqftCorrection})`
+    );
+  }
+
   const subject: SubjectData = {
-    buildingSqFt: propertyData.building_sqft_gross ?? 0,
+    buildingSqFt: correctedBuildingSqft,
     lotSqFt: propertyData.lot_size_sqft ?? 0,
     yearBuilt: propertyData.year_built ?? 0,
   };
 
-  const propertyType = report.property_type as PropertyType;
   const tiers = SEARCH_TIERS[propertyType] ?? SEARCH_TIERS.residential;
 
   // ── Progressive radius/time expansion ─────────────────────────────────
@@ -255,7 +286,7 @@ export async function runComparables(
 
   // ── Calculate adjustments and write to DB ─────────────────────────────
   const compInserts: ComparableSaleInsert[] = selectedComps.map((comp) => {
-    const adj = calculateAdjustments(subject, comp);
+    const adj = calculateAdjustments(subject, comp, calibration);
 
     const pricePerSqft = comp.buildingSquareFeet && comp.buildingSquareFeet > 0
       ? Math.round((comp.salePrice / comp.buildingSquareFeet) * 100) / 100
