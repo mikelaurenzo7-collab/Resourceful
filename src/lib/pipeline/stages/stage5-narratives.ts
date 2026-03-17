@@ -240,10 +240,14 @@ export async function runNarratives(
   const { sections, prompt_tokens, completion_tokens, generation_duration_ms } = narrativeResult.data;
 
   // ── Delete existing narratives ────────────────────────────────────────
-  await supabase
+  const { error: deleteNarrativesError } = await supabase
     .from('report_narratives')
     .delete()
     .eq('report_id', reportId);
+
+  if (deleteNarrativesError) {
+    return { success: false, error: `Failed to delete existing narratives: ${deleteNarrativesError.message}` };
+  }
 
   // ── Store each section ────────────────────────────────────────────────
   const narrativeInserts = sections.map((section) => ({

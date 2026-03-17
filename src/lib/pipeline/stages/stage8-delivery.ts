@@ -146,7 +146,7 @@ export async function runDelivery(
   const now = new Date().toISOString();
 
   // Update report status
-  await supabase
+  const { error: statusUpdateError } = await supabase
     .from('reports')
     .update({
       status: 'delivered',
@@ -156,8 +156,14 @@ export async function runDelivery(
     })
     .eq('id', reportId);
 
-  // Record approval event
-  await supabase
+  if (statusUpdateError) {
+    // Email was already sent — log but report as failure so admin can investigate
+    console.error(`[stage8] CRITICAL: Email sent but report status update failed: ${statusUpdateError.message}`);
+    return { success: false, error: `Report status update failed after email delivery: ${statusUpdateError.message}` };
+  }
+
+  // Record approval event (non-fatal — audit trail entry)
+  const { error: approvalInsertError } = await supabase
     .from('approval_events')
     .insert({
       report_id: reportId,
@@ -166,6 +172,10 @@ export async function runDelivery(
       section_name: null,
       notes: 'Report approved and delivered to client',
     });
+
+  if (approvalInsertError) {
+    console.warn(`[stage8] Failed to record approval event: ${approvalInsertError.message}`);
+  }
 
   console.log(
     `[stage8] Report ${reportId} delivered to ${clientEmail}. Email ID: ${emailResult.data?.id}`

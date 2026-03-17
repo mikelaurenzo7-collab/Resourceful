@@ -443,7 +443,7 @@ export async function runPdfAssembly(
   }
 
   // ── Update report ─────────────────────────────────────────────────────
-  await supabase
+  const { error: reportUpdateError } = await supabase
     .from('reports')
     .update({
       report_pdf_storage_path: storagePath,
@@ -451,6 +451,10 @@ export async function runPdfAssembly(
       pipeline_completed_at: new Date().toISOString(),
     })
     .eq('id', reportId);
+
+  if (reportUpdateError) {
+    return { success: false, error: `Failed to update report after PDF upload: ${reportUpdateError.message}` };
+  }
 
   // ── Send admin notification ───────────────────────────────────────────
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.resourceful.com';

@@ -28,7 +28,10 @@ async function queryFemaFloodZone(lat: number, lng: number): Promise<FemaFloodRe
     url.searchParams.set('returnGeometry', 'false');
     url.searchParams.set('f', 'json');
 
-    const response = await fetch(url.toString());
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000); // 15s timeout
+    const response = await fetch(url.toString(), { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!response.ok) {
       console.warn(`[stage1] FEMA API returned ${response.status}`);
       return { floodZone: null, panelNumber: null };
@@ -48,9 +51,12 @@ async function queryFemaFloodZone(lat: number, lng: number): Promise<FemaFloodRe
 }
 
 // ─── County Data Router ─────────────────────────────────────────────────────
+// Two-tier strategy: if a county has a dedicated assessor API adapter, try it
+// first for authoritative assessed values. Always fall back to ATTOM, which
+// covers every county in the country.
 
 async function fetchCountyData(report: Report) {
-  // Try Cook County API first if we have a PIN and county matches
+  // Try county-specific API if we have an adapter for this county
   if (
     report.county?.toLowerCase().includes('cook') &&
     report.state === 'IL' &&
@@ -208,7 +214,7 @@ export async function runDataCollection(
   };
 
   // Update report with geocode coordinates
-  await supabase
+  const { error: geoUpdateError } = await supabase
     .from('reports')
     .update({
       latitude: geo.latitude,
@@ -216,6 +222,10 @@ export async function runDataCollection(
       county_fips: countyRule?.county_fips ?? null,
     })
     .eq('id', reportId);
+
+  if (geoUpdateError) {
+    return { success: false, error: `Failed to update report coordinates: ${geoUpdateError.message}` };
+  }
 
   // Check if property_data row already exists for this report
   const { data: existingData } = await supabase

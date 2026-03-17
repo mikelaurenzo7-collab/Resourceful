@@ -71,10 +71,14 @@ export async function runIncomeAnalysis(
   });
 
   // ── Delete existing rental comps ──────────────────────────────────────
-  await supabase
+  const { error: deleteRentalsError } = await supabase
     .from('comparable_rentals')
     .delete()
     .eq('report_id', reportId);
+
+  if (deleteRentalsError) {
+    console.warn(`[stage3] Failed to delete existing rental comps: ${deleteRentalsError.message}`);
+  }
 
   let concludedMarketRentPerSqFtYr = 0;
 
@@ -194,10 +198,14 @@ export async function runIncomeAnalysis(
   const concludedValueIncomeApproach = capitalizedValue;
 
   // ── Delete existing income_analysis ───────────────────────────────────
-  await supabase
+  const { error: deleteIncomeError } = await supabase
     .from('income_analysis')
     .delete()
     .eq('report_id', reportId);
+
+  if (deleteIncomeError) {
+    console.warn(`[stage3] Failed to delete existing income_analysis: ${deleteIncomeError.message}`);
+  }
 
   // ── Write income analysis to DB ───────────────────────────────────────
   const { error: insertError } = await supabase

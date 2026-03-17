@@ -73,10 +73,14 @@ async function sodaQuery<T>(
   }
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000); // 15s timeout
     const response = await fetch(url.toString(), {
       method: 'GET',
       headers: { Accept: 'application/json' },
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const body = await response.text().catch(() => '');
@@ -147,7 +151,11 @@ function normalizeParcel(row: any): CookCountyParcel {
 export async function getPropertyByPIN(
   pin: string
 ): Promise<ServiceResult<CookCountyAssessment>> {
+  // Strip everything except digits to prevent SoQL injection
   const cleanPin = pin.replace(/\D/g, '');
+  if (cleanPin.length === 0 || cleanPin.length > 14) {
+    return { data: null, error: `Invalid PIN format: ${pin}` };
+  }
   const result = await sodaQuery<any[]>(DATASETS.assessments, {
     $where: `pin='${cleanPin}'`,
     $order: 'tax_year DESC',
@@ -177,6 +185,9 @@ export async function getAssessmentHistory(
   pin: string
 ): Promise<ServiceResult<CookCountyAssessmentHistoryEntry[]>> {
   const cleanPin = pin.replace(/\D/g, '');
+  if (cleanPin.length === 0 || cleanPin.length > 14) {
+    return { data: null, error: `Invalid PIN format: ${pin}` };
+  }
   const result = await sodaQuery<any[]>(DATASETS.assessmentHistory, {
     $where: `pin='${cleanPin}'`,
     $order: 'tax_year DESC',
@@ -201,7 +212,12 @@ export async function getAssessmentHistory(
 export async function searchByAddress(
   address: string
 ): Promise<ServiceResult<CookCountyParcel[]>> {
-  const normalized = address.toUpperCase().trim();
+  // Sanitize input to prevent SoQL injection — strip anything that isn't
+  // alphanumeric, space, period, comma, or hash (standard address chars).
+  const normalized = address
+    .toUpperCase()
+    .trim()
+    .replace(/[^A-Z0-9 .,#-]/g, '');
   const result = await sodaQuery<any[]>(DATASETS.parcels, {
     $where: `upper(property_address) LIKE '%${normalized}%'`,
     $limit: '10',

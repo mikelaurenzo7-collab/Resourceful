@@ -229,10 +229,14 @@ export async function runComparables(
   const selectedComps = allComps.slice(0, MAX_COMPS);
 
   // ── Delete existing comps for this report ─────────────────────────────
-  await supabase
+  const { error: deleteError } = await supabase
     .from('comparable_sales')
     .delete()
     .eq('report_id', reportId);
+
+  if (deleteError) {
+    return { success: false, error: `Failed to delete existing comps: ${deleteError.message}` };
+  }
 
   // ── Calculate adjustments and write to DB ─────────────────────────────
   const compInserts: ComparableSaleInsert[] = selectedComps.map((comp) => {

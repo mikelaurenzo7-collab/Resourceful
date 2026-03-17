@@ -86,10 +86,14 @@ export async function getFloodZone(
   url.searchParams.set('f', 'json');
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000); // 15s timeout
     const response = await fetch(url.toString(), {
       method: 'GET',
       headers: { Accept: 'application/json' },
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const body = await response.text().catch(() => '');

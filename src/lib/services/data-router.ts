@@ -1,11 +1,13 @@
 // ─── Property Data Collection Router ─────────────────────────────────────────
-// Implements the two-tier data source strategy:
-//   1. If the county has a dedicated assessor API (county_rules.assessor_api_url), try it first
-//   2. Always call ATTOM as fallback / supplement
-//   3. Merge results with county API taking precedence for assessed values
+// Nationwide two-tier data source strategy:
+//   1. ATTOM covers every county in the country — this is the universal source.
+//   2. If a county has a dedicated assessor API (county_rules.assessor_api_url),
+//      try it first for authoritative assessed values, then merge.
+//   3. County API results take precedence for assessed values when available.
 //
-// Adding a new county API adapter means adding a case to the switch in
-// collectFromCountyApi(). The rest of the pipeline remains unchanged.
+// Cook County IL is the first county adapter. Adding a new county API adapter
+// means adding a case to the switch in collectFromCountyApi(). The rest of
+// the pipeline remains unchanged — every county works via ATTOM regardless.
 
 import type {
   PropertyData,
@@ -100,9 +102,10 @@ interface CountyApiResult {
 }
 
 /**
- * Attempt to collect data from a county-specific API.
- * Checks county_rules.assessor_api_url to determine availability.
- * Currently only Cook County is implemented. Add new counties here.
+ * Attempt to collect data from a county-specific assessor API.
+ * Checks county_rules.assessor_api_url to determine if a direct adapter exists.
+ * Returns null gracefully when no adapter is available — ATTOM covers everything.
+ * Currently Cook County IL is implemented. Add new county adapters here as needed.
  */
 async function collectFromCountyApi(
   params: CollectPropertyDataParams

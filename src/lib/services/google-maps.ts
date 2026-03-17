@@ -68,7 +68,10 @@ export async function geocodeAddress(
   url.searchParams.set('key', API_KEY);
 
   try {
-    const response = await fetch(url.toString());
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000); // 10s timeout
+    const response = await fetch(url.toString(), { signal: controller.signal });
+    clearTimeout(timeout);
     if (!response.ok) {
       return {
         data: null,

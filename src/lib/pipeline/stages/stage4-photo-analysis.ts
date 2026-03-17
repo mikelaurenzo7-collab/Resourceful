@@ -119,13 +119,17 @@ export async function runPhotoAnalysis(
     conditionRatings.push(analysis.condition_rating);
 
     // Update photo record with analysis results (ai_analysis is JSONB)
-    await supabase
+    const { error: photoUpdateError } = await supabase
       .from('photos')
       .update({
         ai_analysis: analysis as any,
         caption: analysis.professional_caption,
       })
       .eq('id', photo.id);
+
+    if (photoUpdateError) {
+      console.warn(`[stage4] Failed to update photo ${photo.id}: ${photoUpdateError.message}`);
+    }
 
     console.log(
       `[stage4] Photo ${photo.id} (${photo.photo_type}): condition=${analysis.condition_rating}, defects=${analysis.defects.length}`
@@ -174,7 +178,7 @@ export async function runPhotoAnalysis(
             ? Math.round(((comp.sale_price * (1 + roundedNet / 100)) / comp.building_sqft) * 100) / 100
             : null;
 
-        await supabase
+        const { error: compUpdateError } = await supabase
           .from('comparable_sales')
           .update({
             adjustment_pct_condition: newConditionAdj,
@@ -183,6 +187,10 @@ export async function runPhotoAnalysis(
             adjusted_price_per_sqft: newAdjustedPricePerSqft,
           })
           .eq('id', comp.id);
+
+        if (compUpdateError) {
+          console.warn(`[stage4] Failed to update comp ${comp.id}: ${compUpdateError.message}`);
+        }
       }
 
       console.log(

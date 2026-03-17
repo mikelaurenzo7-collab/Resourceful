@@ -7,7 +7,7 @@ A nationwide web app that generates professional property tax appeal reports usi
 Nothing reaches the client without explicit admin approval. The pipeline always halts at status = 'pending_approval'. Client delivery only happens when an admin clicks Approve. This is not a temporary workaround — it is a core feature.
 
 ## Nationwide Architecture Rule
-Cook County is the reference implementation only. All county-specific behavior comes from the county_rules database table. Assessment ratios, appeal board names, filing deadlines, form names, assessor API URLs — all from the database. Never hardcoded in application logic.
+This platform serves every county in every state. ATTOM is the universal data source that covers the entire country. County-specific assessor APIs (like Cook County IL) are optional enhancements — when a county_rules row has an assessor_api_url, we try the direct API first for more accurate assessed values, then merge with ATTOM. Assessment ratios, appeal board names, filing deadlines, form names — all from the county_rules database table. Never hardcoded in application logic.
 
 ## Tech Stack
 - Next.js 14 App Router, TypeScript strict mode

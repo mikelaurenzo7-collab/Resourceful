@@ -11,7 +11,10 @@ import type { PhotoAiAnalysis, PhotoDefect } from '@/types/database';
 let _client: Anthropic | null = null;
 function getClient(): Anthropic {
   if (!_client) {
-    _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    _client = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+      timeout: 120_000, // 2 minute timeout for AI calls
+    });
   }
   return _client;
 }
