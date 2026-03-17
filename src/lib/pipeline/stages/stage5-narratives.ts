@@ -360,6 +360,11 @@ export async function runNarratives(
           assessmentMethodology: countyRule.assessment_methodology ?? 'full_value',
           assessmentRatio,
           appealBoardName: countyRule.appeal_board_name,
+          assessmentCycle: countyRule.assessment_cycle ?? null,
+          appealDeadlineRule: countyRule.appeal_deadline_rule ?? null,
+          hearingFormat: countyRule.hearing_format ?? null,
+          informalReviewAvailable: countyRule.informal_review_available ?? null,
+          proSeTips: countyRule.pro_se_tips ?? null,
         }
       : {
           countyName: report.county ?? '',
@@ -367,6 +372,11 @@ export async function runNarratives(
           assessmentMethodology: 'full_value',
           assessmentRatio: null,
           appealBoardName: null,
+          assessmentCycle: null,
+          appealDeadlineRule: null,
+          hearingFormat: null,
+          informalReviewAvailable: null,
+          proSeTips: null,
         },
     concludedValue,
     photoAnalyses: photoAnalyses.length > 0 ? photoAnalyses : undefined,
