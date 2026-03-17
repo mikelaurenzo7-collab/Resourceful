@@ -20,11 +20,11 @@ export default function AddressInput({ onAddressSelect }: AddressInputProps) {
   const handleSubmit = () => {
     if (query.trim()) {
       onAddressSelect({
-        line1: query || '1234 W Example St',
-        city: 'Chicago',
-        state: 'IL',
-        zip: '60614',
-        county: 'Cook',
+        line1: query || '100 W Main St',
+        city: 'Anytown',
+        state: 'TX',
+        zip: '75001',
+        county: 'Collin',
       });
     }
   };

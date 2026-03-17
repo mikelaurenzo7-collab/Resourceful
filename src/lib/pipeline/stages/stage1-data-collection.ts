@@ -92,7 +92,7 @@ async function findCountyRule(
       .single();
     if (exact) return exact as CountyRule;
 
-    // Try partial match (handles "Cook County" matching "Cook", etc.)
+    // Try partial match (handles "X County" matching "X", etc.)
     const stripped = countyName.replace(/\s*(county|parish|borough)\s*/i, '').trim();
     if (stripped) {
       const { data: partial } = await supabase

@@ -22,7 +22,7 @@ export default function AssessmentCard({
   reportPrice,
 }: AssessmentCardProps) {
   // Use the county-specific assessment ratio to determine fair assessed value
-  // (e.g. Cook County IL is 10%, but other counties vary widely)
+  // (ratios vary widely by county — e.g. 10%, 25%, 33%, or 100%)
   const effectiveRatio = assessmentRatio > 0 ? assessmentRatio : 1; // default to full value if unknown
   const fairAssessedLow = estimatedMarketValueLow * effectiveRatio;
   const fairAssessedHigh = estimatedMarketValueHigh * effectiveRatio;

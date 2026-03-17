@@ -435,39 +435,8 @@ create index idx_approval_events_report_id on approval_events(report_id);
 -- where we have verified appeal board info, deadlines, etc.
 -- ATTOM handles property data for all counties regardless.
 -- ============================================================
-insert into county_rules (
-  county_fips, county_name, state_name, state_abbreviation,
-  assessment_ratio_residential, assessment_ratio_commercial,
-  assessment_ratio_industrial, assessment_methodology,
-  assessment_methodology_notes, appeal_board_name,
-  appeal_board_address, appeal_board_phone, portal_url,
-  accepts_online_filing, appeal_deadline_rule,
-  tax_year_appeal_window, typical_resolution_weeks_min,
-  typical_resolution_weeks_max, hearing_typically_required,
-  hearing_format, appeal_form_name, form_download_url,
-  filing_fee_cents, assessor_api_url, pro_se_tips,
-  is_active, last_verified_date, verified_by
-) values (
-  '17031', 'Cook County', 'Illinois', 'IL',
-  0.10, 0.25, 0.25, 'fractional',
-  'Illinois uses fractional assessment. Residential at 10% of market value.
-   Commercial and industrial at 25%. The assessed value is multiplied by the
-   state equalizer to produce the Equalized Assessed Value (EAV).',
-  'Cook County Board of Review',
-  '118 N. Clark Street, Room 601, Chicago, IL 60602',
-  '(312) 603-5542',
-  'https://www.cookcountyboardofreview.com',
-  true,
-  'Appeals must be filed within 30 days of the township assessment notice.
-   Notices are published by township on a rolling schedule. Check the CCBOR
-   website for your specific township open period.',
-  'Tax year 2024 assessments appealable in 2025 during township open period.',
-  16, 52, false, 'written_only',
-  'Residential Appeal Form BOR-1',
-  'https://www.cookcountyboardofreview.com/forms',
-  0,
-  'https://datacatalog.cookcountyil.gov/resource/tx2p-k2g9.json',
-  'File through the online portal. You need your 14-digit PIN (on your tax bill).
-   Upload your appraisal report as a PDF. The portal issues a case number immediately.',
-  true, '2025-01-01', 'platform-admin'
-);
+-- No seed data — county_rules rows are added via the admin UI
+-- or a bulk import script. The platform works for any county
+-- using ATTOM as the universal data source even without a
+-- county_rules row; the row adds appeal board details,
+-- assessment ratios, and filing guides.

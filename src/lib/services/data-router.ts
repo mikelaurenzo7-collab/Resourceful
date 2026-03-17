@@ -123,8 +123,6 @@ async function collectFromCountyApi(
   // When a county adapter is needed, add a case here:
   //
   // switch (fips) {
-  //   case '17031': // Cook County, IL
-  //     return collectFromCookCounty(params);
   //   case '06037': // Los Angeles County, CA
   //     return collectFromLACounty(params);
   //   default:
