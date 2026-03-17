@@ -3,7 +3,7 @@
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
-const API_KEY = process.env.GOOGLE_MAPS_API_KEY ?? '';
+const API_KEY = process.env.GOOGLE_MAPS_SERVER_KEY ?? '';
 const GEOCODE_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
 const STATIC_MAP_URL = 'https://maps.googleapis.com/maps/api/staticmap';
 const STREET_VIEW_URL = 'https://maps.googleapis.com/maps/api/streetview';
