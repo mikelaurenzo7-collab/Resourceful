@@ -1,10 +1,10 @@
 # Property Intelligence Platform — CLAUDE.md
 
 ## What This Is
-A nationwide web app that generates professional property tax appeal reports using AI analysis, public property data APIs, and owner-provided photographs. Reports are auto-delivered to clients after pipeline completion.
+A nationwide web app that generates professional property tax appeal reports using AI analysis, public property data APIs, and owner-provided photographs. Reports require admin approval before delivery to clients.
 
 ## Delivery Model
-Reports are automatically delivered to clients after the pipeline completes all stages (1-8). Stage 8 sends the PDF and filing guide via email. If auto-delivery fails, the report falls back to status = 'pending_approval' for admin manual delivery. Admin can still review, reject, or re-run reports via the admin dashboard.
+The pipeline completes stages 1-7 (data gathering, analysis, PDF generation). After completion, the report enters status = 'pending_approval' for admin review. Admin can review, approve, reject, or re-run reports via the admin dashboard. Stage 8 (sending the PDF and filing guide via email) only executes after admin approval.
 
 ## Nationwide Architecture Rule
 This platform serves every county in every state. ATTOM is the universal data source that covers the entire country. No county-specific logic is hardcoded in application code. All county-specific behavior comes from the county_rules database table: assessment ratios, appeal board names, filing deadlines, form names, hearing formats. The data-router supports future county-specific API adapters via county_rules.assessor_api_url, but none are required — ATTOM handles everything.
@@ -61,7 +61,7 @@ If a county is corrupt or wrong, ATTOM inherits that same bad data. Therefore:
   The real numbers come from the full pipeline with comparable sales.
 
 ## What NOT To Do
-- Never skip Stage 8 auto-delivery (if delivery fails, fall back to pending_approval)
+- Never send a report to a client without admin approval first
 - Never hardcode county-specific logic in application code
 - Never hardcode AI model names anywhere except config/ai.ts
 - Never use NEXT_PUBLIC_ prefix on service role keys or secret keys
