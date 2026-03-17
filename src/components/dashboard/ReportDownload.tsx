@@ -4,7 +4,7 @@ interface ReportDownloadProps {
   pdfUrl: string | null;
   reportType: string;
   propertyAddress: string;
-  countyName: string;
+  countyName?: string;
 }
 
 export default function ReportDownload({

@@ -3,6 +3,8 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { runPipeline } from '@/lib/pipeline/orchestrator';
+import { sendReportRejectionAlert } from '@/lib/services/resend-email';
 import type {
   ApprovalAction,
   ReportStatus,
@@ -116,7 +118,21 @@ export async function rejectReport(reportId: string, notes: string) {
 
   if (rejectError) throw new Error(`Failed to reject report: ${rejectError.message}`);
 
-  // TODO: Send internal alert (email/Slack notification)
+  // Fetch report address for notification
+  const { data: reportData } = await supabase
+    .from('reports')
+    .select('property_address')
+    .eq('id', reportId)
+    .single();
+
+  // Send rejection alert email (non-blocking)
+  sendReportRejectionAlert({
+    reportId,
+    propertyAddress: (reportData as { property_address: string } | null)?.property_address ?? 'Unknown',
+    notes,
+  }).catch((err) => {
+    console.error('[admin] Failed to send rejection alert email:', err);
+  });
 
   revalidatePath('/admin/reports');
   revalidatePath(`/admin/reports/${reportId}/review`);
@@ -186,7 +202,21 @@ export async function editSection(
     notes: 'Section content edited by admin',
   });
 
-  // TODO: Trigger PDF regeneration with updated content
+  // Re-run PDF assembly (stage 7) to pick up the edited content
+  // Set resume point to stage 6 (filing) so pipeline runs stage 7 (pdf)
+  await supabase
+    .from('reports')
+    .update({
+      status: 'processing' as ReportStatus,
+      pipeline_last_completed_stage: 'stage-6-filing',
+      pipeline_error_log: null,
+    } as never)
+    .eq('id', reportId);
+
+  // Fire-and-forget pipeline from stage 7
+  runPipeline(reportId, 7).catch((err) => {
+    console.error(`[admin] PDF regeneration failed for report ${reportId}:`, err);
+  });
 
   revalidatePath(`/admin/reports/${reportId}/review`);
 }
@@ -204,9 +234,20 @@ export async function regenerateSection(reportId: string, sectionName: string) {
     notes: `Triggered regeneration of section: ${sectionName}`,
   });
 
-  // TODO: Trigger fresh AI generation of this section via the pipeline
-  // This would call the narrative generation service for just this one section
-  // and then regenerate the PDF
+  // Re-run from stage 5 (narratives) which will regenerate all narratives then PDF
+  await supabase
+    .from('reports')
+    .update({
+      status: 'processing' as ReportStatus,
+      pipeline_last_completed_stage: 'stage-4-photos',
+      pipeline_error_log: null,
+    } as never)
+    .eq('id', reportId);
+
+  // Fire-and-forget pipeline from stage 5
+  runPipeline(reportId, 5).catch((err) => {
+    console.error(`[admin] Section regeneration failed for report ${reportId}:`, err);
+  });
 
   revalidatePath(`/admin/reports/${reportId}/review`);
 }
@@ -237,8 +278,10 @@ export async function rerunPipeline(reportId: string) {
 
   if (updateError) throw new Error(`Failed to reset pipeline: ${updateError.message}`);
 
-  // TODO: Trigger pipeline execution from stage 1
-  // This would dispatch the pipeline job to the background worker
+  // Fire-and-forget full pipeline rerun from stage 1
+  runPipeline(reportId, 1).catch((err) => {
+    console.error(`[admin] Pipeline rerun failed for report ${reportId}:`, err);
+  });
 
   revalidatePath('/admin/reports');
   revalidatePath(`/admin/reports/${reportId}/review`);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { PropertyType } from '@/types/database';
+import { PropertyType, PhotoType } from '@/types/database';
 import Button from '@/components/ui/Button';
 import PhotoUploader from '@/components/intake/PhotoUploader';
 
@@ -16,18 +16,55 @@ const MIN_PHOTOS: Record<PropertyType, number> = {
 export default function PhotosPage() {
   const router = useRouter();
   const [propertyType, setPropertyType] = useState<PropertyType>('residential');
+  const [reportId, setReportId] = useState<string | null>(null);
   const [photoCount, setPhotoCount] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   useEffect(() => {
     const raw = sessionStorage.getItem('intake');
     if (raw) {
       const data = JSON.parse(raw);
       if (data.propertyType) setPropertyType(data.propertyType);
+      if (data.reportId) setReportId(data.reportId);
+    } else {
+      // No intake data — redirect back to start
+      router.push('/start');
     }
-  }, []);
+  }, [router]);
 
   const minRequired = MIN_PHOTOS[propertyType];
-  const canContinue = photoCount >= minRequired;
+  const canContinue = photoCount >= minRequired && !uploading;
+
+  const handleFileUpload = async (file: File, photoType: PhotoType): Promise<boolean> => {
+    if (!reportId) return false;
+    setUploading(true);
+    setUploadError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('photo_type', photoType);
+      formData.append('sort_order', String(photoCount));
+
+      const res = await fetch(`/api/reports/${reportId}/photos`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Upload failed');
+      }
+
+      return true;
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Photo upload failed. Please try again.');
+      return false;
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleContinue = () => {
     router.push('/start/measure');
@@ -94,10 +131,17 @@ export default function PhotosPage() {
           </div>
         </div>
 
+        {uploadError && (
+          <div className="mb-6 rounded-lg bg-red-900/20 border border-red-500/20 p-3 text-sm text-red-400">
+            {uploadError}
+          </div>
+        )}
+
         <div className="animate-slide-up">
           <PhotoUploader
             propertyType={propertyType}
             onPhotosChange={(photos) => setPhotoCount(photos.length)}
+            onFileUpload={reportId ? handleFileUpload : undefined}
           />
         </div>
 

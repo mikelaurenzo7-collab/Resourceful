@@ -1,6 +1,7 @@
 'use server';
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 // County rules now use plain text for assessment_methodology and hearing_format
 
@@ -34,6 +35,17 @@ function parseCheckbox(form: FormData, name: string): boolean {
 }
 
 export async function saveCounty(existingFips: string | null, formData: FormData) {
+  // Verify the caller is an authenticated admin
+  const authClient = await createClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  const { data: adminCheck } = await authClient
+    .from('admin_users')
+    .select('id')
+    .eq('user_id', user.id)
+    .single();
+  if (!adminCheck) throw new Error('Not authorized — admin access required');
+
   const supabase = createAdminClient();
 
   const countyFips = String(formData.get('county_fips') ?? '').trim();

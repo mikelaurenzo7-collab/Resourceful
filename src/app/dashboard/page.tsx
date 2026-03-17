@@ -1,50 +1,14 @@
-import type { ReportStatus } from '@/types/database';
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import type { Report, ReportStatus } from '@/types/database';
 import PipelineProgress from '@/components/dashboard/PipelineProgress';
 import ReportDownload from '@/components/dashboard/ReportDownload';
 
-// In production, this would fetch from Supabase using the authenticated user's ID.
-// For now, we use mock data to demonstrate the UI.
-interface MockReport {
-  id: string;
-  status: ReportStatus;
-  pipelineLastCompletedStage: number | null;
-  serviceType: string;
-  propertyAddress: string;
-  propertyCounty: string;
-  pdfUrl: string | null;
-  createdAt: string;
-  amountPaidCents: number;
-}
-
-async function getReports(): Promise<MockReport[]> {
-  // Simulated server-side data fetch
-  return [
-    {
-      id: 'rpt_001',
-      status: 'processing',
-      pipelineLastCompletedStage: 4,
-      serviceType: 'tax_appeal',
-      propertyAddress: '100 W Main St, Anytown, TX 75001',
-      propertyCounty: 'Collin',
-      pdfUrl: null,
-      createdAt: '2026-03-15T10:30:00Z',
-      amountPaidCents: 3900,
-    },
-    {
-      id: 'rpt_002',
-      status: 'delivered',
-      pipelineLastCompletedStage: 7,
-      serviceType: 'tax_appeal',
-      propertyAddress: '456 Oak Dr, Springfield, MO 65801',
-      propertyCounty: 'Greene',
-      pdfUrl: '/reports/sample-report.pdf',
-      createdAt: '2026-02-20T14:00:00Z',
-      amountPaidCents: 3900,
-    },
-  ];
-}
-
 const STATUS_MESSAGES: Partial<Record<ReportStatus, { title: string; description: string }>> = {
+  intake: {
+    title: 'Intake In Progress',
+    description: 'Complete the intake steps (photos, measurements, payment) to start your report.',
+  },
   paid: {
     title: 'Payment Received',
     description: 'Your payment has been confirmed. Data collection will begin shortly.',
@@ -73,6 +37,10 @@ const STATUS_MESSAGES: Partial<Record<ReportStatus, { title: string; description
     title: 'Report Delivered',
     description: 'Your report is ready. Download it below and follow the filing guide to submit your appeal.',
   },
+  failed: {
+    title: 'Processing Error',
+    description: 'We encountered an issue generating your report. Our team has been notified and will resolve it shortly.',
+  },
 };
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -82,15 +50,56 @@ const SERVICE_LABELS: Record<string, string> = {
 };
 
 export default async function DashboardPage() {
-  const reports = await getReports();
-  const activeReport = reports[0];
-  const pastReports = reports.slice(1);
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/login?redirect=/dashboard');
+  }
+
+  // Fetch user's reports from the database
+  const { data: reports, error } = await supabase
+    .from('reports')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  const userReports = (reports ?? []) as Report[];
+
+  if (error) {
+    console.error('[dashboard] Failed to fetch reports:', error.message);
+  }
+
+  // Split into active (most recent non-delivered) and past
+  const activeReport = userReports.find(
+    (r) => !['delivered', 'failed', 'rejected'].includes(r.status)
+  ) ?? (userReports.length > 0 ? userReports[0] : null);
+
+  const pastReports = userReports.filter((r) => r.id !== activeReport?.id);
 
   const statusInfo = activeReport
     ? STATUS_MESSAGES[activeReport.status] || { title: 'Processing', description: 'Your report is being processed.' }
     : null;
 
   const isInProgress = activeReport && !['delivered', 'failed', 'rejected'].includes(activeReport.status);
+
+  // Map pipeline_last_completed_stage to a numeric value for the progress component
+  const stageMap: Record<string, number> = {
+    'stage-1-data': 1,
+    'stage-2-comps': 2,
+    'stage-3-income': 3,
+    'stage-4-photos': 4,
+    'stage-5-narratives': 5,
+    'stage-6-filing': 6,
+    'stage-7-pdf': 7,
+  };
+
+  const getStageNumber = (r: Report): number | null => {
+    if (!r.pipeline_last_completed_stage) return null;
+    return stageMap[r.pipeline_last_completed_stage] ?? null;
+  };
 
   return (
     <div className="min-h-screen bg-pattern">
@@ -147,10 +156,10 @@ export default async function DashboardPage() {
                   <p className="text-sm text-cream/50 mt-1">{statusInfo?.description}</p>
                   <div className="flex items-center gap-4 mt-3">
                     <span className="text-xs text-cream/30">
-                      {SERVICE_LABELS[activeReport.serviceType] || activeReport.serviceType}
+                      {SERVICE_LABELS[activeReport.service_type] || activeReport.service_type}
                     </span>
                     <span className="text-xs text-cream/30">&middot;</span>
-                    <span className="text-xs text-cream/30">{activeReport.propertyAddress}</span>
+                    <span className="text-xs text-cream/30">{activeReport.property_address}</span>
                   </div>
                 </div>
               </div>
@@ -158,17 +167,17 @@ export default async function DashboardPage() {
               {/* Pipeline progress */}
               <PipelineProgress
                 currentStatus={activeReport.status}
-                pipelineLastCompletedStage={activeReport.pipelineLastCompletedStage}
+                pipelineLastCompletedStage={getStageNumber(activeReport)}
               />
             </div>
 
             {/* Download section for delivered reports */}
             {activeReport.status === 'delivered' && (
               <ReportDownload
-                pdfUrl={activeReport.pdfUrl}
-                reportType={activeReport.serviceType}
-                propertyAddress={activeReport.propertyAddress}
-                countyName={activeReport.propertyCounty}
+                pdfUrl={activeReport.report_pdf_storage_path}
+                reportType={activeReport.service_type}
+                propertyAddress={activeReport.property_address}
+                countyName={activeReport.county ?? undefined}
               />
             )}
           </div>
@@ -205,10 +214,10 @@ export default async function DashboardPage() {
                         )}
                       </div>
                       <div>
-                        <p className="text-cream font-medium">{report.propertyAddress}</p>
+                        <p className="text-cream font-medium">{report.property_address}</p>
                         <p className="text-xs text-cream/40 mt-0.5">
-                          {SERVICE_LABELS[report.serviceType] || report.serviceType} &middot;{' '}
-                          {new Date(report.createdAt).toLocaleDateString('en-US', {
+                          {SERVICE_LABELS[report.service_type] || report.service_type} &middot;{' '}
+                          {new Date(report.created_at).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                             year: 'numeric',
@@ -226,9 +235,9 @@ export default async function DashboardPage() {
                       >
                         {report.status.replace('_', ' ').replace(/^\w/, (c) => c.toUpperCase())}
                       </span>
-                      {isDelivered && report.pdfUrl && (
+                      {isDelivered && report.report_pdf_storage_path && (
                         <a
-                          href={report.pdfUrl}
+                          href={report.report_pdf_storage_path}
                           className="text-sm text-gold hover:text-gold-light transition-colors flex items-center gap-1.5"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,7 +255,7 @@ export default async function DashboardPage() {
         )}
 
         {/* Empty state */}
-        {reports.length === 0 && (
+        {userReports.length === 0 && (
           <div className="text-center py-20">
             <div className="w-16 h-16 rounded-full bg-gold/10 flex items-center justify-center mx-auto mb-6">
               <svg className="w-8 h-8 text-gold/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">

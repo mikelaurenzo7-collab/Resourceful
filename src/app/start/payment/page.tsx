@@ -2,10 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { formatPrice } from '@/config/pricing';
 import Button from '@/components/ui/Button';
 
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+
 interface IntakeData {
+  reportId: string;
+  clientSecret: string;
   address: {
     line1: string;
     city: string;
@@ -24,44 +30,176 @@ const SERVICE_LABELS: Record<string, string> = {
   pre_listing: 'Pre-Listing Report',
 };
 
+function CheckoutForm({ intake }: { intake: IntakeData }) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const router = useRouter();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+
+    setSubmitting(true);
+    setError('');
+
+    try {
+      const { error: paymentError } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/dashboard`,
+        },
+        redirect: 'if_required',
+      });
+
+      if (paymentError) {
+        setError(paymentError.message || 'Payment failed. Please try again.');
+        setSubmitting(false);
+        return;
+      }
+
+      // Payment succeeded — redirect to dashboard
+      // The Stripe webhook will fire and trigger the pipeline
+      sessionStorage.removeItem('intake');
+      router.push('/dashboard');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Payment failed.');
+      setSubmitting(false);
+    }
+  };
+
+  const fullAddress = `${intake.address.line1}, ${intake.address.city}, ${intake.address.state} ${intake.address.zip}`;
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="space-y-8">
+        {/* Order summary */}
+        <div className="card-premium rounded-xl overflow-hidden">
+          <div className="border-b border-gold/10 px-6 py-4 bg-gold/5">
+            <p className="text-xs uppercase tracking-widest text-gold/70">Order Summary</p>
+          </div>
+          <div className="p-6 space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-cream/40">Property</p>
+                <p className="text-cream font-medium">{fullAddress}</p>
+              </div>
+            </div>
+            <div className="h-px bg-gold/10" />
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-cream/40">Report Type</p>
+                <p className="text-cream font-medium">
+                  {SERVICE_LABELS[intake.serviceType] || intake.serviceType}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-cream/40">Property Type</p>
+                <p className="text-cream font-medium capitalize">{intake.propertyType}</p>
+              </div>
+            </div>
+            <div className="h-px bg-gold/10" />
+            <div className="flex items-center justify-between">
+              <span className="text-cream font-medium">Total</span>
+              <span className="font-display text-2xl text-gold">{formatPrice(intake.priceCents)}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Stripe Payment Element */}
+        <div className="card-premium rounded-xl overflow-hidden">
+          <div className="border-b border-gold/10 px-6 py-4 bg-gold/5">
+            <p className="text-xs uppercase tracking-widest text-gold/70">Payment Details</p>
+          </div>
+          <div className="p-6">
+            <PaymentElement
+              options={{
+                layout: 'tabs',
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div className="rounded-lg bg-red-900/20 border border-red-500/20 p-4 text-sm text-red-400">
+            {error}
+          </div>
+        )}
+
+        {/* Security badges */}
+        <div className="flex items-center justify-center gap-6 text-xs text-cream/30 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span>256-bit encryption</span>
+          </div>
+          <div className="w-px h-3 bg-cream/10" />
+          <div className="flex items-center gap-1.5">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <span>Secure payment via Stripe</span>
+          </div>
+          <div className="w-px h-3 bg-cream/10" />
+          <div className="flex items-center gap-1.5">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>100% money-back guarantee</span>
+          </div>
+        </div>
+
+        {/* Submit */}
+        <Button
+          type="submit"
+          size="lg"
+          fullWidth
+          loading={submitting}
+          disabled={!stripe || !elements}
+        >
+          {submitting ? 'Processing...' : `Pay ${formatPrice(intake.priceCents)} & Generate Report`}
+        </Button>
+
+        <p className="text-center text-xs text-cream/25 leading-relaxed">
+          By clicking above, you agree to our Terms of Service and authorize a one-time charge.
+          Your report will be delivered within 24 hours via email and your dashboard.
+        </p>
+      </div>
+    </form>
+  );
+}
+
 export default function PaymentPage() {
   const router = useRouter();
   const [intake, setIntake] = useState<IntakeData | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const raw = sessionStorage.getItem('intake');
     if (raw) {
-      setIntake(JSON.parse(raw));
+      const data = JSON.parse(raw);
+      if (data.reportId && data.clientSecret) {
+        setIntake(data);
+      } else {
+        router.push('/start');
+      }
+    } else {
+      router.push('/start');
     }
-  }, []);
-
-  const handleSubmit = async () => {
-    setSubmitting(true);
-    // Simulate Stripe payment flow
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    setSubmitting(false);
-    router.push('/dashboard');
-  };
+  }, [router]);
 
   if (!intake) {
     return (
       <div className="min-h-screen bg-pattern flex items-center justify-center">
         <div className="text-center">
-          <p className="text-cream/50 mb-4">No intake data found.</p>
-          <Button variant="secondary" onClick={() => router.push('/start')}>
-            Start Over
-          </Button>
+          <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-cream/50">Loading payment...</p>
         </div>
       </div>
     );
   }
-
-  const fullAddress = `${intake.address.line1}, ${intake.address.city}, ${intake.address.state} ${intake.address.zip}`;
-
-  // Estimated savings (mirrors the assessment card logic)
-  const estimatedSavingsLow = 850;
-  const estimatedSavingsHigh = 2100;
 
   return (
     <div className="min-h-screen bg-pattern">
@@ -117,145 +255,26 @@ export default function PaymentPage() {
           </p>
         </div>
 
-        <div className="space-y-8 animate-slide-up">
-          {/* Order summary */}
-          <div className="card-premium rounded-xl overflow-hidden">
-            <div className="border-b border-gold/10 px-6 py-4 bg-gold/5">
-              <p className="text-xs uppercase tracking-widest text-gold/70">Order Summary</p>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-cream/40">Property</p>
-                  <p className="text-cream font-medium">{fullAddress}</p>
-                </div>
-              </div>
-              <div className="h-px bg-gold/10" />
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-cream/40">Report Type</p>
-                  <p className="text-cream font-medium">
-                    {SERVICE_LABELS[intake.serviceType] || intake.serviceType}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-cream/40">Property Type</p>
-                  <p className="text-cream font-medium capitalize">{intake.propertyType}</p>
-                </div>
-              </div>
-              <div className="h-px bg-gold/10" />
-              <div className="flex items-center justify-between">
-                <span className="text-cream font-medium">Total</span>
-                <span className="font-display text-2xl text-gold">{formatPrice(intake.priceCents)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Savings estimate callout */}
-          {intake.serviceType === 'tax_appeal' && (
-            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 flex items-center gap-5">
-              <div className="flex-shrink-0 w-14 h-14 rounded-full bg-emerald-500/15 flex items-center justify-center">
-                <svg className="w-7 h-7 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-emerald-400">
-                  Estimated Annual Savings: ${estimatedSavingsLow.toLocaleString()} &ndash; ${estimatedSavingsHigh.toLocaleString()}
-                </p>
-                <p className="text-xs text-cream/40 mt-1">
-                  Your {formatPrice(intake.priceCents)} report could pay for itself{' '}
-                  <span className="text-emerald-400 font-semibold">
-                    {Math.round(estimatedSavingsLow / (intake.priceCents / 100))}x &ndash;{' '}
-                    {Math.round(estimatedSavingsHigh / (intake.priceCents / 100))}x
-                  </span>{' '}
-                  over in the first year alone.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Stripe Elements placeholder */}
-          <div className="card-premium rounded-xl overflow-hidden">
-            <div className="border-b border-gold/10 px-6 py-4 bg-gold/5">
-              <p className="text-xs uppercase tracking-widest text-gold/70">Payment Details</p>
-            </div>
-            <div className="p-6">
-              {/* Card Number */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-cream/80 mb-2">
-                    Card Number
-                  </label>
-                  <div className="rounded-lg border border-gold/20 bg-navy-deep/60 px-4 py-4 text-cream/30 text-sm flex items-center justify-between">
-                    <span>Stripe Elements will render here</span>
-                    <div className="flex gap-2">
-                      <div className="w-8 h-5 rounded bg-cream/10" />
-                      <div className="w-8 h-5 rounded bg-cream/10" />
-                      <div className="w-8 h-5 rounded bg-cream/10" />
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-cream/80 mb-2">
-                      Expiry Date
-                    </label>
-                    <div className="rounded-lg border border-gold/20 bg-navy-deep/60 px-4 py-4 text-cream/30 text-sm">
-                      MM / YY
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-cream/80 mb-2">
-                      CVC
-                    </label>
-                    <div className="rounded-lg border border-gold/20 bg-navy-deep/60 px-4 py-4 text-cream/30 text-sm">
-                      CVC
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Security badges */}
-          <div className="flex items-center justify-center gap-6 text-xs text-cream/30 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              <span>256-bit encryption</span>
-            </div>
-            <div className="w-px h-3 bg-cream/10" />
-            <div className="flex items-center gap-1.5">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              <span>Secure payment via Stripe</span>
-            </div>
-            <div className="w-px h-3 bg-cream/10" />
-            <div className="flex items-center gap-1.5">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>100% money-back guarantee</span>
-            </div>
-          </div>
-
-          {/* Submit */}
-          <Button
-            size="lg"
-            fullWidth
-            loading={submitting}
-            onClick={handleSubmit}
+        <div className="animate-slide-up">
+          <Elements
+            stripe={stripePromise}
+            options={{
+              clientSecret: intake.clientSecret,
+              appearance: {
+                theme: 'night',
+                variables: {
+                  colorPrimary: '#d4a853',
+                  colorBackground: '#1a2332',
+                  colorText: '#f5f0e8',
+                  colorDanger: '#ef4444',
+                  fontFamily: 'Inter, system-ui, sans-serif',
+                  borderRadius: '8px',
+                },
+              },
+            }}
           >
-            {submitting ? 'Processing...' : `Pay ${formatPrice(intake.priceCents)} & Generate Report`}
-          </Button>
-
-          <p className="text-center text-xs text-cream/25 leading-relaxed">
-            By clicking above, you agree to our Terms of Service and authorize a one-time charge.
-            Your report will be delivered within 24 hours via email and your dashboard.
-          </p>
+            <CheckoutForm intake={intake} />
+          </Elements>
         </div>
       </main>
     </div>

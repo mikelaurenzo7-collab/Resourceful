@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createBrowserClient } from '@supabase/ssr';
 import Button from '@/components/ui/Button';
 
 export default function SignupPage() {
@@ -19,17 +20,26 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      // Supabase Auth integration placeholder
-      // const { data, error } = await supabase.auth.signUp({
-      //   email,
-      //   password,
-      //   options: { data: { full_name: fullName, phone } },
-      // });
-      // if (error) throw error;
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
 
-      // Simulate signup delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const { error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            phone: phone || undefined,
+          },
+        },
+      });
+
+      if (authError) throw authError;
+
       router.push('/start');
+      router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
@@ -98,7 +108,7 @@ export default function SignupPage() {
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              placeholder="(312) 555-0100"
+              placeholder="(555) 555-0100"
               className="w-full rounded-lg border border-gold/20 bg-navy-deep/60 px-4 py-3 text-cream placeholder:text-cream/30 focus:border-gold focus:ring-2 focus:ring-gold/15 focus:outline-none transition-all"
             />
             <p className="mt-1.5 text-xs text-cream/25">

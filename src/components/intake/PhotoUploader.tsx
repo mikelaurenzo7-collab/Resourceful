@@ -61,14 +61,25 @@ interface UploadedPhoto {
 interface PhotoUploaderProps {
   propertyType: PropertyType;
   onPhotosChange: (photos: UploadedPhoto[]) => void;
+  /** If provided, uploads each photo to the API. Return true on success. */
+  onFileUpload?: (file: File, type: PhotoType) => Promise<boolean>;
 }
 
-export default function PhotoUploader({ propertyType, onPhotosChange }: PhotoUploaderProps) {
+export default function PhotoUploader({ propertyType, onPhotosChange, onFileUpload }: PhotoUploaderProps) {
   const [photos, setPhotos] = useState<UploadedPhoto[]>([]);
+  const [uploadingType, setUploadingType] = useState<PhotoType | null>(null);
   const requirements = requirementsByPropertyType[propertyType];
   const minRequired = requirements.length;
 
-  const handleFileSelect = (type: PhotoType, file: File) => {
+  const handleFileSelect = async (type: PhotoType, file: File) => {
+    // If API upload callback is provided, upload first
+    if (onFileUpload) {
+      setUploadingType(type);
+      const success = await onFileUpload(file, type);
+      setUploadingType(null);
+      if (!success) return; // Upload failed — don't add to local state
+    }
+
     const preview = URL.createObjectURL(file);
     const updated = [...photos.filter((p) => p.type !== type), { type, name: file.name, preview }];
     setPhotos(updated);
@@ -143,7 +154,12 @@ export default function PhotoUploader({ propertyType, onPhotosChange }: PhotoUpl
                   <p className="text-xs text-cream/40 mt-1 leading-relaxed">{req.reason}</p>
 
                   {/* Upload zone or thumbnail */}
-                  {uploaded && photo ? (
+                  {uploadingType === req.type ? (
+                    <div className="mt-3 flex items-center gap-3 py-2">
+                      <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+                      <span className="text-xs text-cream/40">Uploading...</span>
+                    </div>
+                  ) : uploaded && photo ? (
                     <div className="mt-3 flex items-center gap-3">
                       <div className="w-16 h-16 rounded-lg overflow-hidden border border-emerald-500/20 bg-navy-deep/60">
                         {/* eslint-disable-next-line @next/next/no-img-element */}

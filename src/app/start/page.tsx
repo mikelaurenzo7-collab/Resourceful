@@ -18,34 +18,102 @@ interface AddressData {
   county: string;
 }
 
+interface AssessmentData {
+  assessedValue: number;
+  marketValueLow: number;
+  marketValueHigh: number;
+  assessmentRatio: number;
+  taxRate: number;
+}
+
 export default function StartPage() {
   const router = useRouter();
   const [address, setAddress] = useState<AddressData | null>(null);
   const [propertyType, setPropertyType] = useState<PropertyType | null>(null);
   const [serviceType, setServiceType] = useState<ServiceType | null>(null);
-  const [showAssessment, setShowAssessment] = useState(false);
+  const [assessment, setAssessment] = useState<AssessmentData | null>(null);
+  const [assessmentLoading, setAssessmentLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState('');
 
   const handleAddressSelect = (addr: AddressData) => {
     setAddress(addr);
-    // Simulate assessment data lookup after address entry
-    setTimeout(() => setShowAssessment(true), 600);
+    // Assessment data will be fetched after report is created
   };
 
   const canContinue = address && propertyType && serviceType;
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!canContinue) return;
-    // Store selections in sessionStorage for subsequent steps
-    sessionStorage.setItem(
-      'intake',
-      JSON.stringify({
-        address,
-        propertyType,
-        serviceType,
-        priceCents: getPriceCents(serviceType, propertyType),
-      })
-    );
-    router.push('/start/photos');
+    setCreating(true);
+    setError('');
+
+    try {
+      // Create the report in the database + get Stripe payment intent
+      const response = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          property_address: address.line1,
+          city: address.city,
+          state: address.state,
+          county: address.county,
+          property_type: propertyType,
+          service_type: serviceType,
+        }),
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || `Server error (${response.status})`);
+      }
+
+      const { reportId, clientSecret, priceCents } = await response.json();
+
+      // Store in sessionStorage for subsequent intake steps
+      sessionStorage.setItem(
+        'intake',
+        JSON.stringify({
+          reportId,
+          clientSecret,
+          address,
+          propertyType,
+          serviceType,
+          priceCents,
+        })
+      );
+
+      // Fetch real assessment data in background (non-blocking)
+      fetchAssessment(reportId);
+
+      router.push('/start/photos');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create report. Please try again.');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const fetchAssessment = async (reportId: string) => {
+    setAssessmentLoading(true);
+    try {
+      const res = await fetch(`/api/reports/${reportId}/assessment`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setAssessment({
+        assessedValue: data.assessedValue ?? 0,
+        marketValueLow: data.marketValueRange?.low ?? 0,
+        marketValueHigh: data.marketValueRange?.high ?? 0,
+        assessmentRatio: data.assessmentRatio ?? 0,
+        taxRate: data.taxAmount && data.assessedValue
+          ? data.taxAmount / data.assessedValue
+          : 0,
+      });
+    } catch {
+      // Non-critical — assessment card just won't show
+    } finally {
+      setAssessmentLoading(false);
+    }
   };
 
   return (
@@ -107,19 +175,33 @@ export default function StartPage() {
             />
           </section>
 
-          {/* Assessment Card - appears after address entry */}
-          {showAssessment && address && propertyType && serviceType && (
+          {/* Assessment Card - appears after assessment data fetched */}
+          {assessment && address && propertyType && serviceType && (
             <section className="animate-slide-up">
               <AssessmentCard
                 address={`${address.line1}, ${address.city}, ${address.state} ${address.zip}`}
-                assessedValue={32500}
-                estimatedMarketValueLow={245000}
-                estimatedMarketValueHigh={285000}
-                assessmentRatio={0.133}
-                taxRate={0.0694}
+                assessedValue={assessment.assessedValue}
+                estimatedMarketValueLow={assessment.marketValueLow}
+                estimatedMarketValueHigh={assessment.marketValueHigh}
+                assessmentRatio={assessment.assessmentRatio}
+                taxRate={assessment.taxRate}
                 reportPrice={getPriceCents(serviceType, propertyType)}
               />
             </section>
+          )}
+
+          {assessmentLoading && (
+            <div className="flex items-center justify-center gap-3 py-4">
+              <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm text-cream/40">Loading assessment data...</span>
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <div className="rounded-lg bg-red-900/20 border border-red-500/20 p-4 text-sm text-red-400">
+              {error}
+            </div>
           )}
 
           {/* Continue button */}
@@ -127,13 +209,16 @@ export default function StartPage() {
             <Button
               size="lg"
               fullWidth
-              disabled={!canContinue}
+              disabled={!canContinue || creating}
+              loading={creating}
               onClick={handleContinue}
             >
-              Continue to Photos
-              <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
+              {creating ? 'Setting up your report...' : 'Continue to Photos'}
+              {!creating && (
+                <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              )}
             </Button>
             {!canContinue && (
               <p className="text-center text-xs text-cream/30 mt-3">

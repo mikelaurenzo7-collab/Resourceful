@@ -8,7 +8,11 @@ import MeasurementTool from '@/components/intake/MeasurementTool';
 export default function MeasurePage() {
   const router = useRouter();
   const [address, setAddress] = useState('');
+  const [reportId, setReportId] = useState<string | null>(null);
+  const [attomGBA, setAttomGBA] = useState<number | null>(null);
   const [measurementComplete, setMeasurementComplete] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const raw = sessionStorage.getItem('intake');
@@ -18,17 +22,62 @@ export default function MeasurePage() {
         const a = data.address;
         setAddress(`${a.line1}, ${a.city}, ${a.state} ${a.zip}`);
       }
-    }
-  }, []);
+      if (data.reportId) setReportId(data.reportId);
 
-  const handleMeasurementComplete = (data: { measuredSqFt: number; source: 'map' | 'manual' }) => {
-    setMeasurementComplete(true);
-    // Store measurement in session
-    const raw = sessionStorage.getItem('intake');
-    if (raw) {
-      const intake = JSON.parse(raw);
-      intake.measurement = data;
-      sessionStorage.setItem('intake', JSON.stringify(intake));
+      // Fetch ATTOM GBA from the assessment endpoint if we have a reportId
+      if (data.reportId) {
+        fetch(`/api/reports/${data.reportId}/assessment`)
+          .then((res) => res.ok ? res.json() : null)
+          .then((assessment) => {
+            if (assessment?.propertySummary?.buildingSqFt) {
+              setAttomGBA(assessment.propertySummary.buildingSqFt);
+            }
+          })
+          .catch(() => {});
+      }
+    } else {
+      router.push('/start');
+    }
+  }, [router]);
+
+  const handleMeasurementComplete = async (data: { measuredSqFt: number; source: 'map' | 'manual' }) => {
+    if (!reportId) {
+      setMeasurementComplete(true);
+      return;
+    }
+
+    setSaving(true);
+    setError('');
+
+    try {
+      const res = await fetch(`/api/reports/${reportId}/measurements`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: data.source === 'map' ? 'google_earth' : 'user_submitted',
+          total_living_area_sqft: data.measuredSqFt,
+          attom_gba_sqft: attomGBA,
+          discrepancy_flagged: attomGBA
+            ? Math.abs((data.measuredSqFt - attomGBA) / attomGBA) > 0.05
+            : false,
+          discrepancy_pct: attomGBA
+            ? Math.round(((data.measuredSqFt - attomGBA) / attomGBA) * 10000) / 100
+            : null,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || 'Failed to save measurement');
+      }
+
+      setMeasurementComplete(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save measurement.');
+      // Still allow continuation even if save fails — data is non-critical
+      setMeasurementComplete(true);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -83,13 +132,26 @@ export default function MeasurePage() {
           </p>
         </div>
 
+        {error && (
+          <div className="mb-6 rounded-lg bg-red-900/20 border border-red-500/20 p-3 text-sm text-red-400">
+            {error}
+          </div>
+        )}
+
         <div className="animate-slide-up">
           <MeasurementTool
             address={address || 'Your property address'}
-            attomGBA={1850}
+            attomGBA={attomGBA}
             onMeasurementComplete={handleMeasurementComplete}
           />
         </div>
+
+        {saving && (
+          <div className="flex items-center justify-center gap-3 py-4 mt-4">
+            <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-cream/40">Saving measurement...</span>
+          </div>
+        )}
 
         {/* Navigation */}
         <div className="flex gap-4 mt-10 pt-6 border-t border-gold/10">

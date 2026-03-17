@@ -5,17 +5,15 @@ export async function middleware(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
 
-  // Protect /admin routes — require an authenticated user.
-  // Fine-grained admin role checks happen in the admin layout / API routes
-  // by querying the admin_users table, since middleware cannot make DB calls
-  // beyond auth refresh without a service role key in the client bundle.
-  if (pathname.startsWith('/admin')) {
-    if (!user) {
-      const loginUrl = request.nextUrl.clone();
-      loginUrl.pathname = '/login';
-      loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+  // Routes that require authentication
+  const protectedPaths = ['/admin', '/dashboard', '/start'];
+  const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
+
+  if (isProtected && !user) {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = '/login';
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return supabaseResponse;

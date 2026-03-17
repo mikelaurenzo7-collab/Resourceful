@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 interface AddressInputProps {
   onAddressSelect: (address: {
@@ -15,18 +15,96 @@ interface AddressInputProps {
 export default function AddressInput({ onAddressSelect }: AddressInputProps) {
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const [placesLoaded, setPlacesLoaded] = useState(false);
 
-  // Simulated autocomplete - will be replaced with Google Places
-  const handleSubmit = () => {
-    if (query.trim()) {
-      onAddressSelect({
-        line1: query || '100 W Main St',
-        city: 'Anytown',
-        state: 'TX',
-        zip: '75001',
-        county: 'Collin',
-      });
+  // Check if Google Maps Places API is available
+  useEffect(() => {
+    const checkGoogle = () => {
+      if (typeof google !== 'undefined' && google.maps?.places) {
+        setPlacesLoaded(true);
+        return true;
+      }
+      return false;
+    };
+
+    if (checkGoogle()) return;
+
+    // Poll for Google Maps to load (loaded via Script in layout)
+    const interval = setInterval(() => {
+      if (checkGoogle()) clearInterval(interval);
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handlePlaceSelect = useCallback(() => {
+    const place = autocompleteRef.current?.getPlace();
+    if (!place?.address_components) return;
+
+    let line1 = '';
+    let city = '';
+    let state = '';
+    let zip = '';
+    let county = '';
+    let streetNumber = '';
+    let route = '';
+
+    for (const component of place.address_components) {
+      const types = component.types;
+      if (types.includes('street_number')) {
+        streetNumber = component.long_name;
+      } else if (types.includes('route')) {
+        route = component.long_name;
+      } else if (types.includes('locality') || types.includes('sublocality_level_1')) {
+        city = component.long_name;
+      } else if (types.includes('administrative_area_level_1')) {
+        state = component.short_name;
+      } else if (types.includes('postal_code')) {
+        zip = component.long_name;
+      } else if (types.includes('administrative_area_level_2')) {
+        // County — strip " County", " Parish", " Borough" suffix
+        county = component.long_name
+          .replace(/\s*(County|Parish|Borough)$/i, '')
+          .trim();
+      }
     }
+
+    line1 = streetNumber ? `${streetNumber} ${route}` : route;
+
+    if (line1 && city && state) {
+      setQuery(place.formatted_address ?? line1);
+      onAddressSelect({ line1, city, state, zip, county });
+    }
+  }, [onAddressSelect]);
+
+  // Initialize Google Places Autocomplete
+  useEffect(() => {
+    if (!placesLoaded || !inputRef.current || autocompleteRef.current) return;
+
+    const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
+      componentRestrictions: { country: 'us' },
+      types: ['address'],
+      fields: ['address_components', 'formatted_address'],
+    });
+
+    autocomplete.addListener('place_changed', handlePlaceSelect);
+    autocompleteRef.current = autocomplete;
+  }, [placesLoaded, handlePlaceSelect]);
+
+  // Fallback for manual entry when Google Places isn't available
+  const handleManualSubmit = () => {
+    if (!query.trim()) return;
+    // If Places API parsed it already, this won't be called.
+    // For manual entry, provide the raw query as line1.
+    onAddressSelect({
+      line1: query.trim(),
+      city: '',
+      state: '',
+      zip: '',
+      county: '',
+    });
   };
 
   return (
@@ -48,26 +126,30 @@ export default function AddressInput({ onAddressSelect }: AddressInputProps) {
           </svg>
         </div>
         <input
+          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') handleSubmit();
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleManualSubmit();
+            }
           }}
           placeholder="Start typing your property address..."
           className="flex-1 bg-transparent px-4 py-4 text-cream placeholder:text-cream/30 focus:outline-none"
         />
         <button
-          onClick={handleSubmit}
+          onClick={handleManualSubmit}
           className="mr-2 rounded-md bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:bg-gold/20 transition-colors"
         >
           Look Up
         </button>
       </div>
       <p className="mt-2 text-xs text-cream/30">
-        Powered by Google Places Autocomplete
+        {placesLoaded ? 'Powered by Google Places Autocomplete' : 'Enter your full property address'}
       </p>
     </div>
   );
