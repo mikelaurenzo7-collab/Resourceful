@@ -18,7 +18,6 @@ import type {
 import type { StageResult } from '../orchestrator';
 import { generatePdf } from '@/lib/services/pdf';
 import { getStaticMapUrl, getStreetViewUrl } from '@/lib/services/google-maps';
-import { sendAdminNotification } from '@/lib/services/resend-email';
 import { generateReportHtml } from '@/lib/templates/report-template';
 import type { ReportTemplateData, FilingGuide } from '@/lib/templates/report-template';
 
@@ -254,33 +253,19 @@ export async function runPdfAssembly(
     };
   }
 
-  // ── Update report ─────────────────────────────────────────────────────
+  // ── Update report with PDF path ──────────────────────────────────────
+  // NOTE: status and pipeline_completed_at are set by the orchestrator
+  // after all stages complete. Admin notification is also sent by the
+  // orchestrator. Stage 7 only records the PDF storage path.
   const { error: reportUpdateError } = await supabase
     .from('reports')
     .update({
       report_pdf_storage_path: storagePath,
-      status: 'pending_approval',
-      pipeline_completed_at: new Date().toISOString(),
     })
     .eq('id', reportId);
 
   if (reportUpdateError) {
     return { success: false, error: `Failed to update report after PDF upload: ${reportUpdateError.message}` };
-  }
-
-  // ── Send admin notification ───────────────────────────────────────────
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.resourceful.com';
-  const reviewUrl = `${appUrl}/admin/reports/${reportId}`;
-
-  const notifResult = await sendAdminNotification({
-    reportId,
-    propertyAddress,
-    propertyType: report.property_type ?? 'residential',
-    reviewUrl,
-  });
-
-  if (notifResult.error) {
-    console.warn(`[stage7] Admin notification failed: ${notifResult.error}`);
   }
 
   console.log(

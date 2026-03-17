@@ -40,11 +40,11 @@ export async function runDelivery(
     return { success: false, error: `Failed to fetch report: ${reportError?.message}` };
   }
 
-  const deliverableStatuses = ['processing', 'pending_approval', 'approved'];
+  const deliverableStatuses = ['pending_approval', 'approved'];
   if (!deliverableStatuses.includes(report.status)) {
     return {
       success: false,
-      error: `Report status is '${report.status}' — must be processing, pending_approval, or approved to deliver`,
+      error: `Report status is '${report.status}' — must be pending_approval or approved to deliver`,
     };
   }
 

@@ -255,7 +255,14 @@ export async function runComparables(
     });
 
     if (result.data && result.data.length > 0) {
-      allComps = result.data;
+      // Merge new comps with existing ones, deduplicating by address
+      const existingAddresses = new Set(allComps.map((c) => c.address));
+      for (const comp of result.data) {
+        if (!existingAddresses.has(comp.address)) {
+          allComps.push(comp);
+          existingAddresses.add(comp.address);
+        }
+      }
     }
 
     // Stop expanding if we have enough comps

@@ -93,6 +93,7 @@ export async function runPhotoAnalysis(
 
   // ── Analyze photos in parallel batches of 3 ──────────────────────────
   const conditionRatings: string[] = [];
+  const allAnalyses: PhotoAiAnalysis[] = [];
   const BATCH_SIZE = 3;
 
   for (let i = 0; i < photos.length; i += BATCH_SIZE) {
@@ -150,6 +151,7 @@ export async function runPhotoAnalysis(
     for (const result of batchResults) {
       if (result.status === 'fulfilled' && result.value) {
         conditionRatings.push(result.value.condition_rating);
+        allAnalyses.push(result.value);
       }
     }
   }
@@ -166,14 +168,10 @@ export async function runPhotoAnalysis(
   // photo evidence. This makes the adjustment proportional to documented
   // issues rather than a single overall rating.
   const allDefects: Array<{ severity: string; value_impact: string }> = [];
-  for (let i = 0; i < photos.length; i += BATCH_SIZE) {
-    const batch = photos.slice(i, i + BATCH_SIZE);
-    for (const photo of batch) {
-      const analysis = photo.ai_analysis as unknown as PhotoAiAnalysis | null;
-      if (analysis?.defects) {
-        for (const d of analysis.defects) {
-          allDefects.push({ severity: d.severity, value_impact: d.value_impact });
-        }
+  for (const analysis of allAnalyses) {
+    if (analysis.defects) {
+      for (const d of analysis.defects) {
+        allDefects.push({ severity: d.severity, value_impact: d.value_impact });
       }
     }
   }
@@ -220,7 +218,7 @@ export async function runPhotoAnalysis(
 
     if (comps.length > 0) {
       for (const comp of comps) {
-        const newConditionAdj = comp.adjustment_pct_condition + cappedAdjustment;
+        const newConditionAdj = (comp.adjustment_pct_condition ?? 0) + cappedAdjustment;
         const newNet =
           comp.adjustment_pct_property_rights +
           comp.adjustment_pct_financing_terms +
