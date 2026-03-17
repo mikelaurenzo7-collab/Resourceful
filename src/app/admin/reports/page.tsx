@@ -113,6 +113,9 @@ export default async function ReportsQueuePage({
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Type
                 </th>
+                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
+                  Photos
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Status
                 </th>
@@ -144,6 +147,17 @@ export default async function ReportsQueuePage({
                   </td>
                   <td className="px-4 py-3 text-sm capitalize text-gray-700">
                     {report.property_type ?? '--'}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    {report.photos_skipped ? (
+                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] font-semibold text-gray-500 ring-1 ring-inset ring-gray-300">
+                        No Photos
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                        Has Photos
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">

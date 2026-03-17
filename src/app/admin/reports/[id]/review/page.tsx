@@ -117,6 +117,65 @@ export default async function ReviewPage({
       {/* RIGHT PANEL - Review Controls */}
       <div className="w-1/2 overflow-y-auto">
         <div className="p-6 space-y-8">
+          {/* Human-in-the-Loop Indicator */}
+          {!report.photos_skipped ? (
+            <section>
+              <div className="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 rounded-full bg-emerald-100 p-2">
+                    <svg className="h-5 w-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-bold text-emerald-900">
+                      HUMAN-IN-THE-LOOP — Client Submitted Photos
+                    </h3>
+                    <p className="mt-0.5 text-xs text-emerald-700">
+                      This client provided their own property photos. The report includes AI-analyzed photo evidence
+                      that influenced the condition adjustment. <strong>Review photo-based defects carefully.</strong>
+                    </p>
+                    {propertyData?.photo_count != null && propertyData.photo_count > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-3 text-xs text-emerald-800">
+                        <span><strong>{propertyData.photo_count}</strong> photos analyzed</span>
+                        {propertyData.photo_defect_count > 0 && (
+                          <span><strong>{propertyData.photo_defect_count}</strong> defects found</span>
+                        )}
+                        {propertyData.photo_defect_count_significant > 0 && (
+                          <span className="font-bold text-amber-700">{propertyData.photo_defect_count_significant} significant</span>
+                        )}
+                        {propertyData.photo_impact_dollars != null && propertyData.photo_impact_dollars > 0 && (
+                          <span>Photo impact: <strong>{formatCurrency(propertyData.photo_impact_dollars)}</strong> ({propertyData.photo_impact_pct?.toFixed(1)}%)</span>
+                        )}
+                        {propertyData.photo_condition_adjustment_pct != null && (
+                          <span>Condition adj: <strong>{propertyData.photo_condition_adjustment_pct}%</strong></span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+          ) : (
+            <section>
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0 rounded-full bg-gray-100 p-2">
+                    <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-600">No Photos — Market Data Only</h3>
+                    <p className="text-xs text-gray-500">Client did not submit photos. Valuation based entirely on comparable sales and market data.</p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
           {/* Report Overview */}
           <section>
             <h2 className="text-lg font-bold text-gray-900 mb-4">Report Overview</h2>

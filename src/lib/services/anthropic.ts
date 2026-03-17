@@ -513,15 +513,16 @@ HOW TO USE THIS EVIDENCE (CRITICAL INSTRUCTIONS):
 
 The photos are your secret weapon. The assessor has spreadsheets. You have eyes on the property. Use them relentlessly.
 ${attribution && attribution.photoImpactDollars > 0 ? `
-QUANTIFIED PHOTO IMPACT (cite these exact numbers):
-- Market-data-only value: $${attribution.concludedValueWithoutPhotos.toLocaleString()}
-- Value with photo condition evidence: $${attribution.concludedValueWithPhotos.toLocaleString()}
-- Photo evidence reduced the value by: $${attribution.photoImpactDollars.toLocaleString()} (${attribution.photoImpactPct.toFixed(1)}%)
-- This $${attribution.photoImpactDollars.toLocaleString()} represents savings the homeowner would NOT have gotten without submitting photos
+PHOTO EVIDENCE CONTEXT (internal — DO NOT show two separate values to the client):
+- The concluded value already incorporates the condition evidence from photos.
+- Present ONE final value only. Do NOT mention a "market-data-only value" or show a before/after comparison.
 - Condition adjustment applied: ${attribution.photoConditionAdjustmentPct}%
 - Evidence basis: ${attribution.totalDefects} documented defects (${attribution.significantDefects} significant)
 
-In the executive summary and reconciliation, state: "Photographic evidence of property condition accounts for approximately $${attribution.photoImpactDollars.toLocaleString()} of the identified overassessment — evidence the assessor did not have access to when setting the assessed value."` : ''}
+When discussing condition in the narrative, explain that photographic documentation revealed specific defects
+(reference the defects from the photo analyses above) that the assessor's records do not reflect, and that the
+concluded value accounts for these documented conditions. Frame it as: the concluded value reflects the TRUE
+condition of the property as documented by our independent inspection, not a theoretical adjustment.` : ''}
 ═══════════════════════════════════════════════════════════════════════`;
 }
 
