@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { PropertyType, ServiceType } from '@/types/database';
-import { PRICING, formatPrice } from '@/config/pricing';
+import { getPriceCents, formatPrice } from '@/config/pricing';
 import Button from '@/components/ui/Button';
 import AddressInput from '@/components/intake/AddressInput';
 import PropertyTypeSelector from '@/components/intake/PropertyTypeSelector';
@@ -42,7 +42,7 @@ export default function StartPage() {
         address,
         propertyType,
         serviceType,
-        priceCents: PRICING[serviceType][propertyType],
+        priceCents: getPriceCents(serviceType, propertyType),
       })
     );
     router.push('/start/photos');
@@ -117,7 +117,7 @@ export default function StartPage() {
                 estimatedMarketValueHigh={285000}
                 assessmentRatio={0.133}
                 taxRate={0.0694}
-                reportPrice={PRICING[serviceType][propertyType]}
+                reportPrice={getPriceCents(serviceType, propertyType)}
               />
             </section>
           )}

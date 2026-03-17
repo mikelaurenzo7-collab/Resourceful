@@ -159,7 +159,7 @@ export async function runFilingGuide(
     requiresMailFiling: countyRule?.requires_mail_filing ?? false,
     appealFormName: countyRule?.appeal_form_name ?? null,
     formDownloadUrl: countyRule?.form_download_url ?? null,
-    evidenceRequirements: countyRule?.evidence_requirements ?? null,
+    evidenceRequirements: (countyRule?.evidence_requirements as unknown as string[]) ?? null,
     hearingFormat: countyRule?.hearing_format ?? null,
     filingFeeCents: countyRule?.filing_fee_cents ?? null,
     filingFeeNotes: countyRule?.filing_fee_notes ?? null,

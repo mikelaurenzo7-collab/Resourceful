@@ -1,13 +1,26 @@
-// The only place model names appear in the codebase
+// ─── AI Configuration ────────────────────────────────────────────────────────
+// This is the ONLY file where model names appear.
+// Everything else imports from here.
+// To upgrade models, change the environment variables — not this file.
+
 export const AI_MODELS = {
-  PRIMARY: process.env.AI_MODEL_PRIMARY!, // most capable model (e.g. claude-sonnet-4-6)
-  FAST: process.env.AI_MODEL_FAST!, // lightweight model (e.g. claude-haiku-4-5-20251001)
+  PRIMARY: process.env.AI_MODEL_PRIMARY!, // report narratives, vision analysis
+  FAST: process.env.AI_MODEL_FAST!, // quick classification tasks
 } as const;
 
+// Token limits cap API costs and prevent runaway bills.
+export const AI_TOKEN_LIMITS = {
+  REPORT_NARRATIVES: 8000,
+  VISION_ANALYSIS: 1000,
+  FILING_GUIDE: 3000,
+  CLASSIFICATION: 300,
+} as const;
+
+// Backward-compatible alias used by existing service code
 export const AI_CONFIG = {
   maxTokens: {
-    narrative: 8192,
-    filingGuide: 4096,
-    photoAnalysis: 2048,
+    narrative: AI_TOKEN_LIMITS.REPORT_NARRATIVES,
+    filingGuide: AI_TOKEN_LIMITS.FILING_GUIDE,
+    photoAnalysis: AI_TOKEN_LIMITS.VISION_ANALYSIS,
   },
 } as const;

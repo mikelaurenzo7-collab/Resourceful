@@ -26,10 +26,10 @@ function computeFlags({
 
   // 1. Comps with net adjustment > 25%
   for (const comp of comps) {
-    if (Math.abs(comp.net_adjustment_pct) > 25) {
+    if (Math.abs(comp.net_adjustment_pct ?? 0) > 25) {
       flags.push({
         severity: 'warning',
-        message: `Comp at ${comp.address ?? 'unknown'} has net adjustment of ${comp.net_adjustment_pct.toFixed(1)}% (>${'\u00A0'}25% threshold)`,
+        message: `Comp at ${comp.address ?? 'unknown'} has net adjustment of ${(comp.net_adjustment_pct ?? 0).toFixed(1)}% (>${'\u00A0'}25% threshold)`,
       });
     }
     if (comp.is_weak_comparable) {

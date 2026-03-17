@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { PRICING, formatPrice } from '@/config/pricing';
+import { getPriceCents, formatPrice } from '@/config/pricing';
 
 const services = [
   {
@@ -96,7 +96,7 @@ export default function ServiceCards() {
               <div>
                 <span className="text-xs text-cream/40 uppercase tracking-wider">From</span>
                 <p className="font-display text-2xl text-gold">
-                  {formatPrice(PRICING[svc.service].residential)}
+                  {formatPrice(getPriceCents(svc.service, 'residential'))}
                 </p>
               </div>
               <Link

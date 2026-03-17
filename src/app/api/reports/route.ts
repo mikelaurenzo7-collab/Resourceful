@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
       property_address,
       city,
       state,
+      state_abbreviation: state,
       county,
       county_fips: county_fips ?? null,
       pin: pin ?? null,

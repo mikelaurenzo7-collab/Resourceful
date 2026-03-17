@@ -1,7 +1,7 @@
 'use client';
 
 import { ServiceType, PropertyType } from '@/types/database';
-import { PRICING, formatPrice } from '@/config/pricing';
+import { getPriceCents, formatPrice } from '@/config/pricing';
 
 interface ServiceTypeSelectorProps {
   selected: ServiceType | null;
@@ -49,7 +49,7 @@ export default function ServiceTypeSelector({
 }: ServiceTypeSelectorProps) {
   const getPriceDisplay = (serviceType: ServiceType) => {
     if (!propertyType) return 'Select property type';
-    return formatPrice(PRICING[serviceType][propertyType]);
+    return formatPrice(getPriceCents(serviceType, propertyType));
   };
 
   return (

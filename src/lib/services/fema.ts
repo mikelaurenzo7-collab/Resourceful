@@ -3,7 +3,7 @@
 // to determine flood zone designations for a given coordinate.
 // Returns data that maps directly to PropertyData columns:
 //   flood_zone_designation, flood_map_panel_number,
-//   flood_map_panel_date, flood_map_panel_effective_date
+//   flood_map_panel_date, flood_map_panel_date
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
@@ -22,14 +22,13 @@ const LAYERS = {
  *   flood_zone_designation  → floodZoneDesignation
  *   flood_map_panel_number  → floodMapPanelNumber
  *   flood_map_panel_date    → floodMapPanelDate
- *   flood_map_panel_effective_date → floodMapPanelEffectiveDate
+ *   flood_map_panel_date → floodMapPanelEffectiveDate
  */
 export interface FloodZoneResult {
   flood_zone_designation: string;        // e.g. "X", "AE", "A", "VE"
   flood_zone_subtype: string | null;     // e.g. "FLOODWAY", "0.2 PCT ANNUAL CHANCE"
   flood_map_panel_number: string | null; // FIRM panel number
-  flood_map_panel_date: string | null;   // date the panel was issued
-  flood_map_panel_effective_date: string | null; // effective date of the panel
+  flood_map_panel_date: string | null;   // effective date of the panel
   community_name: string | null;
   static_bfe: number | null;            // base flood elevation if available
   source_description: string | null;
@@ -62,7 +61,7 @@ function parseArcGISDate(epoch: number | null | undefined): string | null {
  *
  * Returns data that maps to PropertyData columns:
  *   flood_zone_designation, flood_map_panel_number,
- *   flood_map_panel_date, flood_map_panel_effective_date
+ *   flood_map_panel_date, flood_map_panel_date
  */
 export async function getFloodZone(
   lat: number,
@@ -115,7 +114,6 @@ export async function getFloodZone(
           flood_zone_subtype: 'AREA NOT MAPPED',
           flood_map_panel_number: null,
           flood_map_panel_date: null,
-          flood_map_panel_effective_date: null,
           community_name: null,
           static_bfe: null,
           source_description: 'No FEMA NFHL data at this location',
@@ -133,8 +131,7 @@ export async function getFloodZone(
         flood_zone_designation: attrs.FLD_ZONE ?? attrs.ZONE_SUBTY ?? 'UNKNOWN',
         flood_zone_subtype: attrs.ZONE_SUBTY ?? null,
         flood_map_panel_number: attrs.FIRM_PAN ?? attrs.DFIRM_ID ?? null,
-        flood_map_panel_date: parseArcGISDate(attrs.PANEL_DATE ?? attrs.PRE_DATE),
-        flood_map_panel_effective_date: parseArcGISDate(attrs.EFF_DATE),
+        flood_map_panel_date: parseArcGISDate(attrs.EFF_DATE ?? attrs.PANEL_DATE ?? attrs.PRE_DATE),
         community_name: attrs.COMM_NAME ?? attrs.CO_FIPS ?? null,
         static_bfe: attrs.STATIC_BFE != null ? Number(attrs.STATIC_BFE) : null,
         source_description: attrs.SOURCE_CIT ?? null,

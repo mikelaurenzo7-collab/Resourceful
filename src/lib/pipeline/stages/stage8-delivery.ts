@@ -5,7 +5,7 @@
 // 'delivered'.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Report, User, PropertyData, ReportNarrative } from '@/types/database';
+import type { Database, Report, PropertyData, ReportNarrative } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { sendReportDeliveryEmail } from '@/lib/services/resend-email';
 
@@ -51,21 +51,16 @@ export async function runDelivery(
     return { success: false, error: 'No PDF storage path found on report. Run PDF assembly first.' };
   }
 
-  // ── Fetch client user ─────────────────────────────────────────────────
-  const { data: userData, error: userError } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', report.user_id ?? '')
-    .single();
-  const user = userData as User | null;
+  // ── Fetch client email from auth.users ────────────────────────────────
+  const { data: authUser, error: userError } = await supabase.auth.admin.getUserById(
+    report.user_id
+  );
 
-  if (userError || !user) {
-    return { success: false, error: `Failed to fetch user: ${userError?.message}` };
+  if (userError || !authUser?.user?.email) {
+    return { success: false, error: `Failed to fetch user email: ${userError?.message ?? 'no email'}` };
   }
 
-  if (!user.email) {
-    return { success: false, error: 'Client has no email address on file' };
-  }
+  const clientEmail = authUser.user.email;
 
   // ── Generate signed URL (7-day expiry) ────────────────────────────────
   const { data: signedUrlData, error: signedUrlError } = await supabase
@@ -132,9 +127,9 @@ export async function runDelivery(
   ].filter(Boolean).join(', ');
 
   // ── Send client email ─────────────────────────────────────────────────
-  console.log(`[stage8] Sending report delivery email to ${user.email}`);
+  console.log(`[stage8] Sending report delivery email to ${clientEmail}`);
   const emailResult = await sendReportDeliveryEmail({
-    to: user.email,
+    to: clientEmail,
     propertyAddress,
     concludedValue,
     assessedValue,
@@ -173,7 +168,7 @@ export async function runDelivery(
     });
 
   console.log(
-    `[stage8] Report ${reportId} delivered to ${user.email}. Email ID: ${emailResult.data?.id}`
+    `[stage8] Report ${reportId} delivered to ${clientEmail}. Email ID: ${emailResult.data?.id}`
   );
 
   return { success: true };

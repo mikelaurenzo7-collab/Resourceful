@@ -2,7 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { revalidatePath } from 'next/cache';
-import type { AssessmentMethodology, HearingFormat } from '@/types/database';
+// County rules now use plain text for assessment_methodology and hearing_format
 
 function parseOptionalInt(val: FormDataEntryValue | null): number | null {
   if (!val || val === '') return null;
@@ -51,7 +51,7 @@ export async function saveCounty(existingFips: string | null, formData: FormData
     state_name: stateName,
     state_abbreviation: stateAbbr,
     is_active: parseCheckbox(formData, 'is_active'),
-    assessment_methodology: (parseOptionalString(formData.get('assessment_methodology')) as AssessmentMethodology) ?? null,
+    assessment_methodology: (parseOptionalString(formData.get('assessment_methodology')) as string) ?? null,
     assessment_methodology_notes: parseOptionalString(formData.get('assessment_methodology_notes')),
     assessment_ratio_residential: parseOptionalFloat(formData.get('assessment_ratio_residential')),
     assessment_ratio_commercial: parseOptionalFloat(formData.get('assessment_ratio_commercial')),
@@ -69,7 +69,7 @@ export async function saveCounty(existingFips: string | null, formData: FormData
     appeal_deadline_rule: parseOptionalString(formData.get('appeal_deadline_rule')),
     tax_year_appeal_window: parseOptionalString(formData.get('tax_year_appeal_window')),
     hearing_typically_required: parseCheckbox(formData, 'hearing_typically_required'),
-    hearing_format: (parseOptionalString(formData.get('hearing_format')) as HearingFormat) ?? null,
+    hearing_format: (parseOptionalString(formData.get('hearing_format')) as string) ?? null,
     appeal_form_name: parseOptionalString(formData.get('appeal_form_name')),
     form_download_url: parseOptionalString(formData.get('form_download_url')),
     evidence_requirements: parseStringArray(formData.get('evidence_requirements')),

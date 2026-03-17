@@ -7,26 +7,15 @@ import { z } from 'zod';
 const propertyTypeEnum = z.enum(['residential', 'commercial', 'industrial', 'land']);
 const serviceTypeEnum = z.enum(['tax_appeal', 'pre_purchase', 'pre_listing']);
 const photoTypeEnum = z.enum([
-  'front_exterior',
-  'rear_exterior',
-  'left_exterior',
-  'right_exterior',
-  'street_view',
-  'aerial',
-  'kitchen',
-  'living_room',
-  'master_bedroom',
-  'bathroom',
-  'basement',
-  'garage',
-  'roof',
-  'foundation',
-  'hvac',
-  'electrical_panel',
-  'plumbing',
-  'lot_overview',
-  'deferred_maintenance',
-  'other',
+  'exterior_front', 'exterior_rear',
+  'exterior_north', 'exterior_south', 'exterior_east', 'exterior_west',
+  'parking_lot', 'driveway', 'yard_landscape', 'drainage', 'loading_area',
+  'roof_condition', 'foundation_visible', 'deferred_maintenance', 'environmental_concern',
+  'interior_main', 'interior_kitchen', 'interior_bathroom',
+  'interior_bedroom', 'interior_living', 'interior_basement',
+  'interior_garage', 'interior_warehouse', 'interior_office',
+  'overhead_door', 'dock_door', 'clear_height', 'structural_detail',
+  'aerial', 'other',
 ]);
 const measurementSourceEnum = z.enum(['google_earth', 'user_submitted', 'attom', 'county']);
 const assessmentMethodologyEnum = z.enum(['fractional', 'full_value']);

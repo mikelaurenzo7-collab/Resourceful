@@ -133,7 +133,7 @@ export function generateReportHtml(data: ReportTemplateData): string {
   }
 
   const subjectPhoto = photos.find(
-    (p) => p.photo_type === 'front_exterior' || p.photo_type === 'street_view'
+    (p) => p.photo_type === 'exterior_front' || p.photo_type === 'aerial'
   );
 
   // Determine which sections to render
@@ -1016,7 +1016,7 @@ function renderSalesComparisonSection(
 // ─── Comparable Sale Card ────────────────────────────────────────────────────
 
 function renderComparableCard(comp: ComparableSale, index: number): string {
-  const photoUrl = comp.comparable_photo_storage_path;
+  const photoUrl = comp.comparable_photo_url;
 
   const photoSection = photoUrl
     ? `<div class="comp-card-photo"><img src="${escapeHtml(photoUrl)}" alt="Comparable ${index}"></div>`
@@ -1082,7 +1082,7 @@ function renderComparableCard(comp: ComparableSale, index: number): string {
     ${adjustedPriceSqft ? `
     <div class="comp-card-comments">
       <strong>Adjusted Price/SF:</strong> <span class="num">${formatCurrency(adjustedPriceSqft)}/SF</span>
-      <strong style="margin-left:1em;">Net Adjustment:</strong> <span class="num">${formatPercent(comp.net_adjustment_pct / 100)}</span>
+      <strong style="margin-left:1em;">Net Adjustment:</strong> <span class="num">${formatPercent((comp.net_adjustment_pct ?? 0) / 100)}</span>
       ${comp.is_weak_comparable ? '<span style="color:#c62828; margin-left:1em; font-weight:600;">[Weak Comparable]</span>' : ''}
     </div>` : ''}
   </div>`;
@@ -1234,7 +1234,7 @@ function renderAdjustmentGrid(
     <td class="row-label" style="font-weight:700;">Net Adjustment %</td>
     <td style="text-align:center;">&mdash;</td>
     ${comps.map((c) => {
-      const net = c.net_adjustment_pct;
+      const net = c.net_adjustment_pct ?? 0;
       const cls = net > 0 ? 'adj-positive' : net < 0 ? 'adj-negative' : '';
       const sign = net > 0 ? '+' : '';
       return `<td style="text-align:right;" class="${cls}">${sign}${formatPercent(net / 100)}</td>`;

@@ -10,9 +10,6 @@
 import type {
   PropertyData,
   CountyRule,
-  AssessedValueSource,
-  AssessmentHistoryEntry,
-  DeedHistoryEntry,
 } from '@/types/database';
 
 import {
@@ -51,7 +48,7 @@ export interface CollectPropertyDataParams {
  */
 export interface CollectedPropertyData {
   assessed_value: number | null;
-  assessed_value_source: AssessedValueSource;
+  assessed_value_source: string | null;
   market_value_estimate_low: number | null;
   market_value_estimate_high: number | null;
   assessment_ratio: number | null;
@@ -68,10 +65,9 @@ export interface CollectedPropertyData {
   flood_zone_designation: string | null;
   flood_map_panel_number: string | null;
   flood_map_panel_date: string | null;
-  flood_map_panel_effective_date: string | null;
   tax_year_in_appeal: number | null;
-  assessment_history: AssessmentHistoryEntry[] | null;
-  deed_history: DeedHistoryEntry[] | null;
+  assessment_history: Record<string, unknown>[] | null;
+  deed_history: Record<string, unknown>[] | null;
   attom_raw_response: Record<string, unknown> | null;
   county_assessor_raw_response: Record<string, unknown> | null;
   data_collection_notes: string | null;
@@ -209,7 +205,6 @@ function attomToCollected(detail: AttomPropertyDetail): CollectedPropertyData {
     flood_zone_designation: null, // Populated separately by FEMA service
     flood_map_panel_number: null,
     flood_map_panel_date: null,
-    flood_map_panel_effective_date: null,
     tax_year_in_appeal: detail.assessment.assessmentYear || null,
     assessment_history: null,
     deed_history: null,

@@ -320,7 +320,7 @@ export async function runPdfAssembly(
 
   // ── Determine cover image ─────────────────────────────────────────────
   // Use user's front exterior photo if available, otherwise Street View
-  const exteriorPhoto = photos.find((p) => p.photo_type === 'front_exterior');
+  const exteriorPhoto = photos.find((p) => p.photo_type === 'exterior_front');
   let coverImageUrl: string | null = null;
 
   if (exteriorPhoto?.storage_path) {
@@ -368,7 +368,7 @@ export async function runPdfAssembly(
     adjustedPricePerSqFt: c.adjusted_price_per_sqft,
     pricePerSqFt: c.price_per_sqft,
     distanceMiles: c.distance_miles,
-    streetViewUrl: c.comparable_photo_storage_path,
+    streetViewUrl: c.comparable_photo_url,
   }));
 
   // ── Assemble HTML ─────────────────────────────────────────────────────

@@ -37,42 +37,44 @@ interface StageDefinition {
 
 // ─── Stage Registry ─────────────────────────────────────────────────────────
 
+// Stage keys stored in pipeline_last_completed_stage (text column).
+// These match the spec's naming convention exactly.
 const STAGES: StageDefinition[] = [
   {
     number: 1,
-    name: 'data_collection',
+    name: 'stage-1-data',
     run: runDataCollection,
   },
   {
     number: 2,
-    name: 'comparables',
+    name: 'stage-2-comps',
     run: runComparables,
   },
   {
     number: 3,
-    name: 'income_analysis',
+    name: 'stage-3-income',
     // Only run for commercial and industrial properties
     skipWhen: (pt) => pt !== 'commercial' && pt !== 'industrial',
     run: runIncomeAnalysis,
   },
   {
     number: 4,
-    name: 'photo_analysis',
+    name: 'stage-4-photos',
     run: runPhotoAnalysis,
   },
   {
     number: 5,
-    name: 'narratives',
+    name: 'stage-5-narratives',
     run: runNarratives,
   },
   {
     number: 6,
-    name: 'filing_guide',
+    name: 'stage-6-filing',
     run: runFilingGuide,
   },
   {
     number: 7,
-    name: 'pdf_assembly',
+    name: 'stage-7-pdf',
     run: runPdfAssembly,
   },
 ];
@@ -156,7 +158,7 @@ export async function runPipeline(
       await supabase
         .from('reports')
         .update({
-          pipeline_last_completed_stage: stage.number,
+          pipeline_last_completed_stage: stage.name,
         })
         .eq('id', reportId);
     } catch (err) {
@@ -206,10 +208,10 @@ async function handleStageFailure(
   );
 
   const errorLog = {
-    stage: stage.number,
-    stage_name: stage.name,
+    stage: stage.name,
     error: errorMessage,
-    failed_at: new Date().toISOString(),
+    timestamp: new Date().toISOString(),
+    stack: errorMessage,
   };
 
   await supabase

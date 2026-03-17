@@ -292,7 +292,7 @@ export async function runComparables(
       net_adjustment_pct: adj.net_adjustment_pct,
       adjusted_price_per_sqft: adjustedPricePerSqft,
       is_weak_comparable: adj.is_weak_comparable,
-      comparable_photo_storage_path: comparablePhotoStoragePath,
+      comparable_photo_url: comparablePhotoStoragePath,
     };
   });
 
