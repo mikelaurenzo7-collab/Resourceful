@@ -312,7 +312,7 @@ Write in plain English. Be specific, not generic. Use the county name and state 
 
   try {
     const response = await getClient().messages.create({
-      model: AI_MODELS.PRIMARY,
+      model: AI_MODELS.FAST, // Filing guide is formulaic — doesn't need the primary model
       max_tokens: AI_CONFIG.maxTokens.filingGuide,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],

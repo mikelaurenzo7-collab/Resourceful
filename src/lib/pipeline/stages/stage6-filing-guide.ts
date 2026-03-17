@@ -218,7 +218,7 @@ export async function runFilingGuide(
       report_id: reportId,
       section_name: 'pro_se_filing_guide',
       content: guide,
-      model_used: process.env.AI_MODEL_PRIMARY ?? 'claude-sonnet-4-6',
+      model_used: process.env.AI_MODEL_FAST ?? 'claude-haiku-4-5-20251001',
       prompt_tokens,
       completion_tokens,
       generation_duration_ms,
