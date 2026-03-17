@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy: #1a2744;
+  --navy-deep: #0f1419;
+  --navy-light: #1e3055;
+  --gold: #d4a847;
+  --gold-light: #e8c876;
+  --gold-dark: #b8922e;
+  --cream: #f5f0e8;
+  --slate: #94a3b8;
+  --slate-light: #cbd5e1;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  color: var(--cream);
+  background: var(--navy-deep);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Premium typography */
+h1, h2, h3, h4 {
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-family: var(--font-playfair), Georgia, serif;
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+/* Step connector line animation */
+@keyframes draw-line {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+.animate-draw-line {
+  animation: draw-line 0.8s ease-out forwards;
+}
+
+/* Premium scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--navy-deep);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--navy-light);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold-dark);
+}
+
+/* Gold gradient text utility */
+.text-gold-gradient {
+  background: linear-gradient(135deg, var(--gold-light), var(--gold), var(--gold-dark));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Subtle gold border glow */
+.border-gold-glow {
+  box-shadow: 0 0 20px rgba(212, 168, 71, 0.08);
+}
+
+/* Premium card styling */
+.card-premium {
+  background: linear-gradient(145deg, rgba(30, 48, 85, 0.5), rgba(15, 20, 25, 0.8));
+  border: 1px solid rgba(212, 168, 71, 0.15);
+  backdrop-filter: blur(12px);
+}
+
+.card-premium:hover {
+  border-color: rgba(212, 168, 71, 0.35);
+  box-shadow: 0 8px 32px rgba(212, 168, 71, 0.1);
+}
+
+/* Animated pulse for loading states */
+@keyframes premium-pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.animate-premium-pulse {
+  animation: premium-pulse 2s ease-in-out infinite;
+}
+
+/* Subtle background pattern */
+.bg-pattern {
+  background-image: radial-gradient(circle at 25% 25%, rgba(212, 168, 71, 0.03) 0%, transparent 50%),
+                    radial-gradient(circle at 75% 75%, rgba(30, 48, 85, 0.3) 0%, transparent 50%);
+}
+
+/* Input focus ring */
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(212, 168, 71, 0.15);
+}
+
+/* Accordion animation */
+.accordion-content {
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+/* Progress bar animation */
+@keyframes progress-fill {
+  from { width: 0%; }
+  to { width: var(--progress-width); }
+}
+
+.animate-progress {
+  animation: progress-fill 1s ease-out forwards;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

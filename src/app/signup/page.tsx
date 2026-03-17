@@ -1,0 +1,157 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createBrowserClient } from '@supabase/ssr';
+import Button from '@/components/ui/Button';
+
+export default function SignupPage() {
+  const router = useRouter();
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+
+      const { error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+            phone: phone || undefined,
+          },
+        },
+      });
+
+      if (authError) throw authError;
+
+      router.push('/start');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-pattern flex items-center justify-center px-6 py-12">
+      <div className="w-full max-w-md">
+        {/* Logo */}
+        <div className="text-center mb-10">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center mx-auto mb-4">
+            <span className="text-navy-deep font-bold text-xl">R</span>
+          </div>
+          <h1 className="font-display text-3xl text-cream mb-2">Create Your Account</h1>
+          <p className="text-cream/50 text-sm">
+            Join thousands of property owners saving on their taxes.
+          </p>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="card-premium rounded-xl p-8 space-y-5">
+          {error && (
+            <div className="rounded-lg bg-red-900/20 border border-red-500/20 p-3 text-sm text-red-400">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="fullName" className="block text-sm font-medium text-cream/80 mb-2">
+              Full Name
+            </label>
+            <input
+              id="fullName"
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="Jane Doe"
+              required
+              className="w-full rounded-lg border border-gold/20 bg-navy-deep/60 px-4 py-3 text-cream placeholder:text-cream/30 focus:border-gold focus:ring-2 focus:ring-gold/15 focus:outline-none transition-all"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-cream/80 mb-2">
+              Email Address
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+              className="w-full rounded-lg border border-gold/20 bg-navy-deep/60 px-4 py-3 text-cream placeholder:text-cream/30 focus:border-gold focus:ring-2 focus:ring-gold/15 focus:outline-none transition-all"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="phone" className="block text-sm font-medium text-cream/80 mb-2">
+              Phone Number
+            </label>
+            <input
+              id="phone"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="(555) 555-0100"
+              className="w-full rounded-lg border border-gold/20 bg-navy-deep/60 px-4 py-3 text-cream placeholder:text-cream/30 focus:border-gold focus:ring-2 focus:ring-gold/15 focus:outline-none transition-all"
+            />
+            <p className="mt-1.5 text-xs text-cream/25">
+              Optional. We&apos;ll only use this to notify you when your report is ready.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-cream/80 mb-2">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Minimum 8 characters"
+              required
+              minLength={8}
+              className="w-full rounded-lg border border-gold/20 bg-navy-deep/60 px-4 py-3 text-cream placeholder:text-cream/30 focus:border-gold focus:ring-2 focus:ring-gold/15 focus:outline-none transition-all"
+            />
+          </div>
+
+          <Button type="submit" size="lg" fullWidth loading={loading}>
+            Create Account
+          </Button>
+
+          <p className="text-xs text-cream/25 text-center leading-relaxed">
+            By creating an account, you agree to our{' '}
+            <a href="/terms" className="underline hover:text-cream/40">Terms of Service</a>
+            {' '}and{' '}
+            <a href="/privacy" className="underline hover:text-cream/40">Privacy Policy</a>.
+          </p>
+        </form>
+
+        {/* Footer link */}
+        <p className="text-center mt-6 text-sm text-cream/40">
+          Already have an account?{' '}
+          <a href="/login" className="text-gold hover:text-gold-light transition-colors font-medium">
+            Sign in
+          </a>
+        </p>
+      </div>
+    </div>
+  );
+}
