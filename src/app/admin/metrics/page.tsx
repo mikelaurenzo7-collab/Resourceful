@@ -101,7 +101,7 @@ export default async function MetricsPage() {
   const deliveredToday = rawDeliveredToday as unknown as { id: string }[] | null;
   const deliveredThisWeek = rawDeliveredWeek as unknown as { id: string }[] | null;
   const allCompleted = rawCompleted as unknown as { pipeline_started_at: string; pipeline_completed_at: string }[] | null;
-  const failedReports = rawFailed as unknown as { id: string; pipeline_last_completed_stage: number | null }[] | null;
+  const failedReports = rawFailed as unknown as { id: string; pipeline_last_completed_stage: string | null }[] | null;
   const allReports = rawAll as unknown as { id: string }[] | null;
   const paidToday = rawPaidToday as unknown as { amount_paid_cents: number }[] | null;
   const paidThisMonth = rawPaidMonth as unknown as { amount_paid_cents: number }[] | null;
@@ -141,7 +141,7 @@ export default async function MetricsPage() {
   const failureByStage: Record<string, number> = {};
   if (failedReports) {
     for (const r of failedReports) {
-      const stage = r.pipeline_last_completed_stage != null ? `Stage ${r.pipeline_last_completed_stage}` : 'Unknown';
+      const stage = r.pipeline_last_completed_stage ?? 'Unknown';
       failureByStage[stage] = (failureByStage[stage] ?? 0) + 1;
     }
   }

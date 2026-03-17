@@ -1498,22 +1498,27 @@ function renderMapImage(map: MapImage): string {
 }
 
 function formatPhotoType(type: string): string {
+  // Labels must match the PhotoType enum values in the database schema
   const labels: Record<string, string> = {
-    front_exterior: 'Front Exterior',
-    rear_exterior: 'Rear Exterior',
-    left_exterior: 'Left Side',
-    right_exterior: 'Right Side',
-    street_view: 'Street View',
-    kitchen: 'Kitchen',
-    bathroom: 'Bathroom',
-    living_room: 'Living Room',
-    bedroom: 'Bedroom',
-    basement: 'Basement',
-    attic: 'Attic',
-    garage: 'Garage',
-    yard: 'Yard',
-    roof: 'Roof',
-    damage: 'Noted Damage',
+    exterior_front: 'Front Exterior',
+    exterior_rear: 'Rear Exterior',
+    exterior_north: 'North Elevation',
+    exterior_south: 'South Elevation',
+    exterior_east: 'East Elevation',
+    exterior_west: 'West Elevation',
+    interior_kitchen: 'Kitchen',
+    interior_bathroom: 'Bathroom',
+    interior_living: 'Living Room',
+    interior_bedroom: 'Bedroom',
+    interior_basement: 'Basement',
+    interior_garage: 'Garage',
+    interior_other: 'Interior',
+    aerial: 'Aerial View',
+    yard_landscape: 'Yard / Landscape',
+    roof_condition: 'Roof Condition',
+    deferred_maintenance: 'Deferred Maintenance',
+    comparable_exterior: 'Comparable Exterior',
+    flood_zone_evidence: 'Flood Zone Evidence',
     other: 'Other',
   };
   return labels[type] ?? type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
