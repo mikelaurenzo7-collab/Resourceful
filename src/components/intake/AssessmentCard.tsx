@@ -21,8 +21,11 @@ export default function AssessmentCard({
   taxRate,
   reportPrice,
 }: AssessmentCardProps) {
-  const fairAssessedLow = estimatedMarketValueLow * 0.10; // Cook County 10% residential
-  const fairAssessedHigh = estimatedMarketValueHigh * 0.10;
+  // Use the county-specific assessment ratio to determine fair assessed value
+  // (e.g. Cook County IL is 10%, but other counties vary widely)
+  const effectiveRatio = assessmentRatio > 0 ? assessmentRatio : 1; // default to full value if unknown
+  const fairAssessedLow = estimatedMarketValueLow * effectiveRatio;
+  const fairAssessedHigh = estimatedMarketValueHigh * effectiveRatio;
   const overAssessmentLow = Math.max(0, assessedValue - fairAssessedHigh);
   const overAssessmentHigh = Math.max(0, assessedValue - fairAssessedLow);
   const savingsLow = Math.round(overAssessmentLow * taxRate);
@@ -62,13 +65,13 @@ export default function AssessmentCard({
         <div className="rounded-lg bg-navy-deep/60 border border-gold/10 p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-cream/60">Assessment Ratio</span>
-            <span className={`font-display text-lg ${assessmentRatio > 0.10 ? 'text-red-400' : 'text-emerald-400'}`}>
+            <span className={`font-display text-lg ${assessmentRatio > effectiveRatio ? 'text-red-400' : 'text-emerald-400'}`}>
               {(assessmentRatio * 100).toFixed(1)}%
             </span>
           </div>
           <p className="text-xs text-cream/40 leading-relaxed">
-            {assessmentRatio > 0.10
-              ? `Your property is assessed at ${(assessmentRatio * 100).toFixed(1)}% of estimated market value. In Cook County, residential properties should be assessed at 10%. This suggests your property may be over-assessed.`
+            {assessmentRatio > effectiveRatio
+              ? `Your property is assessed at ${(assessmentRatio * 100).toFixed(1)}% of estimated market value, which is above the expected ${(effectiveRatio * 100).toFixed(1)}% ratio for your county. This suggests your property may be over-assessed.`
               : 'Your assessment ratio appears to be within the expected range for your county.'}
           </p>
         </div>

@@ -95,8 +95,8 @@ create table property_data (
   market_value_estimate_low      integer,
   market_value_estimate_high     integer,
   -- assessment_ratio and assessment_methodology come from county_rules.
-  -- They are NEVER hardcoded. Cook County commercial = 0.25.
-  -- Texas, California, most states = 1.00. This field drives all math.
+  -- They are NEVER hardcoded. Ratios vary by county and property type
+  -- (e.g. IL fractional at 10-25%, TX/CA full value at 100%). This field drives all math.
   assessment_ratio               numeric(4, 3),
   assessment_methodology         text,
   lot_size_sqft                  numeric(12, 2),
@@ -346,10 +346,8 @@ create table county_rules (
   county_name                     text not null,
   state_name                      text not null,
   state_abbreviation              text not null,
-  -- Assessment ratios vary dramatically by state.
-  -- Cook County IL residential: 0.10 (10% of market value)
-  -- Cook County IL commercial:  0.25 (25% of market value)
-  -- Texas, California, most states: 1.00 (100% full value)
+  -- Assessment ratios vary dramatically by state and county.
+  -- Examples: IL fractional (10-25%), TX/CA full value (100%).
   -- These drive all valuation calculations — never hardcode them.
   assessment_ratio_residential    numeric(4, 3) not null,
   assessment_ratio_commercial     numeric(4, 3) not null,
@@ -433,7 +431,9 @@ create policy "Admins can read and create approval events"
 create index idx_approval_events_report_id on approval_events(report_id);
 
 -- ============================================================
--- Seed Cook County as the only active county at launch.
+-- Seed initial county_rules data. Add rows for every county
+-- where we have verified appeal board info, deadlines, etc.
+-- ATTOM handles property data for all counties regardless.
 -- ============================================================
 insert into county_rules (
   county_fips, county_name, state_name, state_abbreviation,

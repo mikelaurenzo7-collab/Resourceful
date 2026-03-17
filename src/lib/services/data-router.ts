@@ -1,13 +1,14 @@
 // ─── Property Data Collection Router ─────────────────────────────────────────
-// Nationwide two-tier data source strategy:
-//   1. ATTOM covers every county in the country — this is the universal source.
+// Nationwide data source strategy powered by ATTOM:
+//   1. ATTOM covers every county in every state — this is the universal source.
 //   2. If a county has a dedicated assessor API (county_rules.assessor_api_url),
-//      try it first for authoritative assessed values, then merge.
+//      a future adapter can try it first for authoritative assessed values.
 //   3. County API results take precedence for assessed values when available.
 //
-// Cook County IL is the first county adapter. Adding a new county API adapter
-// means adding a case to the switch in collectFromCountyApi(). The rest of
-// the pipeline remains unchanged — every county works via ATTOM regardless.
+// No county-specific adapters are hardcoded. When a county_rules row has an
+// assessor_api_url, the collectFromCountyApi() function can route to the
+// appropriate adapter. Adding a new adapter means adding a case to that switch.
+// Every county works via ATTOM regardless of whether an adapter exists.
 
 import type {
   PropertyData,
@@ -18,12 +19,6 @@ import {
   getPropertyDetail as attomGetPropertyDetail,
   type AttomPropertyDetail,
 } from './attom';
-
-import {
-  getPropertyByPIN,
-  searchByAddress as cookCountySearchByAddress,
-  type CookCountyAssessment,
-} from './cook-county';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -87,6 +82,8 @@ export interface ServiceResult<T> {
 }
 
 // ─── County API Adapters ─────────────────────────────────────────────────────
+// Future county-specific API adapters go here. Each adapter is keyed by
+// county_fips from the county_rules table (not by hardcoded county names).
 
 interface CountyApiResult {
   source: 'county_api';
@@ -105,85 +102,36 @@ interface CountyApiResult {
  * Attempt to collect data from a county-specific assessor API.
  * Checks county_rules.assessor_api_url to determine if a direct adapter exists.
  * Returns null gracefully when no adapter is available — ATTOM covers everything.
- * Currently Cook County IL is implemented. Add new county adapters here as needed.
+ *
+ * To add a new county adapter:
+ *   1. Set assessor_api_url in the county_rules row for that county
+ *   2. Add a case below keyed by county_fips
+ *   3. Implement the adapter function that returns CountyApiResult
  */
 async function collectFromCountyApi(
-  params: CollectPropertyDataParams
+  _params: CollectPropertyDataParams
 ): Promise<ServiceResult<CountyApiResult>> {
   // Only attempt if the county has a configured assessor API URL
-  if (!params.countyRules?.assessor_api_url) {
-    return { data: null, error: null }; // No county-specific API available
+  if (!_params.countyRules?.assessor_api_url) {
+    return { data: null, error: null };
   }
 
-  const countyName = params.countyRules.county_name?.toLowerCase() ?? '';
-  const state = params.countyRules.state_abbreviation?.toUpperCase() ?? '';
+  // Route by county FIPS code (not hardcoded county names)
+  const _fips = _params.countyRules.county_fips;
 
-  switch (true) {
-    // ── Cook County, IL ──
-    case countyName.includes('cook') && state === 'IL': {
-      return collectFromCookCounty(params);
-    }
+  // No adapters currently active — ATTOM handles all counties.
+  // When a county adapter is needed, add a case here:
+  //
+  // switch (fips) {
+  //   case '17031': // Cook County, IL
+  //     return collectFromCookCounty(params);
+  //   case '06037': // Los Angeles County, CA
+  //     return collectFromLACounty(params);
+  //   default:
+  //     break;
+  // }
 
-    // ── Add new county adapters here ──
-    // case countyName.includes('los angeles') && state === 'CA': {
-    //   return collectFromLACounty(params);
-    // }
-
-    default:
-      return { data: null, error: null }; // assessor_api_url set but no adapter yet
-  }
-}
-
-async function collectFromCookCounty(
-  params: CollectPropertyDataParams
-): Promise<ServiceResult<CountyApiResult>> {
-  try {
-    let assessment: CookCountyAssessment | null = null;
-
-    // Try by PIN first if available
-    if (params.pin) {
-      const pinResult = await getPropertyByPIN(params.pin);
-      if (pinResult.data) {
-        assessment = pinResult.data;
-      }
-    }
-
-    // Fall back to address search
-    if (!assessment) {
-      const searchResult = await cookCountySearchByAddress(params.address);
-      if (searchResult.data?.length) {
-        // Use the first match and look up its full assessment
-        const pinResult = await getPropertyByPIN(searchResult.data[0].pin);
-        if (pinResult.data) {
-          assessment = pinResult.data;
-        }
-      }
-    }
-
-    if (!assessment) {
-      return { data: null, error: 'No Cook County assessment found' };
-    }
-
-    return {
-      data: {
-        source: 'county_api',
-        assessment: {
-          assessed_value: assessment.totalAssessedValue,
-          tax_year: assessment.taxYear,
-          building_sqft_gross: assessment.buildingSqFt,
-          lot_size_sqft: assessment.landSqFt,
-          year_built: assessment.yearBuilt,
-          property_class: assessment.classCode || null,
-        },
-        raw: assessment as unknown as Record<string, unknown>,
-      },
-      error: null,
-    };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`[data-router] Cook County collection failed: ${message}`);
-    return { data: null, error: `Cook County API failed: ${message}` };
-  }
+  return { data: null, error: null };
 }
 
 // ─── ATTOM Adapter ───────────────────────────────────────────────────────────
@@ -257,10 +205,8 @@ function mergeCountyData(
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
- * Collect property data using the two-tier strategy:
- * 1. Try county-specific API if county_rules.assessor_api_url is set
- * 2. Always call ATTOM as fallback / supplement
- * 3. Merge results, county data takes precedence for assessed values
+ * Collect property data from ATTOM (universal) and optionally from a
+ * county-specific assessor API if one is configured in county_rules.
  *
  * Sets assessed_value_source to 'county_api' or 'attom'.
  */
@@ -274,7 +220,6 @@ export async function collectPropertyData(
     console.error(
       `[data-router] ATTOM failed for "${params.address}": ${attomResult.error}`
     );
-    // ATTOM is required — if it fails, we cannot proceed
     return {
       data: null,
       error: `Property data collection failed: ${attomResult.error}`,
@@ -283,18 +228,16 @@ export async function collectPropertyData(
 
   let collected = attomToCollected(attomResult.data);
 
-  // Step 2: Try county-specific API if rules indicate one exists (assessor_api_url)
+  // Step 2: Try county-specific API if rules indicate one exists
   if (params.countyRules?.assessor_api_url) {
     const countyResult = await collectFromCountyApi(params);
 
     if (countyResult.data) {
-      // Step 3: Merge — county assessed values take precedence
       collected = mergeCountyData(collected, countyResult.data);
       console.log(
         `[data-router] Merged county data for "${params.address}" — assessed_value_source: county_api`
       );
     } else if (countyResult.error) {
-      // County API failed but ATTOM succeeded — log and continue with ATTOM data
       console.warn(
         `[data-router] County API failed, using ATTOM only: ${countyResult.error}`
       );

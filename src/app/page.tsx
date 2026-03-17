@@ -45,7 +45,7 @@ export default function HomePage() {
             </div>
             <div>
               <p className="font-display text-2xl text-cream">Over 50%</p>
-              <p className="text-xs text-cream/40">of Cook County properties are over-assessed</p>
+              <p className="text-xs text-cream/40">of properties nationwide are over-assessed</p>
             </div>
           </div>
           <div className="hidden md:block h-8 w-px bg-gold/10" />

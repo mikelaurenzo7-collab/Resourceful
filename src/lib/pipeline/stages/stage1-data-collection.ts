@@ -1,14 +1,25 @@
 // ─── Stage 1: Property Data Collection ──────────────────────────────────────
-// Geocodes the address, pulls property data from county API (with ATTOM
-// fallback), queries FEMA flood zone, merges results, and writes to the
-// property_data table.
+// Geocodes the address, determines the correct county via ATTOM + geocode,
+// looks up county_rules by FIPS code (authoritative), queries FEMA flood zone,
+// merges results, and writes to the property_data table.
+//
+// COUNTY ROUTING IS CRITICAL: The county_fips determined here drives every
+// downstream stage (narratives, filing guide, delivery). We use multiple
+// sources to ensure we identify the correct county:
+//   1. ATTOM property detail → location.countyFips (most reliable)
+//   2. Google Geocode → county name
+//   3. User-provided county_fips (if set at intake)
+//   4. User-provided county + state (fallback for county_rules lookup)
+//
+// ATTOM is the universal data source — covers every county in every state.
+// County-specific assessor API adapters can be added via county_rules.assessor_api_url
+// but are never required. See data-router.ts for the adapter pattern.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Report, PropertyData, CountyRule } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { geocodeAddress } from '@/lib/services/google-maps';
 import { getPropertyDetail } from '@/lib/services/attom';
-import { getPropertyByPIN } from '@/lib/services/cook-county';
 
 // ─── FEMA Flood Zone API ────────────────────────────────────────────────────
 
@@ -29,7 +40,7 @@ async function queryFemaFloodZone(lat: number, lng: number): Promise<FemaFloodRe
     url.searchParams.set('f', 'json');
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15_000); // 15s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
     const response = await fetch(url.toString(), { signal: controller.signal });
     clearTimeout(timeoutId);
     if (!response.ok) {
@@ -50,64 +61,52 @@ async function queryFemaFloodZone(lat: number, lng: number): Promise<FemaFloodRe
   }
 }
 
-// ─── County Data Router ─────────────────────────────────────────────────────
-// Two-tier strategy: if a county has a dedicated assessor API adapter, try it
-// first for authoritative assessed values. Always fall back to ATTOM, which
-// covers every county in the country.
+// ─── County Rules Lookup ────────────────────────────────────────────────────
+// Finds the county_rules row for this property. Uses FIPS code as the primary
+// key (authoritative), falls back to county name + state (fuzzy).
 
-async function fetchCountyData(report: Report) {
-  // Try county-specific API if we have an adapter for this county
-  if (
-    report.county?.toLowerCase().includes('cook') &&
-    report.state === 'IL' &&
-    report.pin
-  ) {
-    const cookResult = await getPropertyByPIN(report.pin);
-    if (cookResult.data) {
-      return {
-        source: 'cook_county' as const,
-        data: {
-          year_built: cookResult.data.yearBuilt,
-          building_sqft_gross: cookResult.data.buildingSqFt,
-          lot_size_sqft: cookResult.data.landSqFt,
-          assessed_value: cookResult.data.totalAssessedValue,
-          tax_year_in_appeal: cookResult.data.taxYear,
-        },
-        raw: cookResult.data as unknown as Record<string, unknown>,
-      };
+async function findCountyRule(
+  supabase: SupabaseClient<Database>,
+  fips: string | null,
+  countyName: string | null,
+  state: string | null
+): Promise<CountyRule | null> {
+  // Strategy 1: FIPS code lookup (authoritative — cannot match wrong county)
+  if (fips) {
+    const { data } = await supabase
+      .from('county_rules')
+      .select('*')
+      .eq('county_fips', fips)
+      .single();
+    if (data) return data as CountyRule;
+  }
+
+  // Strategy 2: County name + state (fallback — case-insensitive)
+  if (countyName && state) {
+    // Try exact match first
+    const { data: exact } = await supabase
+      .from('county_rules')
+      .select('*')
+      .eq('state_abbreviation', state.toUpperCase())
+      .ilike('county_name', countyName)
+      .single();
+    if (exact) return exact as CountyRule;
+
+    // Try partial match (handles "Cook County" matching "Cook", etc.)
+    const stripped = countyName.replace(/\s*(county|parish|borough)\s*/i, '').trim();
+    if (stripped) {
+      const { data: partial } = await supabase
+        .from('county_rules')
+        .select('*')
+        .eq('state_abbreviation', state.toUpperCase())
+        .ilike('county_name', `%${stripped}%`)
+        .limit(1)
+        .single();
+      if (partial) return partial as CountyRule;
     }
-    console.warn('[stage1] Cook County lookup failed, falling back to ATTOM');
   }
 
-  // ATTOM fallback
-  const fullAddress = [
-    report.property_address,
-    report.city,
-    report.state,
-  ]
-    .filter(Boolean)
-    .join(', ');
-
-  const attomResult = await getPropertyDetail(fullAddress);
-  if (attomResult.error || !attomResult.data) {
-    return { source: null, data: null, raw: null, error: attomResult.error };
-  }
-
-  const d = attomResult.data;
-  return {
-    source: 'attom' as const,
-    data: {
-      year_built: d.summary.yearBuilt || null,
-      building_sqft_gross: d.summary.buildingSquareFeet || null,
-      lot_size_sqft: d.lot.lotSquareFeet || null,
-      property_class: d.summary.propertyClass || null,
-      property_class_description: d.summary.propertyClassDescription || null,
-      zoning_designation: d.lot.zoning || null,
-      assessed_value: d.assessment.assessedValue || null,
-      tax_year_in_appeal: d.assessment.assessmentYear || null,
-    },
-    raw: d as unknown as Record<string, unknown>,
-  };
+  return null;
 }
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
@@ -136,43 +135,55 @@ export async function runDataCollection(
     .filter(Boolean)
     .join(', ');
 
-  // ── Run data collection in parallel ───────────────────────────────────
-  const [geocodeResult, countyData] = await Promise.all([
+  // ── Geocode + ATTOM in parallel ────────────────────────────────────────
+  const [geocodeResult, attomResult] = await Promise.all([
     geocodeAddress(fullAddress),
-    fetchCountyData(report),
+    getPropertyDetail(fullAddress),
   ]);
 
   if (geocodeResult.error || !geocodeResult.data) {
     return { success: false, error: `Geocoding failed: ${geocodeResult.error}` };
   }
 
+  if (attomResult.error || !attomResult.data) {
+    return { success: false, error: `ATTOM property lookup failed: ${attomResult.error}` };
+  }
+
   const geo = geocodeResult.data;
+  const attom = attomResult.data;
+
+  // ── Determine county FIPS (the authoritative county identifier) ────────
+  // Priority: ATTOM location > user-provided FIPS > geocode county name
+  // ATTOM FIPS is most reliable because it comes from verified property records.
+  const attomFips = attom.location.countyFips || null;
+  const resolvedFips = attomFips || report.county_fips || null;
+  const resolvedCountyName = attom.location.countyName || geo.county || report.county;
+  const resolvedState = geo.state || report.state;
+
+  console.log(
+    `[stage1] County resolution: fips=${resolvedFips}, county="${resolvedCountyName}", state=${resolvedState} ` +
+    `(sources: attom_fips=${attomFips}, user_fips=${report.county_fips}, geocode_county=${geo.county})`
+  );
+
+  // ── Look up county_rules ───────────────────────────────────────────────
+  const countyRule = await findCountyRule(supabase, resolvedFips, resolvedCountyName, resolvedState);
+
+  // ── Build data collection notes ────────────────────────────────────────
+  const notes: string[] = [];
+
+  if (!countyRule) {
+    notes.push(
+      `WARNING: No county_rules record found for fips=${resolvedFips}, ` +
+      `county="${resolvedCountyName}", state=${resolvedState}. ` +
+      `Filing guide and assessment ratios will use defaults.`
+    );
+  }
 
   // Query FEMA now that we have coordinates
   const femaResult = await queryFemaFloodZone(geo.latitude, geo.longitude);
 
-  // ── Fetch assessment ratio from county_rules ──────────────────────────
-  const { data: countyRuleData } = await supabase
-    .from('county_rules')
-    .select('*')
-    .eq('county_name', report.county ?? '')
-    .eq('state_abbreviation', report.state ?? '')
-    .single();
-  const countyRule = countyRuleData as CountyRule | null;
-
-  // ── Build data collection notes (anomaly flags) ───────────────────────
-  const notes: string[] = [];
-
-  if (!countyData.data) {
-    notes.push('WARNING: No property data returned from any source');
-  }
-
   if (femaResult.floodZone && !['X', 'C'].includes(femaResult.floodZone)) {
     notes.push(`FLOOD RISK: Property is in FEMA flood zone ${femaResult.floodZone}`);
-  }
-
-  if (!countyRule) {
-    notes.push('WARNING: No county_rules record found — assessment ratio unknown');
   }
 
   // ── Determine assessment ratio based on property type ──────────────────
@@ -191,43 +202,56 @@ export async function runDataCollection(
     }
   }
 
-  // ── Merge and upsert property_data ────────────────────────────────────
+  // ── Build property_data from ATTOM ─────────────────────────────────────
   const propertyDataPayload = {
     report_id: reportId,
-    assessed_value: countyData.data?.assessed_value ?? null,
-    assessed_value_source: (countyData.source === 'attom' ? 'attom' : 'county_api') as 'attom' | 'county_api' | null,
-    building_sqft_gross: countyData.data?.building_sqft_gross ?? null,
-    lot_size_sqft: countyData.data?.lot_size_sqft ?? null,
-    year_built: countyData.data?.year_built ?? null,
-    property_class: countyData.data?.property_class ?? null,
-    property_class_description: countyData.data?.property_class_description ?? null,
-    zoning_designation: countyData.data?.zoning_designation ?? null,
-    tax_year_in_appeal: countyData.data?.tax_year_in_appeal ?? null,
+    assessed_value: attom.assessment.assessedValue || null,
+    assessed_value_source: 'attom' as const,
+    building_sqft_gross: attom.summary.buildingSquareFeet || null,
+    building_sqft_living_area: attom.summary.livingSquareFeet || null,
+    lot_size_sqft: attom.lot.lotSquareFeet || null,
+    year_built: attom.summary.yearBuilt || null,
+    property_class: attom.summary.propertyClass || null,
+    property_class_description: attom.summary.propertyClassDescription || null,
+    zoning_designation: attom.lot.zoning || null,
+    tax_year_in_appeal: attom.assessment.assessmentYear || null,
     assessment_ratio: assessmentRatio,
     assessment_methodology: countyRule?.assessment_methodology ?? null,
     flood_zone_designation: femaResult.floodZone,
     flood_map_panel_number: femaResult.panelNumber,
-    attom_raw_response: countyData.source === 'attom' ? (countyData.raw as Record<string, unknown>) : null,
-    county_assessor_raw_response: countyData.source === 'cook_county' ? (countyData.raw as Record<string, unknown>) : null,
+    attom_raw_response: attom as unknown as Record<string, unknown>,
+    county_assessor_raw_response: null,
     fema_raw_response: femaResult as unknown as Record<string, unknown>,
     data_collection_notes: notes.length > 0 ? notes.join('\n') : null,
   };
 
-  // Update report with geocode coordinates
+  // ── Update report with geocode coordinates + resolved county FIPS ──────
+  // IMPORTANT: Only write county_fips if we actually resolved one.
+  // Never overwrite a valid user-provided FIPS with null.
+  const reportUpdate: Record<string, unknown> = {
+    latitude: geo.latitude,
+    longitude: geo.longitude,
+  };
+
+  if (resolvedFips) {
+    reportUpdate.county_fips = resolvedFips;
+  }
+
+  // Backfill county name from ATTOM if the user didn't provide one
+  if (attom.location.countyName && !report.county) {
+    reportUpdate.county = attom.location.countyName;
+  }
+
   const { error: geoUpdateError } = await supabase
     .from('reports')
-    .update({
-      latitude: geo.latitude,
-      longitude: geo.longitude,
-      county_fips: countyRule?.county_fips ?? null,
-    })
+    .update(reportUpdate)
     .eq('id', reportId);
 
   if (geoUpdateError) {
     return { success: false, error: `Failed to update report coordinates: ${geoUpdateError.message}` };
   }
 
-  // Check if property_data row already exists for this report
+  // ── Upsert property_data ───────────────────────────────────────────────
   const { data: existingData } = await supabase
     .from('property_data')
     .select('id')
@@ -255,7 +279,9 @@ export async function runDataCollection(
   }
 
   console.log(
-    `[stage1] Data collection complete. Source: ${countyData.source ?? 'none'}. Notes: ${notes.length} flags.`
+    `[stage1] Data collection complete for report ${reportId}. ` +
+    `County: ${countyRule?.county_name ?? resolvedCountyName ?? 'unknown'} (${resolvedFips ?? 'no FIPS'}). ` +
+    `Notes: ${notes.length} flags.`
   );
 
   return { success: true };
