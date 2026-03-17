@@ -165,6 +165,8 @@ export interface FilingGuidePayload {
   virtualHearingPlatform?: string | null;
   authorizedRepAllowed?: boolean | null;
   authorizedRepTypes?: string[] | null;
+  authorizedRepFormUrl?: string | null;
+  repRestrictionsNotes?: string | null;
   furtherAppealBody?: string | null;
   furtherAppealDeadlineRule?: string | null;
   furtherAppealUrl?: string | null;
@@ -335,6 +337,15 @@ REQUIRED SECTIONS (use these exact Markdown headings):
 ## If You Disagree With the Decision
 - Explain ${county} County's further appeal process (state-level board, court) with specific deadlines and costs.
 - Be honest about whether further appeal is worth it based on the dollar amount at stake.
+
+## Representation Options
+- If ${county} County allows authorized representatives (non-attorneys) to file on behalf of property owners, explain this option clearly. Include:
+  - Who qualifies as an authorized representative (from the authorizedRepTypes data)
+  - How to designate a representative (POA form URL if available from authorizedRepFormUrl)
+  - Any restrictions (from repRestrictionsNotes — e.g., entities may require attorneys)
+  - Benefits: "If you'd rather have a professional handle the filing and hearing on your behalf, ${county} County allows authorized representatives to act for you"
+- If authorized representatives are NOT allowed in this county, state that the homeowner must file personally (pro se) and omit this section.
+- If the data is null/unknown, omit this section entirely rather than guessing.
 
 ## Important Reminders
 - Filing deadline reiterated in bold

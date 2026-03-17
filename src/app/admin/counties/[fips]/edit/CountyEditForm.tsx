@@ -348,6 +348,60 @@ export default function CountyEditForm({ county, isNew }: CountyEditFormProps) {
         </div>
       </fieldset>
 
+      {/* Representation Rules */}
+      <fieldset className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <legend className="px-2 text-sm font-semibold text-gray-900">Representation Rules</legend>
+        <p className="text-xs text-gray-500 mt-1 mb-4">Configure whether non-attorney representatives can file appeals on behalf of property owners in this county.</p>
+        <div className="grid grid-cols-2 gap-6 mt-4">
+          <div className="col-span-2 flex items-center gap-2">
+            <input id="authorized_rep_allowed" name="authorized_rep_allowed" type="checkbox" defaultChecked={county?.authorized_rep_allowed ?? false} className="h-4 w-4 rounded border-gray-300 text-[#1a2744] focus:ring-[#1a2744]" />
+            <label htmlFor="authorized_rep_allowed" className="text-sm font-medium text-gray-700">Authorized representatives allowed (non-attorneys can file on behalf of property owners)</label>
+          </div>
+          <div>
+            <label htmlFor="authorized_rep_types" className="block text-sm font-medium text-gray-700">
+              Authorized Rep Types (comma separated)
+            </label>
+            <input id="authorized_rep_types" name="authorized_rep_types" type="text" defaultValue={county?.authorized_rep_types?.join(', ') ?? ''} placeholder="tax_consultant, appraiser, cpa, any_individual" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+            <p className="text-xs text-gray-400 mt-1">Who qualifies as an authorized representative</p>
+          </div>
+          <div>
+            <label htmlFor="authorized_rep_form_url" className="block text-sm font-medium text-gray-700">
+              POA / Agent Authorization Form URL
+            </label>
+            <input id="authorized_rep_form_url" name="authorized_rep_form_url" type="url" defaultValue={county?.authorized_rep_form_url ?? ''} placeholder="https://..." className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+          <div className="col-span-2">
+            <label htmlFor="rep_restrictions_notes" className="block text-sm font-medium text-gray-700">
+              Representation Restrictions
+            </label>
+            <textarea id="rep_restrictions_notes" name="rep_restrictions_notes" rows={2} defaultValue={county?.rep_restrictions_notes ?? ''} placeholder="e.g., Entities (LLCs, corporations) must use attorneys. Individuals may use any authorized representative." className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+        </div>
+      </fieldset>
+
+      {/* Further Appeal / Escalation */}
+      <fieldset className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <legend className="px-2 text-sm font-semibold text-gray-900">Further Appeal / Escalation</legend>
+        <div className="grid grid-cols-2 gap-6 mt-4">
+          <div>
+            <label htmlFor="further_appeal_body" className="block text-sm font-medium text-gray-700">Further Appeal Body</label>
+            <input id="further_appeal_body" name="further_appeal_body" type="text" defaultValue={county?.further_appeal_body ?? ''} placeholder="e.g., State Property Tax Appeal Board" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+          <div>
+            <label htmlFor="further_appeal_url" className="block text-sm font-medium text-gray-700">Further Appeal URL</label>
+            <input id="further_appeal_url" name="further_appeal_url" type="url" defaultValue={county?.further_appeal_url ?? ''} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+          <div>
+            <label htmlFor="further_appeal_deadline_rule" className="block text-sm font-medium text-gray-700">Further Appeal Deadline</label>
+            <input id="further_appeal_deadline_rule" name="further_appeal_deadline_rule" type="text" defaultValue={county?.further_appeal_deadline_rule ?? ''} placeholder="e.g., 30 days after board decision" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+          <div>
+            <label htmlFor="further_appeal_fee_cents" className="block text-sm font-medium text-gray-700">Further Appeal Fee (cents)</label>
+            <input id="further_appeal_fee_cents" name="further_appeal_fee_cents" type="number" min="0" defaultValue={county?.further_appeal_fee_cents ?? 0} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+        </div>
+      </fieldset>
+
       {/* State Appeal / API / Notes */}
       <fieldset className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <legend className="px-2 text-sm font-semibold text-gray-900">Additional Settings</legend>

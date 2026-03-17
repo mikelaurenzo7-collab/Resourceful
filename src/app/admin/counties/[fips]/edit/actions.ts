@@ -88,6 +88,16 @@ export async function saveCounty(existingFips: string | null, formData: FormData
     filing_fee_cents: parseOptionalInt(formData.get('filing_fee_cents')) ?? 0,
     filing_fee_notes: parseOptionalString(formData.get('filing_fee_notes')),
     pro_se_tips: parseOptionalString(formData.get('pro_se_tips')),
+    // Representation rules
+    authorized_rep_allowed: parseCheckbox(formData, 'authorized_rep_allowed'),
+    authorized_rep_form_url: parseOptionalString(formData.get('authorized_rep_form_url')),
+    authorized_rep_types: parseStringArray(formData.get('authorized_rep_types')),
+    rep_restrictions_notes: parseOptionalString(formData.get('rep_restrictions_notes')),
+    // Further appeal / escalation
+    further_appeal_body: parseOptionalString(formData.get('further_appeal_body')),
+    further_appeal_url: parseOptionalString(formData.get('further_appeal_url')),
+    further_appeal_deadline_rule: parseOptionalString(formData.get('further_appeal_deadline_rule')),
+    further_appeal_fee_cents: parseOptionalInt(formData.get('further_appeal_fee_cents')) ?? 0,
     notes: parseOptionalString(formData.get('notes')),
   };
 

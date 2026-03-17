@@ -112,5 +112,10 @@ export async function GET(
     furtherAppealUrl: countyRule.further_appeal_url,
     // Pro se tips
     proSeTips: countyRule.pro_se_tips,
+    // Representation rules
+    authorizedRepAllowed: countyRule.authorized_rep_allowed,
+    authorizedRepFormUrl: countyRule.authorized_rep_form_url,
+    authorizedRepTypes: countyRule.authorized_rep_types,
+    repRestrictionsNotes: countyRule.rep_restrictions_notes,
   });
 }

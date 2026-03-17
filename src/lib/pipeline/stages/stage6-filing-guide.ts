@@ -187,6 +187,8 @@ export async function runFilingGuide(
     virtualHearingPlatform: countyRule?.virtual_hearing_platform ?? null,
     authorizedRepAllowed: countyRule?.authorized_rep_allowed ?? null,
     authorizedRepTypes: countyRule?.authorized_rep_types ?? null,
+    authorizedRepFormUrl: countyRule?.authorized_rep_form_url ?? null,
+    repRestrictionsNotes: countyRule?.rep_restrictions_notes ?? null,
     furtherAppealBody: countyRule?.further_appeal_body ?? null,
     furtherAppealDeadlineRule: countyRule?.further_appeal_deadline_rule ?? null,
     furtherAppealUrl: countyRule?.further_appeal_url ?? null,
