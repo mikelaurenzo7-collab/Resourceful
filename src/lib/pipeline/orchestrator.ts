@@ -24,6 +24,10 @@ import { runPdfAssembly } from './stages/stage7-pdf-assembly';
 export interface StageResult {
   success: boolean;
   error?: string;
+  /** When true, the pipeline pauses (e.g. for human review) without failing */
+  paused?: boolean;
+  /** Reason for pause — maps to a report status (e.g. 'photo_review') */
+  pauseReason?: string;
 }
 
 type SupabaseAdmin = ReturnType<typeof createAdminClient>;
@@ -162,6 +166,21 @@ export async function runPipeline(
         await handleStageFailure(supabase, reportId, stage, result.error ?? 'Unknown error');
         await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
         return { success: false, error: `Stage ${stage.number} (${stage.name}) failed: ${result.error}` };
+      }
+
+      // Handle pipeline pause (e.g. human-in-the-loop photo review)
+      if (result.paused) {
+        const pauseStatus = result.pauseReason ?? 'photo_review';
+        console.log(
+          `[pipeline] Stage ${stage.number} (${stage.name}) paused pipeline. ` +
+          `Setting status to '${pauseStatus}'. Pipeline will resume when admin completes review.`
+        );
+        await supabase
+          .from('reports')
+          .update({ status: pauseStatus as any })
+          .eq('id', reportId);
+        await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+        return { success: true, paused: true, pauseReason: pauseStatus };
       }
 
       const durationMs = Date.now() - stageStart;

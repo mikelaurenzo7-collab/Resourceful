@@ -4,6 +4,7 @@ import ReportStatusBadge from '@/components/admin/ReportStatusBadge';
 import type { Report, ReportStatus } from '@/types/database';
 
 const tabs: { key: ReportStatus | 'all'; label: string }[] = [
+  { key: 'photo_review', label: 'Photo Review' },
   { key: 'pending_approval', label: 'Pending Approval' },
   { key: 'all', label: 'All Reports' },
   { key: 'delivered', label: 'Delivered' },
@@ -49,8 +50,10 @@ export default async function ReportsQueuePage({
     .from('reports')
     .select('*')
     .order(
-      activeTab === 'pending_approval' ? 'pipeline_completed_at' : 'created_at',
-      { ascending: activeTab === 'pending_approval' }
+      activeTab === 'pending_approval' || activeTab === 'photo_review'
+        ? 'pipeline_started_at'
+        : 'created_at',
+      { ascending: activeTab === 'pending_approval' || activeTab === 'photo_review' }
     );
 
   if (activeTab !== 'all') {
@@ -181,12 +184,21 @@ export default async function ReportsQueuePage({
                     {formatDate(report.pipeline_completed_at)}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <Link
-                      href={`/admin/reports/${report.id}/review`}
-                      className="inline-flex items-center rounded-lg bg-[#1a2744] px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#243356]"
-                    >
-                      Review
-                    </Link>
+                    {report.status === 'photo_review' ? (
+                      <Link
+                        href={`/admin/reports/${report.id}/photo-review`}
+                        className="inline-flex items-center rounded-lg bg-orange-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-orange-700"
+                      >
+                        Review Photos
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/admin/reports/${report.id}/review`}
+                        className="inline-flex items-center rounded-lg bg-[#1a2744] px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#243356]"
+                      >
+                        Review
+                      </Link>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -5,6 +5,7 @@ const statusConfig: Record<ReportStatus, { label: string; className: string }> =
   paid: { label: 'Paid', className: 'bg-blue-100 text-blue-700' },
   data_pull: { label: 'Data Pull', className: 'bg-indigo-100 text-indigo-700' },
   photo_pending: { label: 'Photo Pending', className: 'bg-purple-100 text-purple-700' },
+  photo_review: { label: 'Photo Review', className: 'bg-orange-100 text-orange-800' },
   processing: { label: 'Processing', className: 'bg-cyan-100 text-cyan-700' },
   pending_approval: { label: 'Pending Approval', className: 'bg-amber-100 text-amber-800' },
   approved: { label: 'Approved', className: 'bg-emerald-100 text-emerald-700' },

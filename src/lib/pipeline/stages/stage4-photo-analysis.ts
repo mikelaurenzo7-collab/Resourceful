@@ -1,39 +1,18 @@
-// ─── Stage 4: Photo Vision Analysis ─────────────────────────────────────────
-// For each photo in the photos table, calls Anthropic vision API to assess
-// property condition. Computes overall condition as mode of individual ratings,
-// and reconsiders condition-based adjustments on comparable_sales if condition
-// is poor/fair.
+// ─── Stage 4: Photo Review (Human-in-the-Loop) ────────────────────────────────
+// Instead of AI vision analysis, this stage pauses the pipeline and routes
+// photos to the admin for manual review. The admin annotates each photo with
+// condition ratings, defects, and descriptions. Once the admin completes
+// review, the pipeline resumes and applies condition-based adjustments to
+// comparable sales using the admin's annotations.
+//
+// This approach:
+// 1. Eliminates AI vision API costs
+// 2. Ensures photo evidence accuracy (critical for county appeals)
+// 3. Builds a labeled dataset for future AI training
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, PhotoAiAnalysis, Photo, ComparableSale } from '@/types/database';
 import type { StageResult } from '../orchestrator';
-import { analyzePhoto } from '@/lib/services/anthropic';
-
-// ─── Photo Analysis System Prompt ───────────────────────────────────────────
-
-const PHOTO_ANALYSIS_SYSTEM_PROMPT = `You are an investigative property condition analyst working on behalf of a homeowner who believes their property is over-assessed. Your job is to document every visible condition issue, deficiency, and sign of deterioration that would REDUCE the property's market value. This evidence will be used in a formal tax assessment appeal.
-
-You are thorough, meticulous, and advocate for the homeowner. If something looks even slightly worn, aged, damaged, or substandard — document it. Assessors typically assume "average" condition without physically inspecting the property. Your photos prove otherwise.
-
-Return a JSON object matching the PhotoAiAnalysis interface:
-- "condition_rating": one of "excellent", "good", "average", "fair", "poor" — err on the conservative (lower) side when evidence supports it
-- "defects": array of objects with { type, description, severity ("minor"|"moderate"|"significant"), value_impact ("low"|"medium"|"high"), report_language }. The "report_language" field should be a formal, professional statement suitable for an appraisal report that clearly ties the defect to value impact.
-- "inferred_direction": string describing the apparent direction/angle of the photo (e.g. "front elevation facing north")
-- "professional_caption": a professional caption for the appraisal report that subtly emphasizes condition concerns
-- "comparable_adjustment_note": explain how this condition would require negative adjustments when comparing to sales of properties in better condition
-
-INVESTIGATE THOROUGHLY — check for ALL of the following:
-- Structural: foundation cracks (even hairline), settling, bowing walls, sagging ridgeline, uneven floors visible through windows
-- Roof: missing/curling/cracked shingles, moss/algae growth, worn flashing, rusted vents, sagging gutters, ponding evidence
-- Exterior envelope: peeling/fading paint, rotting wood, cracked siding, deteriorating mortar joints, staining, efflorescence on masonry
-- Windows/doors: fogged double-pane glass (seal failure), cracked panes, rotting frames, outdated single-pane windows, worn weatherstripping visible
-- Systems indicators: rust stains (failing pipes/HVAC), outdated electrical panels visible, window AC units (no central air), visible ductwork patches
-- Drainage/grading: negative grading toward foundation, standing water, erosion, cracked/heaving walkways, failed retaining walls
-- Age indicators: architectural style dating, original windows/doors, outdated materials (asbestos siding, aluminum wiring indicators)
-- Functional obsolescence: awkward additions, mismatched materials suggesting unpermitted work, outdated design features
-- External obsolescence: visible power lines, adjacent commercial properties, busy road proximity, neighboring property conditions
-
-Be specific and evidence-based. Reference exactly what you see — "visible hairline crack in foundation wall, approximately 3 feet long, running diagonally from window corner" is better than "foundation crack." Every defect you document is ammunition for the homeowner's appeal.`;
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -65,6 +44,16 @@ function computeConditionMode(values: string[]): string {
   return mode;
 }
 
+// ─── Defect-to-Adjustment Mapping ────────────────────────────────────────────
+// Maps each defect's severity + value_impact to a percentage adjustment.
+// These compound across all defects to produce the total condition adjustment.
+export const DEFECT_ADJUSTMENT: Record<string, Record<string, number>> = {
+  // severity → value_impact → adjustment %
+  minor:       { low: -0.5, medium: -1.0, high: -1.5 },
+  moderate:    { low: -1.0, medium: -2.0, high: -3.0 },
+  significant: { low: -2.0, medium: -3.5, high: -5.0 },
+};
+
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
 
 export async function runPhotoAnalysis(
@@ -89,68 +78,29 @@ export async function runPhotoAnalysis(
     return { success: true };
   }
 
-  console.log(`[stage4] Analyzing ${photos.length} photos for report ${reportId}`);
+  // ── Check if photos have already been reviewed by admin ───────────────
+  const reviewedPhotos = photos.filter((p) => p.ai_analysis != null);
+  const allReviewed = reviewedPhotos.length === photos.length;
 
-  // ── Analyze photos in parallel batches of 3 ──────────────────────────
-  const conditionRatings: string[] = [];
-  const BATCH_SIZE = 3;
-
-  for (let i = 0; i < photos.length; i += BATCH_SIZE) {
-    const batch = photos.slice(i, i + BATCH_SIZE);
-
-    const batchResults = await Promise.allSettled(
-      batch.map(async (photo) => {
-        // Get a signed URL if the photo is in Supabase storage
-        let imageUrl: string | null = null;
-
-        if (photo.storage_path) {
-          const { data: signedUrl } = await supabase
-            .storage
-            .from('photos')
-            .createSignedUrl(photo.storage_path, 3600); // 1 hour
-
-          imageUrl = signedUrl?.signedUrl ?? null;
-        }
-
-        if (!imageUrl) {
-          console.warn(`[stage4] No URL available for photo ${photo.id}, skipping`);
-          return null;
-        }
-
-        const result = await analyzePhoto(imageUrl, PHOTO_ANALYSIS_SYSTEM_PROMPT);
-
-        if (result.error || !result.data) {
-          console.warn(`[stage4] Photo analysis failed for ${photo.id}: ${result.error}`);
-          return null;
-        }
-
-        const analysis = result.data as unknown as PhotoAiAnalysis;
-
-        // Update photo record with analysis results (ai_analysis is JSONB)
-        const { error: photoUpdateError } = await supabase
-          .from('photos')
-          .update({
-            ai_analysis: analysis as any,
-            caption: analysis.professional_caption,
-          })
-          .eq('id', photo.id);
-
-        if (photoUpdateError) {
-          console.warn(`[stage4] Failed to update photo ${photo.id}: ${photoUpdateError.message}`);
-        }
-
-        console.log(
-          `[stage4] Photo ${photo.id} (${photo.photo_type}): condition=${analysis.condition_rating}, defects=${analysis.defects.length}`
-        );
-
-        return analysis;
-      })
+  if (!allReviewed) {
+    // Photos need human review — pause the pipeline
+    console.log(
+      `[stage4] ${photos.length} photos awaiting admin review for report ${reportId}. ` +
+      `Pausing pipeline (${reviewedPhotos.length}/${photos.length} already reviewed).`
     );
+    return { success: true, paused: true, pauseReason: 'photo_review' };
+  }
 
-    for (const result of batchResults) {
-      if (result.status === 'fulfilled' && result.value) {
-        conditionRatings.push(result.value.condition_rating);
-      }
+  // ── All photos reviewed — apply condition adjustments ──────────────────
+  console.log(
+    `[stage4] All ${photos.length} photos reviewed by admin. Applying condition adjustments.`
+  );
+
+  const conditionRatings: string[] = [];
+  for (const photo of reviewedPhotos) {
+    const analysis = photo.ai_analysis as unknown as PhotoAiAnalysis;
+    if (analysis?.condition_rating) {
+      conditionRatings.push(analysis.condition_rating);
     }
   }
 
@@ -162,29 +112,15 @@ export async function runPhotoAnalysis(
   );
 
   // ── Compute per-defect condition adjustment ──────────────────────────
-  // Instead of a blanket -5%/-10%, sum granular per-defect impacts from
-  // photo evidence. This makes the adjustment proportional to documented
-  // issues rather than a single overall rating.
   const allDefects: Array<{ severity: string; value_impact: string }> = [];
-  for (let i = 0; i < photos.length; i += BATCH_SIZE) {
-    const batch = photos.slice(i, i + BATCH_SIZE);
-    for (const photo of batch) {
-      const analysis = photo.ai_analysis as unknown as PhotoAiAnalysis | null;
-      if (analysis?.defects) {
-        for (const d of analysis.defects) {
-          allDefects.push({ severity: d.severity, value_impact: d.value_impact });
-        }
+  for (const photo of photos) {
+    const analysis = photo.ai_analysis as unknown as PhotoAiAnalysis | null;
+    if (analysis?.defects) {
+      for (const d of analysis.defects) {
+        allDefects.push({ severity: d.severity, value_impact: d.value_impact });
       }
     }
   }
-
-  // Map each defect to an adjustment percentage based on severity + value_impact
-  const DEFECT_ADJUSTMENT: Record<string, Record<string, number>> = {
-    // severity → value_impact → adjustment %
-    minor:       { low: -0.5, medium: -1.0, high: -1.5 },
-    moderate:    { low: -1.0, medium: -2.0, high: -3.0 },
-    significant: { low: -2.0, medium: -3.5, high: -5.0 },
-  };
 
   let defectBasedAdjustment = 0;
   for (const defect of allDefects) {

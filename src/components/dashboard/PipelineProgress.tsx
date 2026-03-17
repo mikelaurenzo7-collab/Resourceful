@@ -23,6 +23,7 @@ const statusToStage: Record<string, number> = {
   paid: 1,
   data_pull: 2,
   photo_pending: 3,
+  photo_review: 3,
   processing: 4,
   pending_approval: 5,
   approved: 6,

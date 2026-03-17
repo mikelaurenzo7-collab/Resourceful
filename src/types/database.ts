@@ -5,6 +5,7 @@ export type ReportStatus =
   | 'paid'
   | 'data_pull'
   | 'photo_pending'
+  | 'photo_review'
   | 'processing'
   | 'pending_approval'
   | 'approved'

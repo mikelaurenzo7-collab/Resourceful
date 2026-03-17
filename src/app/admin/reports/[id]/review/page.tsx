@@ -117,8 +117,41 @@ export default async function ReviewPage({
       {/* RIGHT PANEL - Review Controls */}
       <div className="w-1/2 overflow-y-auto">
         <div className="p-6 space-y-8">
-          {/* Human-in-the-Loop Indicator */}
-          {!report.photos_skipped ? (
+          {/* Photo Review Banner — urgent when status is photo_review */}
+          {report.status === 'photo_review' && photos.length > 0 ? (
+            <section>
+              <a
+                href={`/admin/reports/${reportId}/photo-review`}
+                className="block rounded-xl border-2 border-orange-400 bg-orange-50 p-4 transition-colors hover:bg-orange-100"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0 rounded-full bg-orange-100 p-2">
+                    <svg className="h-5 w-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-sm font-bold text-orange-900">
+                      ACTION REQUIRED — {photos.length} Photo{photos.length > 1 ? 's' : ''} Awaiting Your Review
+                    </h3>
+                    <p className="mt-0.5 text-xs text-orange-700">
+                      Pipeline is paused. Review and annotate each photo with condition ratings, defects, and
+                      what the county is missing. Your annotations drive the valuation adjustments.
+                      <strong className="ml-1">Click here to start reviewing.</strong>
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0">
+                    <span className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-bold text-white">
+                      Review Photos
+                    </span>
+                  </div>
+                </div>
+              </a>
+            </section>
+
+          {/* Human-in-the-Loop Indicator — after photos have been reviewed */}
+          ) : !report.photos_skipped ? (
             <section>
               <div className="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4">
                 <div className="flex items-start gap-3">
@@ -129,18 +162,28 @@ export default async function ReviewPage({
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-sm font-bold text-emerald-900">
-                      HUMAN-IN-THE-LOOP — Client Submitted Photos
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-emerald-900">
+                        HUMAN-REVIEWED — Photo Evidence Verified
+                      </h3>
+                      {photos.length > 0 && (
+                        <a
+                          href={`/admin/reports/${reportId}/photo-review`}
+                          className="text-xs font-medium text-emerald-700 underline hover:text-emerald-900"
+                        >
+                          View annotations
+                        </a>
+                      )}
+                    </div>
                     <p className="mt-0.5 text-xs text-emerald-700">
-                      This client provided their own property photos. The report includes AI-analyzed photo evidence
-                      that influenced the condition adjustment. <strong>Review photo-based defects carefully.</strong>
+                      Photo evidence has been reviewed and annotated. Condition adjustments are based on
+                      your expert observations.
                     </p>
                     {propertyData?.photo_count != null && propertyData.photo_count > 0 && (
                       <div className="mt-2 flex flex-wrap gap-3 text-xs text-emerald-800">
-                        <span><strong>{propertyData.photo_count}</strong> photos analyzed</span>
+                        <span><strong>{propertyData.photo_count}</strong> photos reviewed</span>
                         {propertyData.photo_defect_count > 0 && (
-                          <span><strong>{propertyData.photo_defect_count}</strong> defects found</span>
+                          <span><strong>{propertyData.photo_defect_count}</strong> defects documented</span>
                         )}
                         {propertyData.photo_defect_count_significant > 0 && (
                           <span className="font-bold text-amber-700">{propertyData.photo_defect_count_significant} significant</span>

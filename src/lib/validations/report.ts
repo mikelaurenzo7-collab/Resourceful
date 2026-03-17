@@ -82,6 +82,36 @@ export const photoUploadSchema = z.object({
 
 export type PhotoUploadInput = z.infer<typeof photoUploadSchema>;
 
+// ─── Photo Annotation (Human-in-the-Loop Review) ───────────────────────────
+
+const defectSeverityEnum = z.enum(['minor', 'moderate', 'significant']);
+const defectValueImpactEnum = z.enum(['low', 'medium', 'high']);
+const conditionRatingEnum = z.enum(['excellent', 'good', 'average', 'fair', 'poor']);
+
+export const photoDefectSchema = z.object({
+  type: z.string().min(1, 'Defect type is required'),
+  description: z.string().min(1, 'Description is required'),
+  severity: defectSeverityEnum,
+  value_impact: defectValueImpactEnum,
+  report_language: z.string().min(1, 'Report language is required'),
+});
+
+export const photoAnnotationSchema = z.object({
+  photo_id: z.string().uuid('Valid photo ID is required'),
+  condition_rating: conditionRatingEnum,
+  defects: z.array(photoDefectSchema).default([]),
+  inferred_direction: z.string().min(1, 'Direction/angle is required'),
+  professional_caption: z.string().min(1, 'Professional caption is required'),
+  comparable_adjustment_note: z.string().default(''),
+});
+
+export const photoReviewSubmissionSchema = z.object({
+  annotations: z.array(photoAnnotationSchema).min(1, 'At least one photo annotation is required'),
+});
+
+export type PhotoAnnotationInput = z.infer<typeof photoAnnotationSchema>;
+export type PhotoReviewSubmissionInput = z.infer<typeof photoReviewSubmissionSchema>;
+
 // ─── Admin Reject ───────────────────────────────────────────────────────────
 
 export const adminRejectSchema = z.object({
