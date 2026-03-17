@@ -2,12 +2,12 @@
 // All pricing in cents. Update here to change pricing everywhere.
 
 export const PRICING = {
-  TAX_APPEAL_RESIDENTIAL: 14900, // $149
-  TAX_APPEAL_COMMERCIAL: 24900, // $249
-  TAX_APPEAL_INDUSTRIAL: 24900, // $249
-  TAX_APPEAL_LAND: 14900, // $149
-  PRE_PURCHASE: 9900, // $99
-  PRE_LISTING: 9900, // $99
+  TAX_APPEAL_RESIDENTIAL: 6900, // $69
+  TAX_APPEAL_COMMERCIAL: 11900, // $119
+  TAX_APPEAL_INDUSTRIAL: 11900, // $119
+  TAX_APPEAL_LAND: 6900, // $69
+  PRE_PURCHASE: 6900, // $69
+  PRE_LISTING: 6900, // $69
 } as const;
 
 export type ServiceType = 'tax_appeal' | 'pre_purchase' | 'pre_listing';
