@@ -44,10 +44,15 @@ export async function POST(request: NextRequest) {
       property_issues,
       additional_notes,
       desired_outcome,
+      has_tax_bill,
+      tax_bill_assessed_value,
+      tax_bill_tax_amount,
+      tax_bill_tax_year,
+      tax_bill_pin,
     } = parsed.data;
 
-    // ── Calculate price (tier-aware) ─────────────────────────────────────
-    const priceCents = getPriceCents(service_type, property_type, review_tier);
+    // ── Calculate price (tier-aware, tax bill discount applied) ──────────
+    const priceCents = getPriceCents(service_type, property_type, review_tier, has_tax_bill);
 
     // ── Create report row via repository ─────────────────────────────────
     const report = (await createReport({
@@ -63,7 +68,7 @@ export async function POST(request: NextRequest) {
       state_abbreviation: state,
       county,
       county_fips: county_fips ?? null,
-      pin: pin ?? null,
+      pin: pin ?? tax_bill_pin ?? null,
       latitude: null,
       longitude: null,
       report_pdf_storage_path: null,
@@ -76,6 +81,10 @@ export async function POST(request: NextRequest) {
       property_issues: property_issues ?? [],
       additional_notes: additional_notes ?? null,
       desired_outcome: desired_outcome ?? null,
+      has_tax_bill: has_tax_bill ?? false,
+      tax_bill_assessed_value: tax_bill_assessed_value ?? null,
+      tax_bill_tax_amount: tax_bill_tax_amount ?? null,
+      tax_bill_tax_year: tax_bill_tax_year ?? null,
       pipeline_last_completed_stage: null,
       pipeline_error_log: null,
       pipeline_started_at: null,

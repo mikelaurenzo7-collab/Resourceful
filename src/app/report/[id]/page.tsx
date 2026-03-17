@@ -59,7 +59,7 @@ function formatDollar(value: number): string {
 }
 
 function formatFee(cents: number): string {
-  if (cents === 0) return 'Free';
+  if (cents === 0) return 'Waived';
   return `$${(cents / 100).toFixed(2)}`;
 }
 

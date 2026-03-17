@@ -104,8 +104,7 @@ export default function HomePage() {
             Ready to Stop Overpaying?
           </h2>
           <p className="mt-4 text-cream/50 max-w-lg mx-auto">
-            Enter your address and see your estimated savings in under 60 seconds.
-            No commitment, no credit card required to check.
+            Enter your address and let us run the numbers. Upload your tax bill to save 15% on your report.
           </p>
           <Link
             href="/start"

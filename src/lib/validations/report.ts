@@ -41,6 +41,12 @@ export const reportCreateSchema = z.object({
   property_issues: z.array(z.string()).optional().default([]),
   additional_notes: z.string().optional().default(''),
   desired_outcome: z.string().optional().default(''),
+  // Tax bill upload — 15% discount when provided
+  has_tax_bill: z.boolean().optional().default(false),
+  tax_bill_assessed_value: z.number().positive().nullable().optional(),
+  tax_bill_tax_amount: z.number().positive().nullable().optional(),
+  tax_bill_tax_year: z.string().nullable().optional(),
+  tax_bill_pin: z.string().nullable().optional(),
 });
 
 export type ReportCreateInput = z.infer<typeof reportCreateSchema>;

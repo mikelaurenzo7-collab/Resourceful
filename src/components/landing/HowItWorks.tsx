@@ -1,9 +1,9 @@
 const steps = [
   {
     number: '01',
-    title: 'Enter Your Address',
+    title: 'Tell Us About Your Property',
     description:
-      'We instantly pull your current assessment, tax rate, and property details. You\'ll see your estimated savings before paying a cent.',
+      'Enter your address and property details. Have your tax bill? Upload it to save 15% — it gives us a head start on your case.',
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -13,21 +13,20 @@ const steps = [
   },
   {
     number: '02',
-    title: 'Upload Photos',
+    title: 'We Run the Numbers',
     description:
-      'Follow our guided checklist to photograph your property. We analyze condition, identify issues the assessor missed, and document deferred maintenance.',
+      'After you order, we immediately analyze your assessment against market data and comparable sales. You\'ll see an initial finding right away.',
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
       </svg>
     ),
   },
   {
     number: '03',
-    title: 'Receive Your Report',
+    title: 'Receive Your Full Report',
     description:
-      'Within 48 hours, receive a professional PDF report with comparable sales, valuation analysis, and step-by-step filing instructions for your county.',
+      'We conduct a final review for accuracy, then deliver your professional report — comparable sales, evidence package, and step-by-step filing instructions.',
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

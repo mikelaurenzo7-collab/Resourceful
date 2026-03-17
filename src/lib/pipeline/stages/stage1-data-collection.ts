@@ -135,7 +135,12 @@ export async function runDataCollection(
     .filter(Boolean)
     .join(', ');
 
-  // ── Geocode + ATTOM in parallel ────────────────────────────────────────
+  // ── Geocode (always needed) + ATTOM (skip assessment lookup if tax bill) ─
+  // When the user uploaded a tax bill, we already have their assessed value
+  // and tax amount — no need to call ATTOM for that data. We still call ATTOM
+  // for building details, comps, and location info unless we can skip it.
+  const hasTaxBill = !!report.has_tax_bill && !!report.tax_bill_assessed_value;
+
   const [geocodeResult, attomResult] = await Promise.all([
     geocodeAddress(fullAddress),
     getPropertyDetail(fullAddress),
@@ -145,8 +150,15 @@ export async function runDataCollection(
     return { success: false, error: `Geocoding failed: ${geocodeResult.error}` };
   }
 
+  // ATTOM is still needed for building details and comps even with a tax bill,
+  // but if it fails and we have tax bill data, we can continue with partial data.
   if (attomResult.error || !attomResult.data) {
-    return { success: false, error: `ATTOM property lookup failed: ${attomResult.error}` };
+    if (!hasTaxBill) {
+      return { success: false, error: `ATTOM property lookup failed: ${attomResult.error}` };
+    }
+    console.warn(
+      `[stage1] ATTOM lookup failed but tax bill data available — continuing with partial data`
+    );
   }
 
   const geo = geocodeResult.data;
@@ -155,9 +167,9 @@ export async function runDataCollection(
   // ── Determine county FIPS (the authoritative county identifier) ────────
   // Priority: ATTOM location > user-provided FIPS > geocode county name
   // ATTOM FIPS is most reliable because it comes from verified property records.
-  const attomFips = attom.location.countyFips || null;
+  const attomFips = attom?.location.countyFips || null;
   const resolvedFips = attomFips || report.county_fips || null;
-  const resolvedCountyName = attom.location.countyName || geo.county || report.county;
+  const resolvedCountyName = attom?.location.countyName || geo.county || report.county;
   const resolvedState = geo.state || report.state;
 
   console.log(
@@ -202,19 +214,27 @@ export async function runDataCollection(
     }
   }
 
-  // ── Build property_data from ATTOM ─────────────────────────────────────
+  // ── Build property_data — prefer tax bill values when available ────────
+  const taxBillAssessed = report.tax_bill_assessed_value;
+  const taxBillTaxAmount = report.tax_bill_tax_amount;
+  const taxBillTaxYear = report.tax_bill_tax_year;
+
   const propertyDataPayload = {
     report_id: reportId,
-    assessed_value: attom.assessment.assessedValue || null,
-    assessed_value_source: 'attom' as const,
-    building_sqft_gross: attom.summary.buildingSquareFeet || null,
-    building_sqft_living_area: attom.summary.livingSquareFeet || null,
-    lot_size_sqft: attom.lot.lotSquareFeet || null,
-    year_built: attom.summary.yearBuilt || null,
-    property_class: attom.summary.propertyClass || null,
-    property_class_description: attom.summary.propertyClassDescription || null,
-    zoning_designation: attom.lot.zoning || null,
-    tax_year_in_appeal: attom.assessment.assessmentYear || null,
+    assessed_value: (hasTaxBill && taxBillAssessed)
+      ? taxBillAssessed
+      : (attom?.assessment.assessedValue || null),
+    assessed_value_source: (hasTaxBill ? 'tax_bill' : 'attom') as string,
+    building_sqft_gross: attom?.summary.buildingSquareFeet || null,
+    building_sqft_living_area: attom?.summary.livingSquareFeet || null,
+    lot_size_sqft: attom?.lot.lotSquareFeet || null,
+    year_built: attom?.summary.yearBuilt || null,
+    property_class: attom?.summary.propertyClass || null,
+    property_class_description: attom?.summary.propertyClassDescription || null,
+    zoning_designation: attom?.lot.zoning || null,
+    tax_year_in_appeal: (hasTaxBill && taxBillTaxYear)
+      ? parseInt(taxBillTaxYear, 10) || null
+      : (attom?.assessment.assessmentYear || null),
     assessment_ratio: assessmentRatio,
     assessment_methodology: countyRule?.assessment_methodology ?? null,
     flood_zone_designation: femaResult.floodZone,
@@ -224,6 +244,15 @@ export async function runDataCollection(
     fema_raw_response: femaResult as unknown as Record<string, unknown>,
     data_collection_notes: notes.length > 0 ? notes.join('\n') : null,
   };
+
+  if (hasTaxBill) {
+    notes.push(
+      `TAX BILL DATA: User provided assessed value ($${taxBillAssessed}) ` +
+      `${taxBillTaxAmount ? `and tax amount ($${taxBillTaxAmount})` : ''} ` +
+      `${taxBillTaxYear ? `for tax year ${taxBillTaxYear}` : ''}. ` +
+      `Using tax bill as primary assessment source.`
+    );
+  }
 
   // ── Update report with geocode coordinates + resolved county FIPS ──────
   // IMPORTANT: Only write county_fips if we actually resolved one.
@@ -238,7 +267,7 @@ export async function runDataCollection(
   }
 
   // Backfill county name from ATTOM if the user didn't provide one
-  if (attom.location.countyName && !report.county) {
+  if (attom?.location.countyName && !report.county) {
     reportUpdate.county = attom.location.countyName;
   }
 

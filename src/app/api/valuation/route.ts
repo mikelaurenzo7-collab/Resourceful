@@ -1,4 +1,4 @@
-// ─── Free Valuation API ──────────────────────────────────────────────────────
+// ─── Valuation API ──────────────────────────────────────────────────────────
 // Public endpoint (no auth). Takes an address, returns ATTOM assessment data
 // and estimated savings. Rate-limited to prevent abuse.
 
@@ -9,9 +9,9 @@ import { applyRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
-    // ── Rate limit: 10 free valuations per 15 minutes per IP ─────────────
+    // ── Rate limit: 10 valuations per 15 minutes per IP ──────────────────
     const rateLimited = await applyRateLimit(request, {
-      prefix: 'free-valuation',
+      prefix: 'valuation',
       limit: 10,
       windowSeconds: 900,
     });

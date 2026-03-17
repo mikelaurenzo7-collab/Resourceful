@@ -14,11 +14,25 @@ export interface PropertyIssue {
   icon: string; // emoji for display
 }
 
+export interface TaxBillData {
+  assessedValue: number | null;
+  taxAmount: number | null;
+  taxYear: string | null;
+  pin: string | null;
+}
+
+export interface ValuationResult {
+  assessedValue: number;
+  estimatedOverassessment: number;
+  estimatedAnnualSavings: number;
+  countyName: string | null;
+}
+
 export interface WizardState {
   // Step 1: Goals
   serviceType: ServiceType | null;
   desiredOutcome: string;
-  // Step 2: Property
+  // Step 2: Property + tax bill
   address: {
     line1: string;
     city: string;
@@ -27,6 +41,8 @@ export interface WizardState {
     county: string;
   } | null;
   propertyType: PropertyType | null;
+  hasTaxBill: boolean;
+  taxBillData: TaxBillData | null;
   // Step 3: Situation
   propertyIssues: string[]; // IDs from PROPERTY_ISSUES
   additionalNotes: string;
@@ -46,6 +62,8 @@ export interface WizardState {
   reportId: string | null;
   clientSecret: string | null;
   priceCents: number;
+  // Post-payment valuation (shown after payment, before full report)
+  valuationResult: ValuationResult | null;
 }
 
 const INITIAL_STATE: WizardState = {
@@ -53,6 +71,8 @@ const INITIAL_STATE: WizardState = {
   desiredOutcome: '',
   address: null,
   propertyType: null,
+  hasTaxBill: false,
+  taxBillData: null,
   propertyIssues: [],
   additionalNotes: '',
   ownerOccupied: null,
@@ -67,6 +87,7 @@ const INITIAL_STATE: WizardState = {
   reportId: null,
   clientSecret: null,
   priceCents: 0,
+  valuationResult: null,
 };
 
 // ─── Known Property Issues ──────────────────────────────────────────────────

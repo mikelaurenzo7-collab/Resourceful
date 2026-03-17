@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useWizard, PROPERTY_ISSUES } from '@/components/intake/WizardLayout';
-import { formatPrice, getPriceCents } from '@/config/pricing';
+import { formatPrice, getPriceCents, TAX_BILL_DISCOUNT } from '@/config/pricing';
 import type { ReviewTier } from '@/types/database';
 import Button from '@/components/ui/Button';
 
@@ -61,7 +61,7 @@ function CheckoutForm() {
   };
 
   const priceCents = state.priceCents || (state.serviceType && state.propertyType
-    ? getPriceCents(state.serviceType, state.propertyType, state.reviewTier)
+    ? getPriceCents(state.serviceType, state.propertyType, state.reviewTier, state.hasTaxBill)
     : 0);
 
   const fullAddress = state.address
@@ -144,6 +144,22 @@ function CheckoutForm() {
               </div>
               {/* Photo status indicator */}
             </div>
+
+            {/* Tax bill discount */}
+            {state.hasTaxBill && (
+              <>
+                <div className="h-px bg-gold/10" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-emerald-400">Tax Bill Discount</span>
+                    <span className="text-[10px] bg-emerald-400/10 text-emerald-400 rounded-full px-2 py-0.5 font-medium">
+                      {Math.round(TAX_BILL_DISCOUNT * 100)}% OFF
+                    </span>
+                  </div>
+                  <span className="text-sm text-emerald-400">Applied</span>
+                </div>
+              </>
+            )}
 
             <div className="h-px bg-gold/10" />
             <div className="flex items-center justify-between">
@@ -259,6 +275,11 @@ export default function PaymentPage() {
           property_issues: state.propertyIssues,
           additional_notes: state.additionalNotes,
           desired_outcome: state.desiredOutcome,
+          has_tax_bill: state.hasTaxBill,
+          tax_bill_assessed_value: state.taxBillData?.assessedValue ?? null,
+          tax_bill_tax_amount: state.taxBillData?.taxAmount ?? null,
+          tax_bill_tax_year: state.taxBillData?.taxYear ?? null,
+          tax_bill_pin: state.taxBillData?.pin ?? null,
         }),
       });
 
@@ -277,17 +298,17 @@ export default function PaymentPage() {
   };
 
   const autoPrice = state.serviceType && state.propertyType
-    ? getPriceCents(state.serviceType, state.propertyType, 'auto')
+    ? getPriceCents(state.serviceType, state.propertyType, 'auto', state.hasTaxBill)
     : 0;
   const expertPrice = state.serviceType && state.propertyType
-    ? getPriceCents(state.serviceType, state.propertyType, 'expert_reviewed')
+    ? getPriceCents(state.serviceType, state.propertyType, 'expert_reviewed', state.hasTaxBill)
     : 0;
 
   const handleTierSelect = (tier: ReviewTier) => {
     updateState({
       reviewTier: tier,
       priceCents: state.serviceType && state.propertyType
-        ? getPriceCents(state.serviceType, state.propertyType, tier)
+        ? getPriceCents(state.serviceType, state.propertyType, tier, state.hasTaxBill)
         : 0,
     });
   };
@@ -439,7 +460,7 @@ export default function PaymentPage() {
               Back
             </Button>
             <Button size="lg" fullWidth loading={creating} onClick={handleCreateReport}>
-              Continue to Payment — {formatPrice(state.serviceType && state.propertyType ? getPriceCents(state.serviceType, state.propertyType, state.reviewTier) : 0)}
+              Continue to Payment — {formatPrice(state.serviceType && state.propertyType ? getPriceCents(state.serviceType, state.propertyType, state.reviewTier, state.hasTaxBill) : 0)}
               <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
               </svg>

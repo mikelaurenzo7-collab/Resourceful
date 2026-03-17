@@ -26,29 +26,43 @@ export const PRICING_EXPERT = {
   PRE_LISTING: 17900, // $179
 } as const;
 
+// ─── Tax Bill Discount ──────────────────────────────────────────────────────
+// Users who upload their tax bill get 15% off — they provide data we'd
+// otherwise have to look up, reducing our API costs.
+export const TAX_BILL_DISCOUNT = 0.15;
+
 export type ServiceType = 'tax_appeal' | 'pre_purchase' | 'pre_listing';
 export type PropertyType = 'residential' | 'commercial' | 'industrial' | 'land';
 
 export function getPriceForReport(
   serviceType: ServiceType,
   propertyType: PropertyType,
-  reviewTier: ReviewTier = 'auto'
+  reviewTier: ReviewTier = 'auto',
+  hasTaxBill: boolean = false
 ): number {
   const table = reviewTier === 'expert_reviewed' ? PRICING_EXPERT : PRICING;
-  if (serviceType === 'pre_purchase') return table.PRE_PURCHASE;
-  if (serviceType === 'pre_listing') return table.PRE_LISTING;
-  if (propertyType === 'residential') return table.TAX_APPEAL_RESIDENTIAL;
-  if (propertyType === 'land') return table.TAX_APPEAL_LAND;
-  return table.TAX_APPEAL_COMMERCIAL;
+  let base: number;
+  if (serviceType === 'pre_purchase') base = table.PRE_PURCHASE;
+  else if (serviceType === 'pre_listing') base = table.PRE_LISTING;
+  else if (propertyType === 'residential') base = table.TAX_APPEAL_RESIDENTIAL;
+  else if (propertyType === 'land') base = table.TAX_APPEAL_LAND;
+  else base = table.TAX_APPEAL_COMMERCIAL;
+
+  if (hasTaxBill) {
+    // Round to nearest dollar (100 cents) for clean display
+    base = Math.round((base * (1 - TAX_BILL_DISCOUNT)) / 100) * 100;
+  }
+  return base;
 }
 
 // Backward-compatible aliases used by existing code
 export function getPriceCents(
   serviceType: ServiceType,
   propertyType: PropertyType,
-  reviewTier: ReviewTier = 'auto'
+  reviewTier: ReviewTier = 'auto',
+  hasTaxBill: boolean = false
 ): number {
-  return getPriceForReport(serviceType, propertyType, reviewTier);
+  return getPriceForReport(serviceType, propertyType, reviewTier, hasTaxBill);
 }
 
 export function formatPrice(cents: number): string {

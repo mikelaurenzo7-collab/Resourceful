@@ -88,6 +88,11 @@ export type Report = {
   delivered_at: string | null;
   // Review tier
   review_tier: ReviewTier;
+  // Tax bill data (user-provided for 15% discount)
+  has_tax_bill: boolean;
+  tax_bill_assessed_value: number | null;
+  tax_bill_tax_amount: number | null;
+  tax_bill_tax_year: string | null;
   // Filing tracking
   filing_status: string;
   filed_at: string | null;
