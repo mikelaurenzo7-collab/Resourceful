@@ -15,6 +15,7 @@ import {
   EFFECTIVE_AGE_ADJ_MAX_PCT,
   LOCATION_ADJ_BY_DISTANCE,
   LOCATION_ADJ_MAX_PCT,
+  DISTRESSED_SALE_ADJ_PCT,
 } from '@/config/valuation';
 
 // ─── Search Tiers by Property Type ──────────────────────────────────────────
@@ -97,7 +98,11 @@ function calculateAdjustments(
   let adjustment_pct_land_to_building = 0;
   const adjustment_pct_property_rights = 0;
   const adjustment_pct_financing_terms = 0;
-  const adjustment_pct_conditions_of_sale = 0;
+  // Conditions of sale: distressed sales (REO, foreclosure, short sale) are
+  // non-arms-length transfers. We apply a +12% upward adjustment to bring them
+  // to arms-length equivalent. IAAO guidance supports +10%–+20% range.
+  const { isDistressed } = classifySaleCondition(comp);
+  const adjustment_pct_conditions_of_sale = isDistressed ? DISTRESSED_SALE_ADJ_PCT : 0;
   const adjustment_pct_other = 0;
 
   // Location adjustment: comps beyond 0.5 miles may be in different sub-markets.

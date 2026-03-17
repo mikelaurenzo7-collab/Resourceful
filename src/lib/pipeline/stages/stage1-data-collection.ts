@@ -278,6 +278,13 @@ export async function runDataCollection(
     effective_age_source: 'year_built_baseline',
     physical_depreciation_pct: baselineEffectiveAge > 0 ? baselineDepreciationPct : null,
     remaining_economic_life: remainingEconomicLife,
+    // Cost approach inputs (migration 010)
+    // land_value: ATTOM splits total assessed value into land + improvement.
+    // This is the assessor's land value — used as the site component in cost approach.
+    land_value: attom?.assessment.landValue || null,
+    // quality_grade: not exposed in ATTOM basic feed — defaults to 'average'.
+    // Can be overridden via admin tools or future ATTOM premium field mapping.
+    quality_grade: 'average',
   };
 
   // ── Update report with geocode coordinates + resolved county FIPS ──────

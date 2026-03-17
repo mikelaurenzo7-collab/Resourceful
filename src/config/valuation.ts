@@ -192,6 +192,55 @@ export const CASE_STRENGTH = {
   attorney_referral_min_value_dollars: 5000,
 } as const;
 
+// ─── Replacement Cost New (RCN) Per Square Foot ───────────────────────────────
+// Marshall & Swift-derived construction cost estimates per gross building sqft
+// by property subtype and quality grade. Values in current (2025–2026) dollars.
+// When quality_grade is unknown, default to 'average'.
+//
+// Quality grades (ascending cost): economy → average → good → excellent → luxury
+// Luxury only applies to residential — commercial/industrial cap at excellent.
+
+export type QualityGrade = 'economy' | 'average' | 'good' | 'excellent' | 'luxury';
+
+export const REPLACEMENT_COST_PER_SQFT: Record<string, Record<QualityGrade, number>> = {
+  // Residential
+  residential_sfr:          { economy: 95,  average: 130, good: 175, excellent: 230, luxury: 350 },
+  residential_condo:        { economy: 100, average: 140, good: 185, excellent: 245, luxury: 380 },
+  residential_multifamily:  { economy: 90,  average: 120, good: 155, excellent: 200, luxury: 200 },
+  // Commercial
+  commercial_retail_strip:  { economy: 75,  average: 105, good: 140, excellent: 185, luxury: 185 },
+  commercial_office:        { economy: 100, average: 145, good: 195, excellent: 260, luxury: 260 },
+  commercial_restaurant:    { economy: 110, average: 160, good: 215, excellent: 280, luxury: 280 },
+  commercial_hotel:         { economy: 90,  average: 135, good: 185, excellent: 250, luxury: 250 },
+  commercial_mixed_use:     { economy: 90,  average: 130, good: 175, excellent: 230, luxury: 230 },
+  commercial_general:       { economy: 80,  average: 110, good: 150, excellent: 200, luxury: 200 },
+  // Industrial
+  industrial_warehouse:     { economy: 45,  average: 65,  good: 90,  excellent: 120, luxury: 120 },
+  industrial_manufacturing: { economy: 55,  average: 80,  good: 110, excellent: 150, luxury: 150 },
+  industrial_flex:          { economy: 65,  average: 95,  good: 130, excellent: 170, luxury: 170 },
+  industrial_self_storage:  { economy: 35,  average: 50,  good: 70,  excellent: 95,  luxury: 95  },
+  industrial_general:       { economy: 50,  average: 72,  good: 100, excellent: 135, luxury: 135 },
+};
+
+// ─── Conditions of Sale Adjustment ────────────────────────────────────────────
+// Positive upward adjustment applied to distressed sales (REO, foreclosure,
+// short sale, sheriff sale) to bring them to arms-length equivalent.
+// IAAO standard range is +10% to +20%; we use +12% — conservative and defensible.
+// This makes distressed comps properly comparable to arms-length subject property.
+
+export const DISTRESSED_SALE_ADJ_PCT = 12;
+
+// ─── Functional Obsolescence Thresholds ──────────────────────────────────────
+// Over-improvement (super-adequacy): subject is materially larger than the
+// neighborhood median comparable sale, indicating the market will not pay
+// replacement cost for the excess improvement (incurable functional obsolescence).
+// Threshold: subject must be >30% larger than median comp sqft to trigger.
+// Adjustment: 5% per 30% excess, capped at 15%.
+
+export const OVER_IMPROVEMENT_THRESHOLD_PCT = 30;  // % larger than median comp to trigger
+export const OVER_IMPROVEMENT_ADJ_PCT        = 5;   // obsolescence % per 30% excess
+export const OVER_IMPROVEMENT_ADJ_MAX_PCT    = 15;  // maximum functional obsolescence cap
+
 // ─── Subtype Resolver ─────────────────────────────────────────────────────────
 // Resolves an ATTOM propertyClass string + report property_type to an internal
 // subtype key. Safe to call from any stage.

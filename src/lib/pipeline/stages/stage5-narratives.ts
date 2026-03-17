@@ -12,7 +12,16 @@ import {
 } from '@/lib/services/anthropic';
 import { AI_MODELS } from '@/config/ai';
 import { getCalibrationParams } from '@/lib/calibration/recalculate';
-import { ECONOMIC_LIFE, CASE_STRENGTH } from '@/config/valuation';
+import {
+  ECONOMIC_LIFE,
+  CASE_STRENGTH,
+  REPLACEMENT_COST_PER_SQFT,
+  OVER_IMPROVEMENT_THRESHOLD_PCT,
+  OVER_IMPROVEMENT_ADJ_PCT,
+  OVER_IMPROVEMENT_ADJ_MAX_PCT,
+  type QualityGrade,
+} from '@/config/valuation';
+import { findAttorneyForReferral, createAttorneyReferral } from '@/lib/repository/attorneys';
 
 // ─── Section Mapping ────────────────────────────────────────────────────────
 
@@ -31,13 +40,94 @@ const SECTION_SORT_ORDER: Record<string, { title: string; order: number }> = {
   sales_comparison_narrative: { title: 'Sales Comparison Approach', order: 12 },
   adjustment_grid_narrative: { title: 'Adjustment Grid Analysis', order: 13 },
   income_approach_narrative: { title: 'Income Approach', order: 14 },
-  reconciliation_narrative: { title: 'Reconciliation & Final Value', order: 15 },
-  appeal_argument_summary: { title: 'Appeal Argument Summary', order: 16 },
+  cost_approach_narrative: { title: 'Cost Approach', order: 15 },
+  reconciliation_narrative: { title: 'Reconciliation & Final Value', order: 16 },
+  appeal_argument_summary: { title: 'Appeal Argument Summary', order: 17 },
   // legacy aliases
   neighborhood_analysis: { title: 'Neighborhood Analysis', order: 8 },
   value_conclusion: { title: 'Reconciliation & Final Value', order: 15 },
   assessment_equity: { title: 'Assessment Equity Analysis', order: 16 },
 };
+
+// ─── Cost Approach Helpers ───────────────────────────────────────────────────
+
+interface CostApproachResult {
+  rcn: number | null;
+  costApproachValue: number | null;
+}
+
+function computeCostApproach(
+  subtype: string | null,
+  qualityGrade: string | null,
+  buildingSqft: number | null,
+  physicalDepreciationPct: number | null,
+  functionalObsolescencePct: number,
+  landValue: number | null
+): CostApproachResult {
+  if (!subtype || !buildingSqft || buildingSqft <= 0) return { rcn: null, costApproachValue: null };
+  const costTable = REPLACEMENT_COST_PER_SQFT[subtype];
+  if (!costTable) return { rcn: null, costApproachValue: null };
+
+  const grade = (qualityGrade as QualityGrade | null) ?? 'average';
+  const costPerSqft = costTable[grade] ?? costTable.average;
+  const rcn = Math.round(costPerSqft * buildingSqft);
+
+  // Total obsolescence = physical + functional, capped at 90%
+  const totalObsolescence = Math.min((physicalDepreciationPct ?? 0) + functionalObsolescencePct, 90);
+  const depreciatedBuildingValue = Math.round(rcn * (1 - totalObsolescence / 100));
+
+  // Land never depreciates — add at cost (assessor's land value is the best estimate)
+  const landComponent = landValue ?? 0;
+  const costApproachValue = Math.round((depreciatedBuildingValue + landComponent) / 1000) * 1000;
+
+  return { rcn, costApproachValue };
+}
+
+// ─── Functional Obsolescence Helper ─────────────────────────────────────────
+
+interface FunctionalObsolescenceResult {
+  obsolescencePct: number;
+  notes: string | null;
+}
+
+function computeFunctionalObsolescence(
+  subjectSqft: number | null,
+  comps: ComparableSale[]
+): FunctionalObsolescenceResult {
+  if (!subjectSqft || subjectSqft <= 0 || comps.length < 3) {
+    return { obsolescencePct: 0, notes: null };
+  }
+
+  const compSqfts = comps
+    .map((c) => c.building_sqft)
+    .filter((s): s is number => s != null && s > 0)
+    .sort((a, b) => a - b);
+
+  if (compSqfts.length < 3) return { obsolescencePct: 0, notes: null };
+
+  const medianCompSqft = compSqfts[Math.floor(compSqfts.length / 2)];
+  const overImprovementPct = ((subjectSqft - medianCompSqft) / medianCompSqft) * 100;
+
+  if (overImprovementPct <= OVER_IMPROVEMENT_THRESHOLD_PCT) {
+    return { obsolescencePct: 0, notes: null };
+  }
+
+  // Each 30% increment of over-improvement = OVER_IMPROVEMENT_ADJ_PCT obsolescence
+  const excessBuckets = Math.floor(overImprovementPct / OVER_IMPROVEMENT_THRESHOLD_PCT);
+  const obsolescencePct = Math.min(
+    excessBuckets * OVER_IMPROVEMENT_ADJ_PCT,
+    OVER_IMPROVEMENT_ADJ_MAX_PCT
+  );
+
+  const notes =
+    `Subject is ${overImprovementPct.toFixed(0)}% larger than the neighborhood median ` +
+    `(${subjectSqft.toLocaleString()} sqft vs ${medianCompSqft.toLocaleString()} sqft median). ` +
+    `This super-adequacy is incurable functional obsolescence — the market will not pay ` +
+    `replacement cost for improvement in excess of what the neighborhood supports. ` +
+    `Applied ${obsolescencePct}% functional obsolescence deduction to the cost approach.`;
+
+  return { obsolescencePct, notes };
+}
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
 
@@ -493,6 +583,52 @@ export async function runNarratives(
     );
   }
 
+  // ── Functional obsolescence ───────────────────────────────────────────
+  const { obsolescencePct: functionalObsolescencePct, notes: functionalObsolescenceNotes } =
+    computeFunctionalObsolescence(buildingSqft, comps);
+
+  // ── Cost approach (third USPAP approach) ──────────────────────────────
+  // Requires: subtype (for RCN table), quality grade, sqft, depreciation, land value.
+  // When all three approaches converge below the assessed value, the case is
+  // mathematically airtight.
+  const landValue = (propertyData as unknown as Record<string, unknown>).land_value as number | null ?? null;
+  const qualityGrade = (propertyData as unknown as Record<string, unknown>).quality_grade as string | null ?? 'average';
+
+  const { rcn: costApproachRcn, costApproachValue } = computeCostApproach(
+    propertyData.property_subtype,
+    qualityGrade,
+    propertyData.building_sqft_gross,
+    propertyData.physical_depreciation_pct,
+    functionalObsolescencePct,
+    landValue
+  );
+
+  // Persist cost approach and functional obsolescence to property_data
+  if (costApproachRcn != null || functionalObsolescencePct > 0) {
+    const { error: costUpdateError } = await supabase
+      .from('property_data')
+      .update({
+        cost_approach_rcn: costApproachRcn,
+        cost_approach_value: costApproachValue,
+        functional_obsolescence_pct: functionalObsolescencePct > 0 ? functionalObsolescencePct : null,
+        functional_obsolescence_notes: functionalObsolescenceNotes,
+      })
+      .eq('report_id', reportId);
+
+    if (costUpdateError) {
+      console.warn(`[stage5] Failed to persist cost approach: ${costUpdateError.message}`);
+    } else {
+      console.log(
+        `[stage5] Cost approach: RCN=$${costApproachRcn?.toLocaleString()}, ` +
+        `value=$${costApproachValue?.toLocaleString()}, ` +
+        `functional obsolescence=${functionalObsolescencePct}%`
+      );
+    }
+  }
+
+  // Count distressed comps that received conditions-of-sale adjustment
+  const distressedCompCount = comps.filter((c) => c.is_distressed_sale).length;
+
   const overvaluationAnalysis = {
     assessedValuePerSqft,
     medianCompPricePerSqft,
@@ -515,6 +651,15 @@ export async function runNarratives(
     // Case intelligence
     caseStrengthScore: strengthScore,
     caseValueAtStake: overassessmentDollars,
+    // Cost approach
+    costApproachRcn,
+    costApproachValue,
+    landValue,
+    // Functional obsolescence
+    functionalObsolescencePct: functionalObsolescencePct > 0 ? functionalObsolescencePct : null,
+    functionalObsolescenceNotes,
+    // Conditions of sale
+    distressedCompCount,
   };
 
   console.log(
@@ -522,6 +667,133 @@ export async function runNarratives(
     `ratio mismatch: ${assessmentRatioMismatch}, exceeds ATTOM: ${assessedExceedsAttomRange}, ` +
     `market trend: ${marketTrendPct != null ? `${marketTrendPct}%` : 'N/A'}, anomalies: ${dataAnomalies.length}`
   );
+
+  // ── Attorney routing ───────────────────────────────────────────────────
+  // When a tax appeal case is strong enough (score ≥ 75, value ≥ $5,000) and
+  // the county allows authorized representation, route to the attorney network.
+  // Non-fatal — pipeline continues even if routing fails.
+  if (
+    report.service_type === 'tax_appeal' &&
+    strengthScore >= CASE_STRENGTH.attorney_referral_min_score &&
+    overassessmentDollars >= CASE_STRENGTH.attorney_referral_min_value_dollars &&
+    countyRule?.authorized_rep_allowed === true
+  ) {
+    try {
+      const attorney = await findAttorneyForReferral(
+        report.state_abbreviation ?? report.state ?? null,
+        report.county_fips ?? null,
+        report.property_type,
+        overassessmentDollars,
+        supabase
+      );
+      if (attorney) {
+        await createAttorneyReferral(
+          {
+            report_id: reportId,
+            attorney_id: attorney.id,
+            case_strength_score: strengthScore,
+            case_value_at_stake: overassessmentDollars,
+          },
+          supabase
+        );
+        console.log(
+          `[stage5] Attorney referral: ${attorney.firm_name} — ${attorney.attorney_name} ` +
+          `(${attorney.contingency_fee_pct}% contingency, case=$${overassessmentDollars.toLocaleString()})`
+        );
+      } else {
+        console.log(`[stage5] No attorney match for state=${report.state_abbreviation}, fips=${report.county_fips}`);
+      }
+    } catch (err) {
+      console.warn(`[stage5] Attorney routing failed (non-fatal): ${err}`);
+    }
+  }
+
+  // ── Form prefill data (tax_appeal only) ────────────────────────────────
+  // Generate structured form field values from the pipeline's concluded data.
+  // Stored in form_submissions so the client (or admin) can download and fill
+  // the county appeal form without re-entering any data.
+  if (report.service_type === 'tax_appeal' && countyRule) {
+    const requestedAssessedValue = assessmentRatio && assessmentRatio < 1
+      ? Math.round(concludedValue * assessmentRatio / 1000) * 1000
+      : concludedValue;
+
+    const appealGrounds: string[] = [];
+    if (overvaluationPct != null && overvaluationPct > 0) {
+      appealGrounds.push(
+        `Assessed value per sqft ($${assessedValuePerSqft}/sqft) exceeds market evidence ` +
+        `($${medianCompPricePerSqft}/sqft median from ${comps.length} comparable sales)`
+      );
+    }
+    if (assessmentRatioMismatch) {
+      appealGrounds.push(
+        `Implied assessment ratio (${assessmentRatioImplied?.toFixed(3)}) exceeds county statutory ratio (${assessmentRatioExpected?.toFixed(3)})`
+      );
+    }
+    if ((propertyData.physical_depreciation_pct ?? 0) > 30) {
+      appealGrounds.push(
+        `Property has accumulated ${propertyData.physical_depreciation_pct?.toFixed(1)}% physical depreciation not reflected in the assessment`
+      );
+    }
+    if (propertyData.flood_zone_designation && !['X', 'C'].includes(propertyData.flood_zone_designation)) {
+      appealGrounds.push(
+        `Property is in FEMA flood zone ${propertyData.flood_zone_designation} — a risk factor that suppresses market value`
+      );
+    }
+    if (functionalObsolescencePct > 0) {
+      appealGrounds.push(
+        `Property exhibits ${functionalObsolescencePct}% incurable functional obsolescence (super-adequacy) relative to neighborhood comparables`
+      );
+    }
+
+    const prefillData = {
+      property_address: report.property_address,
+      city: report.city,
+      state: report.state,
+      parcel_id: report.pin,
+      owner_name: report.client_name,
+      current_assessed_value: propertyData.assessed_value,
+      concluded_market_value: concludedValue,
+      requested_assessed_value: requestedAssessedValue,
+      reduction_requested_dollars: overassessmentDollars > 0 ? overassessmentDollars : null,
+      property_type: report.property_type,
+      year_built: propertyData.year_built,
+      building_sqft: propertyData.building_sqft_gross,
+      lot_sqft: propertyData.lot_size_sqft,
+      tax_year: propertyData.tax_year_in_appeal,
+      case_strength_score: strengthScore,
+      comp_count: comps.length,
+      appeal_grounds: appealGrounds,
+      filing_date: new Date().toISOString().split('T')[0],
+      form_download_url: countyRule.form_download_url,
+      portal_url: countyRule.portal_url,
+      filing_steps: countyRule.filing_steps,
+      required_documents: countyRule.required_documents,
+      accepts_online_filing: countyRule.accepts_online_filing,
+      accepts_email_filing: countyRule.accepts_email_filing,
+      filing_email: countyRule.filing_email,
+    };
+
+    const submissionMethod = countyRule.accepts_online_filing ? 'online'
+      : countyRule.accepts_email_filing ? 'email'
+      : 'mail';
+
+    const { error: formError } = await supabase
+      .from('form_submissions')
+      .insert({
+        report_id: reportId,
+        county_fips: report.county_fips ?? countyRule.county_fips,
+        submission_method: submissionMethod,
+        portal_url: countyRule.portal_url ?? null,
+        submission_status: 'prefill_ready',
+        prefill_data: prefillData as unknown as Record<string, unknown>,
+      });
+
+    if (formError) {
+      console.warn(`[stage5] Form prefill storage failed (non-fatal): ${formError.message}`);
+    } else {
+      console.log(`[stage5] Form prefill ready: ${submissionMethod} filing${countyRule.portal_url ? ` via ${countyRule.portal_url}` : ''}`);
+    }
+  }
 
   // ── Build narrative payload ───────────────────────────────────────────
   const payload: NarrativePayload = {

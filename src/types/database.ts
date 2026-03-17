@@ -165,6 +165,13 @@ export type PropertyData = {
   property_subtype: string | null;
   physical_depreciation_pct: number | null;
   effective_age_source: string | null;
+  // Cost approach inputs and outputs (migration 010)
+  land_value: number | null;                    // assessor's split land value (from ATTOM)
+  quality_grade: string | null;                 // 'economy' | 'average' | 'good' | 'excellent' | 'luxury'
+  cost_approach_rcn: number | null;             // replacement cost new (building only)
+  cost_approach_value: number | null;           // RCN × (1 − depr%) + land_value
+  functional_obsolescence_pct: number | null;   // incurable super-adequacy %
+  functional_obsolescence_notes: string | null; // explanation of functional obsolescence
   // Photo value attribution — tracks exactly how much photos moved the needle
   concluded_value: number | null;
   concluded_value_without_photos: number | null;
@@ -448,6 +455,75 @@ export type CalibrationEntry = {
   completed_at: string | null;
 };
 
+// ─── Attorney Network ─────────────────────────────────────────────────────────
+
+export type Attorney = {
+  id: string;
+  firm_name: string;
+  attorney_name: string;
+  email: string;
+  phone: string | null;
+  states: string[];
+  counties_fips: string[] | null;
+  property_types: string[];
+  service_types: string[];
+  contingency_fee_pct: number;
+  min_case_value_dollars: number;
+  max_active_cases: number | null;
+  is_active: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AttorneyReferral = {
+  id: string;
+  report_id: string;
+  attorney_id: string;
+  case_strength_score: number;
+  case_value_at_stake: number;
+  referral_status: string;
+  accepted_at: string | null;
+  declined_at: string | null;
+  declined_reason: string | null;
+  outcome: string | null;
+  savings_amount_cents: number | null;
+  revenue_share_cents: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AttorneyReferralInsert = {
+  report_id: string;
+  attorney_id: string;
+  case_strength_score: number;
+  case_value_at_stake: number;
+  referral_status?: string;
+  accepted_at?: string | null;
+  declined_at?: string | null;
+  declined_reason?: string | null;
+  outcome?: string | null;
+  savings_amount_cents?: number | null;
+  revenue_share_cents?: number | null;
+};
+
+// ─── Form Submissions ─────────────────────────────────────────────────────────
+
+export type FormSubmission = {
+  id: string;
+  report_id: string;
+  county_fips: string;
+  submission_method: string; // 'online' | 'email' | 'mail' | 'in_person'
+  portal_url: string | null;
+  submission_status: string; // 'prefill_ready' | 'submitted' | 'confirmed'
+  prefill_data: Record<string, unknown> | null;
+  submitted_at: string | null;
+  confirmation_number: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type CalibrationParams = {
   id: string;
   property_type: PropertyType;
@@ -540,6 +616,24 @@ export type CalibrationEntryUpdate = Partial<CalibrationEntry>;
 export type CalibrationParamsInsert = Omit<CalibrationParams, 'id' | 'created_at'> & {
   id?: string;
   created_at?: string;
+};
+
+export type AttorneyInsert = Omit<Attorney, 'id' | 'created_at' | 'updated_at'> & {
+  id?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type FormSubmissionInsert = {
+  report_id: string;
+  county_fips: string;
+  submission_method: string;
+  portal_url?: string | null;
+  submission_status?: string;
+  prefill_data?: Record<string, unknown> | null;
+  submitted_at?: string | null;
+  confirmation_number?: string | null;
+  notes?: string | null;
 };
 
 // ─── Update Types ───────────────────────────────────────────────────────────
@@ -644,6 +738,24 @@ export type Database = {
         Row: CalibrationParams;
         Insert: CalibrationParamsInsert;
         Update: Partial<CalibrationParams>;
+        Relationships: [];
+      };
+      attorneys: {
+        Row: Attorney;
+        Insert: AttorneyInsert;
+        Update: Partial<Attorney>;
+        Relationships: [];
+      };
+      attorney_referrals: {
+        Row: AttorneyReferral;
+        Insert: AttorneyReferralInsert;
+        Update: Partial<AttorneyReferral>;
+        Relationships: [];
+      };
+      form_submissions: {
+        Row: FormSubmission;
+        Insert: FormSubmissionInsert;
+        Update: Partial<FormSubmission>;
         Relationships: [];
       };
     };
