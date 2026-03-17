@@ -80,6 +80,7 @@ export function getPriceForReport(
   else if (serviceType === 'pre_listing') base = table.PRE_LISTING;
   else if (propertyType === 'residential') base = table.TAX_APPEAL_RESIDENTIAL;
   else if (propertyType === 'land') base = table.TAX_APPEAL_LAND;
+  else if (propertyType === 'industrial') base = table.TAX_APPEAL_INDUSTRIAL;
   else base = table.TAX_APPEAL_COMMERCIAL;
 
   if (hasTaxBill) {
