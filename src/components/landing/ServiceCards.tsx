@@ -1,0 +1,114 @@
+import Link from 'next/link';
+import { PRICING, formatPrice } from '@/config/pricing';
+
+const services = [
+  {
+    title: 'Tax Appeal Report',
+    service: 'tax_appeal' as const,
+    description:
+      'Comprehensive evidence package for your property tax appeal. Comparable sales analysis, condition documentation, and a professional narrative — everything the Board of Review expects.',
+    features: ['5+ comparable sales with adjustments', 'AI condition analysis from your photos', 'Filing instructions for your county', 'Pro se hearing guidance'],
+    icon: (
+      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+      </svg>
+    ),
+    popular: true,
+  },
+  {
+    title: 'Pre-Purchase Analysis',
+    service: 'pre_purchase' as const,
+    description:
+      'Know what you\'ll really pay in taxes before you buy. Independent valuation analysis reveals whether the asking price aligns with the assessment — or if a tax appeal is in your future.',
+    features: ['Market value vs. assessed value comparison', 'Projected annual tax liability', 'Appeal feasibility assessment', 'Neighborhood tax trend analysis'],
+    icon: (
+      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+      </svg>
+    ),
+    popular: false,
+  },
+  {
+    title: 'Pre-Listing Report',
+    service: 'pre_listing' as const,
+    description:
+      'Attract buyers with evidence their tax burden will be manageable. A professional valuation report that strengthens your listing and removes a common buyer objection.',
+    features: ['Independent market valuation', 'Tax projection for buyers', 'Professional PDF report', 'Listing-ready presentation'],
+    icon: (
+      <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+      </svg>
+    ),
+    popular: false,
+  },
+];
+
+export default function ServiceCards() {
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-24">
+      <div className="text-center mb-16">
+        <h2 className="font-display text-3xl md:text-4xl text-cream">
+          Choose Your Report
+        </h2>
+        <p className="mt-4 text-cream/50 max-w-xl mx-auto">
+          Each report is built from real data, analyzed by AI, and reviewed by our team
+          before delivery.
+        </p>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-6">
+        {services.map((svc) => (
+          <div
+            key={svc.service}
+            className={`
+              relative card-premium rounded-xl p-8 flex flex-col
+              transition-all duration-300 hover:border-gold/40 hover:shadow-gold-lg
+              ${svc.popular ? 'ring-1 ring-gold/30' : ''}
+            `}
+          >
+            {svc.popular && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="bg-gradient-to-r from-gold-light via-gold to-gold-dark text-navy-deep text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider">
+                  Most Popular
+                </span>
+              </div>
+            )}
+
+            <div className="text-gold mb-4">{svc.icon}</div>
+
+            <h3 className="font-display text-xl text-cream mb-3">{svc.title}</h3>
+            <p className="text-sm text-cream/50 leading-relaxed mb-6 flex-grow">
+              {svc.description}
+            </p>
+
+            <ul className="space-y-2 mb-8">
+              {svc.features.map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm text-cream/70">
+                  <svg className="w-4 h-4 text-gold mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {f}
+                </li>
+              ))}
+            </ul>
+
+            <div className="flex items-end justify-between mt-auto">
+              <div>
+                <span className="text-xs text-cream/40 uppercase tracking-wider">From</span>
+                <p className="font-display text-2xl text-gold">
+                  {formatPrice(PRICING[svc.service].residential)}
+                </p>
+              </div>
+              <Link
+                href="/start"
+                className="text-sm text-gold hover:text-gold-light transition-colors font-medium"
+              >
+                Get Started &rarr;
+              </Link>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}

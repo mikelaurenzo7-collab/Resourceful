@@ -1,0 +1,245 @@
+'use server';
+
+import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
+import type {
+  ApprovalAction,
+  ReportStatus,
+  AdminUser,
+  ReportNarrative,
+} from '@/types/database';
+
+async function getAdminUserId(): Promise<string> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const { data: rawAdminUser } = await supabase
+    .from('admin_users')
+    .select('id')
+    .eq('user_id', user.id)
+    .single();
+
+  const adminUser = rawAdminUser as unknown as Pick<AdminUser, 'id'> | null;
+  if (!adminUser) throw new Error('Not an admin user');
+  return adminUser.id;
+}
+
+async function insertApprovalEvent(
+  supabase: ReturnType<typeof createAdminClient>,
+  event: {
+    report_id: string;
+    admin_user_id: string;
+    action: ApprovalAction;
+    notes: string | null;
+    section_name?: string | null;
+  }
+) {
+  const { error } = await supabase.from('approval_events').insert({
+    report_id: event.report_id,
+    admin_user_id: event.admin_user_id,
+    action: event.action,
+    notes: event.notes,
+    section_name: event.section_name ?? null,
+  } as never);
+  return error;
+}
+
+export async function approveReport(reportId: string) {
+  const adminUserId = await getAdminUserId();
+  const supabase = createAdminClient();
+
+  // Record approval event
+  const eventError = await insertApprovalEvent(supabase, {
+    report_id: reportId,
+    admin_user_id: adminUserId,
+    action: 'approved',
+    notes: 'Report approved for delivery',
+  });
+
+  if (eventError) throw new Error(`Failed to record approval: ${eventError.message}`);
+
+  const now = new Date().toISOString();
+
+  // Set status to approved with audit fields
+  const { error: approveError } = await supabase
+    .from('reports')
+    .update({
+      status: 'approved' as ReportStatus,
+      approved_at: now,
+      approved_by: adminUserId,
+    } as never)
+    .eq('id', reportId);
+
+  if (approveError) throw new Error(`Failed to approve report: ${approveError.message}`);
+
+  // Trigger Stage 8 delivery - set status to delivered
+  const { error: deliverError } = await supabase
+    .from('reports')
+    .update({
+      status: 'delivered' as ReportStatus,
+      delivered_at: now,
+    } as never)
+    .eq('id', reportId);
+
+  if (deliverError) throw new Error(`Failed to deliver report: ${deliverError.message}`);
+
+  revalidatePath('/admin/reports');
+  revalidatePath(`/admin/reports/${reportId}/review`);
+}
+
+export async function rejectReport(reportId: string, notes: string) {
+  const adminUserId = await getAdminUserId();
+  const supabase = createAdminClient();
+
+  // Record rejection event
+  const eventError = await insertApprovalEvent(supabase, {
+    report_id: reportId,
+    admin_user_id: adminUserId,
+    action: 'rejected',
+    notes,
+  });
+
+  if (eventError) throw new Error(`Failed to record rejection: ${eventError.message}`);
+
+  // Set status to rejected
+  const { error: rejectError } = await supabase
+    .from('reports')
+    .update({
+      status: 'rejected' as ReportStatus,
+      admin_notes: notes,
+    } as never)
+    .eq('id', reportId);
+
+  if (rejectError) throw new Error(`Failed to reject report: ${rejectError.message}`);
+
+  // TODO: Send internal alert (email/Slack notification)
+
+  revalidatePath('/admin/reports');
+  revalidatePath(`/admin/reports/${reportId}/review`);
+}
+
+export async function holdReport(reportId: string, notes: string) {
+  const adminUserId = await getAdminUserId();
+  const supabase = createAdminClient();
+
+  // Record hold event -- status stays the same (pending_approval)
+  const eventError = await insertApprovalEvent(supabase, {
+    report_id: reportId,
+    admin_user_id: adminUserId,
+    action: 'approved', // closest available action -- logged as hold via notes
+    notes: `HOLD FOR REVIEW: ${notes}`,
+  });
+
+  if (eventError) throw new Error(`Failed to record hold: ${eventError.message}`);
+
+  // Update admin_notes but keep status unchanged
+  const { error: updateError } = await supabase
+    .from('reports')
+    .update({
+      admin_notes: notes,
+    } as never)
+    .eq('id', reportId);
+
+  if (updateError) throw new Error(`Failed to update report: ${updateError.message}`);
+
+  revalidatePath(`/admin/reports/${reportId}/review`);
+}
+
+export async function editSection(
+  reportId: string,
+  sectionId: string,
+  content: string
+) {
+  const adminUserId = await getAdminUserId();
+  const supabase = createAdminClient();
+
+  // Get current content for audit
+  const { data: rawNarrative } = await supabase
+    .from('report_narratives')
+    .select('content, section_name')
+    .eq('id', sectionId)
+    .single();
+
+  const currentNarrative = rawNarrative as unknown as Pick<ReportNarrative, 'content' | 'section_name'> | null;
+
+  // Update the narrative with admin edit
+  const { error: updateError } = await supabase
+    .from('report_narratives')
+    .update({
+      admin_edited: true,
+      admin_edited_content: content,
+    } as never)
+    .eq('id', sectionId);
+
+  if (updateError) throw new Error(`Failed to update section: ${updateError.message}`);
+
+  // Record edit event
+  await insertApprovalEvent(supabase, {
+    report_id: reportId,
+    admin_user_id: adminUserId,
+    action: 'edit_section',
+    section_name: currentNarrative?.section_name ?? null,
+    notes: 'Section content edited by admin',
+  });
+
+  // TODO: Trigger PDF regeneration with updated content
+
+  revalidatePath(`/admin/reports/${reportId}/review`);
+}
+
+export async function regenerateSection(reportId: string, sectionName: string) {
+  const adminUserId = await getAdminUserId();
+  const supabase = createAdminClient();
+
+  // Record regeneration event
+  await insertApprovalEvent(supabase, {
+    report_id: reportId,
+    admin_user_id: adminUserId,
+    action: 'regenerate_section',
+    section_name: sectionName,
+    notes: `Triggered regeneration of section: ${sectionName}`,
+  });
+
+  // TODO: Trigger fresh AI generation of this section via the pipeline
+  // This would call the narrative generation service for just this one section
+  // and then regenerate the PDF
+
+  revalidatePath(`/admin/reports/${reportId}/review`);
+}
+
+export async function rerunPipeline(reportId: string) {
+  const adminUserId = await getAdminUserId();
+  const supabase = createAdminClient();
+
+  // Record rerun event
+  await insertApprovalEvent(supabase, {
+    report_id: reportId,
+    admin_user_id: adminUserId,
+    action: 'rerun_pipeline',
+    notes: 'Full pipeline rerun triggered by admin',
+  });
+
+  // Reset report to processing status
+  const { error: updateError } = await supabase
+    .from('reports')
+    .update({
+      status: 'processing' as ReportStatus,
+      pipeline_started_at: new Date().toISOString(),
+      pipeline_completed_at: null,
+      pipeline_last_completed_stage: null,
+      pipeline_error_log: null,
+    } as never)
+    .eq('id', reportId);
+
+  if (updateError) throw new Error(`Failed to reset pipeline: ${updateError.message}`);
+
+  // TODO: Trigger pipeline execution from stage 1
+  // This would dispatch the pipeline job to the background worker
+
+  revalidatePath('/admin/reports');
+  revalidatePath(`/admin/reports/${reportId}/review`);
+}
