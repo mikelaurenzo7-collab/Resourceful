@@ -239,6 +239,9 @@ export default function PaymentPage() {
           property_type: state.propertyType,
           service_type: state.serviceType,
           review_tier: state.reviewTier,
+          // ATTOM cache reference from pre-payment property lookup
+          attom_cache_id: state.propertyLookup?.cacheId || null,
+          county_fips: state.propertyLookup?.countyFips || null,
           // Photos, tax bills, and property details collected post-payment
           photos_skipped: true,
           desired_outcome: state.desiredOutcome,

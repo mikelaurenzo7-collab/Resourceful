@@ -41,6 +41,8 @@ export const reportCreateSchema = z.object({
   property_issues: z.array(z.string()).optional().default([]),
   additional_notes: z.string().optional().default(''),
   desired_outcome: z.string().optional().default(''),
+  // ATTOM property cache reference (from pre-payment lookup)
+  attom_cache_id: z.string().uuid().nullable().optional(),
   // Tax bill upload — 15% discount when provided
   has_tax_bill: z.boolean().optional().default(false),
   tax_bill_assessed_value: z.number().positive().nullable().optional(),

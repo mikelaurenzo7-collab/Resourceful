@@ -19,7 +19,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Report, PropertyData, CountyRule } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { geocodeAddress } from '@/lib/services/google-maps';
-import { getPropertyDetail } from '@/lib/services/attom';
+import { getPropertyDetail, type AttomPropertyDetail } from '@/lib/services/attom';
+import { getCachedPropertyById } from '@/lib/repository/property-cache';
 
 // ─── FEMA Flood Zone API ────────────────────────────────────────────────────
 
@@ -135,34 +136,48 @@ export async function runDataCollection(
     .filter(Boolean)
     .join(', ');
 
-  // ── Geocode (always needed) + ATTOM (skip assessment lookup if tax bill) ─
-  // When the user uploaded a tax bill, we already have their assessed value
-  // and tax amount — no need to call ATTOM for that data. We still call ATTOM
-  // for building details, comps, and location info unless we can skip it.
+  // ── Geocode (always needed) + ATTOM (check cache first, then API) ─────
+  // When the report has an attom_cache_id from the wizard's property lookup,
+  // we reuse that cached response instead of calling ATTOM again. This saves
+  // one API call per report (the wizard lookup + pipeline would be 2 calls,
+  // now it's just 1).
   const hasTaxBill = !!report.has_tax_bill && !!report.tax_bill_assessed_value;
 
-  const [geocodeResult, attomResult] = await Promise.all([
-    geocodeAddress(fullAddress),
-    getPropertyDetail(fullAddress),
-  ]);
+  // Start geocoding immediately
+  const geocodePromise = geocodeAddress(fullAddress);
+
+  // Try cache first, fall back to ATTOM API
+  let attom: AttomPropertyDetail | null = null;
+
+  if (report.attom_cache_id) {
+    const cached = await getCachedPropertyById(report.attom_cache_id);
+    if (cached?.attom_raw) {
+      attom = cached.attom_raw as unknown as AttomPropertyDetail;
+      console.log(`[stage1] Using cached ATTOM data (cache_id=${report.attom_cache_id})`);
+    }
+  }
+
+  if (!attom) {
+    const attomResult = await getPropertyDetail(fullAddress);
+    if (attomResult.error || !attomResult.data) {
+      if (!hasTaxBill) {
+        return { success: false, error: `ATTOM property lookup failed: ${attomResult.error}` };
+      }
+      console.warn(
+        `[stage1] ATTOM lookup failed but tax bill data available — continuing with partial data`
+      );
+    } else {
+      attom = attomResult.data;
+    }
+  }
+
+  const geocodeResult = await geocodePromise;
 
   if (geocodeResult.error || !geocodeResult.data) {
     return { success: false, error: `Geocoding failed: ${geocodeResult.error}` };
   }
 
-  // ATTOM is still needed for building details and comps even with a tax bill,
-  // but if it fails and we have tax bill data, we can continue with partial data.
-  if (attomResult.error || !attomResult.data) {
-    if (!hasTaxBill) {
-      return { success: false, error: `ATTOM property lookup failed: ${attomResult.error}` };
-    }
-    console.warn(
-      `[stage1] ATTOM lookup failed but tax bill data available — continuing with partial data`
-    );
-  }
-
   const geo = geocodeResult.data;
-  const attom = attomResult.data;
 
   // ── Determine county FIPS (the authoritative county identifier) ────────
   // Priority: ATTOM location > user-provided FIPS > geocode county name

@@ -28,6 +28,23 @@ export interface ValuationResult {
   countyName: string | null;
 }
 
+export interface PropertyLookupResult {
+  cacheId: string;
+  propertyType: PropertyType | null;
+  propertyTypeRaw?: string;
+  yearBuilt: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  buildingSqFt: number | null;
+  lotSqFt: number | null;
+  stories: number | null;
+  assessedValue: number | null;
+  taxAmount: number | null;
+  assessmentYear: number | null;
+  countyFips: string | null;
+  countyName: string | null;
+}
+
 export interface WizardState {
   // Step 1: Goals
   serviceType: ServiceType | null;
@@ -41,6 +58,10 @@ export interface WizardState {
     county: string;
   } | null;
   propertyType: PropertyType | null;
+  // ATTOM property lookup (auto-populated on address selection)
+  propertyLookup: PropertyLookupResult | null;
+  propertyLookupLoading: boolean;
+  propertyLookupError: string | null;
   // Post-payment enhancement (not collected in wizard)
   hasTaxBill: boolean;
   taxBillData: TaxBillData | null;
@@ -69,6 +90,9 @@ const INITIAL_STATE: WizardState = {
   desiredOutcome: '',
   address: null,
   propertyType: null,
+  propertyLookup: null,
+  propertyLookupLoading: false,
+  propertyLookupError: null,
   hasTaxBill: false,
   taxBillData: null,
   propertyIssues: [],

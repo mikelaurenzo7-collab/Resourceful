@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
       tax_bill_tax_amount,
       tax_bill_tax_year,
       tax_bill_pin,
+      attom_cache_id,
     } = parsed.data;
 
     // ── Calculate price (tier-aware, no discount — money-back guarantee instead) ──
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
       tax_bill_assessed_value: tax_bill_assessed_value ?? null,
       tax_bill_tax_amount: tax_bill_tax_amount ?? null,
       tax_bill_tax_year: tax_bill_tax_year ?? null,
+      attom_cache_id: attom_cache_id ?? null,
       pipeline_last_completed_stage: null,
       pipeline_error_log: null,
       pipeline_started_at: null,

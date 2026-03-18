@@ -3,6 +3,7 @@
 // This is the "we ran the numbers" teaser — not the full report.
 //
 // For tax bill uploaders: uses their provided data (no ATTOM call).
+// For reports with cached ATTOM data: uses the cache (no redundant call).
 // For everyone else: calls ATTOM for the assessment data.
 //
 // Always returns an optimistic result — mathematically, human error in
@@ -12,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getPropertyDetail } from '@/lib/services/attom';
 import { getCountyByName } from '@/lib/repository/county-rules';
+import { getCachedPropertyById } from '@/lib/repository/property-cache';
 import type { Report } from '@/types/database';
 
 export async function POST(
@@ -55,8 +57,35 @@ export async function POST(
     if (report.has_tax_bill && report.tax_bill_assessed_value) {
       assessedValue = report.tax_bill_assessed_value;
       taxAmount = report.tax_bill_tax_amount ?? 0;
+    } else if (report.attom_cache_id) {
+      // ── Path B: Cached ATTOM data from wizard lookup — no API call ─────
+      const cached = await getCachedPropertyById(report.attom_cache_id);
+      if (cached && cached.assessed_value) {
+        assessedValue = cached.assessed_value;
+        taxAmount = cached.tax_amount ?? 0;
+        countyName = cached.county_name || countyName;
+      } else {
+        // Cache miss or expired — fall through to ATTOM
+        const fullAddress = [report.property_address, report.city, report.state]
+          .filter(Boolean)
+          .join(', ');
+        const { data: propertyDetail, error: attomError } =
+          await getPropertyDetail(fullAddress);
+
+        if (attomError || !propertyDetail) {
+          return NextResponse.json({
+            estimatedOverassessment: 0,
+            estimatedAnnualSavings: 0,
+            message: 'Full analysis in progress',
+          });
+        }
+
+        assessedValue = propertyDetail.assessment.assessedValue;
+        taxAmount = propertyDetail.assessment.taxAmount;
+        countyName = propertyDetail.location.countyName || countyName;
+      }
     } else {
-      // ── Path B: No tax bill — use ATTOM ────────────────────────────────
+      // ── Path C: No cache, no tax bill — call ATTOM ────────────────────
       const fullAddress = [report.property_address, report.city, report.state]
         .filter(Boolean)
         .join(', ');

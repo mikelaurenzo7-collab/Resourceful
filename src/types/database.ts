@@ -99,6 +99,8 @@ export type Report = {
   filing_method: string | null;
   appeal_outcome: string | null;
   savings_amount_cents: number | null;
+  // ATTOM property cache reference (pre-payment lookup)
+  attom_cache_id: string | null;
 };
 
 export type PropertyData = {
@@ -534,6 +536,36 @@ export type IncomeAnalysisUpdate = Partial<IncomeAnalysis>;
 export type ReportNarrativeUpdate = Partial<ReportNarrative>;
 export type CountyRuleUpdate = Partial<CountyRule>;
 
+// ─── Property Cache ─────────────────────────────────────────────────────────
+
+export type PropertyCache = {
+  id: string;
+  address_key: string;
+  attom_raw: Record<string, unknown>;
+  property_type: string | null;
+  year_built: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  building_sqft: number | null;
+  lot_sqft: number | null;
+  stories: number | null;
+  assessed_value: number | null;
+  tax_amount: number | null;
+  assessment_year: number | null;
+  county_fips: string | null;
+  county_name: string | null;
+  created_at: string;
+  expires_at: string;
+};
+
+export type PropertyCacheInsert = Omit<PropertyCache, 'id' | 'created_at' | 'expires_at'> & {
+  id?: string;
+  created_at?: string;
+  expires_at?: string;
+};
+
+export type PropertyCacheUpdate = Partial<PropertyCache>;
+
 // ─── Database Type (Supabase-compatible) ────────────────────────────────────
 // Must satisfy GenericSchema from @supabase/postgrest-js which requires:
 // - Tables: Record<string, { Row, Insert, Update, Relationships }>
@@ -625,6 +657,12 @@ export type Database = {
         Row: CalibrationParams;
         Insert: CalibrationParamsInsert;
         Update: Partial<CalibrationParams>;
+        Relationships: [];
+      };
+      property_cache: {
+        Row: PropertyCache;
+        Insert: PropertyCacheInsert;
+        Update: PropertyCacheUpdate;
         Relationships: [];
       };
     };

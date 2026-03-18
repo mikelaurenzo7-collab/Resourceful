@@ -6,7 +6,7 @@ A nationwide web app that generates professional property tax appeal reports usi
 ## Business Model — Option C: Full Payment with Money-Back Preview
 The user flow is designed to minimize friction and maximize trust:
 
-1. **Minimal intake** — Address, property type, service type, email, choose tier, pay.
+1. **Minimal intake** — Address (property type auto-detected via ATTOM), service type, email, choose tier, pay.
 2. **Instant preview** — Immediately after payment, show a statistical estimate:
    "Based on comparable sales, we estimate your property may be over-assessed by $X,
    saving you $Y/year in taxes." This uses the IAAO 8% error rate — always defensible.
@@ -23,7 +23,7 @@ validates their purchase. The money-back guarantee removes all risk. Photos beco
 
 ### Wizard Steps (3 steps only)
 1. **Goals** — Service type (tax appeal, pre-purchase, pre-listing)
-2. **Property** — Address, county, property type
+2. **Property** — Address (ATTOM auto-populates: property type, year built, beds/baths/sqft, assessed value, county). User can override property type if needed. Manual selector shown only when ATTOM lookup fails.
 3. **Payment** — Choose tier, enter email, pay
 
 ### Post-Payment Enhancement (24-Hour Window)
@@ -43,9 +43,10 @@ Pipeline does NOT fire on payment. The Stripe webhook only:
 The pipeline is triggered by a Vercel cron job at the ~14 hour mark:
 
 ```
- 0h  — Customer pays. Instant preview shown. Photo upload encouraged.
+-1m  — User enters address. ATTOM lookup auto-populates property details + cached.
+ 0h  — Customer pays. Instant preview uses cached ATTOM data (no 2nd call).
 12h  — Photo reminder email sent (cron).
-14h  — Pipeline triggered (cron). Runs with ATTOM + AI + photos if any.
+14h  — Pipeline triggered (cron). Stage 1 reuses cached ATTOM data (no 3rd call).
 ~14.5h — Pipeline complete. Report enters pending_approval.
 18-24h — Admin reviews and delivers.
 ```
@@ -102,9 +103,13 @@ This platform serves every county in every state. ATTOM is the universal data so
 County assessment data is NOT trustworthy. ATTOM sources from county records.
 If a county is corrupt or wrong, ATTOM inherits that same bad data. Therefore:
 
+- **Property lookup (pre-payment)**: ATTOM data used ONLY for auto-populating
+  property details (type, year built, beds/baths/sqft) to show expertise. The
+  assessed value is displayed but NOT used for any savings estimate pre-payment.
+  Cached in `property_cache` for reuse by instant preview and pipeline.
 - **Instant preview (post-payment)**: Pure statistical estimate only (IAAO 8% error
   rate). NEVER compare against ATTOM marketValue. This is the number shown
-  immediately after payment to validate the purchase.
+  immediately after payment to validate the purchase. Uses cached ATTOM data.
 - **Full report (ATTOM + AI)**: Uses comparable sales and AI analysis.
   Generated with zero user effort beyond providing the address.
 - **Enhanced report (+ user photos)**: When the user uploads photos during
@@ -162,6 +167,8 @@ src/
 │   │   │       ├── assessment/     # GET  — assessment data
 │   │   │       ├── viewer/         # GET  — HTML report preview
 │   │   │       └── filing-info/    # GET  — county filing instructions
+│   │   ├── property/
+│   │   │   └── lookup/             # POST — ATTOM property lookup + cache
 │   │   ├── admin/                  # Admin approval, calibration, rerun
 │   │   ├── webhooks/stripe/        # Stripe payment webhook
 │   │   ├── cron/photo-reminders/   # Vercel cron (every 30 min)
@@ -180,7 +187,7 @@ src/
 ├── components/
 │   ├── admin/                      # ApprovalAuditTrail, QualityFlags, RejectModal
 │   ├── dashboard/                  # PipelineProgress, ReportDownload
-│   ├── intake/                     # AddressInput, PhotoUploader, MeasurementTool
+│   ├── intake/                     # AddressInput, PropertyDetails, PhotoUploader, MeasurementTool
 │   ├── landing/                    # Hero, ServiceCards, HowItWorks, FAQ, etc.
 │   ├── seo/                        # JsonLd
 │   └── ui/                         # Button, Input, Card, Modal, Badge
@@ -215,7 +222,8 @@ src/
 │   ├── repository/                 # Typed data access layer (no raw SQL in components)
 │   │   ├── reports.ts              # Report CRUD + joins
 │   │   ├── admin.ts                # Approval audit trail
-│   │   └── county-rules.ts         # County data lookups
+│   │   ├── county-rules.ts         # County data lookups
+│   │   └── property-cache.ts       # ATTOM response caching (lookup, upsert)
 │   │
 │   ├── calibration/                # Valuation accuracy learning system
 │   │   ├── recalculate.ts          # Compute correction multipliers
@@ -261,12 +269,18 @@ The orchestrator uses a database lock (`acquire_pipeline_lock` / `release_pipeli
 - **Service modules**: All external API calls go through typed service modules in `lib/services/`. Each service handles its own error handling and response typing.
 - **Supabase clients**: Use `lib/supabase/client.ts` in browser, `lib/supabase/server.ts` in server components, `lib/supabase/admin.ts` for service-role operations. RLS is enforced on every table.
 
+### ATTOM Property Cache
+ATTOM responses are cached in `property_cache` (keyed by normalized address, 90-day TTL). The cache is populated during the wizard's property lookup (Step 2) and reused by:
+1. Instant preview (`/api/reports/[id]/valuation`) — reads cache instead of calling ATTOM
+2. Pipeline Stage 1 (`stage1-data-collection.ts`) — reads cache instead of calling ATTOM
+This reduces 3 ATTOM API calls per report to 1. The `reports.attom_cache_id` FK links each report to its cached data. For repeat lookups of the same address (e.g., neighbors), the cache hit eliminates the ATTOM call entirely.
+
 ### API Routes
-All API routes live under `src/app/api/`. Report lifecycle endpoints use UUID-keyed URLs (`/api/reports/[id]/...`). The `/ready` endpoint is idempotent and rate-limited. Admin endpoints require authentication. The Stripe webhook verifies signatures. The cron endpoint requires `CRON_SECRET`.
+All API routes live under `src/app/api/`. Report lifecycle endpoints use UUID-keyed URLs (`/api/reports/[id]/...`). The `/ready` endpoint is idempotent and rate-limited. The `/api/property/lookup` endpoint is rate-limited (30/15min) and returns cached or fresh ATTOM data. Admin endpoints require authentication. The Stripe webhook verifies signatures. The cron endpoint requires `CRON_SECRET`.
 
 ## Database
 
-**13 migrations** in `supabase/migrations/` (001–013). Core tables:
+**14 migrations** in `supabase/migrations/` (001–014). Core tables:
 - `reports` — Main entity with status tracking, payment, filing info
 - `property_data` — Valuation data from ATTOM + calculations
 - `photos` — User-uploaded property photos with AI analysis results
@@ -276,6 +290,7 @@ All API routes live under `src/app/api/`. Report lifecycle endpoints use UUID-ke
 - `filing_guides` — State/county-specific filing instructions
 - `county_rules` — Assessment ratios, appeal boards, deadlines, hearing formats
 - `calibration_entries` / `calibration_params` — Accuracy learning system
+- `property_cache` — Cached ATTOM property lookups (90-day TTL, keyed by normalized address)
 
 All tables have RLS policies. County rules are publicly readable. Users can only access their own reports and photos.
 
