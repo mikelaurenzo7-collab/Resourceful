@@ -146,6 +146,179 @@ After report delivery, offer 50% off the next annual report:
 - Activates when the next assessment is published
 - NOT a subscription — explicit one-time lock-in
 
+## Project Structure
+
+```
+src/
+├── app/                            # Next.js App Router pages & API routes
+│   ├── api/
+│   │   ├── reports/                # Report CRUD & lifecycle
+│   │   │   └── [id]/
+│   │   │       ├── ready/          # POST — trigger pipeline (idempotent)
+│   │   │       ├── photos/         # POST — upload property photos
+│   │   │       ├── measurements/   # POST — record dimensions
+│   │   │       ├── tax-bill-data/  # POST — upload tax bill
+│   │   │       ├── valuation/      # GET  — instant preview
+│   │   │       ├── assessment/     # GET  — assessment data
+│   │   │       ├── viewer/         # GET  — HTML report preview
+│   │   │       └── filing-info/    # GET  — county filing instructions
+│   │   ├── admin/                  # Admin approval, calibration, rerun
+│   │   ├── webhooks/stripe/        # Stripe payment webhook
+│   │   ├── cron/photo-reminders/   # Vercel cron (every 30 min)
+│   │   └── valuation/              # Instant preview estimation
+│   ├── start/                      # 3-step wizard flow
+│   │   ├── situation/              # Step 1: service & property type
+│   │   ├── property/               # Step 2: address & details
+│   │   ├── payment/                # Step 3: checkout
+│   │   ├── success/                # Post-payment preview + photo timer
+│   │   ├── photos/                 # 24-hour photo upload window
+│   │   └── measure/                # Measurement tool
+│   ├── admin/                      # Admin dashboard, review queue, calibration
+│   ├── dashboard/                  # User report status dashboard
+│   └── report/[id]/               # Report viewer
+│
+├── components/
+│   ├── admin/                      # ApprovalAuditTrail, QualityFlags, RejectModal
+│   ├── dashboard/                  # PipelineProgress, ReportDownload
+│   ├── intake/                     # AddressInput, PhotoUploader, MeasurementTool
+│   ├── landing/                    # Hero, ServiceCards, HowItWorks, FAQ, etc.
+│   ├── seo/                        # JsonLd
+│   └── ui/                         # Button, Input, Card, Modal, Badge
+│
+├── config/
+│   ├── ai.ts                       # AI_MODELS.PRIMARY / AI_MODELS.FAST (env-var driven)
+│   └── pricing.ts                  # PRICING constants (3 tiers × 6 service types)
+│
+├── lib/
+│   ├── pipeline/
+│   │   ├── orchestrator.ts         # Stage sequencer, retry logic, pipeline lock
+│   │   └── stages/                 # 8-stage report generation pipeline
+│   │       ├── stage1-data-collection.ts   # ATTOM, geocoding, flood zones
+│   │       ├── stage2-comparables.ts       # Recent sales analysis
+│   │       ├── stage3-income-analysis.ts   # Cap rate (commercial/industrial)
+│   │       ├── stage4-photo-analysis.ts    # Vision AI condition ratings
+│   │       ├── stage5-narratives.ts        # AI report writing
+│   │       ├── stage6-filing-guide.ts      # AI filing instructions
+│   │       ├── stage7-pdf-assembly.ts      # Puppeteer HTML→PDF
+│   │       └── stage8-delivery.ts          # Email delivery (admin-triggered)
+│   │
+│   ├── services/                   # External API integrations
+│   │   ├── anthropic.ts            # Claude API wrapper
+│   │   ├── attom.ts                # ATTOM property data API
+│   │   ├── data-router.ts          # County-specific API routing
+│   │   ├── google-maps.ts          # Maps, geocoding, Street View
+│   │   ├── fema.ts                 # Flood zone lookups
+│   │   ├── pdf.ts                  # Puppeteer PDF generation
+│   │   ├── stripe-service.ts       # Stripe payment handling
+│   │   └── resend-email.ts         # Resend email service
+│   │
+│   ├── repository/                 # Typed data access layer (no raw SQL in components)
+│   │   ├── reports.ts              # Report CRUD + joins
+│   │   ├── admin.ts                # Approval audit trail
+│   │   └── county-rules.ts         # County data lookups
+│   │
+│   ├── calibration/                # Valuation accuracy learning system
+│   │   ├── recalculate.ts          # Compute correction multipliers
+│   │   └── run-blind-valuation.ts  # Blind valuation for calibration
+│   │
+│   ├── supabase/                   # Database client initialization
+│   │   ├── client.ts               # Browser client (SSR)
+│   │   ├── server.ts               # Server component client
+│   │   ├── admin.ts                # Service role (full access)
+│   │   └── middleware.ts           # Auth middleware
+│   │
+│   ├── templates/
+│   │   ├── report-template.ts      # HTML report template (1648 lines)
+│   │   └── helpers.ts              # Template formatting helpers
+│   │
+│   ├── validations/
+│   │   └── report.ts               # Zod input validation schemas
+│   │
+│   └── rate-limit.ts              # IP-based rate limiting
+│
+├── types/
+│   └── database.ts                 # Supabase table types & enums
+│
+└── middleware.ts                   # Next.js request middleware (auth, redirects)
+
+supabase/migrations/                # 13 SQL migration files (001–013)
+scripts/                            # seed-county-rules.ts, seed-counties.ts
+```
+
+## Architecture Patterns
+
+### Pipeline (8 Stages)
+The report generation pipeline runs as an ordered sequence of stages. Each stage is idempotent and the orchestrator can resume from the last successful stage on retry.
+
+**Status flow:** `intake → paid → processing → pending_approval → approved → delivered`
+
+Stage 3 (income analysis) only runs for commercial/industrial properties. Stage 6 (filing guide) only runs for tax appeals. Stage 8 (delivery) only executes after admin approval.
+
+The orchestrator uses a database lock (`acquire_pipeline_lock` / `release_pipeline_lock` RPCs) to prevent concurrent runs on the same report. Retries up to 2 times for transient errors. 10-minute timeout.
+
+### Data Access
+- **Repository pattern**: All database queries go through typed functions in `lib/repository/`. Never write raw Supabase queries in pages or API routes.
+- **Service modules**: All external API calls go through typed service modules in `lib/services/`. Each service handles its own error handling and response typing.
+- **Supabase clients**: Use `lib/supabase/client.ts` in browser, `lib/supabase/server.ts` in server components, `lib/supabase/admin.ts` for service-role operations. RLS is enforced on every table.
+
+### API Routes
+All API routes live under `src/app/api/`. Report lifecycle endpoints use UUID-keyed URLs (`/api/reports/[id]/...`). The `/ready` endpoint is idempotent and rate-limited. Admin endpoints require authentication. The Stripe webhook verifies signatures. The cron endpoint requires `CRON_SECRET`.
+
+## Database
+
+**13 migrations** in `supabase/migrations/` (001–013). Core tables:
+- `reports` — Main entity with status tracking, payment, filing info
+- `property_data` — Valuation data from ATTOM + calculations
+- `photos` — User-uploaded property photos with AI analysis results
+- `comparable_sales` — Recent comparable sales data
+- `measurements` — Property dimensions (multiple sources)
+- `report_narratives` — AI-generated written analysis
+- `filing_guides` — State/county-specific filing instructions
+- `county_rules` — Assessment ratios, appeal boards, deadlines, hearing formats
+- `calibration_entries` / `calibration_params` — Accuracy learning system
+
+All tables have RLS policies. County rules are publicly readable. Users can only access their own reports and photos.
+
+To modify the schema: create a new migration file in `supabase/migrations/`, then run `supabase db push`. After schema changes, regenerate types with `pnpm types:generate` (alias for `supabase gen types typescript --local > src/types/supabase.ts`).
+
+## Testing
+
+**Framework:** Vitest (configured in `vitest.config.ts`)
+- Test environment: Node
+- Path alias: `@/` → `./src/`
+- Setup file: `src/lib/__tests__/setup.ts`
+- Fixtures: `src/lib/__tests__/fixtures.ts`
+- Mocks: `src/lib/__tests__/mocks.ts`
+
+**17 test files** covering pipeline stages, services, repository, config, validations, and templates. Tests are co-located with source files (`*.test.ts`).
+
+**Commands:**
+- `pnpm test` — run all tests once
+- `pnpm test:watch` — watch mode
+- `pnpm test:coverage` — with coverage report
+
+## Environment Variables
+
+All env vars are documented in `.env.example`. Key groups:
+- **AI**: `AI_MODEL_PRIMARY`, `AI_MODEL_FAST`, `ANTHROPIC_API_KEY`
+- **Supabase**: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- **Google**: `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `GOOGLE_MAPS_SERVER_KEY`
+- **ATTOM**: `ATTOM_API_KEY`
+- **Stripe**: `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
+- **Email**: `RESEND_API_KEY`, `RESEND_FROM_ADDRESS`, `ADMIN_NOTIFICATION_EMAIL`
+- **Infra**: `CRON_SECRET`, `NEXT_PUBLIC_APP_URL`
+
+Never use `NEXT_PUBLIC_` prefix on secret keys (service role, Stripe secret, webhook secret).
+
+## Deployment
+
+Hosted on **Vercel** with Next.js 14 App Router. Configuration in `vercel.json`:
+- Stripe webhook route: 300s max duration
+- Cron endpoint: 60s max duration
+- Cron schedule: `/api/cron/photo-reminders` runs every 30 minutes
+
+Node version pinned to 18 (`.nvmrc`).
+
 ## What NOT To Do
 - Never send a report to a client without admin approval first
 - Never hardcode county-specific logic in application code
@@ -157,3 +330,6 @@ After report delivery, offer 50% off the next annual report:
 - Never ask for photos or tax bills before payment — trust first, enhance later
 - Never block report generation on missing photos — AI + ATTOM is enough to start
 - Never show the instant preview BEFORE payment — it comes after as validation
+- Never write raw Supabase queries outside of lib/repository/ functions
+- Never call external APIs outside of lib/services/ modules
+- Never skip Zod validation on API route inputs
