@@ -4,12 +4,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { applyRateLimit } from '@/lib/rate-limit';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isAdmin } from '@/lib/repository/admin';
 import type { CalibrationEntry } from '@/types/database';
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimitResponse = await applyRateLimit(request, { prefix: 'admin-calibration-complete', limit: 30, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
+
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {

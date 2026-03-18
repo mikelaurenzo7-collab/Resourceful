@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { applyRateLimit } from '@/lib/rate-limit';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isAdmin } from '@/lib/repository/admin';
 import { runBlindValuation } from '@/lib/calibration/run-blind-valuation';
@@ -13,6 +14,9 @@ const VALID_TYPES: PropertyType[] = ['residential', 'commercial', 'industrial', 
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimitResponse = await applyRateLimit(request, { prefix: 'admin-calibration-run', limit: 10, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
+
     // Authenticate
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();

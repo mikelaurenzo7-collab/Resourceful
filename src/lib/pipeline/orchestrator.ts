@@ -11,6 +11,9 @@ import { sendAdminNotification } from '@/lib/services/resend-email';
 
 import type { PropertyType, Report } from '@/types/database';
 
+// Maximum time the entire pipeline is allowed to run before being killed.
+const PIPELINE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
 import { runDataCollection } from './stages/stage1-data-collection';
 import { runComparables } from './stages/stage2-comparables';
 import { runIncomeAnalysis } from './stages/stage3-income-analysis';
@@ -122,6 +125,48 @@ export async function runPipeline(
     return { success: false, error: msg };
   }
 
+  // ── Run the pipeline with a timeout ──────────────────────────────────
+  const timeoutPromise = new Promise<StageResult>((_, reject) => {
+    setTimeout(() => reject(new Error(`Pipeline timed out after ${PIPELINE_TIMEOUT_MS / 1000}s`)), PIPELINE_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([
+      runPipelineStages(reportId, report, supabase, startFromStage),
+      timeoutPromise,
+    ]);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[pipeline] Pipeline timeout or fatal error for report ${reportId}: ${message}`);
+
+    // Mark report as failed with timeout error
+    await supabase
+      .from('reports')
+      .update({
+        status: 'failed' as const,
+        pipeline_error_log: {
+          stage: 'timeout',
+          error: message,
+          timestamp: new Date().toISOString(),
+        },
+      })
+      .eq('id', reportId);
+
+    await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Internal: run all pipeline stages sequentially. Wrapped by runPipeline
+ * which enforces the overall timeout.
+ */
+async function runPipelineStages(
+  reportId: string,
+  report: Report,
+  supabase: ReturnType<typeof createAdminClient>,
+  startFromStage: number
+): Promise<StageResult> {
   // ── Mark pipeline start ─────────────────────────────────────────────────
   await supabase
     .from('reports')

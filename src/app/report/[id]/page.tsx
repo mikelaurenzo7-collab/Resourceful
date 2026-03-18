@@ -165,9 +165,14 @@ export default function ReportViewerPage() {
       {/* Nav */}
       <nav className="border-b border-gold/5 bg-navy-deep/80 backdrop-blur-lg sticky top-0 z-50">
         <div className="mx-auto max-w-5xl px-6 flex items-center justify-between h-16">
-          <Link href="/" className="font-display text-xl text-gold">
-            Resourceful
-          </Link>
+          <div className="flex items-center gap-6">
+            <Link href="/" className="font-display text-xl text-gold">
+              Resourceful
+            </Link>
+            <Link href="/dashboard" className="text-sm text-cream/40 hover:text-cream/70 transition-colors">
+              My Reports
+            </Link>
+          </div>
           {data.pdfUrl && (
             <a
               href={data.pdfUrl}

@@ -11,8 +11,8 @@ export default function SituationPage() {
 
   useEffect(() => {
     setCurrentStep(3);
-    if (!state.address) router.push('/start/property');
-  }, [setCurrentStep, state.address, router]);
+    if (!state.address || !state.propertyType) router.push('/start/property');
+  }, [setCurrentStep, state.address, state.propertyType, router]);
 
   const toggleIssue = (id: string) => {
     const current = state.propertyIssues;

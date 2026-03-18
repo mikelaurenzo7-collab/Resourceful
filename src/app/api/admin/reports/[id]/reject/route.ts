@@ -8,12 +8,16 @@ import { isAdmin, createApprovalEvent } from '@/lib/repository/admin';
 import { getReportById, updateReportStatus } from '@/lib/repository/reports';
 import { adminRejectSchema } from '@/lib/validations/report';
 import { sendReportRejectionAlert } from '@/lib/services/resend-email';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rateLimited = await applyRateLimit(request, { prefix: 'admin-reject', limit: 30, windowSeconds: 60 });
+    if (rateLimited) return rateLimited;
+
     const { id: reportId } = await params;
 
     // ── Authenticate user ──────────────────────────────────────────────────

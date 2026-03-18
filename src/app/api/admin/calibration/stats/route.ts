@@ -1,14 +1,17 @@
 // ─── Calibration Stats API ───────────────────────────────────────────────────
 // GET: Returns calibration accuracy stats and current params.
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { applyRateLimit } from '@/lib/rate-limit';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isAdmin } from '@/lib/repository/admin';
 import type { CalibrationEntry, CalibrationParams } from '@/types/database';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const rateLimitResponse = await applyRateLimit(request, { prefix: 'admin-calibration-stats', limit: 30, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {

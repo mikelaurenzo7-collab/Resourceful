@@ -4,6 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report, CountyRule } from '@/types/database';
 
 export async function GET(
@@ -11,6 +12,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+  const rateLimited = await applyRateLimit(_req, { prefix: 'filing-info', limit: 30, windowSeconds: 60 });
+  if (rateLimited) return rateLimited;
+
   const { id: reportId } = await params;
 
   if (!reportId) {

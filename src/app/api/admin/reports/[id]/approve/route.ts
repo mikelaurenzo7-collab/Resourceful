@@ -8,12 +8,16 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { isAdmin } from '@/lib/repository/admin';
 import { getReportById } from '@/lib/repository/reports';
 import { runDelivery } from '@/lib/pipeline/stages/stage8-delivery';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rateLimited = await applyRateLimit(_request, { prefix: 'admin-approve', limit: 30, windowSeconds: 60 });
+    if (rateLimited) return rateLimited;
+
     const { id: reportId } = await params;
 
     // ── Authenticate user ──────────────────────────────────────────────────

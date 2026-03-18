@@ -6,12 +6,16 @@ import { createClient } from '@/lib/supabase/server';
 import { isAdmin, createApprovalEvent } from '@/lib/repository/admin';
 import { getReportById, updateReport } from '@/lib/repository/reports';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rateLimited = await applyRateLimit(_request, { prefix: 'admin-rerun', limit: 5, windowSeconds: 60 });
+    if (rateLimited) return rateLimited;
+
     const { id: reportId } = await params;
 
     // ── Authenticate user ──────────────────────────────────────────────────

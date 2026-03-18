@@ -10,6 +10,7 @@ import { getReportById } from '@/lib/repository/reports';
 import { adminRegenerateSchema } from '@/lib/validations/report';
 import { runNarratives } from '@/lib/pipeline/stages/stage5-narratives';
 import { runPdfAssembly } from '@/lib/pipeline/stages/stage7-pdf-assembly';
+import { applyRateLimit } from '@/lib/rate-limit';
 import type { ReportNarrative } from '@/types/database';
 
 export async function POST(
@@ -17,6 +18,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rateLimited = await applyRateLimit(request, { prefix: 'admin-regenerate', limit: 10, windowSeconds: 60 });
+    if (rateLimited) return rateLimited;
+
     const { id: reportId } = await params;
 
     // ── Authenticate user ──────────────────────────────────────────────────

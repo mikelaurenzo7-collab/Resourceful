@@ -9,10 +9,10 @@ import { applyRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
-    // ── Rate limit: 10 valuations per 15 minutes per IP ──────────────────
+    // ── Rate limit: 50 valuations per 15 minutes per IP ──────────────────
     const rateLimited = await applyRateLimit(request, {
       prefix: 'valuation',
-      limit: 10,
+      limit: 50,
       windowSeconds: 900,
     });
     if (rateLimited) return rateLimited;

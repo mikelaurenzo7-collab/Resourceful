@@ -2,14 +2,17 @@
 // POST: Triggers recalculation of adjustment multipliers and bias corrections
 // from all completed calibration entries.
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { applyRateLimit } from '@/lib/rate-limit';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isAdmin } from '@/lib/repository/admin';
 import { recalculateCalibrationParams } from '@/lib/calibration/recalculate';
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    const rateLimitResponse = await applyRateLimit(request, { prefix: 'admin-calibration-recalculate', limit: 5, windowSeconds: 60 });
+    if (rateLimitResponse) return rateLimitResponse;
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
