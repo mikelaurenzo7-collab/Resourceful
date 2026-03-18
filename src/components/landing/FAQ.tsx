@@ -4,29 +4,39 @@ import { useState } from 'react';
 
 const faqs = [
   {
-    question: 'What is a property tax appeal?',
+    question: 'How do I know if my property is over-assessed?',
     answer:
-      'A property tax appeal is a formal request to your county\'s Board of Review to lower your property\'s assessed value. If your home is assessed higher than its true market value, you\'re paying more in taxes than you should. An appeal presents evidence — comparable sales, condition documentation, and valuation analysis — to demonstrate the correct value. Successful appeals result in lower assessments and reduced annual tax bills, often saving homeowners hundreds to thousands of dollars per year.',
-  },
-  {
-    question: 'What does "pro se" mean, and do I need an attorney?',
-    answer:
-      'Pro se means representing yourself without an attorney. Property tax appeals are one of the most accessible legal processes for self-representation. Our reports are specifically designed to give you everything you need to file and argue your own appeal — the same quality of evidence that attorneys and tax consultants present. You fill out a simple form, attach our report, and attend a brief hearing (often virtual). No legal training required.',
+      'Over half of all properties in the U.S. are assessed above their actual market value. If your home\'s assessed value is higher than what comparable properties have recently sold for, you\'re likely overpaying. Our report does this exact analysis — we pull recent sales in your area and calculate whether your assessment is fair.',
   },
   {
     question: 'What makes your report credible to the Board of Review?',
     answer:
-      'Our reports follow the same methodology used by professional appraisers and tax attorneys: comparable sales analysis with line-item adjustments, assessment ratio calculations, condition documentation with photographs, and clear market value conclusions. The Board of Review evaluates evidence, not credentials. A well-documented report with solid comparable sales is persuasive regardless of who presents it. We use the same data sources (MLS, public records, ATTOM) that assessors rely on.',
+      'Our reports follow the same methodology used by professional appraisers and tax attorneys: comparable sales analysis with line-item adjustments, assessment ratio calculations, condition documentation, and clear market value conclusions. The Board evaluates evidence, not credentials. Every report is reviewed by our team before delivery to ensure accuracy and completeness.',
   },
   {
-    question: 'How long does it take to receive my report?',
+    question: 'Do I need an attorney to file an appeal?',
     answer:
-      'Most reports are delivered within 48 hours of completing your submission (address, photos, and payment). Complex commercial or industrial properties may take up to 72 hours. You\'ll receive an email notification when your report is ready, and you can download it directly from your dashboard. We recommend starting the process at least 2-3 weeks before your county\'s appeal deadline.',
+      'No. Property tax appeals are one of the most accessible legal processes for self-representation (called "pro se" filing). Our report gives you everything you need — the evidence, the filing instructions for your specific county, and guidance on what to expect at the hearing. Most hearings are brief and straightforward, and many are now conducted virtually.',
   },
   {
-    question: 'What if I don\'t win my appeal?',
+    question: 'How long does it take to get my report?',
     answer:
-      'While we can\'t guarantee outcomes — every Board of Review is different — our reports are built on the same evidence standards that professional tax attorneys use. Historically, properties with documented over-assessment and strong comparable sales evidence have a high success rate. Even if the Board doesn\'t adopt your full requested value, partial reductions are common and still result in meaningful tax savings. There is no penalty for filing an appeal that isn\'t granted.',
+      'Most reports are delivered within 1–2 business days. Every report goes through an expert review before reaching you, which is why we take a little extra time — we\'d rather be thorough than fast. You\'ll receive an email when your report is ready to download.',
+  },
+  {
+    question: 'Can my taxes go up if I file an appeal?',
+    answer:
+      'No. Filing an appeal cannot increase your assessment. The worst possible outcome is that your assessment stays the same. There is no penalty or fee for filing an appeal. It\'s a risk-free process — which is why it\'s worth doing if you believe your property is over-assessed.',
+  },
+  {
+    question: 'How much can I expect to save?',
+    answer:
+      'The average successful appeal saves homeowners $800–$1,400 per year, and those savings compound until the next reassessment. On a typical residential property, that can mean $3,000–$7,000+ in savings over a few years. Your report will include a specific estimate based on your property\'s assessment and local market data.',
+  },
+  {
+    question: 'How is this different from hiring an appraiser?',
+    answer:
+      'A traditional appraisal costs $300–$500, requires an in-person appointment, and takes 1–2 weeks. Our reports use the same data sources (MLS records, public sales data) and the same methodology (comparable sales with adjustments), but we deliver in 1–2 days at a fraction of the cost. The key difference: we also include county-specific filing instructions and hearing guidance — things an appraisal alone doesn\'t cover.',
   },
 ];
 

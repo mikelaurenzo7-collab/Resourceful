@@ -1,9 +1,9 @@
 const steps = [
   {
     number: '01',
-    title: 'Tell Us About Your Property',
+    title: 'Enter Your Address',
     description:
-      'Enter your address and property details. Have your tax bill? Upload it to save 15% — it gives us a head start on your case.',
+      'Tell us where your property is. We pull your assessment, tax rate, and property details automatically — no paperwork needed from you.',
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -13,9 +13,9 @@ const steps = [
   },
   {
     number: '02',
-    title: 'We Run the Numbers',
+    title: 'We Build Your Case',
     description:
-      'After you order, we immediately analyze your assessment against market data and comparable sales. You\'ll see an initial finding right away.',
+      'Our team analyzes comparable sales, calculates your assessment ratio, and builds a professional evidence package — the same methodology appraisers use.',
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -24,9 +24,9 @@ const steps = [
   },
   {
     number: '03',
-    title: 'Receive Your Full Report',
+    title: 'Get Your Report, File & Save',
     description:
-      'We conduct a final review for accuracy, then deliver your professional report — comparable sales, evidence package, and step-by-step filing instructions.',
+      'Every report is expert-reviewed before delivery. You get a professional PDF, comparable sales evidence, and step-by-step filing instructions for your county.',
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -45,6 +45,9 @@ export default function HowItWorks() {
         <h2 className="font-display text-3xl md:text-4xl text-cream mt-3">
           Three Steps to Lower Taxes
         </h2>
+        <p className="mt-4 text-cream/50 max-w-lg mx-auto">
+          No appointments. No attorneys. No hassle. Just enter your address and we handle the rest.
+        </p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-12">

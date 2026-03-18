@@ -119,18 +119,10 @@ export function FAQJsonLd() {
     mainEntity: [
       {
         '@type': 'Question',
-        name: 'What is a property tax appeal?',
+        name: 'How do I know if my property is over-assessed?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'A property tax appeal is a formal request to your county\'s Board of Review to lower your property\'s assessed value. If your home is assessed higher than its true market value, you\'re paying more in taxes than you should. Successful appeals result in lower assessments and reduced annual tax bills, often saving homeowners hundreds to thousands of dollars per year.',
-        },
-      },
-      {
-        '@type': 'Question',
-        name: 'What does "pro se" mean, and do I need an attorney?',
-        acceptedAnswer: {
-          '@type': 'Answer',
-          text: 'Pro se means representing yourself without an attorney. Property tax appeals are one of the most accessible legal processes for self-representation. Our reports give you everything you need to file and argue your own appeal — the same quality of evidence that attorneys and tax consultants present.',
+          text: 'Over half of all properties in the U.S. are assessed above their actual market value. If your home\'s assessed value is higher than what comparable properties have recently sold for, you\'re likely overpaying. Our report analyzes recent sales in your area to determine whether your assessment is fair.',
         },
       },
       {
@@ -138,23 +130,39 @@ export function FAQJsonLd() {
         name: 'What makes your report credible to the Board of Review?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Our reports follow the same methodology used by professional appraisers and tax attorneys: comparable sales analysis with line-item adjustments, assessment ratio calculations, condition documentation with photographs, and clear market value conclusions. The Board evaluates evidence, not credentials.',
+          text: 'Our reports follow the same methodology used by professional appraisers and tax attorneys: comparable sales analysis with line-item adjustments, assessment ratio calculations, condition documentation, and clear market value conclusions. Every report is expert-reviewed before delivery. The Board evaluates evidence, not credentials.',
         },
       },
       {
         '@type': 'Question',
-        name: 'How long does it take to receive my report?',
+        name: 'Do I need an attorney to file an appeal?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'Most reports are delivered within a few hours of completing your submission. Complex commercial or industrial properties may take longer. You\'ll receive an email notification when your report is ready.',
+          text: 'No. Property tax appeals are one of the most accessible legal processes for self-representation. Our report gives you the evidence, county-specific filing instructions, and hearing guidance you need to file on your own.',
         },
       },
       {
         '@type': 'Question',
-        name: 'What if I don\'t win my appeal?',
+        name: 'How long does it take to get my report?',
         acceptedAnswer: {
           '@type': 'Answer',
-          text: 'For photo-supported tax appeal reports, we offer a money-back guarantee. If your appeal is denied in full, send us the denial letter and we\'ll refund your full purchase price. There is no penalty for filing an appeal that isn\'t granted.',
+          text: 'Most reports are delivered within 1-2 business days. Every report goes through an expert review before delivery. You\'ll receive an email when your report is ready to download.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'Can my taxes go up if I file an appeal?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'No. Filing an appeal cannot increase your assessment. The worst possible outcome is that your assessment stays the same. There is no penalty or fee for filing an appeal.',
+        },
+      },
+      {
+        '@type': 'Question',
+        name: 'How is this different from hiring an appraiser?',
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: 'A traditional appraisal costs $300-$500, requires an in-person appointment, and takes 1-2 weeks. Our reports use the same data sources and methodology but deliver in 1-2 days at a fraction of the cost, with county-specific filing instructions included.',
         },
       },
     ],
