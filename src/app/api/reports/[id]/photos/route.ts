@@ -45,7 +45,8 @@ export async function POST(
       );
     }
 
-    if (report.user_id !== user.id) {
+    // user_id stores client_email (not Supabase UUID), so compare against user.email
+    if (!user.email || report.user_id !== user.email) {
       return NextResponse.json(
         { error: 'Not authorized to upload photos to this report' },
         { status: 403 }

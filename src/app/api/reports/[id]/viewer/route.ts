@@ -4,6 +4,7 @@
 // No auth required — keyed by report UUID (unguessable).
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report, PropertyData, CountyRule, ReportNarrative } from '@/types/database';
@@ -38,6 +39,15 @@ export async function GET(
   }
 
   const report = reportData as Report;
+
+  // ── Optional auth: if user is logged in, verify they own this report ────
+  // Non-authenticated access allowed (UUID is cryptographically unguessable),
+  // but authenticated users must be the report owner to prevent cross-account access.
+  const supabaseAuth = await createClient();
+  const { data: { user } } = await supabaseAuth.auth.getUser();
+  if (user?.email && report.client_email.toLowerCase() !== user.email.toLowerCase()) {
+    return NextResponse.json({ error: 'Not authorized to view this report' }, { status: 403 });
+  }
 
   // Only show reports that have been delivered or approved — never pending_approval
   // (admin must approve before client can see the report)

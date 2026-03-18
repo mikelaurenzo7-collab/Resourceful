@@ -97,11 +97,13 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        // Compute variances
+        // Compute variances (actualAppraisedValue validated > 0 above)
         const varianceDollars = entry.actualAppraisedValue - systemConcludedValue;
-        const variancePct = Math.round(
-          ((entry.actualAppraisedValue - systemConcludedValue) / entry.actualAppraisedValue) * 10000
-        ) / 100;
+        const variancePct = entry.actualAppraisedValue > 0
+          ? Math.round(
+              ((entry.actualAppraisedValue - systemConcludedValue) / entry.actualAppraisedValue) * 10000
+            ) / 100
+          : 0;
 
         let sqftVariancePct: number | null = null;
         const attomSqft = pd?.building_sqft_gross ?? null;

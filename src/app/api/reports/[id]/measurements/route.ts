@@ -45,7 +45,8 @@ export async function POST(
       );
     }
 
-    if (report.user_id !== user.id) {
+    // user_id stores client_email (not Supabase UUID), so compare against user.email
+    if (!user.email || report.user_id !== user.email) {
       return NextResponse.json(
         { error: 'Not authorized to add measurements to this report' },
         { status: 403 }
@@ -114,7 +115,7 @@ export async function POST(
         .single();
       const propertyDataRow = pdRow as { building_sqft_gross: number | null } | null;
 
-      if (propertyDataRow?.building_sqft_gross) {
+      if (propertyDataRow?.building_sqft_gross && propertyDataRow.building_sqft_gross > 0) {
         const attomGba = propertyDataRow.building_sqft_gross;
         const measuredGba = parsed.data.total_living_area_sqft;
         const differencePercent =

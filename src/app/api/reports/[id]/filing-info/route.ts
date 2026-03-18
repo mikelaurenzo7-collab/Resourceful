@@ -3,6 +3,7 @@
 // No auth required — keyed by report ID (UUID, unguessable).
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report, CountyRule } from '@/types/database';
@@ -26,7 +27,7 @@ export async function GET(
   // Fetch report with county info
   const { data: reportData, error: reportError } = await supabase
     .from('reports')
-    .select('county_fips, county, state, service_type, property_address, city')
+    .select('county_fips, county, state, service_type, property_address, city, client_email')
     .eq('id', reportId)
     .single();
 
@@ -34,7 +35,14 @@ export async function GET(
     return NextResponse.json({ error: 'Report not found' }, { status: 404 });
   }
 
-  const report = reportData as Pick<Report, 'county_fips' | 'county' | 'state' | 'service_type' | 'property_address' | 'city'>;
+  const report = reportData as Pick<Report, 'county_fips' | 'county' | 'state' | 'service_type' | 'property_address' | 'city' | 'client_email'>;
+
+  // ── Optional auth: if user is logged in, verify they own this report ────
+  const supabaseAuth = await createClient();
+  const { data: { user } } = await supabaseAuth.auth.getUser();
+  if (user?.email && report.client_email.toLowerCase() !== user.email.toLowerCase()) {
+    return NextResponse.json({ error: 'Not authorized to view this report' }, { status: 403 });
+  }
 
   // Fetch county rules
   let countyRule: CountyRule | null = null;

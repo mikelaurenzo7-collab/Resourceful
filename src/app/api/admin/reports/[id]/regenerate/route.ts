@@ -79,25 +79,18 @@ export async function POST(
 
     const admin = createAdminClient();
 
-    // ── Snapshot the current narrative for the approval event notes ───────
-    const { data: existingNarrativeData } = await admin
+    // ── Snapshot admin-edited sections (except target) so we can restore them ─
+    // runNarratives() does a full delete + regenerate of ALL sections.
+    // We preserve any sections that were manually edited by an admin.
+    const { data: adminEditedRows } = await admin
       .from('report_narratives')
-      .select('*')
+      .select('section_name, content, admin_edited_content')
       .eq('report_id', reportId)
-      .eq('section_name', parsed.data.section_name)
-      .single();
-    const existingNarrative = existingNarrativeData as ReportNarrative | null;
+      .eq('admin_edited', true)
+      .neq('section_name', parsed.data.section_name);
+    const preservedSections = (adminEditedRows ?? []) as Pick<ReportNarrative, 'section_name' | 'content' | 'admin_edited_content'>[];
 
-    // ── Delete the existing narrative section so it gets regenerated ──────
-    if (existingNarrative) {
-      await admin
-        .from('report_narratives')
-        .delete()
-        .eq('report_id', reportId)
-        .eq('section_name', parsed.data.section_name);
-    }
-
-    // ── Re-run narrative generation (stage 5) ────────────────────────────
+    // ── Re-run narrative generation (stage 5) — regenerates all sections ──
     const narrativeResult = await runNarratives(reportId, admin);
 
     if (!narrativeResult.success) {
@@ -105,6 +98,19 @@ export async function POST(
         { error: `Narrative regeneration failed: ${narrativeResult.error}` },
         { status: 500 }
       );
+    }
+
+    // ── Restore admin-edited sections that should not have been overwritten ──
+    for (const preserved of preservedSections) {
+      await admin
+        .from('report_narratives')
+        .update({
+          content: preserved.admin_edited_content ?? preserved.content,
+          admin_edited: true,
+          admin_edited_content: preserved.admin_edited_content,
+        })
+        .eq('report_id', reportId)
+        .eq('section_name', preserved.section_name);
     }
 
     // ── Regenerate PDF (stage 7) ─────────────────────────────────────────
@@ -123,7 +129,7 @@ export async function POST(
       admin_user_id: user.id,
       action: 'regenerate_section',
       section_name: parsed.data.section_name,
-      notes: `Regenerated section: ${parsed.data.section_name}`,
+      notes: `Regenerated section: ${parsed.data.section_name}${preservedSections.length > 0 ? ` (preserved ${preservedSections.length} admin-edited section${preservedSections.length > 1 ? 's' : ''})` : ''}`,
     });
 
     return NextResponse.json(
