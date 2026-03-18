@@ -59,6 +59,14 @@ export interface PhotoReminderParams {
   estimatedSavings?: number;
 }
 
+export interface PaymentConfirmationParams {
+  to: string;
+  reportId: string;
+  propertyAddress: string;
+  amountPaidCents: number;
+  propertyType: string;
+}
+
 export interface EmailResult {
   id: string;
 }
@@ -314,5 +322,78 @@ export async function sendPhotoReminderEmail(
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[resend] sendPhotoReminderEmail error: ${message}`);
     return { data: null, error: `Photo reminder failed: ${message}` };
+  }
+}
+
+/**
+ * Send payment confirmation email immediately after successful payment.
+ * Includes order summary, photo upload CTA, and money-back guarantee.
+ */
+export async function sendPaymentConfirmationEmail(
+  params: PaymentConfirmationParams
+): Promise<ServiceResult<EmailResult>> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app';
+  const amount = formatCurrency(params.amountPaidCents);
+
+  try {
+    const { data, error } = await getResend().emails.send({
+      from: FROM_ADDRESS,
+      to: params.to,
+      subject: `Payment confirmed — ${params.propertyAddress}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #1a1a1a; font-size: 24px;">Payment Confirmed</h1>
+          <p>Thank you for your order. Your property assessment report is now being built.</p>
+
+          <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Property</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${escapeHtml(params.propertyAddress)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Type</td>
+                <td style="padding: 8px 0; text-align: right;">${escapeHtml(params.propertyType)}</td>
+              </tr>
+              <tr style="border-top: 1px solid #ddd;">
+                <td style="padding: 8px 0; font-weight: 600;">Amount Paid</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${amount}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="background: #f0fdf4; border-radius: 8px; padding: 16px; margin: 24px 0; border-left: 4px solid #22c55e;">
+            <p style="margin: 0; color: #166534; font-weight: 600;">Money-Back Guarantee</p>
+            <p style="margin: 8px 0 0 0; color: #15803d; font-size: 13px;">If our analysis finds no savings opportunity, you&apos;ll receive a complete refund.</p>
+          </div>
+
+          <h2 style="color: #1a1a1a; font-size: 18px; margin-top: 32px;">Strengthen Your Evidence</h2>
+          <p style="color: #444; font-size: 14px;">You have <strong>24 hours</strong> to upload photos of your property. Photos of damage, deferred maintenance, and aging systems are your strongest independent evidence — the assessor has never been inside your home.</p>
+
+          <a href="${appUrl}/report/${params.reportId}/photos" style="display: inline-block; background: #2563eb; color: #fff; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; margin-top: 8px;">
+            Upload Photos
+          </a>
+
+          <p style="margin-top: 24px; font-size: 12px; color: #999;">
+            No photos? No problem — your report will still include comparable sales analysis. Photos just make your evidence package stronger.
+          </p>
+
+          <p style="margin-top: 16px; font-size: 12px; color: #999;">
+            Report ID: ${params.reportId}
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error(`[resend] sendPaymentConfirmationEmail error:`, error);
+      return { data: null, error: `Payment confirmation failed: ${error.message}` };
+    }
+
+    return { data: { id: data?.id ?? '' }, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[resend] sendPaymentConfirmationEmail error: ${message}`);
+    return { data: null, error: `Payment confirmation failed: ${message}` };
   }
 }

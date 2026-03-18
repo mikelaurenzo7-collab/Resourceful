@@ -2,6 +2,15 @@
   "functions": {
     "src/app/api/webhooks/stripe/route.ts": {
       "maxDuration": 300
+    },
+    "src/app/api/cron/photo-reminders/route.ts": {
+      "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/photo-reminders",
+      "schedule": "*/30 * * * *"
+    }
+  ]
 }

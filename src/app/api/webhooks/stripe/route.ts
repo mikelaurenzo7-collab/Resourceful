@@ -7,7 +7,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { constructWebhookEvent } from '@/lib/services/stripe-service';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
+import { sendPaymentConfirmationEmail } from '@/lib/services/resend-email';
 import type Stripe from 'stripe';
+import type { Report } from '@/types/database';
 
 export async function POST(request: NextRequest) {
   // ── Read raw body for signature verification ────────────────────────────
@@ -117,6 +119,27 @@ async function handlePaymentIntentSucceeded(
       `[webhook/stripe] Failed to update report ${reportId}: ${updateError.message}`
     );
     throw new Error(`Failed to update report: ${updateError.message}`);
+  }
+
+  // ── Send payment confirmation email (non-blocking) ─────────────────
+  // Fetch report details for the email
+  const { data: reportData } = await supabase
+    .from('reports')
+    .select('client_email, property_address, property_type')
+    .eq('id', reportId)
+    .single();
+
+  const report = reportData as Report | null;
+  if (report?.client_email) {
+    sendPaymentConfirmationEmail({
+      to: report.client_email,
+      reportId,
+      propertyAddress: report.property_address,
+      amountPaidCents: paymentIntent.amount,
+      propertyType: report.property_type ?? 'residential',
+    }).catch((err) => {
+      console.error(`[webhook/stripe] Payment confirmation email failed for ${reportId}:`, err);
+    });
   }
 
   // ── Trigger the report generation pipeline ──────────────────────────
