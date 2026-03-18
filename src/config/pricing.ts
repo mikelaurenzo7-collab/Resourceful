@@ -6,45 +6,50 @@ import type { ReviewTier } from '@/types/database';
 // ─── Base Prices (Auto-Report tier) ─────────────────────────────────────────
 
 export const PRICING = {
-  TAX_APPEAL_RESIDENTIAL: 4900, // $49
-  TAX_APPEAL_COMMERCIAL: 9900, // $99
-  TAX_APPEAL_INDUSTRIAL: 9900, // $99
-  TAX_APPEAL_LAND: 4900, // $49
-  PRE_PURCHASE: 5900, // $59
-  PRE_LISTING: 5900, // $59
+  TAX_APPEAL_RESIDENTIAL: 5900, // $59
+  TAX_APPEAL_COMMERCIAL: 10900, // $109
+  TAX_APPEAL_INDUSTRIAL: 10900, // $109
+  TAX_APPEAL_LAND: 5900, // $59
+  PRE_PURCHASE: 6900, // $69
+  PRE_LISTING: 6900, // $69
 } as const;
 
-// ─── Guided Filing Tier Pricing (2x Pro Se) ─────────────────────────────────
+// ─── Guided Filing Tier Pricing (2x base) ───────────────────────────────────
 // Report + live guided filing session. We walk the homeowner through the form,
 // evidence prep, and hearing prep on a call/screen-share.
 // Only available for tax_appeal service type.
 
 export const PRICING_GUIDED = {
-  TAX_APPEAL_RESIDENTIAL: 9800, // $98
-  TAX_APPEAL_COMMERCIAL: 19800, // $198
-  TAX_APPEAL_INDUSTRIAL: 19800, // $198
-  TAX_APPEAL_LAND: 9800, // $98
-  PRE_PURCHASE: 11800, // $118
-  PRE_LISTING: 11800, // $118
+  TAX_APPEAL_RESIDENTIAL: 11800, // $118
+  TAX_APPEAL_COMMERCIAL: 21800, // $218
+  TAX_APPEAL_INDUSTRIAL: 21800, // $218
+  TAX_APPEAL_LAND: 11800, // $118
+  PRE_PURCHASE: 13800, // $138
+  PRE_LISTING: 13800, // $138
 } as const;
 
-// ─── Expert-Reviewed Tier Pricing (3x Pro Se) ───────────────────────────────
+// ─── Expert-Reviewed Tier Pricing (3x base) ─────────────────────────────────
 // Professional appraiser reviews the report before delivery.
 // We file on their behalf + attend the hearing as authorized rep where allowed.
 
 export const PRICING_EXPERT = {
-  TAX_APPEAL_RESIDENTIAL: 14700, // $147
-  TAX_APPEAL_COMMERCIAL: 29700, // $297
-  TAX_APPEAL_INDUSTRIAL: 29700, // $297
-  TAX_APPEAL_LAND: 14700, // $147
-  PRE_PURCHASE: 17700, // $177
-  PRE_LISTING: 17700, // $177
+  TAX_APPEAL_RESIDENTIAL: 17700, // $177
+  TAX_APPEAL_COMMERCIAL: 32700, // $327
+  TAX_APPEAL_INDUSTRIAL: 32700, // $327
+  TAX_APPEAL_LAND: 17700, // $177
+  PRE_PURCHASE: 20700, // $207
+  PRE_LISTING: 20700, // $207
 } as const;
 
 // ─── Tax Bill Discount ──────────────────────────────────────────────────────
-// Users who upload their tax bill get 15% off — they provide data we'd
-// otherwise have to look up, reducing our API costs.
+// Users who upload their tax bill (post-payment) get 15% off — they provide
+// data we'd otherwise have to look up, reducing our API costs.
+// Applied as a refund/credit after upload, not pre-payment.
 export const TAX_BILL_DISCOUNT = 0.15;
+
+// ─── Money-Back Guarantee ───────────────────────────────────────────────────
+// If our analysis finds no savings opportunity, full refund — no questions asked.
+export const MONEY_BACK_GUARANTEE = true;
 
 export type ServiceType = 'tax_appeal' | 'pre_purchase' | 'pre_listing';
 export type PropertyType = 'residential' | 'commercial' | 'industrial' | 'land';

@@ -1,15 +1,65 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Button from '@/components/ui/Button';
+
+// ─── 24-Hour Photo Window ───────────────────────────────────────────────────
+
+const PHOTO_WINDOW_HOURS = 24;
+
+function formatTimeRemaining(ms: number): string {
+  if (ms <= 0) return 'Window closed';
+  const hours = Math.floor(ms / (1000 * 60 * 60));
+  const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+  if (hours > 0) return `${hours}h ${minutes}m remaining`;
+  return `${minutes}m remaining`;
+}
+
+// ─── Valuation Preview ──────────────────────────────────────────────────────
+
+interface ValuationPreview {
+  estimatedOverassessment: number;
+  estimatedAnnualSavings: number;
+  countyName?: string | null;
+  assessmentRatio?: number | null;
+}
 
 function SuccessContent() {
   const searchParams = useSearchParams();
   const reportId = searchParams.get('reportId');
 
-  const [deletingTaxBill, setDeletingTaxBill] = useState(false);
-  const [taxBillDeleted, setTaxBillDeleted] = useState(false);
+  const [preview, setPreview] = useState<ValuationPreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState(PHOTO_WINDOW_HOURS * 60 * 60 * 1000);
+
+  // Fetch instant preview on mount
+  useEffect(() => {
+    if (!reportId) return;
+    setPreviewLoading(true);
+
+    fetch(`/api/reports/${reportId}/valuation`, { method: 'POST' })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.estimatedOverassessment != null) {
+          setPreview(data);
+        }
+      })
+      .catch(() => setPreviewError(true))
+      .finally(() => setPreviewLoading(false));
+  }, [reportId]);
+
+  // Countdown timer for photo window
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => Math.max(0, prev - 1000));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const photoWindowOpen = timeRemaining > 0;
+  const formatDollar = (n: number) => `$${n.toLocaleString('en-US')}`;
 
   return (
     <div className="min-h-screen bg-pattern flex items-center justify-center px-6">
@@ -25,15 +75,76 @@ function SuccessContent() {
           Payment Confirmed
         </h1>
 
-        <p className="text-cream/50 text-lg mb-2">
-          Your report is being built now.
-        </p>
-        <p className="text-cream/40 text-sm mb-8 max-w-md mx-auto leading-relaxed">
-          We&apos;re pulling comparable sales and property data to build your
-          full evidence package. Every report is reviewed for accuracy before it reaches you.
-        </p>
+        {/* ── Instant Preview (Option C core) ─────────────────────────────── */}
+        {previewLoading && (
+          <div className="card-premium rounded-xl p-8 mb-8 border border-gold/20">
+            <div className="flex items-center justify-center gap-3">
+              <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm text-cream/50">Running the numbers...</span>
+            </div>
+          </div>
+        )}
 
-        {/* Photo upload encouragement */}
+        {preview && !previewLoading && (
+          <div className="card-premium rounded-xl p-6 mb-8 border border-gold/30 text-left animate-slide-up">
+            <h2 className="text-xs uppercase tracking-widest text-gold/70 mb-4 text-center">
+              Preliminary Analysis
+            </h2>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-cream/50">Estimated Over-Assessment</span>
+                <span className="font-display text-xl text-gold">
+                  {formatDollar(preview.estimatedOverassessment)}
+                </span>
+              </div>
+              <div className="h-px bg-gold/10" />
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-cream/50">Potential Annual Tax Savings</span>
+                <span className="font-display text-2xl text-emerald-400">
+                  {formatDollar(preview.estimatedAnnualSavings)}
+                </span>
+              </div>
+              {preview.countyName && (
+                <>
+                  <div className="h-px bg-gold/10" />
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-cream/50">County</span>
+                    <span className="text-sm text-cream">{preview.countyName}</span>
+                  </div>
+                </>
+              )}
+            </div>
+            <p className="text-[10px] text-cream/25 mt-4 leading-relaxed text-center">
+              Based on IAAO error rate analysis. Your full report with comparable sales
+              will provide a detailed, independently verified valuation.
+            </p>
+          </div>
+        )}
+
+        {previewError && !previewLoading && (
+          <div className="card-premium rounded-xl p-6 mb-8 text-center">
+            <p className="text-cream/50 text-sm mb-1">Your report is being built now.</p>
+            <p className="text-cream/30 text-xs">Full analysis results will be delivered to your email.</p>
+          </div>
+        )}
+
+        {/* ── Money-Back Guarantee ────────────────────────────────────────── */}
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 mb-8 text-left">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <div>
+              <p className="text-sm font-medium text-emerald-400">Money-Back Guarantee</p>
+              <p className="text-xs text-cream/40 mt-1 leading-relaxed">
+                If our full analysis finds no savings opportunity for your property,
+                you&apos;ll receive a complete refund — no questions asked. We only succeed when you do.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ── 24-Hour Photo Upload Window ─────────────────────────────────── */}
         <div className="card-premium rounded-xl p-6 text-left mb-8 border border-gold/20">
           <div className="flex items-start gap-4">
             <div className="w-10 h-10 rounded-full bg-gold/15 flex items-center justify-center flex-shrink-0">
@@ -42,19 +153,25 @@ function SuccessContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <div>
-              <h2 className="text-sm font-medium text-gold mb-1">
-                Want to strengthen your case?
-              </h2>
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="text-sm font-medium text-gold">
+                  Strengthen Your Evidence
+                </h2>
+                {photoWindowOpen && (
+                  <span className="text-[10px] bg-gold/10 text-gold/80 rounded-full px-2 py-0.5 font-medium">
+                    {formatTimeRemaining(timeRemaining)}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-cream/50 leading-relaxed mb-3">
-                Your report is already being built with market data and comparable sales.
-                But photos of your property&apos;s actual condition are your strongest
-                independent evidence — the assessor has never been inside your home.
+                {preview && preview.estimatedAnnualSavings > 0
+                  ? `We found potential savings of ${formatDollar(preview.estimatedAnnualSavings)}/year. Upload photos of your property to build even stronger evidence — the assessor has never been inside your home.`
+                  : 'Your report is being built with market data. Upload photos of your property\'s actual condition to build the strongest possible evidence package.'}
               </p>
               <p className="text-xs text-cream/40 leading-relaxed mb-4">
-                Upload photos of any damage, deferred maintenance, outdated finishes, or
-                aging systems. Your appeal deadline is weeks away — no rush. The more you
-                document, the stronger your evidence package.
+                Photograph any damage, deferred maintenance, outdated finishes,
+                or aging systems. Your appeal deadline is weeks away — take your time.
               </p>
               {reportId && (
                 <Button
@@ -85,14 +202,14 @@ function SuccessContent() {
               },
               {
                 step: '2',
-                title: 'Expert Review',
-                desc: 'Every report is reviewed by our team for accuracy and completeness before it reaches you. We stand behind our numbers.',
+                title: 'Photo Enhancement Window',
+                desc: 'Upload photos within 24 hours to strengthen your evidence. We\'ll incorporate them into your report before delivery.',
                 active: false,
               },
               {
                 step: '3',
-                title: 'Report Delivered',
-                desc: 'Your complete report with verified savings, filing instructions, and step-by-step hearing guidance — delivered to your inbox.',
+                title: 'Expert Review & Delivery',
+                desc: 'Every report is reviewed by our team for accuracy, then delivered to your inbox with filing instructions and hearing guidance.',
                 active: false,
               },
             ].map((item) => (
@@ -149,35 +266,6 @@ function SuccessContent() {
           {' '}and{' '}
           <a href="/terms" className="underline hover:text-cream/30">Terms of Service</a>.
         </p>
-
-        {/* Subtle tax bill data deletion option */}
-        {reportId && !taxBillDeleted && (
-          <p className="text-[10px] text-cream/15 mt-4">
-            Uploaded a tax bill?{' '}
-            <button
-              type="button"
-              disabled={deletingTaxBill}
-              onClick={async () => {
-                setDeletingTaxBill(true);
-                try {
-                  const res = await fetch(`/api/reports/${reportId}/tax-bill-data`, {
-                    method: 'DELETE',
-                  });
-                  if (res.ok) setTaxBillDeleted(true);
-                } catch { /* non-critical */ }
-                setDeletingTaxBill(false);
-              }}
-              className="underline hover:text-cream/30 disabled:opacity-50"
-            >
-              {deletingTaxBill ? 'Removing...' : 'Request removal of your tax bill data'}
-            </button>
-          </p>
-        )}
-        {taxBillDeleted && (
-          <p className="text-[10px] text-cream/25 mt-4">
-            Your tax bill data has been removed.
-          </p>
-        )}
       </div>
     </div>
   );

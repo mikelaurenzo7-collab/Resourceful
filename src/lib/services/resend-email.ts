@@ -51,6 +51,14 @@ export interface ReportRejectionAlertParams {
   notes: string;
 }
 
+export interface PhotoReminderParams {
+  to: string;
+  reportId: string;
+  propertyAddress: string;
+  hoursRemaining: number;
+  estimatedSavings?: number;
+}
+
 export interface EmailResult {
   id: string;
 }
@@ -251,5 +259,60 @@ export async function sendReportRejectionAlert(
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[resend] sendReportRejectionAlert error: ${message}`);
     return { data: null, error: `Rejection alert failed: ${message}` };
+  }
+}
+
+/**
+ * Send a 12-hour reminder to upload photos before the enhancement window closes.
+ * Non-critical — failure doesn't affect the report pipeline.
+ */
+export async function sendPhotoReminderEmail(
+  params: PhotoReminderParams
+): Promise<ServiceResult<EmailResult>> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app';
+  const savingsLine = params.estimatedSavings
+    ? `<p style="margin: 16px 0; padding: 16px; background: #f0fdf4; border-radius: 8px; text-align: center;"><span style="font-size: 14px; color: #166534;">Our preliminary analysis found <strong>${formatDollarValue(params.estimatedSavings)}/year</strong> in potential savings.</span><br><span style="font-size: 12px; color: #15803d;">Photos of your property&apos;s condition can increase this amount.</span></p>`
+    : '';
+
+  try {
+    const { data, error } = await getResend().emails.send({
+      from: FROM_ADDRESS,
+      to: params.to,
+      subject: `${params.hoursRemaining} hours left to upload photos — ${params.propertyAddress}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #1a1a1a; font-size: 24px;">Strengthen Your Evidence Package</h1>
+          <p>Your property assessment report for <strong>${escapeHtml(params.propertyAddress)}</strong> is being finalized.</p>
+          <p>You have <strong>${params.hoursRemaining} hours</strong> left to upload photos that will be included in your report.</p>
+          ${savingsLine}
+          <h3 style="color: #1a1a1a; font-size: 16px; margin-top: 24px;">What to Photograph</h3>
+          <ul style="color: #444; font-size: 14px; line-height: 1.8;">
+            <li>Water damage, stains, or mold</li>
+            <li>Foundation cracks or structural issues</li>
+            <li>Outdated kitchens, bathrooms, or fixtures</li>
+            <li>Aging HVAC, plumbing, or electrical systems</li>
+            <li>Any deferred maintenance the assessor hasn&apos;t seen</li>
+          </ul>
+          <a href="${appUrl}/report/${params.reportId}/photos" style="display: inline-block; background: #2563eb; color: #fff; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; margin-top: 16px;">
+            Upload Photos Now
+          </a>
+          <p style="margin-top: 24px; font-size: 12px; color: #999;">
+            No photos? No problem — your report will still include comparable sales analysis
+            and independent market data. Photos just make your evidence package stronger.
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error(`[resend] sendPhotoReminderEmail error:`, error);
+      return { data: null, error: `Photo reminder failed: ${error.message}` };
+    }
+
+    return { data: { id: data?.id ?? '' }, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[resend] sendPhotoReminderEmail error: ${message}`);
+    return { data: null, error: `Photo reminder failed: ${message}` };
   }
 }

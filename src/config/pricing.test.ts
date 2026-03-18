@@ -7,14 +7,15 @@ import {
   PRICING_GUIDED,
   PRICING_EXPERT,
   TAX_BILL_DISCOUNT,
+  MONEY_BACK_GUARANTEE,
 } from './pricing';
 
 // ─── formatPrice ────────────────────────────────────────────────────────────
 
 describe('formatPrice', () => {
   it('converts cents to dollar string', () => {
-    expect(formatPrice(4900)).toBe('$49');
-    expect(formatPrice(14700)).toBe('$147');
+    expect(formatPrice(5900)).toBe('$59');
+    expect(formatPrice(17700)).toBe('$177');
     expect(formatPrice(100)).toBe('$1');
   });
 });
@@ -27,64 +28,72 @@ describe('TAX_BILL_DISCOUNT', () => {
   });
 });
 
+// ─── MONEY_BACK_GUARANTEE ───────────────────────────────────────────────────
+
+describe('MONEY_BACK_GUARANTEE', () => {
+  it('is enabled', () => {
+    expect(MONEY_BACK_GUARANTEE).toBe(true);
+  });
+});
+
 // ─── getPriceForReport (auto / pro se tier) ─────────────────────────────────
 
 describe('getPriceForReport — auto tier (pro se)', () => {
   it('returns correct price for residential tax appeal', () => {
-    expect(getPriceForReport('tax_appeal', 'residential')).toBe(4900);
+    expect(getPriceForReport('tax_appeal', 'residential')).toBe(5900);
   });
 
   it('returns correct price for commercial tax appeal', () => {
-    expect(getPriceForReport('tax_appeal', 'commercial')).toBe(9900);
+    expect(getPriceForReport('tax_appeal', 'commercial')).toBe(10900);
   });
 
   it('returns correct price for industrial tax appeal', () => {
-    expect(getPriceForReport('tax_appeal', 'industrial')).toBe(9900);
+    expect(getPriceForReport('tax_appeal', 'industrial')).toBe(10900);
   });
 
   it('returns correct price for land tax appeal', () => {
-    expect(getPriceForReport('tax_appeal', 'land')).toBe(4900);
+    expect(getPriceForReport('tax_appeal', 'land')).toBe(5900);
   });
 
   it('returns correct price for pre_purchase', () => {
-    expect(getPriceForReport('pre_purchase', 'residential')).toBe(5900);
-    expect(getPriceForReport('pre_purchase', 'commercial')).toBe(5900);
+    expect(getPriceForReport('pre_purchase', 'residential')).toBe(6900);
+    expect(getPriceForReport('pre_purchase', 'commercial')).toBe(6900);
   });
 
   it('returns correct price for pre_listing', () => {
-    expect(getPriceForReport('pre_listing', 'residential')).toBe(5900);
+    expect(getPriceForReport('pre_listing', 'residential')).toBe(6900);
   });
 });
 
-// ─── getPriceForReport (guided tier — 2x pro se) ───────────────────────────
+// ─── getPriceForReport (guided tier — 2x base) ─────────────────────────────
 
 describe('getPriceForReport — guided tier', () => {
   it('returns guided price for residential tax appeal', () => {
-    expect(getPriceForReport('tax_appeal', 'residential', 'guided_filing')).toBe(9800);
+    expect(getPriceForReport('tax_appeal', 'residential', 'guided_filing')).toBe(11800);
   });
 
   it('returns guided price for commercial tax appeal', () => {
-    expect(getPriceForReport('tax_appeal', 'commercial', 'guided_filing')).toBe(19800);
+    expect(getPriceForReport('tax_appeal', 'commercial', 'guided_filing')).toBe(21800);
   });
 
   it('returns guided price for pre_purchase', () => {
-    expect(getPriceForReport('pre_purchase', 'residential', 'guided_filing')).toBe(11800);
+    expect(getPriceForReport('pre_purchase', 'residential', 'guided_filing')).toBe(13800);
   });
 });
 
-// ─── getPriceForReport (expert tier — 3x pro se) ───────────────────────────
+// ─── getPriceForReport (expert tier — 3x base) ─────────────────────────────
 
 describe('getPriceForReport — expert tier', () => {
   it('returns expert price for residential tax appeal', () => {
-    expect(getPriceForReport('tax_appeal', 'residential', 'expert_reviewed')).toBe(14700);
+    expect(getPriceForReport('tax_appeal', 'residential', 'expert_reviewed')).toBe(17700);
   });
 
   it('returns expert price for commercial tax appeal', () => {
-    expect(getPriceForReport('tax_appeal', 'commercial', 'expert_reviewed')).toBe(29700);
+    expect(getPriceForReport('tax_appeal', 'commercial', 'expert_reviewed')).toBe(32700);
   });
 
   it('returns expert price for pre_purchase', () => {
-    expect(getPriceForReport('pre_purchase', 'residential', 'expert_reviewed')).toBe(17700);
+    expect(getPriceForReport('pre_purchase', 'residential', 'expert_reviewed')).toBe(20700);
   });
 });
 
@@ -92,23 +101,23 @@ describe('getPriceForReport — expert tier', () => {
 
 describe('getPriceForReport — tax bill discount', () => {
   it('applies 15% discount and rounds to nearest dollar', () => {
-    // $49 * 0.85 = $41.65 → rounds to $42 → 4200 cents
-    expect(getPriceForReport('tax_appeal', 'residential', 'auto', true)).toBe(4200);
+    // $59 * 0.85 = $50.15 → rounds to $50 → 5000 cents
+    expect(getPriceForReport('tax_appeal', 'residential', 'auto', true)).toBe(5000);
   });
 
   it('applies discount to commercial', () => {
-    // $99 * 0.85 = $84.15 → rounds to $84 → 8400 cents
-    expect(getPriceForReport('tax_appeal', 'commercial', 'auto', true)).toBe(8400);
+    // $109 * 0.85 = $92.65 → rounds to $93 → 9300 cents
+    expect(getPriceForReport('tax_appeal', 'commercial', 'auto', true)).toBe(9300);
   });
 
   it('applies discount to expert tier', () => {
-    // $147 * 0.85 = $124.95 → rounds to $125 → 12500 cents
-    expect(getPriceForReport('tax_appeal', 'residential', 'expert_reviewed', true)).toBe(12500);
+    // $177 * 0.85 = $150.45 → rounds to $150 → 15000 cents
+    expect(getPriceForReport('tax_appeal', 'residential', 'expert_reviewed', true)).toBe(15000);
   });
 
   it('applies discount to pre_purchase', () => {
-    // $59 * 0.85 = $50.15 → rounds to $50 → 5000 cents
-    expect(getPriceForReport('pre_purchase', 'residential', 'auto', true)).toBe(5000);
+    // $69 * 0.85 = $58.65 → rounds to $59 → 5900 cents
+    expect(getPriceForReport('pre_purchase', 'residential', 'auto', true)).toBe(5900);
   });
 });
 

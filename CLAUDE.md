@@ -3,26 +3,35 @@
 ## What This Is
 A nationwide web app that generates professional property tax appeal reports using AI analysis and public property data APIs. Reports require admin approval before delivery to clients. Photos and tax bills are collected post-payment to strengthen the evidence package — never as a barrier to entry.
 
-## User Flow — Trust First, Enhance Later
-The intake is intentionally minimal: address, property type, service type, email, pay.
-We do NOT ask for photos, tax bills, or detailed property issues before payment.
+## Business Model — Option C: Full Payment with Money-Back Preview
+The user flow is designed to minimize friction and maximize trust:
 
-**Why:** Asking for too much upfront erodes trust. The user hasn't committed yet —
-don't make them work for it. After they pay, they're invested and we can explain
-how photos strengthen their case. The appeal deadline is weeks or months away;
-there's no rush to collect evidence before generating the initial report.
+1. **Minimal intake** — Address, property type, service type, email, choose tier, pay.
+2. **Instant preview** — Immediately after payment, show a statistical estimate:
+   "Based on comparable sales, we estimate your property may be over-assessed by $X,
+   saving you $Y/year in taxes." This uses the IAAO 8% error rate — always defensible.
+3. **24-hour photo window** — Success page shows a countdown timer and encourages
+   photo uploads: "Strengthen your evidence — upload photos within 24 hours."
+   A reminder email fires at the 12-hour mark.
+4. **Money-back guarantee** — If our full analysis finds no savings opportunity,
+   the customer gets a complete refund. No questions asked.
+
+**Why this works:** The instant preview gives the customer immediate value and
+validates their purchase. The money-back guarantee removes all risk. Photos become
+"how do I make this number even bigger" — a much stronger motivator than
+"please upload photos before we can help you."
 
 ### Wizard Steps (3 steps only)
 1. **Goals** — Service type (tax appeal, pre-purchase, pre-listing)
 2. **Property** — Address, county, property type
 3. **Payment** — Choose tier, enter email, pay
 
-### Post-Payment Enhancement
-After payment, the success page and report dashboard encourage:
-- **Photo uploads** — "Your photos are your strongest independent evidence.
-  Upload them anytime before your hearing to strengthen your case."
-- **Tax bill uploads** — Uploaded tax bills unlock a 15% refund/credit
-  and provide more accurate baseline data.
+### Post-Payment Enhancement (24-Hour Window)
+After payment, the success page shows:
+- **Instant preview** — Statistical over-assessment estimate + potential savings
+- **Money-back guarantee** — Prominent badge: "No savings found? Full refund."
+- **24-hour photo timer** — Countdown with upload CTA
+- **12-hour reminder email** — Automated nudge with photo tips
 
 Photos and tax bills enhance the report but are never required for generation.
 
@@ -33,8 +42,8 @@ status = 'pending_approval' for admin review. Admin can review, approve, reject,
 or re-run reports via the admin dashboard. Stage 8 (sending the PDF and filing
 guide via email) only executes after admin approval.
 
-Quick turnaround is the goal — the initial report generates fast using AI + ATTOM
-data. Photos uploaded later can trigger report enhancement/regeneration.
+The initial report generates using AI + ATTOM data. Photos uploaded during
+the 24-hour window are incorporated before admin review.
 
 ## Nationwide Architecture Rule
 This platform serves every county in every state. ATTOM is the universal data source that covers the entire country. No county-specific logic is hardcoded in application code. All county-specific behavior comes from the county_rules database table: assessment ratios, appeal board names, filing deadlines, form names, hearing formats. The data-router supports future county-specific API adapters via county_rules.assessor_api_url, but none are required — ATTOM handles everything.
@@ -68,33 +77,30 @@ This platform serves every county in every state. ATTOM is the universal data so
 County assessment data is NOT trustworthy. ATTOM sources from county records.
 If a county is corrupt or wrong, ATTOM inherits that same bad data. Therefore:
 
-- **Pre-payment valuation**: Pure statistical estimate only (IAAO error rates).
-  NEVER compare against ATTOM marketValue or any third-party "market value"
-  that could originate from the same county records. The 8% human-error rate
-  is mathematically defensible regardless of county data quality.
-- **Initial report (ATTOM + AI)**: Uses comparable sales and AI analysis.
-  This is the quick-turnaround product — generated with zero user effort
-  beyond providing the address.
-- **Enhanced report (+ user photos)**: When the user uploads photos
-  post-payment, the report can be regenerated with photo-based condition
-  adjustments. This is our strongest independent evidence.
+- **Instant preview (post-payment)**: Pure statistical estimate only (IAAO 8% error
+  rate). NEVER compare against ATTOM marketValue. This is the number shown
+  immediately after payment to validate the purchase.
+- **Full report (ATTOM + AI)**: Uses comparable sales and AI analysis.
+  Generated with zero user effort beyond providing the address.
+- **Enhanced report (+ user photos)**: When the user uploads photos during
+  the 24-hour window, the report incorporates photo-based condition adjustments.
+  This is our strongest independent evidence.
 - **User photos + measurements**: This is OUR proprietary data. As it compounds
-  over time, it becomes our strongest independent data source. It must always be
-  treated as higher-trust than county or ATTOM assessment data.
+  over time, it becomes our strongest independent data source. Always treated
+  as higher-trust than county or ATTOM assessment data.
 - **Calibration system**: Learns from real outcomes to improve accuracy over time.
-  This is the feedback loop that makes our data increasingly independent from
-  county sources.
 
 ## Payment & Messaging Rules — CRITICAL
 - ALL payments happen BEFORE the valuation is shown. No exceptions.
-- Never use the word "free" anywhere in user-facing copy. Use "run the numbers"
-  or similar. Saying "free" then charging is a trust violation.
+- The instant preview is shown AFTER payment — it validates, not sells.
+- Never use the word "free" anywhere in user-facing copy.
 - Never ask for photos, tax bills, or detailed property info before payment.
   The intake should feel effortless — address, type, pay.
+- Money-back guarantee: if no savings found, full refund. Displayed prominently
+  on payment page and success page.
 - Tax bill uploaders get 15% off (TAX_BILL_DISCOUNT in config/pricing.ts).
   This is offered post-payment as an incentive, not a pre-payment requirement.
-- Tax bill uploaders skip redundant ATTOM assessment lookups (we already have
-  their assessed value). ATTOM is still called for building details and comps.
+- Tax bill uploaders skip redundant ATTOM assessment lookups.
 
 ## What NOT To Do
 - Never send a report to a client without admin approval first
@@ -106,3 +112,4 @@ If a county is corrupt or wrong, ATTOM inherits that same bad data. Therefore:
 - Never say "free" in any user-facing text
 - Never ask for photos or tax bills before payment — trust first, enhance later
 - Never block report generation on missing photos — AI + ATTOM is enough to start
+- Never show the instant preview BEFORE payment — it comes after as validation
