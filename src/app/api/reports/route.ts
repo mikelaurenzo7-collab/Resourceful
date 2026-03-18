@@ -87,6 +87,8 @@ export async function POST(request: NextRequest) {
       tax_bill_tax_amount: tax_bill_tax_amount ?? null,
       tax_bill_tax_year: tax_bill_tax_year ?? null,
       attom_cache_id: attom_cache_id ?? null,
+      pipeline_locked_at: null,
+      pipeline_lock_owner: null,
       pipeline_last_completed_stage: null,
       pipeline_error_log: null,
       pipeline_started_at: null,

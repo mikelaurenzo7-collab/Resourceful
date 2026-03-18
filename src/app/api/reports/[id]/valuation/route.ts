@@ -41,8 +41,8 @@ export async function POST(
       );
     }
 
-    let assessedValue: number;
-    let taxAmount: number;
+    let assessedValue = 0;
+    let taxAmount = 0;
     let countyName: string | null = report.county;
 
     if (report.has_tax_bill && report.tax_bill_assessed_value) {
@@ -63,7 +63,7 @@ export async function POST(
         }
       }
 
-      if (!resolved!) {
+      if (!resolved) {
         const fullAddress = [report.property_address, report.city, report.state]
           .filter(Boolean)
           .join(', ');
@@ -96,11 +96,11 @@ export async function POST(
     // We deliberately do NOT compare against ATTOM's marketValue because
     // ATTOM often sources from the same county records.
     const conservativeErrorRate = 0.08;
-    const overassessment = Math.round(assessedValue! * conservativeErrorRate);
+    const overassessment = Math.round(assessedValue * conservativeErrorRate);
 
     const effectiveTaxRate =
-      taxAmount! > 0 && assessedValue! > 0
-        ? taxAmount! / assessedValue!
+      taxAmount > 0 && assessedValue > 0
+        ? taxAmount / assessedValue
         : 0.02;
 
     const estimatedAnnualSavings = Math.max(

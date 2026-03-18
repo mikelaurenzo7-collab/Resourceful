@@ -5,9 +5,10 @@
 // attach, what to expect, and the 3 strongest arguments.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Report, CountyRule, ReportNarrative, PropertyData, IncomeAnalysis } from '@/types/database';
+import type { Database, Report, CountyRule, ReportNarrative, PropertyData } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { generateFilingGuide, type FilingGuidePayload } from '@/lib/services/anthropic';
+import { computeDeadlineInfo, formatDeadlineForReport } from '@/lib/services/county-deadlines';
 import { AI_MODELS } from '@/config/ai';
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
@@ -80,46 +81,7 @@ export async function runFilingGuide(
 
   const assessedValue = propertyData?.assessed_value ?? 0;
 
-  // ── Fetch concluded value from comparable sales median ─────────────────
-  // (The concluded value was calculated in stage 5 and used in narratives.
-  //  Re-derive it here from comps for consistency.)
-  const { data: compsData } = await supabase
-    .from('comparable_sales')
-    .select('adjusted_price_per_sqft, sale_price')
-    .eq('report_id', reportId);
-  const comps = (compsData ?? []) as Pick<import('@/types/database').ComparableSale, 'adjusted_price_per_sqft' | 'sale_price'>[];
-
-  let concludedValue = 0;
-  if (comps.length > 0 && propertyData?.building_sqft_gross) {
-    const adjustedPrices = comps
-      .map((c) => c.adjusted_price_per_sqft)
-      .filter((p): p is number => p != null && p > 0)
-      .sort((a, b) => a - b);
-
-    if (adjustedPrices.length > 0) {
-      const mid = Math.floor(adjustedPrices.length / 2);
-      const medianPricePerSqft = adjustedPrices.length % 2 === 0
-        ? (adjustedPrices[mid - 1] + adjustedPrices[mid]) / 2
-        : adjustedPrices[mid];
-      concludedValue = Math.round((medianPricePerSqft * propertyData.building_sqft_gross) / 1000) * 1000;
-    }
-  }
-
-  // Check income approach
-  if (report.property_type === 'commercial' || report.property_type === 'industrial') {
-    const { data: incomeRaw } = await supabase
-      .from('income_analysis')
-      .select('concluded_value_income_approach')
-      .eq('report_id', reportId)
-      .single();
-    const incomeData = incomeRaw as Pick<IncomeAnalysis, 'concluded_value_income_approach'> | null;
-
-    if (incomeData?.concluded_value_income_approach && concludedValue > 0) {
-      concludedValue = Math.round(
-        (concludedValue * 0.7 + incomeData.concluded_value_income_approach * 0.3) / 1000
-      ) * 1000;
-    }
-  }
+  const concludedValue = propertyData?.concluded_value ?? 0;
 
   if (concludedValue <= 0) {
     return { success: false, error: 'No concluded value available for filing guide' };
@@ -136,6 +98,9 @@ export async function runFilingGuide(
 
   // ── Calculate potential savings ───────────────────────────────────────
   const potentialSavings = Math.max(0, assessedValue - concludedValue);
+
+  // ── Compute deadline info ────────────────────────────────────────────
+  const deadlineInfo = countyRule ? computeDeadlineInfo(countyRule) : null;
 
   // ── Build filing guide payload ────────────────────────────────────────
   const payload: FilingGuidePayload = {
@@ -192,6 +157,11 @@ export async function runFilingGuide(
     furtherAppealBody: countyRule?.further_appeal_body ?? null,
     furtherAppealDeadlineRule: countyRule?.further_appeal_deadline_rule ?? null,
     furtherAppealUrl: countyRule?.further_appeal_url ?? null,
+    // Computed deadline fields
+    deadlineUrgency: deadlineInfo?.urgency ?? 'unknown',
+    daysRemaining: deadlineInfo?.daysRemaining ?? null,
+    deadlineFormatted: deadlineInfo ? formatDeadlineForReport(deadlineInfo) : null,
+    windowOpen: deadlineInfo?.windowOpen ?? true,
   };
 
   // ── Generate filing guide via AI ──────────────────────────────────────

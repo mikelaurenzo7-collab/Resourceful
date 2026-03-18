@@ -101,6 +101,9 @@ export type Report = {
   savings_amount_cents: number | null;
   // ATTOM property cache reference (pre-payment lookup)
   attom_cache_id: string | null;
+  // Row-level pipeline lock (replaces advisory locks for serverless compatibility)
+  pipeline_locked_at: string | null;
+  pipeline_lock_owner: string | null;
 };
 
 export type PropertyData = {

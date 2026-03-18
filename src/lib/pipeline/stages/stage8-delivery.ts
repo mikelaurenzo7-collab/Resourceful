@@ -90,29 +90,7 @@ export async function runDelivery(
 
   // ── Calculate values ──────────────────────────────────────────────────
   const assessedValue = propertyData?.assessed_value ?? 0;
-
-  // Derive concluded value from comps
-  const { data: compsData } = await supabase
-    .from('comparable_sales')
-    .select('adjusted_price_per_sqft, sale_price')
-    .eq('report_id', reportId);
-  const comps = (compsData ?? []) as Pick<import('@/types/database').ComparableSale, 'adjusted_price_per_sqft' | 'sale_price'>[];
-
-  let concludedValue = 0;
-  if (comps.length > 0 && propertyData?.building_sqft_gross) {
-    const adjustedPrices = comps
-      .map((c) => c.adjusted_price_per_sqft)
-      .filter((p): p is number => p != null && p > 0)
-      .sort((a, b) => a - b);
-
-    if (adjustedPrices.length > 0) {
-      const mid = Math.floor(adjustedPrices.length / 2);
-      const median = adjustedPrices.length % 2 === 0
-        ? (adjustedPrices[mid - 1] + adjustedPrices[mid]) / 2
-        : adjustedPrices[mid];
-      concludedValue = Math.round((median * propertyData.building_sqft_gross) / 1000) * 1000;
-    }
-  }
+  const concludedValue = propertyData?.concluded_value ?? 0;
 
   const potentialSavings = Math.max(0, assessedValue - concludedValue);
 

@@ -59,6 +59,8 @@ export function makeReport(overrides?: Partial<Report>): Report {
     appeal_outcome: null,
     savings_amount_cents: null,
     attom_cache_id: null,
+    pipeline_locked_at: null,
+    pipeline_lock_owner: null,
     ...overrides,
   };
 }

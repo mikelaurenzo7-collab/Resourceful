@@ -180,7 +180,7 @@ export async function runPhotoAnalysis(
         if (photo.storage_path) {
           const { data: signedUrl } = await supabase
             .storage
-            .from('photos')
+            .from('reports')
             .createSignedUrl(photo.storage_path, 3600); // 1 hour
 
           imageUrl = signedUrl?.signedUrl ?? null;

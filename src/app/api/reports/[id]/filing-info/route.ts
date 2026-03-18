@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report, CountyRule } from '@/types/database';
+import { computeDeadlineInfo } from '@/lib/services/county-deadlines';
 
 export async function GET(
   _req: NextRequest,
@@ -130,6 +131,8 @@ export async function GET(
     authorizedRepFormUrl: countyRule.authorized_rep_form_url,
     authorizedRepTypes: countyRule.authorized_rep_types,
     repRestrictionsNotes: countyRule.rep_restrictions_notes,
+    // Computed deadline info
+    deadlineInfo: computeDeadlineInfo(countyRule),
   });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

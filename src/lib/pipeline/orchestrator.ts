@@ -125,12 +125,11 @@ export async function runPipeline(
   const supabase = createAdminClient();
 
   // ── Acquire pipeline lock (prevents concurrent runs for same report) ──
-  // Note: `as any` cast is required because Supabase JS SDK does not generate
-  // types for custom RPC functions defined in migrations. The function signatures
-  // are: acquire_pipeline_lock(p_report_id uuid) → boolean,
-  //       release_pipeline_lock(p_report_id uuid) → void.
+  // Uses row-level locking (v2) instead of advisory locks, which are
+  // session-scoped and unreliable with connection poolers (Supabase/Vercel).
+  // The lock auto-expires after 15 minutes to prevent stale locks.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: lockAcquired } = await (supabase.rpc as any)('acquire_pipeline_lock', {
+  const { data: lockAcquired } = await (supabase.rpc as any)('acquire_pipeline_lock_v2', {
     p_report_id: reportId,
   });
 
@@ -151,7 +150,7 @@ export async function runPipeline(
   if (fetchError || !report) {
     const msg = `Failed to fetch report ${reportId}: ${fetchError?.message ?? 'not found'}`;
     console.error(`[pipeline] ${msg}`);
-    await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+    await (supabase.rpc as any)('release_pipeline_lock_v2', { p_report_id: reportId });
     return { success: false, error: msg };
   }
 
@@ -182,7 +181,7 @@ export async function runPipeline(
       })
       .eq('id', reportId);
 
-    await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+    await (supabase.rpc as any)('release_pipeline_lock_v2', { p_report_id: reportId });
     return { success: false, error: message };
   }
 }
@@ -267,7 +266,7 @@ async function runPipelineStages(
     if (!stageSucceeded) {
       await handleStageFailure(supabase, reportId, stage, lastError);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+      await (supabase.rpc as any)('release_pipeline_lock_v2', { p_report_id: reportId });
       return { success: false, error: `Stage ${stage.number} (${stage.name}) failed: ${lastError}` };
     }
 
@@ -315,7 +314,7 @@ async function runPipelineStages(
   }
 
   // ── Release pipeline lock ───────────────────────────────────────────────
-  await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+  await (supabase.rpc as any)('release_pipeline_lock_v2', { p_report_id: reportId });
 
   console.log(`[pipeline] Pipeline complete for report ${reportId}. Awaiting admin approval.`);
   return { success: true };

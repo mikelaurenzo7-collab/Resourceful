@@ -217,12 +217,13 @@ src/
 │   │   ├── fema.ts                 # Flood zone lookups
 │   │   ├── pdf.ts                  # Puppeteer PDF generation
 │   │   ├── stripe-service.ts       # Stripe payment handling
-│   │   └── resend-email.ts         # Resend email service
+│   │   ├── resend-email.ts         # Resend email service
+│   │   └── county-deadlines.ts    # Appeal deadline computation + urgency
 │   │
 │   ├── repository/                 # Typed data access layer (no raw SQL in components)
 │   │   ├── reports.ts              # Report CRUD + joins
 │   │   ├── admin.ts                # Approval audit trail
-│   │   ├── county-rules.ts         # County data lookups
+│   │   ├── county-rules.ts         # County data lookups (by FIPS, name, state, report)
 │   │   └── property-cache.ts       # ATTOM response caching (lookup, upsert)
 │   │
 │   ├── calibration/                # Valuation accuracy learning system
@@ -262,7 +263,9 @@ The report generation pipeline runs as an ordered sequence of stages. Each stage
 
 Stage 3 (income analysis) only runs for commercial/industrial properties. Stage 6 (filing guide) only runs for tax appeals. Stage 8 (delivery) only executes after admin approval.
 
-The orchestrator uses a database lock (`acquire_pipeline_lock` / `release_pipeline_lock` RPCs) to prevent concurrent runs on the same report. Retries up to 2 times for transient errors. 10-minute timeout.
+The orchestrator uses row-level locking (`pipeline_locked_at` / `pipeline_lock_owner` columns on `reports`) via `acquire_pipeline_lock_v2` / `release_pipeline_lock_v2` RPCs to prevent concurrent runs. Stale locks auto-expire after 15 minutes. Retries up to 2 times for transient errors. 10-minute timeout.
+
+**Concluded value**: Stage 5 computes the authoritative concluded value (with income weighting, calibration, photo adjustments) and stores it in `property_data.concluded_value`. All downstream stages (6, 7, 8) and the viewer endpoint read this stored value — they never recalculate it.
 
 ### Data Access
 - **Repository pattern**: All database queries go through typed functions in `lib/repository/`. Never write raw Supabase queries in pages or API routes.
@@ -275,12 +278,24 @@ ATTOM responses are cached in `property_cache` (keyed by normalized address, 90-
 2. Pipeline Stage 1 (`stage1-data-collection.ts`) — reads cache instead of calling ATTOM
 This reduces 3 ATTOM API calls per report to 1. The `reports.attom_cache_id` FK links each report to its cached data. For repeat lookups of the same address (e.g., neighbors), the cache hit eliminates the ATTOM call entirely.
 
+### County Logic & Deadlines
+County rules are the single source of truth for all county-specific behavior. The `county_rules` table stores 55+ fields per county including assessment ratios, appeal boards, filing schedules, hearing formats, representation rules, and further appeal paths. State-level expertise is stored in `state_appeal_strategies` (deep text injected into AI prompts).
+
+**Deadline computation** (`lib/services/county-deadlines.ts`) handles three patterns:
+1. Fixed date (e.g., "May 15" — stored in `next_appeal_deadline`)
+2. Window-based (computed from `appeal_window_start_month` / `appeal_window_end_month` / `appeal_window_end_day`)
+3. Text description (fallback to `appeal_deadline_rule`)
+
+Deadlines are classified by urgency: `expired`, `urgent` (<=7 days), `approaching` (<=30 days), `open`, or `unknown`. This drives UI badges, email urgency, and filing guide language.
+
+**County resolution** for a report uses `getCountyForReport()` — priority: `county_fips` > `county name + state`.
+
 ### API Routes
 All API routes live under `src/app/api/`. Report lifecycle endpoints use UUID-keyed URLs (`/api/reports/[id]/...`). The `/ready` endpoint is idempotent and rate-limited. The `/api/property/lookup` endpoint is rate-limited (30/15min) and returns cached or fresh ATTOM data. Admin endpoints require authentication. The Stripe webhook verifies signatures. The cron endpoint requires `CRON_SECRET`.
 
 ## Database
 
-**14 migrations** in `supabase/migrations/` (001–014). Core tables:
+**15 migrations** in `supabase/migrations/` (001–015). Core tables:
 - `reports` — Main entity with status tracking, payment, filing info
 - `property_data` — Valuation data from ATTOM + calculations
 - `photos` — User-uploaded property photos with AI analysis results

@@ -171,6 +171,11 @@ export interface FilingGuidePayload {
   furtherAppealBody?: string | null;
   furtherAppealDeadlineRule?: string | null;
   furtherAppealUrl?: string | null;
+  // Computed deadline fields
+  deadlineUrgency?: 'expired' | 'urgent' | 'approaching' | 'open' | 'unknown';
+  daysRemaining?: number | null;
+  deadlineFormatted?: string | null;
+  windowOpen?: boolean;
 }
 
 // ─── Section Names ──────────────────────────────────────────────────────────

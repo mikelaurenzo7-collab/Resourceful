@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report, PropertyData, CountyRule, ReportNarrative } from '@/types/database';
+import { computeDeadlineInfo } from '@/lib/services/county-deadlines';
 
 const SIGNED_URL_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
@@ -60,7 +61,7 @@ export async function GET(
   }
 
   // Fetch in parallel: property data, filing guide, county rules, PDF URL
-  const [propertyResult, filingGuideResult, countyResult, compsResult] = await Promise.all([
+  const [propertyResult, filingGuideResult, countyResult] = await Promise.all([
     supabase.from('property_data').select('*').eq('report_id', reportId).single(),
     supabase.from('report_narratives').select('content').eq('report_id', reportId).eq('section_name', 'pro_se_filing_guide').single(),
     report.county_fips
@@ -68,29 +69,13 @@ export async function GET(
       : report.county && report.state
         ? supabase.from('county_rules').select('*').eq('county_name', report.county).eq('state_abbreviation', report.state).single()
         : Promise.resolve({ data: null, error: null }),
-    supabase.from('comparable_sales').select('adjusted_price_per_sqft, sale_price').eq('report_id', reportId),
   ]);
 
   const propertyData = propertyResult.data as PropertyData | null;
   const filingGuide = (filingGuideResult.data as Pick<ReportNarrative, 'content'> | null)?.content ?? null;
   const countyRule = countyResult.data as CountyRule | null;
 
-  // Calculate concluded value
-  const comps = (compsResult.data ?? []) as { adjusted_price_per_sqft: number | null; sale_price: number | null }[];
-  let concludedValue = 0;
-  if (comps.length > 0 && propertyData?.building_sqft_gross) {
-    const adjustedPrices = comps
-      .map((c) => c.adjusted_price_per_sqft)
-      .filter((p): p is number => p != null && p > 0)
-      .sort((a, b) => a - b);
-    if (adjustedPrices.length > 0) {
-      const mid = Math.floor(adjustedPrices.length / 2);
-      const median = adjustedPrices.length % 2 === 0
-        ? (adjustedPrices[mid - 1] + adjustedPrices[mid]) / 2
-        : adjustedPrices[mid];
-      concludedValue = Math.round((median * propertyData.building_sqft_gross) / 1000) * 1000;
-    }
-  }
+  const concludedValue = propertyData?.concluded_value ?? 0;
 
   // Generate signed PDF URL
   let pdfUrl: string | null = null;
@@ -148,6 +133,7 @@ export async function GET(
       furtherAppealBody: countyRule.further_appeal_body,
       proSeTips: countyRule.pro_se_tips,
     } : null,
+    deadlineInfo: countyRule ? computeDeadlineInfo(countyRule) : null,
   });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

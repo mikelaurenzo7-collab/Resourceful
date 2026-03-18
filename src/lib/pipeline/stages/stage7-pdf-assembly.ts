@@ -129,7 +129,7 @@ export async function runPdfAssembly(
   if (exteriorPhoto?.storage_path) {
     const { data: signedUrl } = await supabase
       .storage
-      .from('photos')
+      .from('reports')
       .createSignedUrl(exteriorPhoto.storage_path, 86400);
     coverImageUrl = signedUrl?.signedUrl ?? null;
   }
@@ -149,7 +149,7 @@ export async function runPdfAssembly(
       if (p.storage_path) {
         const { data: signedUrl } = await supabase
           .storage
-          .from('photos')
+          .from('reports')
           .createSignedUrl(p.storage_path, 86400);
         return { ...p, storage_path: signedUrl?.signedUrl ?? p.storage_path };
       }
@@ -165,22 +165,7 @@ export async function runPdfAssembly(
     }
   }
 
-  // ── Derive concluded value from comps ─────────────────────────────────
-  let concludedValue = 0;
-  if (comps.length > 0 && propertyData.building_sqft_gross) {
-    const adjustedPrices = comps
-      .map((c) => c.adjusted_price_per_sqft)
-      .filter((p): p is number => p != null && p > 0)
-      .sort((a, b) => a - b);
-
-    if (adjustedPrices.length > 0) {
-      const mid = Math.floor(adjustedPrices.length / 2);
-      const median = adjustedPrices.length % 2 === 0
-        ? (adjustedPrices[mid - 1] + adjustedPrices[mid]) / 2
-        : adjustedPrices[mid];
-      concludedValue = Math.round((median * propertyData.building_sqft_gross) / 1000) * 1000;
-    }
-  }
+  const concludedValue = propertyData?.concluded_value ?? 0;
 
   // ── Parse filing guide from narrative ─────────────────────────────────
   let filingGuide: FilingGuide | null = null;
