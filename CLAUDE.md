@@ -35,15 +35,20 @@ After payment, the success page shows:
 
 Photos and tax bills enhance the report but are never required for generation.
 
-## Delivery Model
-The pipeline completes stages 1-7 (data gathering, AI analysis, PDF generation)
-using ATTOM data + Anthropic AI. After completion, the report enters
-status = 'pending_approval' for admin review. Admin can review, approve, reject,
-or re-run reports via the admin dashboard. Stage 8 (sending the PDF and filing
-guide via email) only executes after admin approval.
+## Delivery Model — Within 24 Hours
+Pipeline fires immediately on payment (Stripe webhook). Stages 1-7 run
+autonomously using ATTOM data + Anthropic AI. Pipeline completes in ~10 minutes.
+Report enters status = 'pending_approval' for admin review.
 
-The initial report generates using AI + ATTOM data. Photos uploaded during
-the 24-hour window are incorporated before admin review.
+If the customer uploads photos before admin approves, admin can re-run
+stages 4-7 to incorporate them. Admin reviews, approves, and delivers
+within 24 hours of payment. Stage 8 (delivery email with PDF + filing
+guide) only executes after admin approval.
+
+The 24-hour window is NOT a delay — it's breathing room for:
+- The customer to upload photos (not required, but strengthens the case)
+- Admin to review at a comfortable pace
+- Photos to be incorporated if they arrive before delivery
 
 ## Nationwide Architecture Rule
 This platform serves every county in every state. ATTOM is the universal data source that covers the entire country. No county-specific logic is hardcoded in application code. All county-specific behavior comes from the county_rules database table: assessment ratios, appeal board names, filing deadlines, form names, hearing formats. The data-router supports future county-specific API adapters via county_rules.assessor_api_url, but none are required — ATTOM handles everything.

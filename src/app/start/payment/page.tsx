@@ -110,7 +110,7 @@ function CheckoutForm() {
                   ? 'Report + live session to guide you through filing'
                   : state.reviewTier === 'expert_reviewed'
                     ? 'Expert review, we file and attend the hearing on your behalf'
-                    : 'Quick turnaround — reviewed and delivered to your email'}
+                    : 'Reviewed and delivered to your email within 24 hours'}
               </p>
             </div>
 
@@ -179,7 +179,7 @@ function CheckoutForm() {
             ? 'Your report will be generated and expert-reviewed, then our team will schedule a live session to walk you through the filing process step by step.'
             : state.reviewTier === 'expert_reviewed'
               ? 'Your report will be generated and expert-reviewed by a licensed appraiser, then our team will file the appeal on your behalf and attend the hearing as your authorized representative.'
-              : 'Your report will be generated quickly using comparable sales and AI analysis, then reviewed by our team before delivery.'}
+              : 'Your report will be generated using comparable sales and AI analysis, reviewed by our team, and delivered within 24 hours.'}
           {state.serviceType === 'tax_appeal' && state.reviewTier === 'auto' && ' It includes step-by-step pro se filing instructions for your county.'}
           {' '}After payment, you can upload photos of your property to strengthen your evidence package.
         </p>
@@ -328,7 +328,7 @@ export default function PaymentPage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  {isTaxAppeal ? 'Step-by-step pro se filing guide included' : 'Quick turnaround delivery'}
+                  {isTaxAppeal ? 'Step-by-step pro se filing guide included' : 'Delivered within 24 hours'}
                 </li>
                 <li className="flex items-start gap-2">
                   <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
