@@ -5,7 +5,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { PropertyCache, PropertyCacheInsert } from '@/types/database';
 import type { AttomPropertyDetail } from '@/lib/services/attom';
-import type { PropertyType } from '@/types/database';
+import { extractPropertySummary } from '@/lib/services/attom';
 
 type SupabaseAdmin = ReturnType<typeof createAdminClient>;
 
@@ -21,65 +21,37 @@ export function normalizeAddressKey(
     .join(', ');
 }
 
-// ─── ATTOM Property Type → Our Property Type ───────────────────────────────
+// ─── Scalar-only columns (exclude attom_raw for lightweight lookups) ────────
 
-export function mapAttomPropertyType(attomType: string): PropertyType | null {
-  const lower = attomType.toLowerCase();
-  if (
-    lower.includes('single family') ||
-    lower.includes('condominium') ||
-    lower.includes('townhouse') ||
-    lower.includes('duplex') ||
-    lower.includes('triplex') ||
-    lower.includes('residential') ||
-    lower.includes('mobile home') ||
-    lower.includes('manufactured')
-  ) {
-    return 'residential';
-  }
-  if (
-    lower.includes('commercial') ||
-    lower.includes('office') ||
-    lower.includes('retail') ||
-    lower.includes('mixed use')
-  ) {
-    return 'commercial';
-  }
-  if (
-    lower.includes('industrial') ||
-    lower.includes('warehouse') ||
-    lower.includes('manufacturing')
-  ) {
-    return 'industrial';
-  }
-  if (
-    lower.includes('vacant') ||
-    lower.includes('land') ||
-    lower.includes('agricultural')
-  ) {
-    return 'land';
-  }
-  return null;
-}
+const SCALAR_COLUMNS = 'id, address_key, property_type, year_built, bedrooms, bathrooms, building_sqft, lot_sqft, stories, assessed_value, tax_amount, assessment_year, county_fips, county_name, created_at, expires_at' as const;
 
 // ─── Lookup ─────────────────────────────────────────────────────────────────
 
+/**
+ * Lookup cached property by normalized address key.
+ * Returns scalar fields only (excludes attom_raw JSONB for performance).
+ */
 export async function getCachedProperty(
   addressKey: string,
   supabase?: SupabaseAdmin
-): Promise<PropertyCache | null> {
+): Promise<Omit<PropertyCache, 'attom_raw'> | null> {
   const client = supabase ?? createAdminClient();
   const { data, error } = await client
     .from('property_cache')
-    .select('*')
+    .select(SCALAR_COLUMNS)
     .eq('address_key', addressKey)
     .gt('expires_at', new Date().toISOString())
     .single();
 
   if (error || !data) return null;
-  return data as unknown as PropertyCache;
+  return data as unknown as Omit<PropertyCache, 'attom_raw'>;
 }
 
+/**
+ * Lookup cached property by ID. Used by valuation endpoint and pipeline Stage 1.
+ * Includes attom_raw for Stage 1's full data collection needs.
+ * Respects TTL — expired entries are not returned.
+ */
 export async function getCachedPropertyById(
   id: string,
   supabase?: SupabaseAdmin
@@ -89,6 +61,7 @@ export async function getCachedPropertyById(
     .from('property_cache')
     .select('*')
     .eq('id', id)
+    .gt('expires_at', new Date().toISOString())
     .single();
 
   if (error || !data) return null;
@@ -103,22 +76,23 @@ export async function upsertPropertyCache(
   supabase?: SupabaseAdmin
 ): Promise<PropertyCache> {
   const client = supabase ?? createAdminClient();
+  const summary = extractPropertySummary(attomDetail);
 
   const payload: PropertyCacheInsert = {
     address_key: addressKey,
     attom_raw: attomDetail as unknown as Record<string, unknown>,
-    property_type: mapAttomPropertyType(attomDetail.summary.propertyType),
-    year_built: attomDetail.summary.yearBuilt || null,
-    bedrooms: attomDetail.summary.bedrooms || null,
-    bathrooms: attomDetail.summary.bathrooms || null,
-    building_sqft: attomDetail.summary.buildingSquareFeet || null,
-    lot_sqft: attomDetail.summary.lotSquareFeet || null,
-    stories: attomDetail.summary.stories || null,
-    assessed_value: attomDetail.assessment.assessedValue || null,
-    tax_amount: attomDetail.assessment.taxAmount || null,
-    assessment_year: attomDetail.assessment.assessmentYear || null,
-    county_fips: attomDetail.location.countyFips || null,
-    county_name: attomDetail.location.countyName || null,
+    property_type: summary.propertyType,
+    year_built: summary.yearBuilt,
+    bedrooms: summary.bedrooms,
+    bathrooms: summary.bathrooms,
+    building_sqft: summary.buildingSqFt,
+    lot_sqft: summary.lotSqFt,
+    stories: summary.stories,
+    assessed_value: summary.assessedValue,
+    tax_amount: summary.taxAmount,
+    assessment_year: summary.assessmentYear,
+    county_fips: summary.countyFips,
+    county_name: summary.countyName,
   };
 
   const { data, error } = await client

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWizard } from '@/components/intake/WizardLayout';
 import AddressInput from '@/components/intake/AddressInput';
@@ -12,6 +12,13 @@ export default function PropertyPage() {
   const router = useRouter();
   const { state, updateState, setCurrentStep } = useWizard();
 
+  // Transient UI state — not persisted to sessionStorage
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+
+  // AbortController ref to cancel in-flight lookups on rapid re-selection
+  const abortRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
     setCurrentStep(2);
     if (!state.serviceType) router.push('/start');
@@ -20,18 +27,19 @@ export default function PropertyPage() {
   // Trigger ATTOM lookup when address is selected
   const handleAddressSelect = useCallback(
     async (addr: { line1: string; city: string; state: string; zip: string; county: string }) => {
-      // Update address immediately
-      updateState({
-        address: addr,
-        propertyLookup: null,
-        propertyLookupLoading: true,
-        propertyLookupError: null,
-        propertyType: null,
-      });
+      // Abort any in-flight lookup
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      // Update address immediately, clear stale lookup
+      updateState({ address: addr, propertyLookup: null, propertyType: null });
+      setLookupLoading(true);
+      setLookupError(null);
 
       // Skip lookup if address is incomplete (manual fallback)
       if (!addr.city || !addr.state) {
-        updateState({ propertyLookupLoading: false });
+        setLookupLoading(false);
         return;
       }
 
@@ -44,21 +52,20 @@ export default function PropertyPage() {
             city: addr.city,
             state: addr.state,
           }),
+          signal: controller.signal,
         });
 
+        if (controller.signal.aborted) return;
+
         if (!response.ok) {
-          updateState({
-            propertyLookupLoading: false,
-            propertyLookupError: 'Could not find property data. You can still continue.',
-          });
+          setLookupLoading(false);
+          setLookupError('Could not find property data. You can still continue.');
           return;
         }
 
         const data = await response.json();
         updateState({
           propertyLookup: data,
-          propertyLookupLoading: false,
-          propertyLookupError: null,
           // Auto-set property type from ATTOM
           propertyType: data.propertyType || null,
           // Backfill county from ATTOM if Google didn't provide it
@@ -67,11 +74,12 @@ export default function PropertyPage() {
             county: addr.county || data.countyName || '',
           },
         });
-      } catch {
-        updateState({
-          propertyLookupLoading: false,
-          propertyLookupError: 'Could not find property data. You can still continue.',
-        });
+        setLookupLoading(false);
+        setLookupError(null);
+      } catch (err) {
+        if ((err as Error).name === 'AbortError') return;
+        setLookupLoading(false);
+        setLookupError('Could not find property data. You can still continue.');
       }
     },
     [updateState]
@@ -83,7 +91,7 @@ export default function PropertyPage() {
   // Show manual selector if: lookup failed, no type detected, or address incomplete
   const showManualSelector =
     state.address &&
-    !state.propertyLookupLoading &&
+    !lookupLoading &&
     (!state.propertyLookup || !state.propertyLookup.propertyType);
 
   return (
@@ -103,7 +111,7 @@ export default function PropertyPage() {
           <AddressInput
             onAddressSelect={handleAddressSelect}
           />
-          {state.address && !state.propertyLookupLoading && !state.propertyLookup && !state.propertyLookupError && (
+          {state.address && !lookupLoading && !state.propertyLookup && !lookupError && (
             <p className="mt-2 text-xs text-emerald-400/70 flex items-center gap-1.5">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -115,7 +123,7 @@ export default function PropertyPage() {
         </section>
 
         {/* Loading state */}
-        {state.propertyLookupLoading && (
+        {lookupLoading && (
           <div className="card-premium rounded-xl border border-gold/20 p-8">
             <div className="flex items-center justify-center gap-3">
               <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
@@ -125,7 +133,7 @@ export default function PropertyPage() {
         )}
 
         {/* Auto-populated property details */}
-        {state.propertyLookup && !state.propertyLookupLoading && (
+        {state.propertyLookup && !lookupLoading && (
           <PropertyDetails
             lookup={state.propertyLookup}
             selectedType={state.propertyType}
@@ -134,9 +142,9 @@ export default function PropertyPage() {
         )}
 
         {/* Error state — non-blocking */}
-        {state.propertyLookupError && (
+        {lookupError && (
           <div className="rounded-lg border border-gold/10 bg-navy-light/50 p-4">
-            <p className="text-sm text-cream/50">{state.propertyLookupError}</p>
+            <p className="text-sm text-cream/50">{lookupError}</p>
           </div>
         )}
 

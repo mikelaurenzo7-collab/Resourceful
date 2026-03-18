@@ -68,6 +68,92 @@ export interface AttomPropertyDetail {
   };
 }
 
+// ─── ATTOM → App Type Mapping ───────────────────────────────────────────────
+
+/**
+ * Maps ATTOM's raw propertyType string to our PropertyType enum.
+ * Returns null for unrecognized types (caller should fall back to manual selection).
+ */
+export function mapAttomPropertyType(attomType: string): PropertyType | null {
+  const lower = attomType.toLowerCase();
+  if (
+    lower.includes('single family') ||
+    lower.includes('condominium') ||
+    lower.includes('townhouse') ||
+    lower.includes('duplex') ||
+    lower.includes('triplex') ||
+    lower.includes('residential') ||
+    lower.includes('mobile home') ||
+    lower.includes('manufactured')
+  ) {
+    return 'residential';
+  }
+  if (
+    lower.includes('commercial') ||
+    lower.includes('office') ||
+    lower.includes('retail') ||
+    lower.includes('mixed use')
+  ) {
+    return 'commercial';
+  }
+  if (
+    lower.includes('industrial') ||
+    lower.includes('warehouse') ||
+    lower.includes('manufacturing')
+  ) {
+    return 'industrial';
+  }
+  if (
+    lower.includes('vacant') ||
+    lower.includes('land') ||
+    lower.includes('agricultural')
+  ) {
+    return 'land';
+  }
+  return null;
+}
+
+/**
+ * Extracts a flat property summary from an AttomPropertyDetail.
+ * Shared by the lookup API, cache repository, and anywhere else
+ * that needs to present ATTOM data in a normalized shape.
+ */
+export interface AttomPropertySummary {
+  propertyType: PropertyType | null;
+  propertyTypeRaw: string;
+  yearBuilt: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  buildingSqFt: number | null;
+  lotSqFt: number | null;
+  stories: number | null;
+  assessedValue: number | null;
+  taxAmount: number | null;
+  assessmentYear: number | null;
+  countyFips: string | null;
+  countyName: string | null;
+}
+
+export function extractPropertySummary(detail: AttomPropertyDetail): AttomPropertySummary {
+  return {
+    propertyType: mapAttomPropertyType(detail.summary.propertyType),
+    propertyTypeRaw: detail.summary.propertyType,
+    yearBuilt: detail.summary.yearBuilt || null,
+    bedrooms: detail.summary.bedrooms || null,
+    bathrooms: detail.summary.bathrooms || null,
+    buildingSqFt: detail.summary.buildingSquareFeet || null,
+    lotSqFt: detail.summary.lotSquareFeet || null,
+    stories: detail.summary.stories || null,
+    assessedValue: detail.assessment.assessedValue || null,
+    taxAmount: detail.assessment.taxAmount || null,
+    assessmentYear: detail.assessment.assessmentYear || null,
+    countyFips: detail.location.countyFips || null,
+    countyName: detail.location.countyName || null,
+  };
+}
+
+// ─── Comparable Types ───────────────────────────────────────────────────────
+
 export interface AttomSaleComp {
   attomId: number;
   address: string;

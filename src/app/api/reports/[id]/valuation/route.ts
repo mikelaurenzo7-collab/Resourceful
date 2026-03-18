@@ -2,19 +2,19 @@
 // Called after payment to show the user an optimistic assessment result.
 // This is the "we ran the numbers" teaser — not the full report.
 //
-// For tax bill uploaders: uses their provided data (no ATTOM call).
-// For reports with cached ATTOM data: uses the cache (no redundant call).
-// For everyone else: calls ATTOM for the assessment data.
+// Data sources (in priority order):
+//   1. Tax bill data (user-provided) — no ATTOM call needed
+//   2. ATTOM cache (from wizard lookup) — no ATTOM call needed
+//   3. Fresh ATTOM call — last resort
 //
 // Always returns an optimistic result — mathematically, human error in
 // assessments means there is almost always a discrepancy to report.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import { getPropertyDetail } from '@/lib/services/attom';
+import { getReportById } from '@/lib/repository/reports';
 import { getCountyByName } from '@/lib/repository/county-rules';
 import { getCachedPropertyById } from '@/lib/repository/property-cache';
-import type { Report } from '@/types/database';
 
 export async function POST(
   _request: NextRequest,
@@ -23,18 +23,10 @@ export async function POST(
   const { id: reportId } = await params;
 
   try {
-    const supabase = createAdminClient();
-
     // ── Fetch the report ───────────────────────────────────────────────────
-    const { data, error } = await supabase
-      .from('reports')
-      .select('*')
-      .eq('id', reportId)
-      .single();
+    const report = await getReportById(reportId);
 
-    const report = data as Report | null;
-
-    if (error || !report) {
+    if (!report) {
       return NextResponse.json(
         { error: 'Report not found' },
         { status: 404 }
@@ -53,22 +45,29 @@ export async function POST(
     let taxAmount: number;
     let countyName: string | null = report.county;
 
-    // ── Path A: Tax bill data provided — skip ATTOM ──────────────────────
     if (report.has_tax_bill && report.tax_bill_assessed_value) {
+      // ── Tax bill data provided — no ATTOM needed ──────────────────────
       assessedValue = report.tax_bill_assessed_value;
       taxAmount = report.tax_bill_tax_amount ?? 0;
-    } else if (report.attom_cache_id) {
-      // ── Path B: Cached ATTOM data from wizard lookup — no API call ─────
-      const cached = await getCachedPropertyById(report.attom_cache_id);
-      if (cached && cached.assessed_value) {
-        assessedValue = cached.assessed_value;
-        taxAmount = cached.tax_amount ?? 0;
-        countyName = cached.county_name || countyName;
-      } else {
-        // Cache miss or expired — fall through to ATTOM
+    } else {
+      // ── Try cache, then fall back to ATTOM API ────────────────────────
+      let resolved = false;
+
+      if (report.attom_cache_id) {
+        const cached = await getCachedPropertyById(report.attom_cache_id);
+        if (cached?.assessed_value) {
+          assessedValue = cached.assessed_value;
+          taxAmount = cached.tax_amount ?? 0;
+          countyName = cached.county_name || countyName;
+          resolved = true;
+        }
+      }
+
+      if (!resolved!) {
         const fullAddress = [report.property_address, report.city, report.state]
           .filter(Boolean)
           .join(', ');
+
         const { data: propertyDetail, error: attomError } =
           await getPropertyDetail(fullAddress);
 
@@ -84,27 +83,6 @@ export async function POST(
         taxAmount = propertyDetail.assessment.taxAmount;
         countyName = propertyDetail.location.countyName || countyName;
       }
-    } else {
-      // ── Path C: No cache, no tax bill — call ATTOM ────────────────────
-      const fullAddress = [report.property_address, report.city, report.state]
-        .filter(Boolean)
-        .join(', ');
-
-      const { data: propertyDetail, error: attomError } =
-        await getPropertyDetail(fullAddress);
-
-      if (attomError || !propertyDetail) {
-        // Non-critical — return a conservative estimate
-        return NextResponse.json({
-          estimatedOverassessment: 0,
-          estimatedAnnualSavings: 0,
-          message: 'Full analysis in progress',
-        });
-      }
-
-      assessedValue = propertyDetail.assessment.assessedValue;
-      taxAmount = propertyDetail.assessment.taxAmount;
-      countyName = propertyDetail.location.countyName || countyName;
     }
 
     // ── County rules for assessment ratio ────────────────────────────────
@@ -113,26 +91,21 @@ export async function POST(
       : null;
 
     // ── Calculate optimistic result ──────────────────────────────────────
-    // This is based on pure statistics, NOT on any third-party "market value."
-    // Human error in mass appraisals averages 5-15% (IAAO standards allow up
-    // to 10-15% COD). We use a conservative 8% — this is always mathematically
-    // defensible regardless of the county's data quality or potential corruption.
-    // We deliberately do NOT compare against ATTOM's marketValue here because
-    // ATTOM often sources from the same county records — if the county is wrong,
-    // ATTOM inherits that error. The real analysis happens in the full pipeline
-    // with comparable sales, not here.
+    // Based on pure statistics — IAAO mass-appraisal error rates average
+    // 5-15%. We use a conservative 8%, always mathematically defensible.
+    // We deliberately do NOT compare against ATTOM's marketValue because
+    // ATTOM often sources from the same county records.
     const conservativeErrorRate = 0.08;
-    const overassessment = Math.round(assessedValue * conservativeErrorRate);
+    const overassessment = Math.round(assessedValue! * conservativeErrorRate);
 
-    // Tax rate from actual data or county average
     const effectiveTaxRate =
-      taxAmount > 0 && assessedValue > 0
-        ? taxAmount / assessedValue
-        : 0.02; // conservative 2% fallback
+      taxAmount! > 0 && assessedValue! > 0
+        ? taxAmount! / assessedValue!
+        : 0.02;
 
     const estimatedAnnualSavings = Math.max(
       Math.round(overassessment * effectiveTaxRate),
-      50 // minimum $50 to always show something
+      50
     );
 
     return NextResponse.json({

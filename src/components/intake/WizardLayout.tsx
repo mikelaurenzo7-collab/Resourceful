@@ -60,8 +60,6 @@ export interface WizardState {
   propertyType: PropertyType | null;
   // ATTOM property lookup (auto-populated on address selection)
   propertyLookup: PropertyLookupResult | null;
-  propertyLookupLoading: boolean;
-  propertyLookupError: string | null;
   // Post-payment enhancement (not collected in wizard)
   hasTaxBill: boolean;
   taxBillData: TaxBillData | null;
@@ -91,8 +89,6 @@ const INITIAL_STATE: WizardState = {
   address: null,
   propertyType: null,
   propertyLookup: null,
-  propertyLookupLoading: false,
-  propertyLookupError: null,
   hasTaxBill: false,
   taxBillData: null,
   propertyIssues: [],

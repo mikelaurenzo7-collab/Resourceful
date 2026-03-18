@@ -9,15 +9,21 @@
 //
 // This eliminates redundant ATTOM calls — one lookup serves the entire lifecycle.
 
+import { z } from 'zod';
 import { NextRequest, NextResponse } from 'next/server';
-import { getPropertyDetail } from '@/lib/services/attom';
+import { getPropertyDetail, extractPropertySummary } from '@/lib/services/attom';
 import { applyRateLimit } from '@/lib/rate-limit';
 import {
   normalizeAddressKey,
   getCachedProperty,
   upsertPropertyCache,
-  mapAttomPropertyType,
 } from '@/lib/repository/property-cache';
+
+const lookupSchema = z.object({
+  line1: z.string().min(1, 'Street address is required'),
+  city: z.string().min(1, 'City is required'),
+  state: z.string().min(1, 'State is required'),
+});
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,20 +35,18 @@ export async function POST(request: NextRequest) {
     });
     if (rateLimited) return rateLimited;
 
-    // ── Parse request ────────────────────────────────────────────────────
+    // ── Parse and validate request ──────────────────────────────────────
     const body = await request.json();
-    const { line1, city, state } = body as {
-      line1: string;
-      city: string;
-      state: string;
-    };
+    const parsed = lookupSchema.safeParse(body);
 
-    if (!line1 || !city || !state) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'line1, city, and state are required' },
+        { error: 'Validation failed', details: parsed.error.flatten() },
         { status: 400 }
       );
     }
+
+    const { line1, city, state } = parsed.data;
 
     // ── Check cache first ──────────────────────────────────────────────────
     const addressKey = normalizeAddressKey(line1, city, state);
@@ -63,7 +67,7 @@ export async function POST(request: NextRequest) {
         assessmentYear: cached.assessment_year,
         countyFips: cached.county_fips,
         countyName: cached.county_name,
-        source: 'cache',
+        source: 'cache' as const,
       });
     }
 
@@ -81,23 +85,12 @@ export async function POST(request: NextRequest) {
 
     // ── Cache the response ─────────────────────────────────────────────────
     const cacheEntry = await upsertPropertyCache(addressKey, attomDetail);
+    const summary = extractPropertySummary(attomDetail);
 
     return NextResponse.json({
       cacheId: cacheEntry.id,
-      propertyType: mapAttomPropertyType(attomDetail.summary.propertyType),
-      propertyTypeRaw: attomDetail.summary.propertyType,
-      yearBuilt: attomDetail.summary.yearBuilt || null,
-      bedrooms: attomDetail.summary.bedrooms || null,
-      bathrooms: attomDetail.summary.bathrooms || null,
-      buildingSqFt: attomDetail.summary.buildingSquareFeet || null,
-      lotSqFt: attomDetail.summary.lotSquareFeet || null,
-      stories: attomDetail.summary.stories || null,
-      assessedValue: attomDetail.assessment.assessedValue || null,
-      taxAmount: attomDetail.assessment.taxAmount || null,
-      assessmentYear: attomDetail.assessment.assessmentYear || null,
-      countyFips: attomDetail.location.countyFips || null,
-      countyName: attomDetail.location.countyName || null,
-      source: 'attom',
+      ...summary,
+      source: 'attom' as const,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

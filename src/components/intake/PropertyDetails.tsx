@@ -9,27 +9,16 @@ interface PropertyDetailsProps {
   onTypeOverride: (type: PropertyType) => void;
 }
 
-const PROPERTY_TYPE_LABELS: Record<string, string> = {
+const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
   residential: 'Residential',
   commercial: 'Commercial',
   industrial: 'Industrial',
   land: 'Vacant Land',
 };
 
-function formatNumber(n: number | null): string {
-  if (!n) return '—';
-  return n.toLocaleString('en-US');
-}
-
-function formatSqFt(n: number | null): string {
-  if (!n) return '—';
-  return `${n.toLocaleString('en-US')} sq ft`;
-}
-
-function formatDollar(n: number | null): string {
-  if (!n) return '—';
-  return `$${n.toLocaleString('en-US')}`;
-}
+const fmt = (n: number | null) => n ? n.toLocaleString('en-US') : null;
+const fmtSqFt = (n: number | null) => n ? `${n.toLocaleString('en-US')} sq ft` : null;
+const fmtDollar = (n: number | null) => n ? `$${n.toLocaleString('en-US')}` : null;
 
 export default function PropertyDetails({ lookup, selectedType, onTypeOverride }: PropertyDetailsProps) {
   const detectedLabel = lookup.propertyType
@@ -37,6 +26,18 @@ export default function PropertyDetails({ lookup, selectedType, onTypeOverride }
     : lookup.propertyTypeRaw || 'Unknown';
 
   const isOverridden = selectedType && selectedType !== lookup.propertyType;
+
+  // Data-driven grid items — only rendered when value is truthy
+  const details: { label: string; value: string | null }[] = [
+    { label: 'Year Built', value: lookup.yearBuilt ? String(lookup.yearBuilt) : null },
+    { label: 'Bedrooms', value: fmt(lookup.bedrooms) },
+    { label: 'Bathrooms', value: fmt(lookup.bathrooms) },
+    { label: 'Building Size', value: fmtSqFt(lookup.buildingSqFt) },
+    { label: 'Lot Size', value: fmtSqFt(lookup.lotSqFt) },
+    { label: 'Stories', value: fmt(lookup.stories) },
+    { label: 'Assessed Value', value: fmtDollar(lookup.assessedValue) },
+    { label: 'County', value: lookup.countyName },
+  ];
 
   return (
     <div className="card-premium rounded-xl border border-gold/20 overflow-hidden animate-slide-up">
@@ -54,7 +55,7 @@ export default function PropertyDetails({ lookup, selectedType, onTypeOverride }
       {/* Details grid */}
       <div className="p-6">
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {/* Property Type */}
+          {/* Property Type — always shown, spans full width */}
           <div className="col-span-2 sm:col-span-3">
             <p className="text-[10px] uppercase tracking-wider text-cream/40 mb-1">Property Type</p>
             <div className="flex items-center gap-2">
@@ -67,69 +68,14 @@ export default function PropertyDetails({ lookup, selectedType, onTypeOverride }
             </div>
           </div>
 
-          {/* Year Built */}
-          {lookup.yearBuilt ? (
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-cream/40 mb-1">Year Built</p>
-              <p className="text-cream font-medium">{lookup.yearBuilt}</p>
-            </div>
-          ) : null}
-
-          {/* Bedrooms */}
-          {lookup.bedrooms ? (
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-cream/40 mb-1">Bedrooms</p>
-              <p className="text-cream font-medium">{formatNumber(lookup.bedrooms)}</p>
-            </div>
-          ) : null}
-
-          {/* Bathrooms */}
-          {lookup.bathrooms ? (
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-cream/40 mb-1">Bathrooms</p>
-              <p className="text-cream font-medium">{formatNumber(lookup.bathrooms)}</p>
-            </div>
-          ) : null}
-
-          {/* Building Size */}
-          {lookup.buildingSqFt ? (
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-cream/40 mb-1">Building Size</p>
-              <p className="text-cream font-medium">{formatSqFt(lookup.buildingSqFt)}</p>
-            </div>
-          ) : null}
-
-          {/* Lot Size */}
-          {lookup.lotSqFt ? (
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-cream/40 mb-1">Lot Size</p>
-              <p className="text-cream font-medium">{formatSqFt(lookup.lotSqFt)}</p>
-            </div>
-          ) : null}
-
-          {/* Stories */}
-          {lookup.stories ? (
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-cream/40 mb-1">Stories</p>
-              <p className="text-cream font-medium">{formatNumber(lookup.stories)}</p>
-            </div>
-          ) : null}
-
-          {/* Assessed Value */}
-          {lookup.assessedValue ? (
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-cream/40 mb-1">Assessed Value</p>
-              <p className="text-cream font-medium">{formatDollar(lookup.assessedValue)}</p>
-            </div>
-          ) : null}
-
-          {/* County */}
-          {lookup.countyName ? (
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-cream/40 mb-1">County</p>
-              <p className="text-cream font-medium">{lookup.countyName}</p>
-            </div>
-          ) : null}
+          {details.map(({ label, value }) =>
+            value ? (
+              <div key={label}>
+                <p className="text-[10px] uppercase tracking-wider text-cream/40 mb-1">{label}</p>
+                <p className="text-cream font-medium">{value}</p>
+              </div>
+            ) : null
+          )}
         </div>
 
         {/* Type override */}
@@ -138,7 +84,6 @@ export default function PropertyDetails({ lookup, selectedType, onTypeOverride }
             <button
               type="button"
               onClick={() => {
-                // Cycle to next type if they want to override
                 const types: PropertyType[] = ['residential', 'commercial', 'industrial', 'land'];
                 const current = selectedType || lookup.propertyType!;
                 const idx = types.indexOf(current);
