@@ -52,12 +52,21 @@ The pipeline is triggered by a Vercel cron job at the ~14 hour mark:
 
 **Why deferred?** Running the pipeline immediately wastes API costs. If the
 customer uploads photos later, we'd have to re-run AI analysis, narratives,
-and PDF — paying Anthropic twice. By waiting ~14 hours, we run the full
-pipeline ONCE with the best available data. This saves $1-2 per report.
+and PDF — paying Anthropic twice. By waiting for the customer's signal or
+the 14h mark, we run the full pipeline ONCE with the best available data.
+
+**Intent-based trigger:** The customer controls when the pipeline runs:
+- **"Build my report now"** button on success page (skips photos)
+- **"Done" button** on photo upload page (after uploading photos)
+- Both call `POST /api/reports/[id]/ready` which triggers the pipeline
+- If the customer never clicks either, the 14h cron triggers automatically
+- 24h safety net catches anything that slipped through
+
+**Endpoint:** `POST /api/reports/[id]/ready` — idempotent, rate-limited,
+UUID-keyed (no auth required). Returns success even if pipeline already started.
 
 Stage 8 (delivery email with PDF + filing guide) only executes after
-admin approval. The 24-hour safety net in the cron catches any reports
-that slipped through.
+admin approval.
 
 **Cron endpoint:** `/api/cron/photo-reminders` (every 30 min, secured by CRON_SECRET)
 

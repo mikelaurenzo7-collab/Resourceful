@@ -33,6 +33,8 @@ function SuccessContent() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(PHOTO_WINDOW_HOURS * 60 * 60 * 1000);
+  const [buildTriggered, setBuildTriggered] = useState(false);
+  const [buildTriggering, setBuildTriggering] = useState(false);
 
   // Fetch instant preview on mount
   useEffect(() => {
@@ -60,6 +62,20 @@ function SuccessContent() {
 
   const photoWindowOpen = timeRemaining > 0;
   const formatDollar = (n: number) => `$${n.toLocaleString('en-US')}`;
+
+  /** Skip photos and trigger pipeline immediately */
+  const handleBuildNow = async () => {
+    if (!reportId || buildTriggered) return;
+    setBuildTriggering(true);
+    try {
+      await fetch(`/api/reports/${reportId}/ready`, { method: 'POST' });
+      setBuildTriggered(true);
+    } catch {
+      // Non-critical — cron will catch it
+    } finally {
+      setBuildTriggering(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-pattern flex items-center justify-center px-6">
@@ -188,6 +204,29 @@ function SuccessContent() {
             </div>
           </div>
         </div>
+
+        {/* Skip photos — build now */}
+        {reportId && !buildTriggered && (
+          <button
+            type="button"
+            disabled={buildTriggering}
+            onClick={handleBuildNow}
+            className="w-full text-center py-3 text-sm text-cream/40 hover:text-cream/60 transition-colors mb-8 disabled:opacity-50"
+          >
+            {buildTriggering ? 'Starting...' : 'Skip photos — build my report now'}
+          </button>
+        )}
+
+        {buildTriggered && (
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 mb-8 text-center">
+            <div className="flex items-center justify-center gap-2">
+              <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="text-sm text-emerald-400">Report generation started. We&apos;ll email you when it&apos;s ready.</span>
+            </div>
+          </div>
+        )}
 
         {/* What happens next */}
         <div className="card-premium rounded-xl p-6 text-left mb-8">

@@ -37,6 +37,7 @@ export default function ReportPhotosPage() {
   const [photoCount, setPhotoCount] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(PHOTO_WINDOW_HOURS * 60 * 60 * 1000);
 
   // Fetch report data
@@ -107,6 +108,17 @@ export default function ReportPhotosPage() {
   };
 
   const photoWindowOpen = timeRemaining > 0;
+
+  /** Signal "I'm done" — triggers pipeline immediately, then redirect to report */
+  const handleDone = async () => {
+    setSubmitting(true);
+    try {
+      await fetch(`/api/reports/${reportId}/ready`, { method: 'POST' });
+    } catch {
+      // Non-critical — cron will catch it if this fails
+    }
+    window.location.href = `/report/${reportId}`;
+  };
 
   if (loading) {
     return (
@@ -220,15 +232,20 @@ export default function ReportPhotosPage() {
           <Button
             size="lg"
             fullWidth
-            disabled={uploading}
-            onClick={() => window.location.href = `/report/${reportId}`}
+            disabled={uploading || submitting}
+            loading={submitting}
+            onClick={handleDone}
           >
-            {photoCount > 0
-              ? `Done — ${photoCount} photo${photoCount !== 1 ? 's' : ''} uploaded`
-              : 'Continue Without Photos'}
-            <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
+            {submitting
+              ? 'Starting your report...'
+              : photoCount > 0
+                ? `Done — Build my report with ${photoCount} photo${photoCount !== 1 ? 's' : ''}`
+                : 'No photos — Build my report now'}
+            {!submitting && (
+              <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            )}
           </Button>
         </div>
 
