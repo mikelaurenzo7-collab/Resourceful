@@ -26,13 +26,51 @@ function SuccessContent() {
         </h1>
 
         <p className="text-cream/50 text-lg mb-2">
-          Your report is now being built by our team.
+          Your report is being built now.
         </p>
         <p className="text-cream/40 text-sm mb-8 max-w-md mx-auto leading-relaxed">
-          We&apos;re pulling comparable sales, analyzing your photos and property data,
-          and building your full evidence package. Every report is reviewed for accuracy
-          before it reaches you.
+          We&apos;re pulling comparable sales and property data to build your
+          full evidence package. Every report is reviewed for accuracy before it reaches you.
         </p>
+
+        {/* Photo upload encouragement */}
+        <div className="card-premium rounded-xl p-6 text-left mb-8 border border-gold/20">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-full bg-gold/15 flex items-center justify-center flex-shrink-0">
+              <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-sm font-medium text-gold mb-1">
+                Want to strengthen your case?
+              </h2>
+              <p className="text-xs text-cream/50 leading-relaxed mb-3">
+                Your report is already being built with market data and comparable sales.
+                But photos of your property&apos;s actual condition are your strongest
+                independent evidence — the assessor has never been inside your home.
+              </p>
+              <p className="text-xs text-cream/40 leading-relaxed mb-4">
+                Upload photos of any damage, deferred maintenance, outdated finishes, or
+                aging systems. Your appeal deadline is weeks away — no rush. The more you
+                document, the stronger your evidence package.
+              </p>
+              {reportId && (
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => window.location.href = `/report/${reportId}/photos`}
+                >
+                  <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Upload Photos
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* What happens next */}
         <div className="card-premium rounded-xl p-6 text-left mb-8">
@@ -42,7 +80,7 @@ function SuccessContent() {
               {
                 step: '1',
                 title: 'Data Collection & Analysis',
-                desc: 'We pull comparable sales, analyze your photos, and build a complete evidence package using independent market data.',
+                desc: 'We pull comparable sales and property data to build a complete evidence package using independent market data.',
                 active: true,
               },
               {

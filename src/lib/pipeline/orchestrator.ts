@@ -12,7 +12,28 @@ import { sendAdminNotification } from '@/lib/services/resend-email';
 import type { PropertyType, Report } from '@/types/database';
 
 // Maximum time the entire pipeline is allowed to run before being killed.
-const PIPELINE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+// 10 minutes accounts for Vercel cold starts + Puppeteer PDF rendering.
+const PIPELINE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes
+
+// Retry configuration for transient failures (network timeouts, 5xx errors)
+const MAX_STAGE_RETRIES = 2;
+const RETRY_BASE_DELAY_MS = 2000;
+
+/** Returns true if the error is likely transient and worth retrying. */
+function isTransientError(error: string): boolean {
+  const transient = [
+    'ETIMEDOUT', 'ECONNRESET', 'ECONNREFUSED', 'ENOTFOUND',
+    'fetch failed', 'network', 'timeout', 'socket hang up',
+    '502', '503', '504', '429',
+  ];
+  const lower = error.toLowerCase();
+  return transient.some((t) => lower.includes(t.toLowerCase()));
+}
+
+/** Wait with exponential backoff: 2s, 4s */
+function retryDelay(attempt: number): number {
+  return RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+}
 
 import { runDataCollection } from './stages/stage1-data-collection';
 import { runComparables } from './stages/stage2-comparables';
@@ -100,6 +121,11 @@ export async function runPipeline(
   const supabase = createAdminClient();
 
   // ── Acquire pipeline lock (prevents concurrent runs for same report) ──
+  // Note: `as any` cast is required because Supabase JS SDK does not generate
+  // types for custom RPC functions defined in migrations. The function signatures
+  // are: acquire_pipeline_lock(p_report_id uuid) → boolean,
+  //       release_pipeline_lock(p_report_id uuid) → void.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: lockAcquired } = await (supabase.rpc as any)('acquire_pipeline_lock', {
     p_report_id: reportId,
   });
@@ -200,33 +226,59 @@ async function runPipelineStages(
     console.log(`[pipeline] Running stage ${stage.number}: ${stage.name}`);
     const stageStart = Date.now();
 
-    try {
-      const result = await stage.run(reportId, supabase);
+    let lastError = '';
+    let stageSucceeded = false;
 
-      if (!result.success) {
-        await handleStageFailure(supabase, reportId, stage, result.error ?? 'Unknown error');
-        await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
-        return { success: false, error: `Stage ${stage.number} (${stage.name}) failed: ${result.error}` };
+    for (let attempt = 0; attempt <= MAX_STAGE_RETRIES; attempt++) {
+      try {
+        if (attempt > 0) {
+          const delay = retryDelay(attempt - 1);
+          console.log(`[pipeline] Retrying stage ${stage.number} (attempt ${attempt + 1}/${MAX_STAGE_RETRIES + 1}) after ${delay}ms`);
+          await new Promise((r) => setTimeout(r, delay));
+        }
+
+        const result = await stage.run(reportId, supabase);
+
+        if (result.success) {
+          stageSucceeded = true;
+          break;
+        }
+
+        lastError = result.error ?? 'Unknown error';
+
+        // Only retry transient errors
+        if (!isTransientError(lastError)) {
+          break;
+        }
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : String(err);
+
+        // Only retry transient errors
+        if (!isTransientError(lastError)) {
+          break;
+        }
       }
-
-      const durationMs = Date.now() - stageStart;
-      console.log(
-        `[pipeline] Stage ${stage.number} (${stage.name}) completed in ${durationMs}ms`
-      );
-
-      // Record stage completion
-      await supabase
-        .from('reports')
-        .update({
-          pipeline_last_completed_stage: stage.name,
-        })
-        .eq('id', reportId);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      await handleStageFailure(supabase, reportId, stage, message);
-      await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
-      return { success: false, error: `Stage ${stage.number} (${stage.name}) threw: ${message}` };
     }
+
+    if (!stageSucceeded) {
+      await handleStageFailure(supabase, reportId, stage, lastError);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+      return { success: false, error: `Stage ${stage.number} (${stage.name}) failed: ${lastError}` };
+    }
+
+    const durationMs = Date.now() - stageStart;
+    console.log(
+      `[pipeline] Stage ${stage.number} (${stage.name}) completed in ${durationMs}ms`
+    );
+
+    // Record stage completion
+    await supabase
+      .from('reports')
+      .update({
+        pipeline_last_completed_stage: stage.name,
+      })
+      .eq('id', reportId);
   }
 
   // ── Pipeline stages 1-7 complete ────────────────────────────────────────

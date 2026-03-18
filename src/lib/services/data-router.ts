@@ -134,7 +134,8 @@ async function collectFromCountyApi(
 
 // ─── ATTOM Adapter ───────────────────────────────────────────────────────────
 
-function attomToCollected(detail: AttomPropertyDetail): CollectedPropertyData {
+/** @internal Exported for testing */
+export function attomToCollected(detail: AttomPropertyDetail): CollectedPropertyData {
   return {
     assessed_value: detail.assessment.assessedValue ?? null,
     assessed_value_source: 'attom',
@@ -175,7 +176,8 @@ function attomToCollected(detail: AttomPropertyDetail): CollectedPropertyData {
  * County-sourced assessed values take precedence since they come directly
  * from the authority of record.
  */
-function mergeCountyData(
+/** @internal Exported for testing */
+export function mergeCountyData(
   base: CollectedPropertyData,
   county: CountyApiResult
 ): CollectedPropertyData {

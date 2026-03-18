@@ -32,7 +32,7 @@ export interface WizardState {
   // Step 1: Goals
   serviceType: ServiceType | null;
   desiredOutcome: string;
-  // Step 2: Property + tax bill
+  // Step 2: Property
   address: {
     line1: string;
     city: string;
@@ -41,22 +41,20 @@ export interface WizardState {
     county: string;
   } | null;
   propertyType: PropertyType | null;
+  // Post-payment enhancement (not collected in wizard)
   hasTaxBill: boolean;
   taxBillData: TaxBillData | null;
-  // Step 3: Situation
-  propertyIssues: string[]; // IDs from PROPERTY_ISSUES
+  propertyIssues: string[]; // IDs from PROPERTY_ISSUES — collected post-payment
   additionalNotes: string;
   ownerOccupied: boolean | null;
   yearsOwned: string;
   previousAppeal: boolean | null;
-  // Step 4: Photos
   photosSkipped: boolean;
   photoCount: number;
   streetViewUrls: string[]; // auto-fetched exterior images
-  // Step 5: Measurements
   measurementSkipped: boolean;
   measurementComplete: boolean;
-  // Review tier
+  // Step 3: Payment
   reviewTier: ReviewTier;
   // Backend IDs
   reportId: string | null;
@@ -220,12 +218,13 @@ export function useWizard() {
 
 // ─── Step Definitions ────────────────────────────────────────────────────────
 
+// Trust-first flow: address → property type → pay.
+// Photos, tax bills, and property details are collected post-payment
+// to reduce friction and build trust before asking for effort.
 export const WIZARD_STEPS = [
   { number: 1, label: 'Goals', path: '/start' },
   { number: 2, label: 'Property', path: '/start/property' },
-  { number: 3, label: 'Situation', path: '/start/situation' },
-  { number: 4, label: 'Photos', path: '/start/photos' },
-  { number: 5, label: 'Payment', path: '/start/payment' },
+  { number: 3, label: 'Payment', path: '/start/payment' },
 ];
 
 // ─── Provider + Layout ──────────────────────────────────────────────────────

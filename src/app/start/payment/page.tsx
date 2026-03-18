@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { useWizard, PROPERTY_ISSUES } from '@/components/intake/WizardLayout';
-import { formatPrice, getPriceCents, TAX_BILL_DISCOUNT } from '@/config/pricing';
+import { useWizard } from '@/components/intake/WizardLayout';
+import { formatPrice, getPriceCents } from '@/config/pricing';
 import type { ReviewTier } from '@/types/database';
 import Button from '@/components/ui/Button';
 
@@ -67,7 +67,6 @@ function CheckoutForm() {
     ? `${state.address.line1}, ${state.address.city}, ${state.address.state} ${state.address.zip}`
     : '';
 
-  const selectedIssues = PROPERTY_ISSUES.filter((i) => state.propertyIssues.includes(i.id));
   const guaranteeEligible = !state.photosSkipped && state.photoCount > 0;
 
   return (
@@ -113,56 +112,11 @@ function CheckoutForm() {
                   ? 'Report + live session to guide you through filing'
                   : state.reviewTier === 'expert_reviewed'
                     ? 'Expert review, we file and attend the hearing on your behalf'
-                    : 'Delivered to your email within minutes'}
+                    : 'Quick turnaround — reviewed and delivered to your email'}
               </p>
             </div>
 
-            {/* Issues summary */}
-            {selectedIssues.length > 0 && (
-              <>
-                <div className="h-px bg-gold/10" />
-                <div>
-                  <p className="text-sm text-cream/40 mb-2">Documented Issues</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedIssues.map((issue) => (
-                      <span key={issue.id} className="text-xs bg-gold/5 text-cream/60 rounded px-2 py-0.5 border border-gold/10">
-                        {issue.icon} {issue.label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Photos status */}
-            <div className="h-px bg-gold/10" />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-cream/40">Photos</p>
-                <p className="text-cream font-medium">
-                  {state.photosSkipped
-                    ? 'Skipped (data-only analysis)'
-                    : `${state.photoCount} uploaded`}
-                </p>
-              </div>
-              {/* Photo status indicator */}
-            </div>
-
-            {/* Tax bill discount */}
-            {state.hasTaxBill && (
-              <>
-                <div className="h-px bg-gold/10" />
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-emerald-400">Tax Bill Discount</span>
-                    <span className="text-[10px] bg-emerald-400/10 text-emerald-400 rounded-full px-2 py-0.5 font-medium">
-                      {Math.round(TAX_BILL_DISCOUNT * 100)}% OFF
-                    </span>
-                  </div>
-                  <span className="text-sm text-emerald-400">Applied</span>
-                </div>
-              </>
-            )}
+            {/* Note: Photos and tax bills are collected post-payment */}
 
             <div className="h-px bg-gold/10" />
             <div className="flex items-center justify-between">
@@ -214,11 +168,9 @@ function CheckoutForm() {
             ? 'Your report will be generated and expert-reviewed, then our team will schedule a live session to walk you through the filing process step by step.'
             : state.reviewTier === 'expert_reviewed'
               ? 'Your report will be generated and expert-reviewed by a licensed appraiser, then our team will file the appeal on your behalf and attend the hearing as your authorized representative.'
-              : 'Your report will be generated and delivered to your email within minutes, powered by our advanced valuation system.'}
+              : 'Your report will be generated quickly using comparable sales and AI analysis, then reviewed by our team before delivery.'}
           {state.serviceType === 'tax_appeal' && state.reviewTier === 'auto' && ' It includes step-by-step pro se filing instructions for your county.'}
-          {state.serviceType === 'tax_appeal' && guaranteeEligible && (
-            <> Photo-backed tax appeal reports are covered by our <a href="/terms" target="_blank" className="underline hover:text-cream/40">money-back guarantee</a>.</>
-          )}
+          {' '}After payment, you can upload photos of your property to strengthen your evidence package.
         </p>
 
         <p className="text-center text-[10px] text-cream/15 leading-relaxed mt-2">
@@ -246,7 +198,7 @@ export default function PaymentPage() {
   const [createError, setCreateError] = useState('');
 
   useEffect(() => {
-    setCurrentStep(5);
+    setCurrentStep(3);
     if (!state.address || !state.serviceType || !state.propertyType) {
       router.push('/start');
     }
@@ -276,15 +228,9 @@ export default function PaymentPage() {
           property_type: state.propertyType,
           service_type: state.serviceType,
           review_tier: state.reviewTier,
-          photos_skipped: state.photosSkipped,
-          property_issues: state.propertyIssues,
-          additional_notes: state.additionalNotes,
+          // Photos, tax bills, and property details collected post-payment
+          photos_skipped: true,
           desired_outcome: state.desiredOutcome,
-          has_tax_bill: state.hasTaxBill,
-          tax_bill_assessed_value: state.taxBillData?.assessedValue ?? null,
-          tax_bill_tax_amount: state.taxBillData?.taxAmount ?? null,
-          tax_bill_tax_year: state.taxBillData?.taxYear ?? null,
-          tax_bill_pin: state.taxBillData?.pin ?? null,
         }),
       });
 
@@ -371,11 +317,11 @@ export default function PaymentPage() {
                 </li>
                 <li className="flex items-start gap-2">
                   <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  {isTaxAppeal ? 'Step-by-step pro se filing guide included' : 'Delivered to your inbox in minutes'}
+                  {isTaxAppeal ? 'Step-by-step pro se filing guide included' : 'Quick turnaround delivery'}
                 </li>
                 <li className="flex items-start gap-2">
                   <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  Delivered to your email within minutes
+                  Upload photos after to strengthen your case
                 </li>
               </ul>
               <p className="font-display text-2xl text-gold">{formatPrice(autoPrice)}</p>
@@ -513,7 +459,7 @@ export default function PaymentPage() {
           )}
 
           <div className="flex gap-4">
-            <Button variant="secondary" size="lg" onClick={() => router.push('/start/photos')}>
+            <Button variant="secondary" size="lg" onClick={() => router.push('/start/property')}>
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
               </svg>

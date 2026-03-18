@@ -39,6 +39,10 @@ describe('formatCurrency', () => {
     expect(formatCurrency(-5000)).toBe('$-5,000');
   });
 
+  it('handles very large values', () => {
+    expect(formatCurrency(999999999)).toBe('$999,999,999');
+  });
+
   it('handles NaN and Infinity', () => {
     expect(formatCurrency(NaN)).toBe('$0');
     expect(formatCurrency(Infinity)).toBe('$0');
@@ -93,6 +97,16 @@ describe('formatCurrencyWords', () => {
   it('handles NaN and Infinity', () => {
     expect(formatCurrencyWords(NaN)).toBe('Zero Dollars');
     expect(formatCurrencyWords(Infinity)).toBe('Zero Dollars');
+  });
+
+  it('handles amounts with zero middle groups', () => {
+    // 1,000,001 — middle group is zero
+    expect(formatCurrencyWords(1000001)).toBe('One Million One Dollars');
+  });
+
+  it('handles exact group boundaries', () => {
+    expect(formatCurrencyWords(1000)).toBe('One Thousand Dollars');
+    expect(formatCurrencyWords(1000000)).toBe('One Million Dollars');
   });
 });
 
