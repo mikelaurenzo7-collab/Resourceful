@@ -493,6 +493,7 @@ export async function runNarratives(
           hearingFormat: countyRule.hearing_format ?? null,
           informalReviewAvailable: countyRule.informal_review_available ?? null,
           proSeTips: countyRule.pro_se_tips ?? null,
+          stateAppealStrategies: countyRule.state_appeal_strategies ?? null,
         }
       : {
           countyName: report.county ?? '',
@@ -505,6 +506,7 @@ export async function runNarratives(
           hearingFormat: null,
           informalReviewAvailable: null,
           proSeTips: null,
+          stateAppealStrategies: null,
         },
     concludedValue,
     photoAnalyses: photoAnalyses.length > 0 ? photoAnalyses : undefined,

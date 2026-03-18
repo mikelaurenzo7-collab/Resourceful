@@ -72,6 +72,7 @@ export interface NarrativePayload {
     hearingFormat?: string | null;
     informalReviewAvailable?: boolean | null;
     proSeTips?: string | null;
+    stateAppealStrategies?: string | null;
   };
   concludedValue: number;
   photoAnalyses?: Array<{
@@ -623,6 +624,7 @@ INVESTIGATIVE MINDSET — YOU MUST:
 
 YOUR EXPERTISE IN ${county.toUpperCase()} COUNTY, ${state.toUpperCase()}:
 ${countyExpertise.map(e => `- ${e}`).join('\n')}
+${payload.countyRules.stateAppealStrategies ? `\nSTATE-SPECIFIC ADVANCED STRATEGIES FOR ${state.toUpperCase()}:\n${payload.countyRules.stateAppealStrategies}` : ''}
 
 You must return valid JSON — an array of objects with these keys:
 - "section_name": one of the exact values listed below

@@ -343,6 +343,7 @@ export type CountyRule = {
   assessor_api_documentation_url: string | null;
   assessor_api_notes: string | null;
   pro_se_tips: string | null;
+  state_appeal_strategies: string | null;
   // Filing schedule fields
   assessment_cycle: string | null;
   assessment_notices_mailed: string | null;
