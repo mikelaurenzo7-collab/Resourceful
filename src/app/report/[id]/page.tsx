@@ -282,6 +282,36 @@ export default function ReportViewerPage() {
               </div>
             )}
 
+            {/* Lock-in offer for next year */}
+            {isTaxAppeal && data.potentialSavings > 0 && (
+              <div className="rounded-xl border border-gold/30 bg-gold/5 p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-gold/15 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-display text-lg text-gold mb-1">Protect Your Savings Next Year</p>
+                    <p className="text-xs text-cream/50 leading-relaxed mb-3">
+                      Your county reassesses annually. Lock in your next report at <span className="text-gold font-semibold">50% off</span> —
+                      we&apos;ll automatically pull updated comps and build a fresh appeal when your new assessment drops.
+                    </p>
+                    <a
+                      href={`/start?lockin=${reportId}`}
+                      className="inline-flex items-center gap-2 text-sm font-medium bg-gold/10 text-gold border border-gold/20 px-4 py-2.5 rounded-lg hover:bg-gold/20 transition-all"
+                    >
+                      Reserve for $29.50
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                      </svg>
+                    </a>
+                    <p className="text-[10px] text-cream/25 mt-2">One-time payment. Activates when your next assessment is published.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Quick filing summary for tax appeals */}
             {isTaxAppeal && county && (
               <div className="card-premium rounded-xl overflow-hidden">

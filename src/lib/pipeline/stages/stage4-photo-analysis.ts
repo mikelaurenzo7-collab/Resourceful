@@ -11,7 +11,36 @@ import { analyzePhoto } from '@/lib/services/anthropic';
 
 // ─── Photo Analysis System Prompt ───────────────────────────────────────────
 
-const PHOTO_ANALYSIS_SYSTEM_PROMPT = `You are an investigative property condition analyst working on behalf of a homeowner who believes their property is over-assessed. Your job is to document every visible condition issue, deficiency, and sign of deterioration that would REDUCE the property's market value. This evidence will be used in a formal tax assessment appeal.
+function buildPhotoSystemPrompt(serviceType: string): string {
+  const isPreListing = serviceType === 'pre_listing';
+
+  if (isPreListing) {
+    return `You are a property condition analyst working on behalf of a homeowner preparing to list their property for sale. Your job is to provide an honest, balanced assessment of the property's condition that SUPPORTS the listing price. Document the property's strengths, upgrades, and well-maintained features while noting any issues that a buyer's inspector would find.
+
+You are thorough, professional, and advocate for the seller. Highlight quality features, recent improvements, good maintenance, and desirable characteristics. When issues exist, frame them in context — note if they're cosmetic vs structural, and whether they're typical for the property's age.
+
+Return a JSON object matching the PhotoAiAnalysis interface:
+- "condition_rating": one of "excellent", "good", "average", "fair", "poor" — acknowledge quality where it exists
+- "defects": array of objects with { type, description, severity ("minor"|"moderate"|"significant"), value_impact ("low"|"medium"|"high"), report_language }. Be honest but frame appropriately for a listing report.
+- "inferred_direction": string describing the apparent direction/angle
+- "professional_caption": a professional caption that presents the property favorably
+- "comparable_adjustment_note": explain how condition features would affect comparable sales adjustments (positive adjustments for upgrades, etc.)
+
+DOCUMENT THOROUGHLY — look for:
+- Upgrades: renovated kitchens/bathrooms, new appliances, updated fixtures, modern finishes
+- Structural integrity: solid foundation, level floors, straight walls, sound roof
+- Curb appeal: landscaping, exterior maintenance, architectural charm
+- Systems: modern HVAC, updated electrical/plumbing, energy-efficient windows
+- Living space quality: natural light, open layouts, storage, functional flow
+- Outdoor features: decks, patios, fencing, mature trees
+- Also note legitimate issues honestly — buyers will have inspections
+
+Be specific and evidence-based. Reference exactly what you see.`;
+  }
+
+  return `PRIME DIRECTIVE: You are the homeowner's advocate. Be user-friendly — document findings in language that empowers. Be investigative — find EVERY SINGLE visible condition issue that supports a lower assessment.
+
+You are an investigative property condition analyst working on behalf of a homeowner who believes their property is over-assessed. Your job is to document every visible condition issue, deficiency, and sign of deterioration that would REDUCE the property's market value. This evidence will be used in a formal tax assessment appeal.
 
 You are thorough, meticulous, and advocate for the homeowner. If something looks even slightly worn, aged, damaged, or substandard — document it. Assessors typically assume "average" condition without physically inspecting the property. Your photos prove otherwise.
 
@@ -32,8 +61,11 @@ INVESTIGATE THOROUGHLY — check for ALL of the following:
 - Age indicators: architectural style dating, original windows/doors, outdated materials (asbestos siding, aluminum wiring indicators)
 - Functional obsolescence: awkward additions, mismatched materials suggesting unpermitted work, outdated design features
 - External obsolescence: visible power lines, adjacent commercial properties, busy road proximity, neighboring property conditions
+- Deferred maintenance: anything that suggests the owner has not invested in upkeep — this is evidence the assessor ignored
+- Neighborhood decline: if visible in the photo — vacant lots, boarded windows, unmaintained properties nearby
 
 Be specific and evidence-based. Reference exactly what you see — "visible hairline crack in foundation wall, approximately 3 feet long, running diagonally from window corner" is better than "foundation crack." Every defect you document is ammunition for the homeowner's appeal.`;
+}
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -89,7 +121,16 @@ export async function runPhotoAnalysis(
     return { success: true };
   }
 
-  console.log(`[stage4] Analyzing ${photos.length} photos for report ${reportId}`);
+  // Fetch service type to tailor the AI prompt direction
+  const { data: reportData } = await supabase
+    .from('reports')
+    .select('service_type')
+    .eq('id', reportId)
+    .single();
+  const serviceType = (reportData as { service_type: string } | null)?.service_type ?? 'tax_appeal';
+  const systemPrompt = buildPhotoSystemPrompt(serviceType);
+
+  console.log(`[stage4] Analyzing ${photos.length} photos for report ${reportId} (${serviceType})`);
 
   // ── Analyze photos in parallel batches of 3 ──────────────────────────
   const conditionRatings: string[] = [];
@@ -118,7 +159,7 @@ export async function runPhotoAnalysis(
           return null;
         }
 
-        const result = await analyzePhoto(imageUrl, PHOTO_ANALYSIS_SYSTEM_PROMPT);
+        const result = await analyzePhoto(imageUrl, systemPrompt);
 
         if (result.error || !result.data) {
           console.warn(`[stage4] Photo analysis failed for ${photo.id}: ${result.error}`);

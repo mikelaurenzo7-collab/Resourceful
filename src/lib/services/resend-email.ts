@@ -36,6 +36,7 @@ export interface ReportDeliveryParams {
   potentialSavings: number;
   pdfUrl: string;
   filingGuide: string;
+  lockInPriceCents?: number;
 }
 
 export interface AdminNotificationParams {
@@ -147,7 +148,16 @@ export async function sendReportDeliveryEmail(
             <span style="font-size: 12px; color: #999;"> (link expires in 7 days)</span>
           </p>
 
-          <p style="margin-top: 32px; font-size: 12px; color: #999;">
+          <div style="background: #fffbeb; border: 1px solid #f59e0b; border-radius: 8px; padding: 20px; margin: 32px 0; text-align: center;">
+            <p style="margin: 0 0 8px 0; font-weight: 700; color: #92400e; font-size: 16px;">Lock In Next Year&apos;s Report at 50% Off</p>
+            <p style="margin: 0 0 12px 0; font-size: 13px; color: #78350f;">Your county reassesses annually. Protect your savings with an updated report when the next assessment drops — at half price.</p>
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app'}/start?lockin=${params.reportId}" style="display: inline-block; background: #d97706; color: #fff; padding: 10px 24px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 14px;">
+              Reserve for ${formatCurrency(params.lockInPriceCents || 2950)}
+            </a>
+            <p style="margin: 8px 0 0 0; font-size: 11px; color: #92400e;">One-time payment. Activates when your next assessment is published.</p>
+          </div>
+
+          <p style="margin-top: 16px; font-size: 12px; color: #999;">
             This market value analysis was prepared for property tax assessment purposes. It is not a certified appraisal or legal advice. You are responsible for verifying all data and meeting filing deadlines.
           </p>
         </div>

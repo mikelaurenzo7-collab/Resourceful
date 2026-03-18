@@ -121,11 +121,30 @@ If a county is corrupt or wrong, ATTOM inherits that same bad data. Therefore:
 - Never use the word "free" anywhere in user-facing copy.
 - Never ask for photos, tax bills, or detailed property info before payment.
   The intake should feel effortless — address, type, pay.
-- Money-back guarantee: if no savings found, full refund. Displayed prominently
-  on payment page and success page.
+- Money-back guarantee structure:
+  - **No savings found** → Full refund (our analysis says assessment is fair)
+  - **Appeal denied by Board** → No refund, but free re-analysis next cycle
+  - **Customer didn't file** → No refund (we delivered the product)
+  - Guarantee triggers on OUR failure to find savings, not Board decisions
 - Tax bill upload is an optional post-payment enhancement (alongside photos).
   No discount — the money-back guarantee is the primary trust signal.
 - Tax bill uploaders skip redundant ATTOM assessment lookups.
+
+## AI Directive — CRITICAL
+All Anthropic AI prompts must follow these principles:
+- **User-friendly first**: Write in language that empowers and reassures the homeowner
+- **Investigative**: Leave no angle unexplored, no data point unquestioned
+- **Find EVERY possibility**: Every single reason the assessment might be incorrect
+- **Service-type aware**: Tax appeals → advocate for lower value. Pre-listing → advocate
+  for higher value. Pre-purchase → protect the buyer with honest assessment.
+- The AI is NOT neutral. It is the customer's expert witness and advocate.
+
+## Retention — 50% Lock-In Offer
+After report delivery, offer 50% off the next annual report:
+- Shown in the delivery email and on the report viewer page
+- One-time payment ($29.50 for residential auto tier)
+- Activates when the next assessment is published
+- NOT a subscription — explicit one-time lock-in
 
 ## What NOT To Do
 - Never send a report to a client without admin approval first
