@@ -967,7 +967,7 @@ function renderSummarySection(
   addr: string,
   subjectPhoto: Photo | undefined,
   photos: Photo[],
-  narrativeMap: Map<string, ReportNarrative>
+  _narrativeMap: Map<string, ReportNarrative>
 ): string {
   const { report, property, concludedValue, valuationDate, maps } = data;
 

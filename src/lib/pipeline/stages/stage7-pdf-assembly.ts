@@ -87,12 +87,6 @@ export async function runPdfAssembly(
   const latitude = report.latitude ?? 0;
   const longitude = report.longitude ?? 0;
 
-  const propertyAddress = [
-    report.property_address,
-    report.city,
-    report.state,
-  ].filter(Boolean).join(', ');
-
   // ── Generate map URLs ─────────────────────────────────────────────────
   const locationMapUrl = getStaticMapUrl({
     lat: latitude,

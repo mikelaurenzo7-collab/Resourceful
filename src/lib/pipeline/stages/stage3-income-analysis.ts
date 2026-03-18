@@ -4,7 +4,7 @@
 // income approach value. Writes to income_analysis and comparable_rentals.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, ComparableRentalInsert, PropertyType, Report, PropertyData, ComparableSale } from '@/types/database';
+import type { Database, ComparableRentalInsert, Report, PropertyData, ComparableSale } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { getRentalComparables } from '@/lib/services/attom';
 

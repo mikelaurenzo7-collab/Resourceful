@@ -15,7 +15,8 @@ interface Flag {
 }
 
 function computeFlags({
-  report,
+  // report reserved for future quality flag rules
+  report: _report,
   comps,
   propertyData,
   measurements,

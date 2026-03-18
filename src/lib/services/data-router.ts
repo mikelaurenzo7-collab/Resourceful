@@ -116,9 +116,6 @@ async function collectFromCountyApi(
     return { data: null, error: null };
   }
 
-  // Route by county FIPS code (not hardcoded county names)
-  const _fips = _params.countyRules.county_fips;
-
   // No adapters currently active — ATTOM handles all counties.
   // When a county adapter is needed, add a case here:
   //

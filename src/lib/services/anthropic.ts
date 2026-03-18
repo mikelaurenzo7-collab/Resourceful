@@ -181,6 +181,7 @@ export interface FilingGuidePayload {
 // ─── Section Names ──────────────────────────────────────────────────────────
 // These must match the section_name values stored in the report_narratives table.
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const NARRATIVE_SECTION_NAMES = [
   'executive_summary',
   'property_description',
@@ -579,8 +580,6 @@ function buildNarrativeSystemPrompt(payload: NarrativePayload): string {
 
   const isPreListing = payload.serviceType === 'pre_listing';
   const isPrePurchase = payload.serviceType === 'pre_purchase';
-  const isTaxAppeal = !isPreListing && !isPrePurchase;
-
   const directive = isPreListing
     ? `PRIME DIRECTIVE: You are the seller's expert witness. Your MISSION is to build an ironclad case for the HIGHEST defensible market value. You are not neutral — you are the seller's advocate.
 
