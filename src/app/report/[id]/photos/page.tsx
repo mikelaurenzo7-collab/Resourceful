@@ -157,8 +157,8 @@ export default function ReportPhotosPage() {
             Strengthen Your Evidence
           </h1>
           <p className="text-cream/50 max-w-lg mx-auto leading-relaxed">
-            Your report for <span className="text-cream font-medium">{report.propertyAddress}</span> is
-            being built with comparable sales and market data.
+            Your report for <span className="text-cream font-medium">{report.propertyAddress}</span> will
+            be built with comparable sales, market data, and any photos you upload.
             {report.estimatedSavings && report.estimatedSavings > 0 && (
               <> We found <span className="text-emerald-400 font-medium">
                 ${report.estimatedSavings.toLocaleString('en-US')}/year

@@ -1,12 +1,19 @@
 // ─── Stripe Webhook Handler ──────────────────────────────────────────────────
 // Verifies Stripe signature and processes payment events.
-// CRITICAL: This is the ONLY trigger for report generation pipeline.
-// Never trigger pipeline from the frontend.
+//
+// On successful payment:
+//   1. Update report status to 'paid'
+//   2. Send payment confirmation email
+//   3. Show instant preview on success page (via valuation API, client-side)
+//
+// Pipeline is NOT triggered here. The cron job at /api/cron/photo-reminders
+// triggers the pipeline ~14 hours after payment, giving the customer time to
+// upload photos that strengthen their case. This saves API costs by running
+// the full pipeline once with the best available data, not twice.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { constructWebhookEvent } from '@/lib/services/stripe-service';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { runPipeline } from '@/lib/pipeline/orchestrator';
 import { sendPaymentConfirmationEmail } from '@/lib/services/resend-email';
 import type Stripe from 'stripe';
 import type { Report } from '@/types/database';
@@ -83,8 +90,6 @@ async function handlePaymentIntentSucceeded(
   const supabase = createAdminClient();
 
   // ── Idempotency guard: only process reports still in 'intake' status ──
-  // Stripe can deliver webhooks multiple times. If the report has already
-  // moved past 'intake', this is a duplicate — skip silently.
   const { data: existingReport } = await supabase
     .from('reports')
     .select('status')
@@ -122,7 +127,6 @@ async function handlePaymentIntentSucceeded(
   }
 
   // ── Send payment confirmation email (non-blocking) ─────────────────
-  // Fetch report details for the email
   const { data: reportData } = await supabase
     .from('reports')
     .select('client_email, property_address, property_type')
@@ -142,15 +146,7 @@ async function handlePaymentIntentSucceeded(
     });
   }
 
-  // ── Trigger the report generation pipeline ──────────────────────────
-  // This is the ONLY place the pipeline should be triggered.
-  console.log(`[webhook/stripe] Triggering pipeline for report ${reportId}`);
-
-  // Fire-and-forget: pipeline runs asynchronously. Errors are recorded
-  // in the report's pipeline_error_log field by the orchestrator.
-  runPipeline(reportId).catch((err) => {
-    console.error(
-      `[webhook/stripe] Pipeline failed for report ${reportId}: ${err}`
-    );
-  });
+  // Pipeline is deferred — triggered by cron at ~14 hours to allow
+  // photo uploads. See /api/cron/photo-reminders/route.ts.
+  console.log(`[webhook/stripe] Report ${reportId} marked as paid. Pipeline will run via cron after photo window.`);
 }

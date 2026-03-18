@@ -343,7 +343,7 @@ export async function sendPaymentConfirmationEmail(
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #1a1a1a; font-size: 24px;">Payment Confirmed</h1>
-          <p>Thank you for your order. Your property assessment report is now being built.</p>
+          <p>Thank you for your order. Your property assessment report will be delivered within 24 hours.</p>
 
           <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
             <table style="width: 100%; border-collapse: collapse;">

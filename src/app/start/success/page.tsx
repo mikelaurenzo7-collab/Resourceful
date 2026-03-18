@@ -167,7 +167,7 @@ function SuccessContent() {
               <p className="text-xs text-cream/50 leading-relaxed mb-3">
                 {preview && preview.estimatedAnnualSavings > 0
                   ? `We found potential savings of ${formatDollar(preview.estimatedAnnualSavings)}/year. Upload photos of your property to build even stronger evidence — the assessor has never been inside your home.`
-                  : 'Your report is being built with market data. Upload photos of your property\'s actual condition to build the strongest possible evidence package.'}
+                  : 'Upload photos of your property\'s actual condition to build the strongest possible evidence package. The assessor has never been inside your home.'}
               </p>
               <p className="text-xs text-cream/40 leading-relaxed mb-4">
                 Photograph any damage, deferred maintenance, outdated finishes,
@@ -196,20 +196,20 @@ function SuccessContent() {
             {[
               {
                 step: '1',
-                title: 'Data Collection & Analysis',
-                desc: 'We pull comparable sales and property data to build a complete evidence package using independent market data.',
+                title: 'Upload Photos (Optional)',
+                desc: 'You have up to 24 hours to upload photos of your property. Damage, deferred maintenance, and aging systems strengthen your case. We\'ll remind you at the 12-hour mark.',
                 active: true,
               },
               {
                 step: '2',
-                title: 'Photo Enhancement Window',
-                desc: 'Upload photos within 24 hours to strengthen your evidence. We\'ll incorporate them into your report before delivery.',
+                title: 'Full Analysis Built',
+                desc: 'We pull comparable sales, analyze your photos (if uploaded), and build your complete evidence package using independent market data and AI.',
                 active: false,
               },
               {
                 step: '3',
-                title: 'Expert Review & Delivery',
-                desc: 'Every report is reviewed by our team for accuracy, then delivered to your inbox with filing instructions and hearing guidance.',
+                title: 'Reviewed & Delivered',
+                desc: 'Every report is reviewed by our team for accuracy, then delivered to your inbox within 24 hours — with filing instructions and hearing guidance.',
                 active: false,
               },
             ].map((item) => (

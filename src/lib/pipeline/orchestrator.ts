@@ -2,6 +2,10 @@
 // Runs report generation stages 1-7 sequentially, then routes to admin
 // for approval. Stage 8 (delivery) is admin-triggered, not automated.
 //
+// Triggered by the cron job at /api/cron/photo-reminders (~14 hours after
+// payment) to allow photo uploads before running. NOT triggered by the
+// Stripe webhook — the webhook only marks reports as 'paid'.
+//
 // After each stage, writes completion to pipeline_last_completed_stage.
 // On failure, writes error to pipeline_error_log JSONB and halts.
 // Can be resumed from the last successful stage.

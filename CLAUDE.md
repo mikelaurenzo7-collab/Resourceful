@@ -35,20 +35,31 @@ After payment, the success page shows:
 
 Photos and tax bills enhance the report but are never required for generation.
 
-## Delivery Model — Within 24 Hours
-Pipeline fires immediately on payment (Stripe webhook). Stages 1-7 run
-autonomously using ATTOM data + Anthropic AI. Pipeline completes in ~10 minutes.
-Report enters status = 'pending_approval' for admin review.
+## Delivery Model — Deferred Pipeline, Within 24 Hours
+Pipeline does NOT fire on payment. The Stripe webhook only:
+1. Updates report status to 'paid'
+2. Sends payment confirmation email
 
-If the customer uploads photos before admin approves, admin can re-run
-stages 4-7 to incorporate them. Admin reviews, approves, and delivers
-within 24 hours of payment. Stage 8 (delivery email with PDF + filing
-guide) only executes after admin approval.
+The pipeline is triggered by a Vercel cron job at the ~14 hour mark:
 
-The 24-hour window is NOT a delay — it's breathing room for:
-- The customer to upload photos (not required, but strengthens the case)
-- Admin to review at a comfortable pace
-- Photos to be incorporated if they arrive before delivery
+```
+ 0h  — Customer pays. Instant preview shown. Photo upload encouraged.
+12h  — Photo reminder email sent (cron).
+14h  — Pipeline triggered (cron). Runs with ATTOM + AI + photos if any.
+~14.5h — Pipeline complete. Report enters pending_approval.
+18-24h — Admin reviews and delivers.
+```
+
+**Why deferred?** Running the pipeline immediately wastes API costs. If the
+customer uploads photos later, we'd have to re-run AI analysis, narratives,
+and PDF — paying Anthropic twice. By waiting ~14 hours, we run the full
+pipeline ONCE with the best available data. This saves $1-2 per report.
+
+Stage 8 (delivery email with PDF + filing guide) only executes after
+admin approval. The 24-hour safety net in the cron catches any reports
+that slipped through.
+
+**Cron endpoint:** `/api/cron/photo-reminders` (every 30 min, secured by CRON_SECRET)
 
 ## Nationwide Architecture Rule
 This platform serves every county in every state. ATTOM is the universal data source that covers the entire country. No county-specific logic is hardcoded in application code. All county-specific behavior comes from the county_rules database table: assessment ratios, appeal board names, filing deadlines, form names, hearing formats. The data-router supports future county-specific API adapters via county_rules.assessor_api_url, but none are required — ATTOM handles everything.
