@@ -250,7 +250,7 @@ src/
 │
 └── middleware.ts                   # Next.js request middleware (auth, redirects)
 
-supabase/migrations/                # 13 SQL migration files (001–013)
+supabase/migrations/                # 15 SQL migration files (001–015)
 scripts/                            # seed-county-rules.ts, seed-counties.ts
 ```
 
