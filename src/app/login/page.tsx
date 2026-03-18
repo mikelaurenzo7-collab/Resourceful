@@ -96,6 +96,12 @@ export default function LoginPage() {
           <Button type="submit" size="lg" fullWidth loading={loading}>
             Sign In
           </Button>
+
+          <div className="text-right">
+            <a href="/forgot-password" className="text-xs text-cream/40 hover:text-gold transition-colors">
+              Forgot your password?
+            </a>
+          </div>
         </form>
 
         {/* Footer link */}

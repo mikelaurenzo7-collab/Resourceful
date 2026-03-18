@@ -1,71 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWizard } from '@/components/intake/WizardLayout';
 import AddressInput from '@/components/intake/AddressInput';
 import PropertyTypeSelector from '@/components/intake/PropertyTypeSelector';
-import { TAX_BILL_DISCOUNT } from '@/config/pricing';
 import Button from '@/components/ui/Button';
 
 export default function PropertyPage() {
   const router = useRouter();
   const { state, updateState, setCurrentStep } = useWizard();
-  const [showTaxBillForm, setShowTaxBillForm] = useState(state.hasTaxBill);
-  const [assessedValue, setAssessedValue] = useState(
-    state.taxBillData?.assessedValue?.toString() ?? ''
-  );
-  const [taxAmount, setTaxAmount] = useState(
-    state.taxBillData?.taxAmount?.toString() ?? ''
-  );
-  const [taxYear, setTaxYear] = useState(
-    state.taxBillData?.taxYear ?? ''
-  );
-  const [pin, setPin] = useState(
-    state.taxBillData?.pin ?? ''
-  );
 
   useEffect(() => {
     setCurrentStep(2);
     if (!state.serviceType) router.push('/start');
   }, [setCurrentStep, state.serviceType, router]);
-
-  const discountPct = Math.round(TAX_BILL_DISCOUNT * 100);
-
-  const handleTaxBillToggle = (has: boolean) => {
-    setShowTaxBillForm(has);
-    if (!has) {
-      updateState({ hasTaxBill: false, taxBillData: null });
-      setAssessedValue('');
-      setTaxAmount('');
-      setTaxYear('');
-      setPin('');
-    }
-  };
-
-  const handleTaxBillSave = () => {
-    const av = parseFloat(assessedValue.replace(/[^0-9.]/g, ''));
-    const ta = parseFloat(taxAmount.replace(/[^0-9.]/g, ''));
-    if (!av || av <= 0) return;
-    updateState({
-      hasTaxBill: true,
-      taxBillData: {
-        assessedValue: av,
-        taxAmount: ta > 0 ? ta : null,
-        taxYear: taxYear || null,
-        pin: pin || null,
-      },
-    });
-  };
-
-  // Auto-save tax bill data when fields change
-  useEffect(() => {
-    if (showTaxBillForm) {
-      const av = parseFloat(assessedValue.replace(/[^0-9.]/g, ''));
-      if (av > 0) handleTaxBillSave();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assessedValue, taxAmount, taxYear, pin, showTaxBillForm]);
 
   const canContinue = state.address && state.propertyType;
 
@@ -104,8 +53,6 @@ export default function PropertyPage() {
             onChange={(pt) => updateState({ propertyType: pt })}
           />
         </section>
-
-        {/* Tax bill collection moved post-payment — trust first, enhance later */}
       </div>
 
       {/* Navigation */}

@@ -50,7 +50,7 @@ export default function ReportPhotosPage() {
         if (data.error) {
           setError(data.error);
         } else {
-          const createdAt = data.pipelineStartedAt || data.deliveredAt || new Date().toISOString();
+          const createdAt = data.createdAt || data.pipelineStartedAt || data.deliveredAt || new Date().toISOString();
           setReport({
             propertyAddress: data.propertyAddress || 'Your Property',
             propertyType: (data.propertyType as PropertyType) || 'residential',

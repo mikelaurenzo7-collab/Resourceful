@@ -51,8 +51,8 @@ export async function POST(request: NextRequest) {
       tax_bill_pin,
     } = parsed.data;
 
-    // ── Calculate price (tier-aware, tax bill discount applied) ──────────
-    const priceCents = getPriceCents(service_type, property_type, review_tier, has_tax_bill);
+    // ── Calculate price (tier-aware, no discount — money-back guarantee instead) ──
+    const priceCents = getPriceCents(service_type, property_type, review_tier);
 
     // ── Create report row via repository ─────────────────────────────────
     const report = (await createReport({

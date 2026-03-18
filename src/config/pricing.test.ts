@@ -6,7 +6,6 @@ import {
   PRICING,
   PRICING_GUIDED,
   PRICING_EXPERT,
-  TAX_BILL_DISCOUNT,
   MONEY_BACK_GUARANTEE,
 } from './pricing';
 
@@ -20,14 +19,6 @@ describe('formatPrice', () => {
   });
 });
 
-// ─── TAX_BILL_DISCOUNT ─────────────────────────────────────────────────────
-
-describe('TAX_BILL_DISCOUNT', () => {
-  it('is 15%', () => {
-    expect(TAX_BILL_DISCOUNT).toBe(0.15);
-  });
-});
-
 // ─── MONEY_BACK_GUARANTEE ───────────────────────────────────────────────────
 
 describe('MONEY_BACK_GUARANTEE', () => {
@@ -36,9 +27,9 @@ describe('MONEY_BACK_GUARANTEE', () => {
   });
 });
 
-// ─── getPriceForReport (auto / pro se tier) ─────────────────────────────────
+// ─── getPriceForReport (auto tier) ──────────────────────────────────────────
 
-describe('getPriceForReport — auto tier (pro se)', () => {
+describe('getPriceForReport — auto tier', () => {
   it('returns correct price for residential tax appeal', () => {
     expect(getPriceForReport('tax_appeal', 'residential')).toBe(5900);
   });
@@ -97,30 +88,6 @@ describe('getPriceForReport — expert tier', () => {
   });
 });
 
-// ─── getPriceForReport (tax bill discount) ──────────────────────────────────
-
-describe('getPriceForReport — tax bill discount', () => {
-  it('applies 15% discount and rounds to nearest dollar', () => {
-    // $59 * 0.85 = $50.15 → rounds to $50 → 5000 cents
-    expect(getPriceForReport('tax_appeal', 'residential', 'auto', true)).toBe(5000);
-  });
-
-  it('applies discount to commercial', () => {
-    // $109 * 0.85 = $92.65 → rounds to $93 → 9300 cents
-    expect(getPriceForReport('tax_appeal', 'commercial', 'auto', true)).toBe(9300);
-  });
-
-  it('applies discount to expert tier', () => {
-    // $177 * 0.85 = $150.45 → rounds to $150 → 15000 cents
-    expect(getPriceForReport('tax_appeal', 'residential', 'expert_reviewed', true)).toBe(15000);
-  });
-
-  it('applies discount to pre_purchase', () => {
-    // $69 * 0.85 = $58.65 → rounds to $59 → 5900 cents
-    expect(getPriceForReport('pre_purchase', 'residential', 'auto', true)).toBe(5900);
-  });
-});
-
 // ─── getPriceCents (backward compat) ────────────────────────────────────────
 
 describe('getPriceCents', () => {
@@ -128,8 +95,8 @@ describe('getPriceCents', () => {
     expect(getPriceCents('tax_appeal', 'residential')).toBe(
       getPriceForReport('tax_appeal', 'residential')
     );
-    expect(getPriceCents('tax_appeal', 'commercial', 'expert_reviewed', true)).toBe(
-      getPriceForReport('tax_appeal', 'commercial', 'expert_reviewed', true)
+    expect(getPriceCents('tax_appeal', 'commercial', 'expert_reviewed')).toBe(
+      getPriceForReport('tax_appeal', 'commercial', 'expert_reviewed')
     );
   });
 });

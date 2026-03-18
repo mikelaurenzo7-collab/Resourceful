@@ -3,6 +3,7 @@ import ComparisonSection from '@/components/landing/ComparisonSection';
 import HowItWorks from '@/components/landing/HowItWorks';
 import WhatYouGet from '@/components/landing/WhatYouGet';
 import SavingsHighlight from '@/components/landing/SavingsHighlight';
+import Testimonials from '@/components/landing/Testimonials';
 import FAQ from '@/components/landing/FAQ';
 import Footer from '@/components/landing/Footer';
 import { ServiceJsonLd, FAQJsonLd } from '@/components/seo/JsonLd';
@@ -129,6 +130,14 @@ export default function HomePage() {
         <div className="h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
       </div>
 
+      {/* Testimonials + Money-back guarantee */}
+      <Testimonials />
+
+      {/* Divider */}
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
+      </div>
+
       {/* FAQ */}
       <FAQ />
 
@@ -152,7 +161,7 @@ export default function HomePage() {
             </svg>
           </Link>
           <p className="mt-4 text-sm text-cream/30">
-            From $49 &middot; Expert-reviewed &middot; County-specific filing guide included
+            From $59 &middot; Expert-reviewed &middot; Money-back guarantee
           </p>
         </div>
       </section>

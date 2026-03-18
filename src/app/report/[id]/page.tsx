@@ -140,15 +140,33 @@ export default function ReportViewerPage() {
   }
 
   if (data && !data.ready) {
+    const isFailed = data.status === 'failed';
     return (
       <main className="min-h-screen bg-pattern flex items-center justify-center px-6">
         <div className="text-center max-w-lg animate-fade-in">
-          <div className="w-20 h-20 rounded-full bg-gold/10 flex items-center justify-center mx-auto mb-8">
-            <div className="w-10 h-10 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+          <div className={`w-20 h-20 rounded-full ${isFailed ? 'bg-red-500/10' : 'bg-gold/10'} flex items-center justify-center mx-auto mb-8`}>
+            {isFailed ? (
+              <svg className="w-10 h-10 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            ) : (
+              <div className="w-10 h-10 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+            )}
           </div>
-          <h1 className="font-display text-3xl text-cream mb-4">Report in Progress</h1>
-          <p className="text-cream/50 mb-2">{data.message || 'Your report is being generated.'}</p>
-          <p className="text-cream/30 text-sm">This page will automatically update when your report is ready.</p>
+          <h1 className="font-display text-3xl text-cream mb-4">
+            {isFailed ? 'We Hit a Snag' : 'Report in Progress'}
+          </h1>
+          <p className="text-cream/50 mb-2">
+            {isFailed
+              ? 'We encountered an issue generating your report. Our team has been notified and is working on it.'
+              : data.message || 'Your report is being generated.'}
+          </p>
+          {!isFailed && (
+            <p className="text-cream/30 text-sm">This page will automatically update when your report is ready.</p>
+          )}
+          {isFailed && (
+            <p className="text-cream/30 text-sm">You don&apos;t need to do anything — we&apos;ll email you when your report is ready.</p>
+          )}
           <p className="text-xs text-cream/20 mt-8">Report ID: {reportId}</p>
         </div>
       </main>

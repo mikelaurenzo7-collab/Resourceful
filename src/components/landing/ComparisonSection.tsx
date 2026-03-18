@@ -16,7 +16,7 @@ const options = [
   },
   {
     label: 'Resourceful',
-    price: 'From $49',
+    price: 'From $59',
     time: '1 – 2 days',
     details: [
       { text: 'Comparable sales analysis', included: true },

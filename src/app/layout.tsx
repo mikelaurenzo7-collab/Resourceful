@@ -37,12 +37,21 @@ export const metadata: Metadata = {
     siteName: "Resourceful",
     url: baseUrl,
     locale: "en_US",
+    images: [
+      {
+        url: `${baseUrl}/og-image.png`,
+        width: 1200,
+        height: 630,
+        alt: "Resourceful — Professional Property Tax Appeal Reports from $59",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Resourceful | Property Tax Appeal Reports",
     description:
       "Save hundreds to thousands on your property taxes. Professional appeal reports with money-back guarantee.",
+    images: [`${baseUrl}/og-image.png`],
   },
   alternates: {
     canonical: baseUrl,

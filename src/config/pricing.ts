@@ -41,14 +41,9 @@ export const PRICING_EXPERT = {
   PRE_LISTING: 20700, // $207
 } as const;
 
-// ─── Tax Bill Discount ──────────────────────────────────────────────────────
-// Users who upload their tax bill (post-payment) get 15% off — they provide
-// data we'd otherwise have to look up, reducing our API costs.
-// Applied as a refund/credit after upload, not pre-payment.
-export const TAX_BILL_DISCOUNT = 0.15;
-
 // ─── Money-Back Guarantee ───────────────────────────────────────────────────
 // If our analysis finds no savings opportunity, full refund — no questions asked.
+// This replaces the old tax bill discount as the primary trust signal.
 export const MONEY_BACK_GUARANTEE = true;
 
 export type ServiceType = 'tax_appeal' | 'pre_purchase' | 'pre_listing';
@@ -58,36 +53,28 @@ export function getPriceForReport(
   serviceType: ServiceType,
   propertyType: PropertyType,
   reviewTier: ReviewTier = 'auto',
-  hasTaxBill: boolean = false
 ): number {
   const table = reviewTier === 'expert_reviewed'
     ? PRICING_EXPERT
     : reviewTier === 'guided_filing'
       ? PRICING_GUIDED
       : PRICING;
-  let base: number;
-  if (serviceType === 'pre_purchase') base = table.PRE_PURCHASE;
-  else if (serviceType === 'pre_listing') base = table.PRE_LISTING;
-  else if (propertyType === 'residential') base = table.TAX_APPEAL_RESIDENTIAL;
-  else if (propertyType === 'land') base = table.TAX_APPEAL_LAND;
-  else if (propertyType === 'industrial') base = table.TAX_APPEAL_INDUSTRIAL;
-  else base = table.TAX_APPEAL_COMMERCIAL;
 
-  if (hasTaxBill) {
-    // Round to nearest dollar (100 cents) for clean display
-    base = Math.round((base * (1 - TAX_BILL_DISCOUNT)) / 100) * 100;
-  }
-  return base;
+  if (serviceType === 'pre_purchase') return table.PRE_PURCHASE;
+  if (serviceType === 'pre_listing') return table.PRE_LISTING;
+  if (propertyType === 'residential') return table.TAX_APPEAL_RESIDENTIAL;
+  if (propertyType === 'land') return table.TAX_APPEAL_LAND;
+  if (propertyType === 'industrial') return table.TAX_APPEAL_INDUSTRIAL;
+  return table.TAX_APPEAL_COMMERCIAL;
 }
 
-// Backward-compatible aliases used by existing code
+// Backward-compatible alias
 export function getPriceCents(
   serviceType: ServiceType,
   propertyType: PropertyType,
   reviewTier: ReviewTier = 'auto',
-  hasTaxBill: boolean = false
 ): number {
-  return getPriceForReport(serviceType, propertyType, reviewTier, hasTaxBill);
+  return getPriceForReport(serviceType, propertyType, reviewTier);
 }
 
 export function formatPrice(cents: number): string {

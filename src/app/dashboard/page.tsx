@@ -41,6 +41,10 @@ const STATUS_MESSAGES: Partial<Record<ReportStatus, { title: string; description
     title: 'Processing Error',
     description: 'We encountered an issue generating your report. Our team has been notified and will resolve it shortly.',
   },
+  rejected: {
+    title: 'Under Revision',
+    description: 'Your report is being revised by our team to meet quality standards. You will receive an email when the updated report is ready.',
+  },
 };
 
 const SERVICE_LABELS: Record<string, string> = {

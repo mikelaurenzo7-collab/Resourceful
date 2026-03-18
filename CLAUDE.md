@@ -123,8 +123,8 @@ If a county is corrupt or wrong, ATTOM inherits that same bad data. Therefore:
   The intake should feel effortless — address, type, pay.
 - Money-back guarantee: if no savings found, full refund. Displayed prominently
   on payment page and success page.
-- Tax bill uploaders get 15% off (TAX_BILL_DISCOUNT in config/pricing.ts).
-  This is offered post-payment as an incentive, not a pre-payment requirement.
+- Tax bill upload is an optional post-payment enhancement (alongside photos).
+  No discount — the money-back guarantee is the primary trust signal.
 - Tax bill uploaders skip redundant ATTOM assessment lookups.
 
 ## What NOT To Do

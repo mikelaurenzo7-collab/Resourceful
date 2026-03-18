@@ -60,7 +60,7 @@ function CheckoutForm() {
   };
 
   const priceCents = state.priceCents || (state.serviceType && state.propertyType
-    ? getPriceCents(state.serviceType, state.propertyType, state.reviewTier, state.hasTaxBill)
+    ? getPriceCents(state.serviceType, state.propertyType, state.reviewTier)
     : 0);
 
   const fullAddress = state.address
@@ -260,13 +260,13 @@ export default function PaymentPage() {
   };
 
   const autoPrice = state.serviceType && state.propertyType
-    ? getPriceCents(state.serviceType, state.propertyType, 'auto', state.hasTaxBill)
+    ? getPriceCents(state.serviceType, state.propertyType, 'auto')
     : 0;
   const expertPrice = state.serviceType && state.propertyType
-    ? getPriceCents(state.serviceType, state.propertyType, 'expert_reviewed', state.hasTaxBill)
+    ? getPriceCents(state.serviceType, state.propertyType, 'expert_reviewed')
     : 0;
   const guidedPrice = state.serviceType && state.propertyType
-    ? getPriceCents(state.serviceType, state.propertyType, 'guided_filing', state.hasTaxBill)
+    ? getPriceCents(state.serviceType, state.propertyType, 'guided_filing')
     : 0;
   const isTaxAppeal = state.serviceType === 'tax_appeal';
 
@@ -274,7 +274,7 @@ export default function PaymentPage() {
     updateState({
       reviewTier: tier,
       priceCents: state.serviceType && state.propertyType
-        ? getPriceCents(state.serviceType, state.propertyType, tier, state.hasTaxBill)
+        ? getPriceCents(state.serviceType, state.propertyType, tier)
         : 0,
     });
   };
@@ -477,7 +477,7 @@ export default function PaymentPage() {
               Back
             </Button>
             <Button size="lg" fullWidth loading={creating} onClick={handleCreateReport}>
-              Continue to Payment — {formatPrice(state.serviceType && state.propertyType ? getPriceCents(state.serviceType, state.propertyType, state.reviewTier, state.hasTaxBill) : 0)}
+              Continue to Payment — {formatPrice(state.serviceType && state.propertyType ? getPriceCents(state.serviceType, state.propertyType, state.reviewTier) : 0)}
               <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
               </svg>
