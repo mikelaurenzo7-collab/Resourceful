@@ -1440,27 +1440,131 @@ SETTLEMENT & HEARING STRATEGY:
 - What wins: Comparable sales with the 60% ratio calculation clearly shown, classification verification evidence, contractor repair bids, photos of property defects and condition issues.
 - Common mistakes: Missing the February 1-20 filing window (most common error in West Virginia), not understanding the 60% ratio when presenting evidence, incorrect classification on the appeal form.`,
 
-  WI: `WISCONSIN STRATEGIES:
-- Wisconsin assesses at 100% of full value. The DOR publishes assessment ratios for every municipality — if your municipality's ratio is significantly off, use it as evidence of systemic over-assessment.
-- OBJECTION must be filed by the first Monday in May to the Board of Review. The hearing is typically the same week — be prepared.
-- Use Value Assessment: Agricultural land assessed at use value based on NRCS soil productivity ratings. Application through DOR.
-- Manufacturing property is assessed by the DOR (not local assessor). Different appeal process applies.
-- The Board of Review has SUBPOENA power. If the assessor used flawed data, you can compel them to disclose their methodology and data sources.`,
+  WI: `WISCONSIN STRATEGIES — BADGER STATE:
 
-  WY: `WYOMING STRATEGIES:
-- Wyoming assesses at 9.5% of fair market value. Verify: assessed_value / 0.095 = implied market value.
-- Agricultural land is valued using a productivity-based formula (6 agricultural use classes). Verify correct classification.
-- Wyoming has no state income tax — property tax is a primary revenue source. Assessments can be aggressive.
-- The County Board of Equalization hears initial appeals. The State Board of Equalization provides state-level review.
-- Industrial property (mineral production, mines) has separate valuation rules. Ensure correct property type classification.`,
+ASSESSMENT FUNDAMENTALS:
+- Assessed at 100% of full value (fair market value) per Wis. Stat. § 70.32. Annual assessment cycle.
+- The DOR publishes assessment ratios for every municipality. If your municipality's ratio significantly deviates from 100%, use it as evidence of systemic over-assessment or under-assessment.
+- Classification: Residential, commercial, manufacturing, agricultural, undeveloped, agricultural forest, productive forest land, other. Each class may have different equalized values.
+- Burden of proof is on the taxpayer to show the assessment is excessive by presenting "significant contrary evidence" (Wis. Stat. § 70.47(8)(i)).
+- Key statutes: Wis. Stat. § 70.47 (Board of Review), § 70.85 (objection procedures), § 74.37 (claim for excessive assessment), § 70.32 (valuation standard).
+- Common errors: assessments not reflecting current market conditions, incorrect classification (especially agricultural vs residential), manufacturing property assessed by the wrong entity.
 
-  DC: `DISTRICT OF COLUMBIA STRATEGIES:
-- DC assesses at 100% of estimated market value with annual assessments. Every year is a new opportunity to challenge.
-- HOMESTEAD DEDUCTION: $83,780 deduction for owner-occupied properties (as of 2024). Verify it's applied.
-- Senior/Disabled tax relief: Qualifying residents can receive 50% reduction in property tax.
-- The Real Property Tax Appeals Commission (RPTAC) is a professional tribunal — present institutional-quality evidence.
-- DC's condo assessment methodology must reflect the unit's proportional value, not whole-building estimates divided equally.
-- Assessment cap: Owner-occupied properties have a 10% cap on annual assessment increases (D.C. Code § 47-820(b)).`,
+FOR TAX APPEALS — PROVE LOWER VALUE:
+- Primary winning tactic: Comparable sales showing the assessed value exceeds full (market) value. Wisconsin's Board of Review is powerful — it has SUBPOENA power (Wis. Stat. § 70.47(8)(d)). If the assessor used flawed data, you can compel them to disclose their methodology, data sources, and comparable sales used.
+- Cost-to-cure: Document all deferred maintenance with contractor bids. Wisconsin's freeze-thaw climate causes specific issues: foundation heaving, ice dam roof damage, basement moisture intrusion. Present as: "Full value of $X minus $Y in necessary repairs = adjusted value of $Z."
+- Photo evidence: Photograph all defects, seasonal damage, outdated systems, and external factors. Board of Review members are municipal officials — clear visual evidence of condition issues is persuasive.
+- OBJECTION filing: Must be filed by the first Monday in May (Wis. Stat. § 70.47(7)(a)). The hearing is typically the same week — be fully prepared with all evidence at filing time.
+- Use Value Assessment (Wis. Stat. § 70.32(2r)): Agricultural land assessed at use value based on NRCS soil productivity ratings and income capability. Application through DOR. Significant reduction from market value for qualifying farmland.
+- Manufacturing property: Assessed by the DOR, not the local assessor (Wis. Stat. § 70.995). Different appeal process applies — file objection with the DOR Manufacturing Assessment Unit.
+- Exemption checklist: Lottery and gaming credit (applied automatically), first dollar credit, veterans' property tax credit, disabled veterans' exemption. Verify all applicable credits are applied on the tax bill.
+
+FOR PRE-LISTING — PROVE HIGHER VALUE:
+- If assessed value trails expected listing price, the gap demonstrates the assessment has not kept pace with current market conditions — use to justify listing price.
+- Document all improvements and upgrades. Use the DOR's assessment ratio for the municipality to show the general level of assessment versus current market activity.
+- Use recent comparable sales in the municipality to demonstrate the property's true market position.
+
+FOR PRE-PURCHASE — PROTECT THE BUYER:
+- Calculate post-purchase tax projection: assessed value × total mill rate (state, county, municipality, school, technical college, special districts). Mill rates vary significantly by municipality.
+- If assessed value is well below the purchase price, expect an adjustment. Wisconsin's full-value standard means the assessor should be targeting market value.
+- Identify deferred maintenance specific to Wisconsin climate: foundation condition, roof age, HVAC adequacy, insulation, basement moisture. Factor costs into offer.
+
+COMMERCIAL PROPERTY TACTICS:
+- Income approach: Use actual NOI and market cap rates. The Board of Review can subpoena income records — be prepared to produce or challenge income data.
+- Classification impact: Commercial vs manufacturing classification determines who assesses (local vs DOR) and which appeal process applies.
+- Functional obsolescence: Document outdated layouts, ADA non-compliance, environmental contamination, excess land, and deferred capital improvements.
+- Economic obsolescence: Market vacancy rates, declining rents, big-box retail closures, and changing market conditions that reduce income potential.
+
+SETTLEMENT & HEARING STRATEGY:
+- Board of Review: File written objection by the first Monday in May. Hearing typically occurs the same week. The Board has SUBPOENA power — use it to compel the assessor to produce their work file, comparable sales, and methodology.
+- Wis. Stat. § 74.37 claim: Alternative path for excessive assessment claims filed with the municipality after taxes are paid. Must show assessment is at least $1,000 and 5% too high.
+- Template: "The assessed value of [amount] exceeds the property's full (market) value of [amount] as demonstrated by [number] comparable sales within [municipality], adjusted for differences in size, condition, and location."
+- What wins: Comparable sales with clear adjustments, DOR assessment ratio data showing the municipality's general level, subpoenaed assessor work files revealing flawed methodology, contractor repair estimates, income data for commercial properties.
+- Common mistakes: Missing the first-Monday-in-May deadline (strict and non-waivable), not being prepared for an immediate hearing, failing to present "significant contrary evidence" as required by statute, not using the Board's subpoena power when the assessor's methodology is questionable.`,
+
+  WY: `WYOMING STRATEGIES — EQUALITY STATE:
+
+ASSESSMENT FUNDAMENTALS:
+- Assessed at 9.5% of fair market value for residential and commercial property (Wyo. Stat. § 39-13-103). Verify: assessed_value / 0.095 = implied market value, which must equal fair market value.
+- Agricultural land assessed at productivity value (Wyo. Stat. § 39-13-103(b)(x)). Six agricultural use classes based on soil type and irrigation. Classification is critical.
+- Minerals and mine products assessed at 100% of gross product value. Industrial property has separate valuation rules (Wyo. Stat. § 39-13-102).
+- No state income tax — property tax is a primary revenue source. Assessments can be aggressive.
+- Burden of proof is on the taxpayer to show the assessed value is not equal to fair market value.
+- Key statutes: Wyo. Stat. §§ 39-13-101 to 39-13-111 (property tax), § 39-13-109 (County Board of Equalization appeal), § 39-11-102.1 (State Board of Equalization appeal).
+- Common errors: incorrect agricultural classification (wrong use class), industrial property assessed as commercial, failure to apply veterans' exemption, stale condition ratings.
+
+FOR TAX APPEALS — PROVE LOWER VALUE:
+- Primary winning tactic: Comparable sales showing the implied market value (assessed / 0.095) exceeds actual fair market value. The low 9.5% ratio means small percentage errors in market value create proportional assessment errors.
+- Cost-to-cure: Document all deferred maintenance with contractor bids. Wyoming's extreme climate (harsh winters, wind, altitude) causes specific issues: roof damage from wind/hail, foundation frost heave, well and septic system failures. Present as: "Fair market value of $X minus $Y in necessary repairs = adjusted value of $Z, assessed at 9.5% = $W."
+- Photo evidence: Photograph all defects, weather damage, outdated systems, and external factors (wind exposure, road access issues, neighboring industrial activity). County Board members are local officials — visual evidence is effective.
+- Agricultural classification: Six use classes based on productivity. Verify the correct class is applied — irrigated cropland vs dryland vs rangeland have vastly different per-acre values. Incorrect classification can result in significant over-assessment.
+- Exemption checklist: Veterans' exemption ($3,000 off assessed value for qualifying veterans, Wyo. Stat. § 39-13-105), mine rescue team exemption. Verify all applicable exemptions are applied.
+
+FOR PRE-LISTING — PROVE HIGHER VALUE:
+- At 9.5% ratio, the assessed value is a small fraction of market value. Calculate the implied market value (assessed / 0.095) and compare to listing price — a gap demonstrates the assessor's implied value trails the market.
+- Document all improvements and upgrades not captured in the assessment. Wyoming's rural properties may have improvements (outbuildings, water rights, fencing) not fully reflected.
+- Use recent comparable sales to demonstrate the property's true market position.
+
+FOR PRE-PURCHASE — PROTECT THE BUYER:
+- Calculate post-purchase tax projection: (purchase price × 0.095) × local mill levy. Wyoming mill levies vary by county and special district.
+- For agricultural properties, verify that the productivity classification will continue after purchase. Change of use can trigger reassessment at market value rather than agricultural value.
+- Identify deferred maintenance specific to Wyoming: well and septic condition, roof integrity (wind/hail exposure), foundation condition, heating system adequacy for extreme cold. Factor costs into offer.
+
+COMMERCIAL PROPERTY TACTICS:
+- Commercial at 9.5% same as residential, but industrial/mineral property has different rules. Verify correct property type classification — mineral production assessed at 100% of gross product value.
+- Income approach: Use actual NOI and local cap rates. Wyoming's tourism-dependent and energy-dependent markets mean cap rates vary significantly by location and property type.
+- Functional obsolescence: Document outdated layouts, remote location disadvantages, environmental contamination (oil/gas/mining), and ADA non-compliance.
+- Economic obsolescence: Energy market downturns, tourism seasonality, population shifts, and declining demand in resource-dependent communities.
+
+SETTLEMENT & HEARING STRATEGY:
+- County Board of Equalization: File appeal by the statutory deadline (typically the first Monday in June, but verify with county). The county board hears initial appeals.
+- State Board of Equalization: File within 30 days of the county board decision for state-level review (Wyo. Stat. § 39-11-102.1).
+- Template: "The assessed value of [amount] implies a fair market value of [amount / 0.095] which exceeds the property's actual fair market value of [amount] as demonstrated by [number] comparable sales within [county]."
+- What wins: Comparable sales with the 9.5% ratio clearly calculated, agricultural classification evidence (soil surveys, productivity data), contractor repair bids, photos of condition issues and weather damage.
+- Common mistakes: Not understanding the 9.5% ratio when presenting evidence, incorrect agricultural use class on the appeal, missing the filing deadline, failing to distinguish between real property and mineral/industrial property valuation rules.`,
+
+  DC: `DISTRICT OF COLUMBIA STRATEGIES — NATION'S CAPITAL:
+
+ASSESSMENT FUNDAMENTALS:
+- Assessed at 100% of estimated market value with annual assessments (D.C. Code § 47-820). Every year is a new opportunity to challenge.
+- Two property classes: Class 1 (residential, including up to 5 units) taxed at a lower rate; Class 2 (commercial, hotels, vacant) taxed at a higher rate. Classification directly impacts tax burden.
+- Assessment cap: Owner-occupied (homestead) properties have a 10% cap on annual assessment increases (D.C. Code § 47-820(b)). This cap does NOT apply to non-homestead properties.
+- Burden of proof is on the taxpayer to show the assessed value exceeds estimated market value.
+- Key statutes: D.C. Code §§ 47-820 to 47-829 (assessment), § 47-825.01a (Real Property Tax Appeals Commission), § 47-850 (homestead deduction), § 47-863 (senior/disabled relief).
+- Common errors: failure to apply homestead deduction, incorrect classification (Class 1 vs Class 2), condo assessments using whole-building estimates divided equally rather than unit-specific valuation, missing the assessment cap for eligible properties.
+
+FOR TAX APPEALS — PROVE LOWER VALUE:
+- Primary winning tactic: Comparable sales within the same neighborhood and ward. DC is a dense urban market with distinct micro-neighborhoods — use hyper-local comps adjusted for differences. The Real Property Tax Appeals Commission (RPTAC) is a professional tribunal that expects institutional-quality evidence.
+- Cost-to-cure: Document all deferred maintenance with contractor bids. DC's older rowhouse and condo stock frequently has issues: aging mechanical systems, historic preservation constraints adding repair costs, foundation settlement, moisture intrusion. Present as: "Estimated market value of $X minus $Y in necessary repairs = adjusted value of $Z."
+- Photo evidence: Photograph all defects, deferred maintenance, and external factors (construction disruption, traffic noise, parking limitations). RPTAC is a professional body — present organized, well-documented visual evidence.
+- HOMESTEAD DEDUCTION (D.C. Code § 47-850): $83,780 deduction for owner-occupied properties (as of 2024, adjusted periodically). Verify it is applied. Must be filed and maintained — failure to file means losing the deduction and the 10% assessment cap.
+- Assessment cap verification: Owner-occupied homestead properties cannot have assessments increase more than 10% per year (D.C. Code § 47-820(b)). Calculate and verify the cap is correctly applied. Non-homestead properties have no cap.
+- Condo assessment methodology: Each unit must be assessed individually based on its proportional value, not whole-building estimates divided equally. Challenge if the methodology appears to be a blanket allocation rather than unit-specific analysis.
+- Exemption checklist: Senior/disabled tax relief (D.C. Code § 47-863 — qualifying residents receive 50% property tax reduction), disabled veteran exemption, homestead deduction, nonprofit exemptions. Verify all applicable deductions and credits are applied.
+
+FOR PRE-LISTING — PROVE HIGHER VALUE:
+- If assessed value trails expected listing price, the gap demonstrates the assessment has not captured recent market appreciation — use to justify listing price.
+- Document all improvements and upgrades, especially in DC's competitive market where renovated properties command significant premiums over original condition.
+- Use recent comparable sales within the same neighborhood/ward to demonstrate the property's true market position.
+
+FOR PRE-PURCHASE — PROTECT THE BUYER:
+- Calculate post-purchase tax projection: (assessed value - homestead deduction if applicable) × Class 1 or Class 2 tax rate. Remember to check whether the 10% cap will apply after purchase (new homestead filing required).
+- A purchase price significantly above the current assessment may trigger a large assessment increase — note that the 10% cap only applies after the homestead is filed and established.
+- Identify deferred maintenance specific to DC: aging rowhouse infrastructure, historic preservation requirements that increase repair costs, shared wall issues, parking constraints. Factor costs into offer.
+
+COMMERCIAL PROPERTY TACTICS:
+- Class 2 (commercial) has a significantly higher tax rate than Class 1 (residential). Classification verification is critical, especially for mixed-use properties.
+- Income approach: Use actual NOI and DC market cap rates. DC's commercial market is heavily influenced by government leasing and federal spending — property-specific income evidence is essential.
+- Functional obsolescence: Document outdated office layouts (post-COVID remote work impact), insufficient building systems, ADA non-compliance, and historic preservation constraints limiting modifications.
+- Economic obsolescence: Federal government spending changes, remote work reducing office demand, neighborhood transitions, and market vacancy rates.
+
+SETTLEMENT & HEARING STRATEGY:
+- First-level review: File with the Office of Tax and Revenue (OTR) by April 1. This is an administrative review — no hearing required.
+- RPTAC appeal: File within 45 days of the OTR decision. RPTAC is a professional tribunal with appointed commissioners — present institutional-quality evidence with formal comparable analysis.
+- Superior Court appeal: Available after exhausting RPTAC remedies.
+- Template: "The assessed value of [amount] exceeds the property's estimated market value of [amount] as demonstrated by [number] comparable sales within [neighborhood/ward], each adjusted for differences in size, condition, age, and location, presented in compliance with RPTAC evidentiary standards."
+- What wins: Professional-quality comparable sales analysis with adjustment grids, appraisals, income data for commercial properties, evidence of the 10% cap being misapplied, condo-specific unit valuation data challenging blanket allocation methodology.
+- Common mistakes: Not filing homestead deduction (loses both the deduction and the 10% cap), missing the April 1 OTR deadline, presenting informal evidence to the professional RPTAC tribunal, failing to challenge condo assessment methodology when units are valued by blanket allocation.`,
 };
 
 interface StateConfig {
