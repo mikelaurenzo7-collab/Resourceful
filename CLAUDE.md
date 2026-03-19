@@ -95,9 +95,12 @@ This platform serves every county in every state. ATTOM is the universal data so
 - pnpm dev — start development server
 - pnpm build — production build
 - pnpm lint — ESLint check
-- pnpm test — run test suite
+- pnpm test — run all tests once (vitest run)
+- pnpm test:watch — watch mode (vitest)
+- pnpm test:coverage — with coverage report (vitest run --coverage)
+- pnpm types:generate — regenerate TypeScript types (supabase gen types typescript --local > src/types/supabase.ts)
+- pnpm seed:counties — seed county rules (npx tsx scripts/seed-county-rules.ts)
 - supabase db push — push schema changes
-- supabase gen types typescript — regenerate TypeScript types from schema
 
 ## Data Trust Hierarchy — CRITICAL
 County assessment data is NOT trustworthy. ATTOM sources from county records.
@@ -169,7 +172,9 @@ src/
 │   │   │       └── filing-info/    # GET  — county filing instructions
 │   │   ├── property/
 │   │   │   └── lookup/             # POST — ATTOM property lookup + cache
-│   │   ├── admin/                  # Admin approval, calibration, rerun
+│   │   ├── admin/                  # Admin approval, calibration, rerun, regenerate
+│   │   │   ├── calibration/        # run, complete, import, recalculate, stats
+│   │   │   └── reports/[id]/       # approve, reject, rerun, regenerate
 │   │   ├── webhooks/stripe/        # Stripe payment webhook
 │   │   ├── cron/photo-reminders/   # Vercel cron (every 30 min)
 │   │   └── valuation/              # Instant preview estimation
@@ -180,15 +185,23 @@ src/
 │   │   ├── success/                # Post-payment preview + photo timer
 │   │   ├── photos/                 # 24-hour photo upload window
 │   │   └── measure/                # Measurement tool
-│   ├── admin/                      # Admin dashboard, review queue, calibration
+│   ├── admin/                      # Admin dashboard, review queue, calibration, counties, metrics, tax-bill-data
 │   ├── dashboard/                  # User report status dashboard
-│   └── report/[id]/               # Report viewer
+│   ├── report/[id]/               # Report viewer + photo gallery
+│   ├── login/                      # Login page
+│   ├── signup/                     # Signup page
+│   ├── forgot-password/            # Password reset
+│   ├── privacy/                    # Privacy policy
+│   ├── terms/                      # Terms of service
+│   └── disclaimer/                 # Legal disclaimer
 │
 ├── components/
-│   ├── admin/                      # ApprovalAuditTrail, QualityFlags, RejectModal
+│   ├── admin/                      # ApprovalAuditTrail, QualityFlags, RejectModal, ReportStatusBadge
 │   ├── dashboard/                  # PipelineProgress, ReportDownload
-│   ├── intake/                     # AddressInput, PropertyDetails, PhotoUploader, MeasurementTool
-│   ├── landing/                    # Hero, ServiceCards, HowItWorks, FAQ, etc.
+│   ├── intake/                     # AddressInput, AssessmentCard, MeasurementTool, PhotoUploader,
+│   │                               # PropertyDetails, PropertyTypeSelector, ServiceTypeSelector, WizardLayout
+│   ├── landing/                    # Hero, ServiceCards, HowItWorks, FAQ, ComparisonSection,
+│   │                               # SavingsHighlight, Testimonials, WhatYouGet, Footer
 │   ├── seo/                        # JsonLd
 │   └── ui/                         # Button, Input, Card, Modal, Badge
 │
@@ -243,7 +256,12 @@ src/
 │   ├── validations/
 │   │   └── report.ts               # Zod input validation schemas
 │   │
-│   └── rate-limit.ts              # IP-based rate limiting
+│   ├── rate-limit.ts              # IP-based distributed rate limiting (Supabase RPC)
+│   │
+│   └── __tests__/                  # Test infrastructure
+│       ├── setup.ts                # Vitest setup file
+│       ├── fixtures.ts             # Test fixtures
+│       └── mocks.ts                # Test mocks
 │
 ├── types/
 │   └── database.ts                 # Supabase table types & enums
@@ -290,6 +308,9 @@ Deadlines are classified by urgency: `expired`, `urgent` (<=7 days), `approachin
 
 **County resolution** for a report uses `getCountyForReport()` — priority: `county_fips` > `county name + state`.
 
+### Authentication & Middleware
+The Next.js middleware (`src/middleware.ts`) protects `/admin` and `/dashboard` routes, redirecting unauthenticated users to `/login` with a redirect parameter. Rate limiting (`lib/rate-limit.ts`) uses a distributed approach via Supabase RPC with fixed-window IP-based limiting and fail-open on DB errors. Security headers (CSP, HSTS, X-Frame-Options) are configured in `next.config.mjs`.
+
 ### API Routes
 All API routes live under `src/app/api/`. Report lifecycle endpoints use UUID-keyed URLs (`/api/reports/[id]/...`). The `/ready` endpoint is idempotent and rate-limited. The `/api/property/lookup` endpoint is rate-limited (30/15min) and returns cached or fresh ATTOM data. Admin endpoints require authentication. The Stripe webhook verifies signatures. The cron endpoint requires `CRON_SECRET`.
 
@@ -306,6 +327,8 @@ All API routes live under `src/app/api/`. Report lifecycle endpoints use UUID-ke
 - `county_rules` — Assessment ratios, appeal boards, deadlines, hearing formats
 - `calibration_entries` / `calibration_params` — Accuracy learning system
 - `property_cache` — Cached ATTOM property lookups (90-day TTL, keyed by normalized address)
+- `state_appeal_strategies` — State-level expertise text injected into AI prompts
+- `rate_limit_entries` — Distributed rate limiting state
 
 All tables have RLS policies. County rules are publicly readable. Users can only access their own reports and photos.
 
@@ -320,12 +343,14 @@ To modify the schema: create a new migration file in `supabase/migrations/`, the
 - Fixtures: `src/lib/__tests__/fixtures.ts`
 - Mocks: `src/lib/__tests__/mocks.ts`
 
-**17 test files** covering pipeline stages, services, repository, config, validations, and templates. Tests are co-located with source files (`*.test.ts`).
+**17 test files** covering pipeline stages, services, repository, config, validations, templates, and rate limiting. Tests are co-located with source files (`*.test.ts`).
 
-**Commands:**
-- `pnpm test` — run all tests once
-- `pnpm test:watch` — watch mode
-- `pnpm test:coverage` — with coverage report
+Test file locations:
+- Config: `config/ai.test.ts`, `config/pricing.test.ts`
+- Pipeline: `pipeline/orchestrator.test.ts`, `stages/stage1*.test.ts`, `stage2*.test.ts`, `stage5*.test.ts`, `stage8*.test.ts`
+- Repository: `repository/admin.test.ts`, `county-rules.test.ts`, `reports.test.ts`
+- Services: `services/attom.test.ts`, `data-router.test.ts`, `resend-email.test.ts`, `stripe-service.test.ts`
+- Other: `rate-limit.test.ts`, `templates/helpers.test.ts`, `validations/report.test.ts`
 
 ## Environment Variables
 
@@ -347,7 +372,14 @@ Hosted on **Vercel** with Next.js 14 App Router. Configuration in `vercel.json`:
 - Cron endpoint: 60s max duration
 - Cron schedule: `/api/cron/photo-reminders` runs every 30 minutes
 
-Node version pinned to 18 (`.nvmrc`).
+Node version pinned to 20 (`.nvmrc`).
+
+## Styling & UI
+- Tailwind CSS with custom navy/gold/cream theme defined in `tailwind.config.ts`
+- Playfair Display font for headings, Geist for body text (variable fonts in `app/fonts/`)
+- Custom gradient utilities configured in Tailwind
+- Lucide React for icons
+- Components in `src/components/ui/` provide the base design system (Button, Input, Card, Modal, Badge)
 
 ## What NOT To Do
 - Never send a report to a client without admin approval first
