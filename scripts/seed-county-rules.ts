@@ -137,11 +137,41 @@ SETTLEMENT & HEARING STRATEGY:
 - Evidence format: Arizona boards accept all three approaches to value and must consider each one presented. Submit a written packet with comparable sales (adjusted), income analysis (if commercial), and cost approach (if new construction). Include photos and a property condition report.
 - Mistakes that lose appeals: missing the petition deadline (within 60 days of notice of value, typically by April — A.R.S. §42-16051), confusing FCV and LPV arguments, failing to present comparables with proper adjustments, and not understanding that primary vs secondary taxes use different values.`,
 
-  AR: `ARKANSAS STRATEGIES:
-- Arkansas requires uniform assessment at 20% of market value (Amendment 79). Calculate: if assessed_value / market_value ≠ 0.20, the assessment violates the state constitution.
-- Amendment 79 caps annual increases at 5% for homestead properties and 10% for non-homestead. If the increase exceeds these caps, it's unconstitutional regardless of market value.
-- The County Equalization Board has LIMITED authority — they can only equalize within the county. For substantive value challenges, file with the County Court.
-- Arkansas has a homestead tax credit (up to $375). Verify it's applied.`,
+  AR: `ARKANSAS STRATEGIES — AMENDMENT 79 STATE:
+
+ASSESSMENT FUNDAMENTALS:
+- Assessment ratio: 20% of true market value for all property classes (Arkansas Constitution Amendment 79, §1). The math: assessed_value must equal market_value × 0.20. If assessed_value / 0.20 > provable market value, the assessment violates the state constitution.
+- Amendment 79 caps annual assessment increases: 5% for homestead properties, 10% for non-homestead (Amendment 79, §3). If the increase exceeds these caps, it is unconstitutional regardless of actual market value — this is a mathematical argument requiring no appraisal.
+- Burden of proof: the taxpayer bears the burden at the County Equalization Board. At County Court appeal (A.C.A. §26-27-318), the standard is de novo review — the court considers the evidence fresh without deference to the assessor.
+- Key statutes: A.C.A. §26-26-1202 (assessment at 20%), Amendment 79 (caps and uniformity), A.C.A. §26-27-301 through §26-27-320 (equalization and appeal procedures), A.C.A. §26-26-1109 (personal property assessment).
+- Common assessor errors: exceeding the 5%/10% annual cap, using incorrect market value that produces an assessed value above 20%, wrong acreage or square footage, failing to apply homestead credit, not distinguishing between real and personal property for mixed-use.
+
+FOR TAX APPEALS — PROVE LOWER VALUE:
+- Primary winning tactic: Amendment 79 cap violation. Calculate: prior_year_assessed × 1.05 (homestead) or × 1.10 (non-homestead) = maximum_current_assessed. If the current assessed value exceeds this cap, the assessment is unconstitutional on its face — no comparable sales needed.
+- Cost-to-cure: foundation repair ($6,000–$15,000 — Arkansas's expansive clay soils cause widespread foundation issues), roof replacement ($6,000–$12,000), HVAC replacement ($4,000–$9,000), water damage remediation ($3,000–$10,000), pest damage ($2,000–$6,000).
+- Photo evidence: foundation cracking (extremely common in Arkansas's clay soils), water intrusion in basements, storm damage (tornadoes and severe weather), deteriorating outbuildings, overgrown or neglected property conditions. Each documented defect with a contractor estimate reduces provable market value.
+- Cap/freeze violations: the 5% homestead cap and 10% non-homestead cap are the most powerful tools. Also verify that reassessment after improvements only adds the value of the improvement, not a full revaluation of the existing structure.
+- Exemption checklist: homestead tax credit (Amendment 79, §4, up to $375 per year), disabled veteran exemption (Amendment 59, full exemption on homestead for 100% disabled veterans), senior citizen property tax freeze (Amendment 79, §3, for those 65+ with income under the threshold), religious/charitable exemptions (A.C.A. §26-3-301).
+
+FOR PRE-LISTING — PROVE HIGHER VALUE:
+- Assessment gap: Arkansas's 20% ratio and strict caps mean assessed values often lag far behind market values, especially for long-held properties. The gap between assessed value / 0.20 and true market value demonstrates the property is worth more than the county recognizes.
+- Upgrades as positive adjustments: new HVAC, updated kitchen/bath, storm shelter installation (high value in tornado-prone areas), energy-efficient windows. Arkansas assessors rarely inspect interiors, so improvements often go uncaptured.
+- Appreciation evidence: use recent comparable sales to demonstrate market growth that the capped assessment has not reflected.
+
+FOR PRE-PURCHASE — PROTECT THE BUYER:
+- Tax projection: after purchase, the property will be reassessed. The 5% homestead cap applies to annual INCREASES, but a change of ownership may trigger a reassessment to current market value (bringing the assessed value to purchase_price × 0.20). Calculate the new annual tax bill for the buyer.
+- Deferred maintenance costs from photos: foundation issues (Arkansas's clay soils make this the #1 concern), aging HVAC systems, roof condition, water drainage problems. Estimate $5,000–$30,000 in typical deferred maintenance for Arkansas properties.
+- Assessment vs market gap: if the assessed value implies a market value far below the purchase price, the buyer should budget for a significant tax increase upon reassessment.
+
+COMMERCIAL PROPERTY TACTICS:
+- Income approach: Arkansas allows all three approaches to value. For commercial properties in Little Rock, Fayetteville, and other metro areas, income capitalization with local cap rates of 7–10% often produces a lower value than the assessor's cost approach.
+- Classification dollar impact: all property is assessed at 20%, but different millage rates apply. Commercial properties in urban areas face higher total mill levies. Verify the correct millage district is applied — boundary errors are common in fast-growing areas like Northwest Arkansas.
+- Depreciation/obsolescence: functional obsolescence (outdated commercial buildings, inadequate parking, poor ADA compliance) and external obsolescence (declining retail corridors, competition from Northwest Arkansas growth) are strong arguments. Document with photos and market data.
+
+SETTLEMENT & HEARING STRATEGY:
+- Template language: "The County Equalization Board should find that the subject property's assessed value of $[X] exceeds 20% of its true market value in violation of Amendment 79, §1 of the Arkansas Constitution. Based on [comparable sales/income analysis], the true market value is $[Y], requiring an assessed value of no more than $[Y × 0.20]."
+- Evidence format: Arkansas county boards are often less formal than other states. A clear one-page summary with comparable sales, photos, and the Amendment 79 cap calculation is most effective. Keep presentations concise — 5 to 10 minutes.
+- Mistakes that lose appeals: missing the equalization board filing deadline (typically 3rd Monday in August), filing with the wrong body (County Equalization Board for equalization issues vs County Court for value disputes under A.C.A. §26-27-318), not calculating the Amendment 79 cap correctly, and failing to apply for the homestead credit before appealing.`,
 
   CA: `CALIFORNIA STRATEGIES — PROP 13 EXPERTISE:
 - Proposition 13 limits assessed value growth to 2% per year from the base year value (purchase price). If the current assessment exceeds purchase_price × 1.02^(years_owned), it's illegal under Article XIIIA.
