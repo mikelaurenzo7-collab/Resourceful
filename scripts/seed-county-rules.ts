@@ -30,11 +30,40 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // Injected into AI prompts so the AI crafts state-specific arguments.
 
 const STATE_STRATEGIES: Record<string, string> = {
-  AL: `ALABAMA STRATEGIES:
-- Alabama uses a classified property tax system (Class I-IV) with different ratios. Verify the property is in the correct class — misclassification is common and immediately reduces the assessed value.
-- Current use valuation: agricultural, forest, and timberland can be assessed at current use rather than market value (Code of Alabama §40-7-25.1). If applicable, this dramatically reduces assessment.
-- The county Board of Equalization meets annually. Bring comparable sales AND the county's own sales ratio study — if the ratio exceeds the statutory level, the entire class is over-assessed.
-- Alabama has no statewide reassessment cycle — some counties haven't reassessed in decades. If the assessment uses outdated base values, challenge the effective date of the valuation.`,
+  AL: `ALABAMA STRATEGIES — CLASSIFIED PROPERTY TAX STATE:
+
+ASSESSMENT FUNDAMENTALS:
+- Alabama uses a classified property tax system with four classes and different assessment ratios: Class I (utilities) 30%, Class II (non-owner-occupied property) 20%, Class III (agricultural/residential owner-occupied) 10%, Class IV (motor vehicles) 15% (Code of Alabama §40-8-1).
+- Burden of proof rests on the taxpayer at the county Board of Equalization. At Circuit Court appeal, the burden shifts — the assessor must justify the valuation (§40-3-25).
+- Key statutes: §40-7-15 (valuation at fair and reasonable market value), §40-2-11 (Revenue Department oversight), §40-3-20 through §40-3-28 (equalization procedures).
+- Common assessor errors: wrong classification (Class II vs Class III saves 10% of assessed value immediately), incorrect acreage, failure to apply current use valuation, outdated base year values in counties that haven't reassessed in decades.
+
+FOR TAX APPEALS — PROVE LOWER VALUE:
+- Primary winning tactic: classification challenge. If an owner-occupied home is assessed as Class II (20%) instead of Class III (10%), the assessed value is DOUBLE what it should be. One reclassification = 50% reduction in assessed value.
+- Cost-to-cure: foundation repair ($8,000–$15,000), roof replacement ($7,500–$12,000), HVAC replacement ($5,000–$10,000), termite damage remediation ($3,000–$8,000). Alabama's humidity and termite exposure create chronic deferred maintenance.
+- Photo evidence: document termite damage, foundation settling (common in Alabama's clay soils), roof deterioration, water damage. Each defect with a contractor estimate directly reduces fair market value.
+- Current use valuation (§40-7-25.1): agricultural, forest, and timberland assessed at current use rather than market value — can reduce assessment by 60–90%. Even small hobby farms may qualify.
+- Exemption checklist: homestead exemption (§40-9-19, up to $4,000 assessed value for state taxes), over-65 exemption (§40-9-21, county taxes up to 160 acres), disabled veteran exemption (§40-9-21.1, full exemption on homestead), blind person exemption.
+
+FOR PRE-LISTING — PROVE HIGHER VALUE:
+- If assessed value is below market value (common in Alabama due to infrequent reassessments), the assessment gap proves the property is worth MORE than the county thinks — use this to justify a higher listing price.
+- Document all upgrades: new HVAC, roof, kitchen/bath renovations. Alabama assessors rarely conduct interior inspections, so improvements are often not captured in the assessment.
+- Use recent comparable sales in the neighborhood to demonstrate appreciation the assessor has not recognized.
+
+FOR PRE-PURCHASE — PROTECT THE BUYER:
+- Tax projection: Alabama's effective tax rates vary dramatically by county (0.3%–0.8%). Calculate post-purchase taxes using the correct class ratio applied to the purchase price — buyers are often shocked by the reassessment.
+- Deferred maintenance costs from photos: termite damage, foundation issues, aging septic systems (common in rural Alabama). Estimate remediation costs ($5,000–$25,000+) to negotiate purchase price down.
+- Assessment vs market gap: if the assessed value is significantly below the purchase price, the buyer will face a large reassessment. Quantify the annual tax increase.
+
+COMMERCIAL PROPERTY TACTICS:
+- Income approach: Alabama allows income capitalization for commercial properties. Local cap rates typically range 7–10%. If the assessor used a lower cap rate, the resulting value is inflated.
+- Classification impact: commercial property assessed at Class II (20%) vs residential at Class III (10%). Verify mixed-use properties are properly split between classes — a $500,000 property saves $5,000+/year in taxes with correct classification.
+- Depreciation and obsolescence: Alabama assessors often ignore functional obsolescence (outdated floor plans, inadequate parking, ADA non-compliance). Document with photos and cost estimates.
+
+SETTLEMENT & HEARING STRATEGY:
+- Informal review: "The Board of Equalization should note that the subject property's assessed value of $[X] implies a market value of $[X/ratio] under Code of Alabama §40-8-1, which exceeds the property's demonstrable fair market value of $[Y] based on [comparable sales/income analysis]."
+- Evidence format: Alabama boards respond well to printed packets with comparable sales maps, photos, and a clear one-page summary. Keep presentations under 10 minutes.
+- Mistakes that lose appeals: failing to file on time (varies by county, typically May–June), not bringing comparable sales data, arguing about tax rates instead of assessed value, and not knowing which classification applies.`,
 
   AK: `ALASKA STRATEGIES:
 - Alaska has no state property tax — each municipality sets its own. Appeal rules vary significantly by borough/municipality.
@@ -68,12 +97,43 @@ const STATE_STRATEGIES: Record<string, string> = {
 - Colorado allows protest to the county assessor first (May 1-June 1), then appeal to the County Board of Equalization, then to the Board of Assessment Appeals (BAA) or District Court. The BAA process is FREE and often more favorable than county-level.
 - The Gallagher Amendment (now repealed but its effects linger) created the residential/commercial ratio split. Understand which ratio applies to your property classification.`,
 
-  CT: `CONNECTICUT STRATEGIES:
-- Connecticut assesses at 70% of fair market value. Calculate: if assessed_value > (market_value × 0.70), the assessment is illegal.
-- Revaluation cycles vary by municipality (every 5 years with annual adjustments). In revaluation years, challenge the base value aggressively — it sets the foundation for the next 5 years.
-- Personal property tax on business equipment is a major Connecticut feature. If this is a commercial property, ensure equipment is not being double-counted in real property assessment.
-- PA 490 — farmland, forest, and open space can be assessed at current use value. If the property qualifies, this can reduce assessment by 80%+.
-- The Board of Assessment Appeals meets in March. Present BOTH income approach and sales comparison for commercial properties — Connecticut boards are sophisticated.`,
+  CT: `CONNECTICUT STRATEGIES — CONSTITUTION STATE:
+
+ASSESSMENT FUNDAMENTALS:
+- Assessment ratio: 70% of fair market value (C.G.S. §12-62a). The math: if assessed_value > (market_value × 0.70), the assessment is illegal and must be reduced.
+- Methodology: Each municipality conducts revaluation every 5 years with annual adjustment factors (C.G.S. §12-62). In revaluation years, challenge the base value aggressively — it sets the foundation for the next 5 years.
+- Classification: Connecticut taxes real property, personal property (business equipment), and motor vehicles separately. Verify the property is not being assessed in multiple categories for overlapping components.
+- Burden of proof: The taxpayer bears the burden at the Board of Assessment Appeals (BAA). At Superior Court (C.G.S. §12-117a), the burden shifts — the assessor must justify the valuation if you demonstrate aggrievement.
+- Key statutes: C.G.S. §12-111 (assessment appeals to BAA), C.G.S. §12-117a (Superior Court appeals), C.G.S. §12-62a (70% assessment standard), C.G.S. §12-107e (PA 490 current use).
+- Common assessor errors: applying town-wide adjustment factors without individual property inspection, using incorrect effective age vs actual age, failing to account for functional obsolescence in older New England housing stock, wrong neighborhood classification.
+
+FOR TAX APPEALS — PROVE LOWER VALUE:
+- Primary winning tactic: Connecticut BAAs are municipal-level boards. Present 3-5 comparable sales within the same municipality, adjusted for differences, showing the assessed value exceeds 70% of market value. Calculate the exact dollar overage: (assessed_value - (market_value × 0.70)) / 0.70 = excess assessment.
+- Cost-to-cure: Connecticut's aging housing stock (average built 1960s) means deferred maintenance is common. Roof replacement ($15,000-$35,000), foundation repairs ($5,000-$25,000 for fieldstone/block common in CT), heating system replacement ($8,000-$20,000 for oil-to-gas conversion), septic system replacement ($15,000-$40,000), well issues ($5,000-$15,000). Document each defect with repair estimates from licensed CT contractors.
+- Photo evidence: Photograph deferred maintenance — peeling paint, deteriorating siding (especially wood clapboard common in CT), crumbling foundations, outdated kitchens/baths. Each documented deficiency reduces the condition rating and therefore the assessed value.
+- PA 490 — farmland, forest, and open space can be assessed at current use value rather than fair market value (C.G.S. §12-107e). If the property qualifies, this can reduce assessment by 80%+ (e.g., 10 acres of forest assessed at $200/acre instead of $50,000/acre). Minimum acreage requirements vary by classification.
+- Exemption checklist: Veterans exemption ($1,000-$3,000 off assessed value, C.G.S. §12-81(19)), elderly/disabled freeze (C.G.S. §12-129b, municipal option), blind exemption ($3,000, C.G.S. §12-81(17)), volunteer firefighter exemption ($1,000, C.G.S. §12-81(56)). Each municipality may offer additional local option exemptions.
+
+FOR PRE-LISTING — PROVE HIGHER VALUE:
+- Assessment gap: If assessed_value / 0.70 < your intended listing price, the assessment gap proves the municipality has undervalued the property, supporting a higher listing price.
+- Upgrades as positive adjustments: Renovated kitchens (+$15,000-$40,000 in CT markets), updated bathrooms (+$8,000-$20,000), finished basements (+$10,000-$30,000), new roof, energy-efficient windows. Present contractor invoices as evidence of value-add.
+- Appreciation evidence: CT's Fairfield County towns (Greenwich, Stamford, Westport) have different market dynamics than Hartford or New Haven counties. Use hyper-local comparable sales to demonstrate appreciation trends.
+
+FOR PRE-PURCHASE — PROTECT THE BUYER:
+- Tax projection: Connecticut mill rates vary dramatically by municipality (15 mills to 45+ mills). Calculate: (assessed_value × mill_rate / 1000) = annual tax. After purchase, the property will be revalued at the next revaluation — project the new assessed value as purchase_price × 0.70.
+- Deferred maintenance costs: CT's older housing stock means hidden costs. Document foundation issues (fieldstone crumbling: $10,000-$30,000), lead paint remediation ($5,000-$15,000), asbestos removal ($3,000-$10,000), outdated electrical ($5,000-$15,000), oil tank removal ($2,000-$5,000).
+- Assessment vs market gap: If the assessment implies a market value (assessed ÷ 0.70) significantly different from the purchase price, the buyer may face a tax increase at the next revaluation.
+
+COMMERCIAL PROPERTY TACTICS:
+- Income approach: Connecticut BAAs are sophisticated and expect income capitalization for commercial properties. Present actual NOI with market-supported cap rates. Hartford and New Haven office cap rates (7-9%) differ from Fairfield County (5-7%).
+- Personal property tax on business equipment is a major Connecticut feature (C.G.S. §12-71). Ensure equipment is not being double-counted in the real property assessment. File personal property declarations separately and verify no overlap.
+- Classification impact: Commercial properties are assessed at the same 70% ratio but face the same mill rate. Mixed-use properties should have residential and commercial portions separately valued.
+- Depreciation/obsolescence: For older commercial buildings, argue economic obsolescence (vacancy rates, market rent declines) and functional obsolescence (floor plate inefficiency, lack of modern HVAC, inadequate parking).
+
+SETTLEMENT & HEARING STRATEGY:
+- Informal review: Contact the assessor's office before the BAA hearing. Template language: "I believe the current assessed value of $[X] exceeds 70% of the property's fair market value. Based on comparable sales, the fair market value is $[Y], supporting an assessed value of $[Z]. I would like to discuss an adjustment before proceeding to the Board of Assessment Appeals."
+- Evidence format that wins: Printed comparable sales analysis with photos, adjustment grid, and clear math showing assessed_value > market_value × 0.70. Connecticut boards respond to organized, data-driven presentations.
+- Mistakes that lose: Filing after the February 20 deadline, presenting comps from other municipalities without adjustment, arguing about taxes rather than value, failing to appeal to Superior Court within 2 months of BAA decision if the BAA denies relief.`,
 
   DE: `DELAWARE STRATEGIES:
 - Delaware has NOT conducted statewide reassessment in decades (some counties since the 1980s). Base values are wildly outdated. Challenge whether the assessment reflects current methodology or frozen historical values.
