@@ -74,43 +74,66 @@ export interface AttomPropertyDetail {
  * Maps ATTOM's raw propertyType string to our PropertyType enum.
  * Returns null for unrecognized types (caller should fall back to manual selection).
  */
+export type ResidentialSubtype =
+  | 'single_family'
+  | 'condo'
+  | 'townhouse'
+  | 'multi_family_2_4'
+  | 'mobile_home';
+
+export interface PropertyTypeResult {
+  propertyType: PropertyType | null;
+  residentialSubtype: ResidentialSubtype | null;
+}
+
 export function mapAttomPropertyType(attomType: string): PropertyType | null {
+  return mapAttomPropertyTypeDetailed(attomType).propertyType;
+}
+
+export function mapAttomPropertyTypeDetailed(attomType: string): PropertyTypeResult {
   const lower = attomType.toLowerCase();
-  if (
-    lower.includes('single family') ||
-    lower.includes('condominium') ||
-    lower.includes('townhouse') ||
-    lower.includes('duplex') ||
-    lower.includes('triplex') ||
-    lower.includes('residential') ||
-    lower.includes('mobile home') ||
-    lower.includes('manufactured')
-  ) {
-    return 'residential';
+
+  // Residential subtypes
+  if (lower.includes('single family') || lower.includes('residential')) {
+    return { propertyType: 'residential', residentialSubtype: 'single_family' };
   }
+  if (lower.includes('condominium')) {
+    return { propertyType: 'residential', residentialSubtype: 'condo' };
+  }
+  if (lower.includes('townhouse')) {
+    return { propertyType: 'residential', residentialSubtype: 'townhouse' };
+  }
+  if (lower.includes('duplex') || lower.includes('triplex')) {
+    return { propertyType: 'residential', residentialSubtype: 'multi_family_2_4' };
+  }
+  if (lower.includes('mobile home') || lower.includes('manufactured')) {
+    return { propertyType: 'residential', residentialSubtype: 'mobile_home' };
+  }
+
+  // Commercial and industrial properties are not supported — return null
+  // so the wizard prompts manual selection (residential or land)
   if (
     lower.includes('commercial') ||
     lower.includes('office') ||
     lower.includes('retail') ||
-    lower.includes('mixed use')
-  ) {
-    return 'commercial';
-  }
-  if (
+    lower.includes('mixed use') ||
     lower.includes('industrial') ||
     lower.includes('warehouse') ||
     lower.includes('manufacturing')
   ) {
-    return 'industrial';
+    return { propertyType: null, residentialSubtype: null };
   }
+
+  // Land
   if (
     lower.includes('vacant') ||
     lower.includes('land') ||
     lower.includes('agricultural')
   ) {
-    return 'land';
+    return { propertyType: 'land', residentialSubtype: null };
   }
-  return null;
+
+  return { propertyType: null, residentialSubtype: null };
 }
 
 /**

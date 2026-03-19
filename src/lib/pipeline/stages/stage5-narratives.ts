@@ -4,7 +4,7 @@
 // section in report_narratives with model/token/duration metadata.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Report, PropertyData, ComparableSale, ComparableRental, IncomeAnalysis, Photo, CountyRule, PhotoAiAnalysis, PropertyType } from '@/types/database';
+import type { Database, Report, PropertyData, ComparableSale, Photo, CountyRule, PhotoAiAnalysis, PropertyType } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import {
   generateNarratives,
@@ -15,7 +15,7 @@ import { getCalibrationParams } from '@/lib/calibration/recalculate';
 
 // ─── Section Mapping ────────────────────────────────────────────────────────
 
-const SECTION_SORT_ORDER: Record<string, { title: string; order: number }> = {
+const _SECTION_SORT_ORDER: Record<string, { title: string; order: number }> = {
   executive_summary: { title: 'Executive Summary', order: 1 },
   property_description: { title: 'Property Description', order: 2 },
   site_description_narrative: { title: 'Site Description', order: 3 },
@@ -29,9 +29,8 @@ const SECTION_SORT_ORDER: Record<string, { title: string; order: number }> = {
   hbu_as_improved: { title: 'Highest & Best Use — As Improved', order: 11 },
   sales_comparison_narrative: { title: 'Sales Comparison Approach', order: 12 },
   adjustment_grid_narrative: { title: 'Adjustment Grid Analysis', order: 13 },
-  income_approach_narrative: { title: 'Income Approach', order: 14 },
-  reconciliation_narrative: { title: 'Reconciliation & Final Value', order: 15 },
-  appeal_argument_summary: { title: 'Appeal Argument Summary', order: 16 },
+  reconciliation_narrative: { title: 'Reconciliation & Final Value', order: 14 },
+  appeal_argument_summary: { title: 'Appeal Argument Summary', order: 15 },
   // legacy aliases
   neighborhood_analysis: { title: 'Neighborhood Analysis', order: 8 },
   value_conclusion: { title: 'Reconciliation & Final Value', order: 15 },
@@ -45,19 +44,16 @@ export async function runNarratives(
   supabase: SupabaseClient<Database>
 ): Promise<StageResult> {
   // ── Fetch all required data in parallel ───────────────────────────────
-  const [reportRes, propertyRes, compsRes, rentalsRes, incomeRes, photosRes] =
+  const [reportRes, propertyRes, compsRes, photosRes] =
     await Promise.all([
       supabase.from('reports').select('*').eq('id', reportId).single(),
       supabase.from('property_data').select('*').eq('report_id', reportId).single(),
       supabase.from('comparable_sales').select('*').eq('report_id', reportId),
-      supabase.from('comparable_rentals').select('*').eq('report_id', reportId),
-      supabase.from('income_analysis').select('*').eq('report_id', reportId).single(),
       supabase.from('photos').select('*').eq('report_id', reportId),
     ]);
 
   const report = reportRes.data as Report | null;
   const propertyData = propertyRes.data as PropertyData | null;
-  const incomeData = incomeRes.data as IncomeAnalysis | null;
 
   if (!report) {
     return { success: false, error: `Failed to fetch report: ${reportRes.error?.message}` };
@@ -104,7 +100,6 @@ export async function runNarratives(
   // ── Calculate concluded value ─────────────────────────────────────────
   // Use median adjusted_price_per_sqft * subject building sqft as primary value indicator
   const comps = (compsRes.data ?? []) as ComparableSale[];
-  const rentals = (rentalsRes.data ?? []) as ComparableRental[];
 
   // Helper: compute median value from an array of comp data using a price extractor
   function computeMedianValue(
@@ -225,18 +220,6 @@ export async function runNarratives(
   concludedValue = Math.round(concludedValue / 1000) * 1000;
   concludedValueWithoutPhotos = Math.round(concludedValueWithoutPhotos / 1000) * 1000;
 
-  // If income approach is available, weight it in (apply to both)
-  if (incomeData?.concluded_value_income_approach) {
-    const incomeValue = incomeData.concluded_value_income_approach;
-    // 70% sales comparison, 30% income approach for commercial/industrial
-    concludedValue = Math.round(
-      (concludedValue * 0.7 + incomeValue * 0.3) / 1000
-    ) * 1000;
-    concludedValueWithoutPhotos = Math.round(
-      (concludedValueWithoutPhotos * 0.7 + incomeValue * 0.3) / 1000
-    ) * 1000;
-  }
-
   // Apply calibration value bias correction (learned from real appraisal feedback)
   const calibration = await getCalibrationParams(
     report.property_type as PropertyType,
@@ -290,21 +273,8 @@ export async function runNarratives(
     );
   }
 
-  // ── Determine assessment ratio based on property type ──────────────────
-  let assessmentRatio: number | null = null;
-  if (countyRule) {
-    switch (report.property_type) {
-      case 'commercial':
-        assessmentRatio = countyRule.assessment_ratio_commercial;
-        break;
-      case 'industrial':
-        assessmentRatio = countyRule.assessment_ratio_industrial;
-        break;
-      default:
-        assessmentRatio = countyRule.assessment_ratio_residential;
-        break;
-    }
-  }
+  // ── Determine assessment ratio ──────────────────────────────────────────
+  const assessmentRatio = countyRule?.assessment_ratio_residential ?? null;
 
   // ── Compute overvaluation analysis ───────────────────────────────────
   // Pre-compute every angle where the assessor may have missed the mark.
@@ -465,22 +435,6 @@ export async function runNarratives(
       distance_miles: c.distance_miles,
       adjusted_price_per_sqft: c.adjusted_price_per_sqft,
     })),
-    comparableRentals: rentals.length > 0
-      ? rentals.map((r) => ({
-          address: r.address ?? '',
-          rent_per_sqft_yr: r.rent_per_sqft_yr,
-          building_sqft_leased: r.building_sqft_leased,
-          lease_type: r.lease_type,
-          effective_net_rent_per_sqft: r.effective_net_rent_per_sqft,
-        }))
-      : undefined,
-    incomeAnalysis: incomeData
-      ? {
-          net_operating_income: incomeData.net_operating_income,
-          concluded_cap_rate: incomeData.concluded_cap_rate,
-          concluded_value_income_approach: incomeData.concluded_value_income_approach,
-        }
-      : undefined,
     countyRules: countyRule
       ? {
           countyName: countyRule.county_name,

@@ -34,21 +34,12 @@ describe('getPriceForReport — auto tier', () => {
     expect(getPriceForReport('tax_appeal', 'residential')).toBe(5900);
   });
 
-  it('returns correct price for commercial tax appeal', () => {
-    expect(getPriceForReport('tax_appeal', 'commercial')).toBe(10900);
-  });
-
-  it('returns correct price for industrial tax appeal', () => {
-    expect(getPriceForReport('tax_appeal', 'industrial')).toBe(10900);
-  });
-
   it('returns correct price for land tax appeal', () => {
     expect(getPriceForReport('tax_appeal', 'land')).toBe(5900);
   });
 
   it('returns correct price for pre_purchase', () => {
     expect(getPriceForReport('pre_purchase', 'residential')).toBe(6900);
-    expect(getPriceForReport('pre_purchase', 'commercial')).toBe(6900);
   });
 
   it('returns correct price for pre_listing', () => {
@@ -63,8 +54,8 @@ describe('getPriceForReport — guided tier', () => {
     expect(getPriceForReport('tax_appeal', 'residential', 'guided_filing')).toBe(11800);
   });
 
-  it('returns guided price for commercial tax appeal', () => {
-    expect(getPriceForReport('tax_appeal', 'commercial', 'guided_filing')).toBe(21800);
+  it('returns guided price for land tax appeal', () => {
+    expect(getPriceForReport('tax_appeal', 'land', 'guided_filing')).toBe(11800);
   });
 
   it('returns guided price for pre_purchase', () => {
@@ -79,8 +70,8 @@ describe('getPriceForReport — expert tier', () => {
     expect(getPriceForReport('tax_appeal', 'residential', 'expert_reviewed')).toBe(17700);
   });
 
-  it('returns expert price for commercial tax appeal', () => {
-    expect(getPriceForReport('tax_appeal', 'commercial', 'expert_reviewed')).toBe(32700);
+  it('returns expert price for land tax appeal', () => {
+    expect(getPriceForReport('tax_appeal', 'land', 'expert_reviewed')).toBe(17700);
   });
 
   it('returns expert price for pre_purchase', () => {
@@ -95,8 +86,8 @@ describe('getPriceCents', () => {
     expect(getPriceCents('tax_appeal', 'residential')).toBe(
       getPriceForReport('tax_appeal', 'residential')
     );
-    expect(getPriceCents('tax_appeal', 'commercial', 'expert_reviewed')).toBe(
-      getPriceForReport('tax_appeal', 'commercial', 'expert_reviewed')
+    expect(getPriceCents('tax_appeal', 'land', 'expert_reviewed')).toBe(
+      getPriceForReport('tax_appeal', 'land', 'expert_reviewed')
     );
   });
 });

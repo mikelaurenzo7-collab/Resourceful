@@ -4,18 +4,18 @@ import { z } from 'zod';
 
 // ─── Enums ──────────────────────────────────────────────────────────────────
 
-const propertyTypeEnum = z.enum(['residential', 'commercial', 'industrial', 'land']);
+const propertyTypeEnum = z.enum(['residential', 'land']);
 const serviceTypeEnum = z.enum(['tax_appeal', 'pre_purchase', 'pre_listing']);
 const reviewTierEnum = z.enum(['auto', 'expert_reviewed', 'guided_filing']);
 const photoTypeEnum = z.enum([
   'exterior_front', 'exterior_rear',
   'exterior_north', 'exterior_south', 'exterior_east', 'exterior_west',
-  'parking_lot', 'driveway', 'yard_landscape', 'drainage', 'loading_area',
+  'parking_lot', 'driveway', 'yard_landscape', 'drainage',
   'roof_condition', 'foundation_visible', 'deferred_maintenance', 'environmental_concern',
   'interior_main', 'interior_kitchen', 'interior_bathroom',
   'interior_bedroom', 'interior_living', 'interior_basement',
-  'interior_garage', 'interior_warehouse', 'interior_office',
-  'overhead_door', 'dock_door', 'clear_height', 'structural_detail',
+  'interior_garage',
+  'curb_appeal', 'neighbor_comparison', 'lot_grade',
   'aerial', 'other',
 ]);
 const measurementSourceEnum = z.enum(['google_earth', 'user_submitted', 'attom', 'county']);
@@ -110,8 +110,6 @@ export const countyRuleSchema = z.object({
 
   assessment_methodology: assessmentMethodologyEnum.nullable().optional(),
   assessment_ratio_residential: z.number().min(0).max(1).nullable().optional(),
-  assessment_ratio_commercial: z.number().min(0).max(1).nullable().optional(),
-  assessment_ratio_industrial: z.number().min(0).max(1).nullable().optional(),
 
   appeal_board_name: z.string().nullable().optional(),
   appeal_board_address: z.string().nullable().optional(),

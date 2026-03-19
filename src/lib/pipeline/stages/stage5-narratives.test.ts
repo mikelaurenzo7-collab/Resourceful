@@ -67,7 +67,6 @@ function buildSupabaseMock(overrides?: {
         if (table === 'reports') return Promise.resolve({ data: report, error: null });
         if (table === 'property_data') return Promise.resolve({ data: propertyData, error: null });
         if (table === 'county_rules') return Promise.resolve({ data: countyRule, error: null });
-        if (table === 'income_analysis') return Promise.resolve({ data: null, error: null });
         if (table === 'calibration_params') return Promise.resolve({ data: null, error: null });
         return Promise.resolve({ data: null, error: null });
       });
@@ -80,13 +79,6 @@ function buildSupabaseMock(overrides?: {
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ data: comps, error: null }),
-          }),
-        };
-      }
-      if (table === 'comparable_rentals') {
-        return {
-          select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ data: [], error: null }),
           }),
         };
       }
@@ -180,23 +172,6 @@ describe('runNarratives', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('Failed to insert report_narratives');
-  });
-
-  it('handles commercial service type with income data in payload', async () => {
-    const report = makeReport({
-      service_type: 'tax_appeal',
-      property_type: 'commercial',
-      county_fips: '17167',
-      latitude: 39.7817,
-      longitude: -89.6501,
-    });
-
-    const supabase = buildSupabaseMock({ report });
-    const result = await runNarratives('rpt_test_001', supabase);
-
-    expect(result.success).toBe(true);
-    const payload = mockGenerateNarratives.mock.calls[0][0];
-    expect(payload.propertyType).toBe('commercial');
   });
 
   it('includes photo analyses when photos exist', async () => {

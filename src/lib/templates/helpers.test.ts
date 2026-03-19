@@ -285,7 +285,7 @@ describe('imageOrPlaceholder', () => {
 describe('formatPropertyType', () => {
   it('capitalizes first letter', () => {
     expect(formatPropertyType('residential')).toBe('Residential');
-    expect(formatPropertyType('commercial')).toBe('Commercial');
+    expect(formatPropertyType('land')).toBe('Land');
   });
 
   it('returns empty for falsy', () => {

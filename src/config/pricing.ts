@@ -7,8 +7,6 @@ import type { ReviewTier } from '@/types/database';
 
 export const PRICING = {
   TAX_APPEAL_RESIDENTIAL: 5900, // $59
-  TAX_APPEAL_COMMERCIAL: 10900, // $109
-  TAX_APPEAL_INDUSTRIAL: 10900, // $109
   TAX_APPEAL_LAND: 5900, // $59
   PRE_PURCHASE: 6900, // $69
   PRE_LISTING: 6900, // $69
@@ -21,8 +19,6 @@ export const PRICING = {
 
 export const PRICING_GUIDED = {
   TAX_APPEAL_RESIDENTIAL: 11800, // $118
-  TAX_APPEAL_COMMERCIAL: 21800, // $218
-  TAX_APPEAL_INDUSTRIAL: 21800, // $218
   TAX_APPEAL_LAND: 11800, // $118
   PRE_PURCHASE: 13800, // $138
   PRE_LISTING: 13800, // $138
@@ -34,8 +30,6 @@ export const PRICING_GUIDED = {
 
 export const PRICING_EXPERT = {
   TAX_APPEAL_RESIDENTIAL: 17700, // $177
-  TAX_APPEAL_COMMERCIAL: 32700, // $327
-  TAX_APPEAL_INDUSTRIAL: 32700, // $327
   TAX_APPEAL_LAND: 17700, // $177
   PRE_PURCHASE: 20700, // $207
   PRE_LISTING: 20700, // $207
@@ -47,7 +41,7 @@ export const PRICING_EXPERT = {
 export const MONEY_BACK_GUARANTEE = true;
 
 export type ServiceType = 'tax_appeal' | 'pre_purchase' | 'pre_listing';
-export type PropertyType = 'residential' | 'commercial' | 'industrial' | 'land';
+export type PropertyType = 'residential' | 'land';
 
 export function getPriceForReport(
   serviceType: ServiceType,
@@ -62,10 +56,8 @@ export function getPriceForReport(
 
   if (serviceType === 'pre_purchase') return table.PRE_PURCHASE;
   if (serviceType === 'pre_listing') return table.PRE_LISTING;
-  if (propertyType === 'residential') return table.TAX_APPEAL_RESIDENTIAL;
   if (propertyType === 'land') return table.TAX_APPEAL_LAND;
-  if (propertyType === 'industrial') return table.TAX_APPEAL_INDUSTRIAL;
-  return table.TAX_APPEAL_COMMERCIAL;
+  return table.TAX_APPEAL_RESIDENTIAL;
 }
 
 // Backward-compatible alias

@@ -79,11 +79,11 @@ export function ServiceJsonLd() {
       },
       {
         '@type': 'Offer',
-        name: 'Commercial Tax Appeal Report',
-        price: (PRICING.TAX_APPEAL_COMMERCIAL / 100).toFixed(2),
+        name: 'Vacant Land Tax Appeal Report',
+        price: (PRICING.TAX_APPEAL_LAND / 100).toFixed(2),
         priceCurrency: 'USD',
         description:
-          'Commercial property tax appeal report with income analysis, comparable sales, and filing guide.',
+          'Professional property tax appeal report for vacant land with comparable sales analysis and filing guide.',
       },
       {
         '@type': 'Offer',

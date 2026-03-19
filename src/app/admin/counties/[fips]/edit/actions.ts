@@ -66,8 +66,6 @@ export async function saveCounty(existingFips: string | null, formData: FormData
     assessment_methodology: (parseOptionalString(formData.get('assessment_methodology')) as string) ?? null,
     assessment_methodology_notes: parseOptionalString(formData.get('assessment_methodology_notes')),
     assessment_ratio_residential: parseOptionalFloat(formData.get('assessment_ratio_residential')),
-    assessment_ratio_commercial: parseOptionalFloat(formData.get('assessment_ratio_commercial')),
-    assessment_ratio_industrial: parseOptionalFloat(formData.get('assessment_ratio_industrial')),
     appeal_board_name: parseOptionalString(formData.get('appeal_board_name')),
     appeal_board_address: parseOptionalString(formData.get('appeal_board_address')),
     appeal_board_phone: parseOptionalString(formData.get('appeal_board_phone')),

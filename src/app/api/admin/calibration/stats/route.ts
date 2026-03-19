@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     const params = (paramsRes.data ?? []) as CalibrationParams[];
 
     // Compute per-property-type stats
-    const propertyTypes = ['residential', 'commercial', 'industrial', 'land'] as const;
+    const propertyTypes = ['residential', 'land'] as const;
     const statsByType = propertyTypes.map(pt => {
       const ptEntries = completed.filter(e => e.property_type === pt);
       const absErrors = ptEntries

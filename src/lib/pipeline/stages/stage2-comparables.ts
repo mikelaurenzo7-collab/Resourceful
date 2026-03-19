@@ -7,7 +7,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, PropertyType, ComparableSaleInsert, Report, PropertyData, CalibrationParams } from '@/types/database';
 import type { StageResult } from '../orchestrator';
-import { getSalesComparables, type AttomSaleComp } from '@/lib/services/attom';
+import { getSalesComparables, mapAttomPropertyTypeDetailed, type AttomSaleComp, type ResidentialSubtype } from '@/lib/services/attom';
 import { getStreetViewUrl } from '@/lib/services/google-maps';
 import { getCalibrationParams } from '@/lib/calibration/recalculate';
 
@@ -25,13 +25,17 @@ const SEARCH_TIERS: Record<string, SearchTier[]> = {
     { radiusMiles: 1, monthsBack: 18, gbaVariance: 0.25 },
     { radiusMiles: 2, monthsBack: 30, gbaVariance: 0.25 },
   ],
-  commercial: [
-    { radiusMiles: 3, monthsBack: 30, gbaVariance: 0.40 },
-    { radiusMiles: 7, monthsBack: 48, gbaVariance: 0.40 },
+  // Condos cluster in complexes — start with a very tight radius
+  condo: [
+    { radiusMiles: 0.25, monthsBack: 12, gbaVariance: 0.15 },
+    { radiusMiles: 0.5, monthsBack: 18, gbaVariance: 0.25 },
+    { radiusMiles: 1, monthsBack: 24, gbaVariance: 0.25 },
   ],
-  industrial: [
-    { radiusMiles: 3, monthsBack: 30, gbaVariance: 0.40 },
-    { radiusMiles: 7, monthsBack: 48, gbaVariance: 0.40 },
+  // Townhouses also cluster but with slightly wider radius than condos
+  townhouse: [
+    { radiusMiles: 0.5, monthsBack: 18, gbaVariance: 0.20 },
+    { radiusMiles: 1, monthsBack: 18, gbaVariance: 0.25 },
+    { radiusMiles: 2, monthsBack: 30, gbaVariance: 0.25 },
   ],
   land: [
     { radiusMiles: 5, monthsBack: 36, gbaVariance: 0.50 },
@@ -235,7 +239,17 @@ export async function runComparables(
     yearBuilt: propertyData.year_built ?? 0,
   };
 
-  const tiers = SEARCH_TIERS[propertyType] ?? SEARCH_TIERS.residential;
+  // Detect residential subtype for subtype-specific search tiers
+  const propertyClassDesc = propertyData.property_class_description ?? '';
+  const { residentialSubtype } = propertyClassDesc
+    ? mapAttomPropertyTypeDetailed(propertyClassDesc)
+    : { residentialSubtype: null as ResidentialSubtype | null };
+
+  // Use subtype-specific tiers when available (e.g. condo, townhouse)
+  const tierKey = (residentialSubtype && SEARCH_TIERS[residentialSubtype])
+    ? residentialSubtype
+    : propertyType;
+  const tiers = SEARCH_TIERS[tierKey] ?? SEARCH_TIERS.residential;
 
   // ── Progressive radius/time expansion ─────────────────────────────────
   const allComps: AttomSaleComp[] = [];

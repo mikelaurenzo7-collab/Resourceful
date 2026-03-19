@@ -12,6 +12,7 @@ const mockGetCalibrationParams = vi.fn().mockResolvedValue(null);
 
 vi.mock('@/lib/services/attom', () => ({
   getSalesComparables: (...args: unknown[]) => mockGetSalesComparables(...args),
+  mapAttomPropertyTypeDetailed: (_type: string) => ({ propertyType: 'residential', residentialSubtype: null }),
 }));
 
 vi.mock('@/lib/services/google-maps', () => ({

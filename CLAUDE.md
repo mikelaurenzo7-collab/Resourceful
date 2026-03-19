@@ -194,15 +194,14 @@ src/
 │
 ├── config/
 │   ├── ai.ts                       # AI_MODELS.PRIMARY / AI_MODELS.FAST (env-var driven)
-│   └── pricing.ts                  # PRICING constants (3 tiers × 6 service types)
+│   └── pricing.ts                  # PRICING constants (3 tiers × residential/land)
 │
 ├── lib/
 │   ├── pipeline/
 │   │   ├── orchestrator.ts         # Stage sequencer, retry logic, pipeline lock
-│   │   └── stages/                 # 8-stage report generation pipeline
+│   │   └── stages/                 # 7-stage report generation pipeline
 │   │       ├── stage1-data-collection.ts   # ATTOM, geocoding, flood zones
-│   │       ├── stage2-comparables.ts       # Recent sales analysis
-│   │       ├── stage3-income-analysis.ts   # Cap rate (commercial/industrial)
+│   │       ├── stage2-comparables.ts       # Recent sales analysis (subtype-aware)
 │   │       ├── stage4-photo-analysis.ts    # Vision AI condition ratings
 │   │       ├── stage5-narratives.ts        # AI report writing
 │   │       ├── stage6-filing-guide.ts      # AI filing instructions
@@ -256,16 +255,23 @@ scripts/                            # seed-county-rules.ts, seed-counties.ts
 
 ## Architecture Patterns
 
-### Pipeline (8 Stages)
+### Property Types
+The platform supports **residential** and **land** properties only. Commercial and industrial property types have been removed — those owners typically have legal counsel and are a poor fit for a self-service product. ATTOM types that map to commercial/industrial return `null`, triggering manual selection in the wizard.
+
+ATTOM also detects **residential subtypes** (`single_family`, `condo`, `townhouse`, `multi_family_2_4`, `mobile_home`) which drive subtype-specific comparable search tiers (e.g., condos use a tighter 0.25mi radius since they cluster in complexes).
+
+### Pipeline (7 Stages)
 The report generation pipeline runs as an ordered sequence of stages. Each stage is idempotent and the orchestrator can resume from the last successful stage on retry.
 
 **Status flow:** `intake → paid → processing → pending_approval → approved → delivered`
 
-Stage 3 (income analysis) only runs for commercial/industrial properties. Stage 6 (filing guide) only runs for tax appeals. Stage 8 (delivery) only executes after admin approval.
+**Stages:** 1 (data collection) → 2 (comparables) → 4 (photo analysis) → 5 (narratives) → 6 (filing guide, tax appeals only) → 7 (PDF assembly) → 8 (delivery, after admin approval).
+
+Stage 3 (income analysis) has been removed — it only served commercial/industrial properties.
 
 The orchestrator uses row-level locking (`pipeline_locked_at` / `pipeline_lock_owner` columns on `reports`) via `acquire_pipeline_lock_v2` / `release_pipeline_lock_v2` RPCs to prevent concurrent runs. Stale locks auto-expire after 15 minutes. Retries up to 2 times for transient errors. 10-minute timeout.
 
-**Concluded value**: Stage 5 computes the authoritative concluded value (with income weighting, calibration, photo adjustments) and stores it in `property_data.concluded_value`. All downstream stages (6, 7, 8) and the viewer endpoint read this stored value — they never recalculate it.
+**Concluded value**: Stage 5 computes the authoritative concluded value (with calibration and photo adjustments) and stores it in `property_data.concluded_value`. All downstream stages (6, 7, 8) and the viewer endpoint read this stored value — they never recalculate it.
 
 ### Data Access
 - **Repository pattern**: All database queries go through typed functions in `lib/repository/`. Never write raw Supabase queries in pages or API routes.
@@ -295,7 +301,7 @@ All API routes live under `src/app/api/`. Report lifecycle endpoints use UUID-ke
 
 ## Database
 
-**15 migrations** in `supabase/migrations/` (001–015). Core tables:
+**16 migrations** in `supabase/migrations/` (001–016). Core tables:
 - `reports` — Main entity with status tracking, payment, filing info
 - `property_data` — Valuation data from ATTOM + calculations
 - `photos` — User-uploaded property photos with AI analysis results

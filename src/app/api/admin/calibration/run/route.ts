@@ -10,7 +10,7 @@ import { isAdmin } from '@/lib/repository/admin';
 import { runBlindValuation } from '@/lib/calibration/run-blind-valuation';
 import type { PropertyType } from '@/types/database';
 
-const VALID_TYPES: PropertyType[] = ['residential', 'commercial', 'industrial', 'land'];
+const VALID_TYPES: PropertyType[] = ['residential', 'land'];
 
 export async function POST(request: NextRequest) {
   try {

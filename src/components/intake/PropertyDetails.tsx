@@ -11,8 +11,6 @@ interface PropertyDetailsProps {
 
 const PROPERTY_TYPE_LABELS: Record<PropertyType, string> = {
   residential: 'Residential',
-  commercial: 'Commercial',
-  industrial: 'Industrial',
   land: 'Vacant Land',
 };
 
@@ -84,7 +82,7 @@ export default function PropertyDetails({ lookup, selectedType, onTypeOverride }
             <button
               type="button"
               onClick={() => {
-                const types: PropertyType[] = ['residential', 'commercial', 'industrial', 'land'];
+                const types: PropertyType[] = ['residential', 'land'];
                 const current = selectedType || lookup.propertyType!;
                 const idx = types.indexOf(current);
                 const next = types[(idx + 1) % types.length];

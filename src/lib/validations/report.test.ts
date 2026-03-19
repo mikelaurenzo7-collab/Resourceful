@@ -51,9 +51,16 @@ describe('reportCreateSchema', () => {
   });
 
   it('accepts all valid property types', () => {
-    for (const pt of ['residential', 'commercial', 'industrial', 'land']) {
+    for (const pt of ['residential', 'land']) {
       const result = reportCreateSchema.safeParse({ ...validInput, property_type: pt });
       expect(result.success).toBe(true);
+    }
+  });
+
+  it('rejects removed property types (commercial, industrial)', () => {
+    for (const pt of ['commercial', 'industrial']) {
+      const result = reportCreateSchema.safeParse({ ...validInput, property_type: pt });
+      expect(result.success).toBe(false);
     }
   });
 

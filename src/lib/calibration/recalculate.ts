@@ -193,7 +193,7 @@ export async function recalculateCalibrationParams(
   }
 
   // Group by property type
-  const propertyTypes: PropertyType[] = ['residential', 'commercial', 'industrial', 'land'];
+  const propertyTypes: PropertyType[] = ['residential', 'land'];
   const results: CalibrationResult[] = [];
 
   for (const pt of propertyTypes) {

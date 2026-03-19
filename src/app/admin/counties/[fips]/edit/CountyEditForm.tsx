@@ -162,36 +162,6 @@ export default function CountyEditForm({ county, isNew }: CountyEditFormProps) {
               className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]"
             />
           </div>
-          <div>
-            <label htmlFor="assessment_ratio_commercial" className="block text-sm font-medium text-gray-700">
-              Commercial Ratio
-            </label>
-            <input
-              id="assessment_ratio_commercial"
-              name="assessment_ratio_commercial"
-              type="number"
-              step="0.001"
-              min="0"
-              max="1"
-              defaultValue={county?.assessment_ratio_commercial ?? ''}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]"
-            />
-          </div>
-          <div>
-            <label htmlFor="assessment_ratio_industrial" className="block text-sm font-medium text-gray-700">
-              Industrial Ratio
-            </label>
-            <input
-              id="assessment_ratio_industrial"
-              name="assessment_ratio_industrial"
-              type="number"
-              step="0.001"
-              min="0"
-              max="1"
-              defaultValue={county?.assessment_ratio_industrial ?? ''}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]"
-            />
-          </div>
         </div>
       </fieldset>
 

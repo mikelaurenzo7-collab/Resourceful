@@ -14,17 +14,17 @@ export type ReportStatus =
 
 export type ServiceType = 'tax_appeal' | 'pre_purchase' | 'pre_listing';
 
-export type PropertyType = 'residential' | 'commercial' | 'industrial' | 'land';
+export type PropertyType = 'residential' | 'land';
 
 export type PhotoType =
   | 'exterior_front' | 'exterior_rear'
   | 'exterior_north' | 'exterior_south' | 'exterior_east' | 'exterior_west'
-  | 'parking_lot' | 'driveway' | 'yard_landscape' | 'drainage' | 'loading_area'
+  | 'parking_lot' | 'driveway' | 'yard_landscape' | 'drainage'
   | 'roof_condition' | 'foundation_visible' | 'deferred_maintenance' | 'environmental_concern'
   | 'interior_main' | 'interior_kitchen' | 'interior_bathroom'
   | 'interior_bedroom' | 'interior_living' | 'interior_basement'
-  | 'interior_garage' | 'interior_warehouse' | 'interior_office'
-  | 'overhead_door' | 'dock_door' | 'clear_height' | 'structural_detail'
+  | 'interior_garage'
+  | 'curb_appeal' | 'neighbor_comparison' | 'lot_grade'
   | 'aerial' | 'other';
 
 export type ApprovalAction =

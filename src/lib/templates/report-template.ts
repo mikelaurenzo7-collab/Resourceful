@@ -58,8 +58,8 @@ export interface ReportTemplateData {
   property: PropertyData;
   photos: Photo[];
   comparableSales: ComparableSale[];
-  comparableRentals: ComparableRental[];
-  incomeAnalysis: IncomeAnalysis | null;
+  comparableRentals?: ComparableRental[];
+  incomeAnalysis?: IncomeAnalysis | null;
   narratives: ReportNarrative[];
   countyRule: CountyRule | null;
   maps: {
@@ -93,8 +93,6 @@ export function generateReportHtml(data: ReportTemplateData): string {
     report,
     photos,
     comparableSales,
-    comparableRentals,
-    incomeAnalysis,
     narratives,
     filingGuide,
   } = data;
@@ -116,10 +114,6 @@ export function generateReportHtml(data: ReportTemplateData): string {
     (p) => p.photo_type === 'exterior_front' || p.photo_type === 'aerial'
   );
 
-  const hasIncome =
-    incomeAnalysis != null &&
-    (report.property_type === 'commercial' || report.property_type === 'industrial');
-
   const clientName = report.client_name ?? 'Property Owner';
 
   // Build section list for TOC
@@ -136,10 +130,7 @@ export function generateReportHtml(data: ReportTemplateData): string {
     { num: 'VII-B', title: 'Highest & Best Use — As Improved' },
     { num: 'VIII', title: 'Sales Comparison Approach' },
   ];
-  if (hasIncome) {
-    tocSections.push({ num: 'IX', title: 'Income Approach' });
-  }
-  tocSections.push({ num: hasIncome ? 'X' : 'IX', title: 'Reconciliation & Final Value' });
+  tocSections.push({ num: 'IX', title: 'Reconciliation & Final Value' });
   if (filingGuide) {
     tocSections.push({ num: 'Addendum', title: 'Pro Se Filing Guide' });
   }
@@ -863,8 +854,6 @@ ${renderNarrativeSection('hbu_as_improved', 'VII-B', 'Highest & Best Use — As 
 
 ${renderSalesComparisonSection(data, comparableSales, narrativeMap)}
 
-${hasIncome ? renderIncomeSection(data, incomeAnalysis!, comparableRentals, narrativeMap) : ''}
-
 ${renderReconciliationSection(data, narrativeMap, clientName)}
 
 ${filingGuide ? renderFilingGuideAddendum(filingGuide) : ''}
@@ -967,7 +956,7 @@ function renderSummarySection(
   addr: string,
   subjectPhoto: Photo | undefined,
   photos: Photo[],
-  narrativeMap: Map<string, ReportNarrative>
+  _narrativeMap: Map<string, ReportNarrative>
 ): string {
   const { report, property, concludedValue, valuationDate, maps } = data;
 
@@ -1373,9 +1362,9 @@ function renderAdjustmentGrid(
   return html;
 }
 
-// ─── Income Approach Section ─────────────────────────────────────────────────
+// ─── Income Approach Section (dormant — retained for data archaeology) ───────
 
-function renderIncomeSection(
+function _renderIncomeSection(
   data: ReportTemplateData,
   income: IncomeAnalysis,
   rentals: ComparableRental[],

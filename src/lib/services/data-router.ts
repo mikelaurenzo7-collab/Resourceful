@@ -33,8 +33,6 @@ export interface CollectPropertyDataParams {
     | 'county_fips'
     | 'assessment_methodology'
     | 'assessment_ratio_residential'
-    | 'assessment_ratio_commercial'
-    | 'assessment_ratio_industrial'
     | 'assessor_api_url'
   > | null;
 }

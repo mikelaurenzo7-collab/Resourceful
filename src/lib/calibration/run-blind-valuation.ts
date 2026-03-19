@@ -21,14 +21,6 @@ const SEARCH_TIERS: Record<string, SearchTier[]> = {
     { radiusMiles: 1, monthsBack: 18, gbaVariance: 0.25 },
     { radiusMiles: 2, monthsBack: 30, gbaVariance: 0.25 },
   ],
-  commercial: [
-    { radiusMiles: 3, monthsBack: 30, gbaVariance: 0.40 },
-    { radiusMiles: 7, monthsBack: 48, gbaVariance: 0.40 },
-  ],
-  industrial: [
-    { radiusMiles: 3, monthsBack: 30, gbaVariance: 0.40 },
-    { radiusMiles: 7, monthsBack: 48, gbaVariance: 0.40 },
-  ],
   land: [
     { radiusMiles: 5, monthsBack: 36, gbaVariance: 0.50 },
   ],

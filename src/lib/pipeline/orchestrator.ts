@@ -41,7 +41,6 @@ function retryDelay(attempt: number): number {
 
 import { runDataCollection } from './stages/stage1-data-collection';
 import { runComparables } from './stages/stage2-comparables';
-import { runIncomeAnalysis } from './stages/stage3-income-analysis';
 import { runPhotoAnalysis } from './stages/stage4-photo-analysis';
 import { runNarratives } from './stages/stage5-narratives';
 import { runFilingGuide } from './stages/stage6-filing-guide';
@@ -78,13 +77,6 @@ const STAGES: StageDefinition[] = [
     number: 2,
     name: 'stage-2-comps',
     run: runComparables,
-  },
-  {
-    number: 3,
-    name: 'stage-3-income',
-    // Only run for commercial and industrial properties
-    skipWhen: (pt, _st) => pt !== 'commercial' && pt !== 'industrial',
-    run: runIncomeAnalysis,
   },
   {
     number: 4,

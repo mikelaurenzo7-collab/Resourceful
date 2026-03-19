@@ -4,41 +4,13 @@ import { describe, it, expect } from 'vitest';
 // We replicate the skip logic here to ensure correctness, since these
 // predicates determine which pipeline stages run for each property/service type.
 
-type PropertyType = 'residential' | 'commercial' | 'industrial' | 'land';
-
-// These predicates must match the orchestrator exactly:
-// Stage 3 (income) — only for commercial and industrial
-const stage3SkipWhen = (pt: PropertyType, _st: string) =>
-  pt !== 'commercial' && pt !== 'industrial';
+type PropertyType = 'residential' | 'land';
 
 // Stage 6 (filing guide) — only for tax_appeal
 const stage6SkipWhen = (_pt: PropertyType, st: string) =>
   st !== 'tax_appeal';
 
 describe('pipeline stage skip logic', () => {
-  describe('stage 3 — income analysis', () => {
-    it('runs for commercial properties', () => {
-      expect(stage3SkipWhen('commercial', 'tax_appeal')).toBe(false);
-    });
-
-    it('runs for industrial properties', () => {
-      expect(stage3SkipWhen('industrial', 'tax_appeal')).toBe(false);
-    });
-
-    it('skips for residential properties', () => {
-      expect(stage3SkipWhen('residential', 'tax_appeal')).toBe(true);
-    });
-
-    it('skips for land properties', () => {
-      expect(stage3SkipWhen('land', 'tax_appeal')).toBe(true);
-    });
-
-    it('runs for commercial regardless of service type', () => {
-      expect(stage3SkipWhen('commercial', 'pre_purchase')).toBe(false);
-      expect(stage3SkipWhen('commercial', 'pre_listing')).toBe(false);
-    });
-  });
-
   describe('stage 6 — filing guide', () => {
     it('runs for tax_appeal service type', () => {
       expect(stage6SkipWhen('residential', 'tax_appeal')).toBe(false);
@@ -49,36 +21,30 @@ describe('pipeline stage skip logic', () => {
     });
 
     it('skips for pre_listing', () => {
-      expect(stage6SkipWhen('commercial', 'pre_listing')).toBe(true);
+      expect(stage6SkipWhen('residential', 'pre_listing')).toBe(true);
     });
 
     it('runs for tax_appeal regardless of property type', () => {
       expect(stage6SkipWhen('residential', 'tax_appeal')).toBe(false);
-      expect(stage6SkipWhen('commercial', 'tax_appeal')).toBe(false);
-      expect(stage6SkipWhen('industrial', 'tax_appeal')).toBe(false);
       expect(stage6SkipWhen('land', 'tax_appeal')).toBe(false);
     });
   });
 
   describe('stage combinations for typical reports', () => {
-    it('residential tax appeal: skips stage 3, runs stage 6', () => {
-      expect(stage3SkipWhen('residential', 'tax_appeal')).toBe(true);
+    it('residential tax appeal: runs stage 6', () => {
       expect(stage6SkipWhen('residential', 'tax_appeal')).toBe(false);
     });
 
-    it('commercial tax appeal: runs both stages 3 and 6', () => {
-      expect(stage3SkipWhen('commercial', 'tax_appeal')).toBe(false);
-      expect(stage6SkipWhen('commercial', 'tax_appeal')).toBe(false);
+    it('land tax appeal: runs stage 6', () => {
+      expect(stage6SkipWhen('land', 'tax_appeal')).toBe(false);
     });
 
-    it('residential pre_purchase: skips both stages 3 and 6', () => {
-      expect(stage3SkipWhen('residential', 'pre_purchase')).toBe(true);
+    it('residential pre_purchase: skips stage 6', () => {
       expect(stage6SkipWhen('residential', 'pre_purchase')).toBe(true);
     });
 
-    it('commercial pre_listing: runs stage 3, skips stage 6', () => {
-      expect(stage3SkipWhen('commercial', 'pre_listing')).toBe(false);
-      expect(stage6SkipWhen('commercial', 'pre_listing')).toBe(true);
+    it('residential pre_listing: skips stage 6', () => {
+      expect(stage6SkipWhen('residential', 'pre_listing')).toBe(true);
     });
   });
 });

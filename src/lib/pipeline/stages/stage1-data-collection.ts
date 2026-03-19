@@ -213,21 +213,8 @@ export async function runDataCollection(
     notes.push(`FLOOD RISK: Property is in FEMA flood zone ${femaResult.floodZone}`);
   }
 
-  // ── Determine assessment ratio based on property type ──────────────────
-  let assessmentRatio: number | null = null;
-  if (countyRule) {
-    switch (report.property_type) {
-      case 'commercial':
-        assessmentRatio = countyRule.assessment_ratio_commercial;
-        break;
-      case 'industrial':
-        assessmentRatio = countyRule.assessment_ratio_industrial;
-        break;
-      default:
-        assessmentRatio = countyRule.assessment_ratio_residential;
-        break;
-    }
-  }
+  // ── Determine assessment ratio ──────────────────────────────────────────
+  const assessmentRatio = countyRule?.assessment_ratio_residential ?? null;
 
   // ── Build property_data — prefer tax bill values when available ────────
   const taxBillAssessed = report.tax_bill_assessed_value;

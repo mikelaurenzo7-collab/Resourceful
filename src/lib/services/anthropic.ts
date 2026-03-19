@@ -47,24 +47,10 @@ export interface NarrativePayload {
     distance_miles: number | null;
     adjusted_price_per_sqft: number | null;
   }>;
-  comparableRentals?: Array<{
-    address: string;
-    rent_per_sqft_yr: number | null;
-    building_sqft_leased: number | null;
-    lease_type: string | null;
-    effective_net_rent_per_sqft: number | null;
-  }>;
-  incomeAnalysis?: {
-    net_operating_income: number | null;
-    concluded_cap_rate: number | null;
-    concluded_value_income_approach: number | null;
-  };
   countyRules: {
     countyName: string;
     state: string;
     assessmentMethodology: string;
-    assessmentRatioResidential?: number | null;
-    assessmentRatioCommercial?: number | null;
     assessmentRatio?: number | null;
     appealBoardName?: string | null;
     assessmentCycle?: string | null;
@@ -195,7 +181,6 @@ const NARRATIVE_SECTION_NAMES = [
   'hbu_as_improved',
   'sales_comparison_narrative',
   'adjustment_grid_narrative',
-  'income_approach_narrative',
   'reconciliation_narrative',
   'appeal_argument_summary',
 ] as const;
@@ -550,11 +535,8 @@ function buildNarrativeSystemPrompt(payload: NarrativePayload): string {
   // Build county expertise context — everything we know about how this county operates
   const countyExpertise: string[] = [];
   countyExpertise.push(`Assessment methodology: ${payload.countyRules.assessmentMethodology}`);
-  if (payload.countyRules.assessmentRatioResidential != null) {
-    countyExpertise.push(`Statutory residential assessment ratio: ${payload.countyRules.assessmentRatioResidential}`);
-  }
-  if (payload.countyRules.assessmentRatioCommercial != null) {
-    countyExpertise.push(`Statutory commercial assessment ratio: ${payload.countyRules.assessmentRatioCommercial}`);
+  if (payload.countyRules.assessmentRatio != null) {
+    countyExpertise.push(`Statutory assessment ratio: ${payload.countyRules.assessmentRatio}`);
   }
   if (payload.countyRules.assessmentCycle) {
     countyExpertise.push(`Assessment cycle: ${payload.countyRules.assessmentCycle}`);
@@ -658,9 +640,8 @@ ${hasPhotos ? '10' : '9'}. "hbu_as_vacant" — highest and best use as if vacant
 ${hasPhotos ? '11' : '10'}. "hbu_as_improved" — highest and best use as improved
 ${hasPhotos ? '12' : '11'}. "sales_comparison_narrative" — aggressive comparable sales analysis: explain why each comp supports a LOWER value than the assessor's, call out every adjustment that works in the homeowner's favor${hasPhotos ? '. When discussing condition adjustments, explicitly tie them back to the photographic evidence: "Based on the documented [defect type] shown in the property photographs, a condition adjustment of [X]% is warranted when comparing to [comp address]."' : ''}
 ${hasPhotos ? '13' : '12'}. "adjustment_grid_narrative" — methodical explanation of every adjustment, framed to support the lower concluded value${hasPhotos ? '. The condition adjustment line item should reference the photo evidence summary.' : ''}
-${payload.comparableRentals?.length ? `${hasPhotos ? '14' : '13'}. "income_approach_narrative" — rental income analysis showing the income-derived value is below the assessed value` : ''}
-${hasPhotos ? '15' : '14'}. "reconciliation_narrative" — final value reconciliation: state the concluded value with conviction, quantify the exact overassessment in dollars and percentage, and recommend the assessment be reduced${hasPhotos ? '. Explicitly state that the concluded value reflects documented property condition from firsthand photographic evidence — evidence the assessor did not have when setting the assessed value.' : ''}
-${payload.serviceType === 'tax_appeal' ? `${hasPhotos ? '16' : '15'}. "appeal_argument_summary" — the homeowner's battle plan: 5-7 numbered arguments, each a specific, quotable statement they can read to ${payload.countyRules.appealBoardName || 'the board'}. Lead with the strongest argument. Include exact dollar figures. End with a clear ask: "I respectfully request the assessed value be reduced from $X to $Y."${hasPhotos ? ' At least 2 of the arguments MUST reference the photographic evidence directly — these are your most persuasive points because the board can see the evidence with their own eyes.' : ''}` : ''}
+${hasPhotos ? '14' : '13'}. "reconciliation_narrative" — final value reconciliation: state the concluded value with conviction, quantify the exact overassessment in dollars and percentage, and recommend the assessment be reduced${hasPhotos ? '. Explicitly state that the concluded value reflects documented property condition from firsthand photographic evidence — evidence the assessor did not have when setting the assessed value.' : ''}
+${payload.serviceType === 'tax_appeal' ? `${hasPhotos ? '15' : '14'}. "appeal_argument_summary" — the homeowner's battle plan: 5-7 numbered arguments, each a specific, quotable statement they can read to ${payload.countyRules.appealBoardName || 'the board'}. Lead with the strongest argument. Include exact dollar figures. End with a clear ask: "I respectfully request the assessed value be reduced from $X to $Y."${hasPhotos ? ' At least 2 of the arguments MUST reference the photographic evidence directly — these are your most persuasive points because the board can see the evidence with their own eyes.' : ''}` : ''}
 
 INVESTIGATIVE MANDATE — LEAVE NO STONE UNTURNED:
 You are an investigator, not a reporter. Do not merely describe the data — interrogate it. For every data point, ask: "Does this help the homeowner's case?" If yes, amplify it with context. If no, explain why it's irrelevant or misleading.
@@ -719,8 +700,6 @@ function buildNarrativeUserMessage(payload: NarrativePayload): string {
       propertyType: payload.propertyType,
       propertyData: payload.propertyData,
       comparableSales: payload.comparableSales,
-      comparableRentals: payload.comparableRentals ?? [],
-      incomeAnalysis: payload.incomeAnalysis ?? null,
       concludedValue: payload.concludedValue,
       photoAnalyses: payload.photoAnalyses ?? [],
       overvaluationAnalysis: payload.overvaluationAnalysis ?? null,
