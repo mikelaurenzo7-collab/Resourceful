@@ -962,12 +962,44 @@ SETTLEMENT & HEARING STRATEGY:
 - Owner-occupied single family dwelling has property tax freeze option for qualifying seniors. Verify eligibility.
 - Appeal to local Board of Equalization (third Monday of March), then County Commission, then Office of Hearing Examiners.`,
 
-  TN: `TENNESSEE STRATEGIES:
-- Tennessee reassesses every 4-6 years (varies by county). Residential at 25%, commercial/industrial at 40% of appraised value.
-- The reappraisal year is critical — challenge the base value, which sets the foundation until the next reappraisal.
-- Greenbelt (Agricultural/Forest/Open Space): qualifying property assessed at use value rather than market value. Rollback taxes apply on disqualification (3-5 years depending on category).
-- The State Board of Equalization hears appeals from the county board and has independent authority to change values.
-- Elderly low-income homeowner tax freeze: qualifying homeowners can freeze their tax amount at the time of application.`,
+  TN: `TENNESSEE STRATEGIES — VOLUNTEER STATE:
+
+ASSESSMENT FUNDAMENTALS:
+- Residential assessed at 25% of appraised value; commercial/industrial at 40% (T.C.A. § 67-5-801).
+- Reassessment cycles vary by county (every 4-6 years). The reappraisal year is critical — the base value set in that year persists until the next reappraisal cycle.
+- Classification matters: residential (25%), commercial/industrial (40%), farm (25%), public utility (55%). Verify correct classification per T.C.A. § 67-5-801.
+- Burden of proof is on the taxpayer to show the assessed value exceeds market value.
+- Key statutes: T.C.A. §§ 67-5-1401 to 67-5-1413 (appeals process), T.C.A. § 67-5-602 (greenbelt).
+- Common errors: failing to update property condition after reappraisal, incorrect classification, missing greenbelt qualification for qualifying agricultural land.
+
+FOR TAX APPEALS — PROVE LOWER VALUE:
+- Primary winning tactic: In reappraisal years, challenge the base appraised value with comparable sales from the 12 months preceding the assessment date. Between reappraisals, focus on physical changes or condition deterioration.
+- Cost-to-cure: Document deferred maintenance (foundation issues, roof damage, HVAC failure) and get contractor bids. Present as: "Appraised value of $X minus $Y in necessary repairs = adjusted value of $Z."
+- Photo evidence: Photograph all defects, drainage problems, neighboring nuisances, and environmental concerns. Tennessee boards respond well to visual evidence of condition issues.
+- Greenbelt (T.C.A. § 67-5-602): Agricultural, forest, and open space land assessed at use value. Rollback taxes (3-5 years) apply on disqualification. Verify qualification if property has any agricultural use.
+- Exemption checklist: Elderly low-income tax freeze (freezes tax amount at application year), disabled veteran exemption, religious/charitable exemptions. Verify all applicable exemptions are applied.
+
+FOR PRE-LISTING — PROVE HIGHER VALUE:
+- If appraised value is below expected listing price, the gap demonstrates the assessment has not kept pace with market appreciation — use this to justify listing price.
+- Upgrades (kitchen, bathrooms, additions) should be documented as positive adjustments the assessor may not have captured, especially between reappraisal years.
+- In appreciating markets, use recent comparable sales to show the property's true market position exceeds the assessed base value.
+
+FOR PRE-PURCHASE — PROTECT THE BUYER:
+- Calculate post-purchase tax liability: (expected purchase price × 0.25) × local tax rate. In a reappraisal year, the new purchase price may trigger a value adjustment.
+- Identify deferred maintenance costs from inspection reports and subtract from offered price.
+- If assessment is significantly below purchase price, budget for a correction at the next reappraisal cycle.
+
+COMMERCIAL PROPERTY TACTICS:
+- Commercial at 40% ratio vs residential 25% — classification disputes can yield large savings.
+- Income approach: Use actual NOI and local cap rates. Tennessee assessors often use generic cap rates; property-specific rates may be more favorable.
+- Functional and economic obsolescence: Document outdated layouts, environmental contamination, or market shifts reducing income potential.
+
+SETTLEMENT & HEARING STRATEGY:
+- File with the County Board of Equalization during the annual appeal window (typically June-July in reappraisal years, varies by county).
+- Template: "The appraised value of [amount] exceeds the property's fair market value of [amount] as demonstrated by [number] comparable sales within [radius] miles, sold within the 12 months preceding the assessment date."
+- What wins: Comparable sales data from the reappraisal reference period, contractor repair estimates, photos showing condition issues.
+- Common mistakes: Filing outside the narrow window, failing to appear at the hearing, not bringing comparable sales from the correct reference period.
+- State Board of Equalization hears appeals from county boards and has independent authority to modify values.`,
 
   TX: `TEXAS STRATEGIES — ADVANCED PROTEST TACTICS:
 - UNEQUAL APPRAISAL (Section 41.43(b)(3)): This is often MORE effective than market value challenges. You don't have to prove market value — you only have to prove your property is assessed higher than comparable properties. Find 5 similar properties in your neighborhood assessed lower per sqft.
