@@ -1011,11 +1011,45 @@ SETTLEMENT & HEARING STRATEGY:
 - The Comptroller publishes the Property Value Study annually. If your county's values are systematically off, cite the study.
 - 10% appraisal cap: Homestead properties cannot increase more than 10% per year (20% for non-homestead starting 2024). Calculate and verify.`,
 
-  UT: `UTAH STRATEGIES:
-- Utah assesses residential at 55% of fair market value, commercial/industrial at 100%. Classification is critical.
-- Farmland Assessment Act: qualifying agricultural property assessed at productive value. Application required.
-- The Board of Equalization process allows informal resolution. The State Tax Commission hears formal appeals.
-- Veterans' exemption available for qualifying disabled veterans — can be significant.`,
+  UT: `UTAH STRATEGIES — BEEHIVE STATE:
+
+ASSESSMENT FUNDAMENTALS:
+- Residential assessed at 55% of fair market value; all other property (commercial, industrial, vacant) at 100% (Utah Code § 59-2-103).
+- Annual assessment cycle — every year is a new opportunity to challenge.
+- Classification is critical: the 55% residential ratio vs 100% for everything else creates a major incentive to verify correct classification.
+- Burden of proof is on the taxpayer. Must show by a preponderance of evidence that the assessed value is incorrect.
+- Key statutes: Utah Code §§ 59-2-1001 to 59-2-1013 (appeals), § 59-2-103 (assessment ratios), § 59-2-503 (farmland assessment).
+- Common errors: incorrect property classification (residential vs commercial), failure to apply farmland assessment, outdated condition ratings after property deterioration.
+
+FOR TAX APPEALS — PROVE LOWER VALUE:
+- Primary winning tactic: Comparable sales analysis adjusted for differences. Utah's County Board of Equalization responds well to organized comparable data with clear adjustments.
+- Cost-to-cure: Document all deferred maintenance with contractor estimates. Present as reduction from assessed value: "Fair market value of $X minus $Y in required repairs = adjusted value of $Z."
+- Photo evidence: Capture all property defects, deferred maintenance, functional obsolescence (outdated floor plans, insufficient parking), and external factors (noise, traffic, neighboring blight).
+- Farmland Assessment Act (§ 59-2-503): Qualifying agricultural land assessed at productive value rather than market value. Application required through the county. Rollback taxes apply on withdrawal (up to 5 years).
+- Exemption checklist: Disabled veteran exemption (up to $275,862 exempt, adjusted annually), blind exemption, circuit breaker tax credit for low-income homeowners/renters, active duty military exemption. Verify all applicable exemptions are applied.
+
+FOR PRE-LISTING — PROVE HIGHER VALUE:
+- The 55% residential assessment ratio means the assessed value represents only about half the market value — use the gap between implied market value and listing price to justify your asking price.
+- Document all upgrades and improvements that the assessor may not have captured. Permitted improvements especially strengthen the case.
+- Use recent comparable sales showing market appreciation to demonstrate the property's true position.
+
+FOR PRE-PURCHASE — PROTECT THE BUYER:
+- Calculate post-purchase tax liability: (purchase price × assessment ratio) × local tax rate. At 55% residential ratio, a $400K purchase implies $220K assessed value.
+- Identify deferred maintenance from inspection reports and quantify cost-to-cure for negotiation leverage.
+- If assessment significantly exceeds or trails purchase price, budget for potential adjustment in the next assessment cycle.
+
+COMMERCIAL PROPERTY TACTICS:
+- Commercial at 100% ratio vs residential 55% — classification disputes have enormous financial impact in Utah.
+- Income approach: Use actual NOI with market-derived cap rates. Utah assessors may use broad cap rates that don't reflect property-specific risk.
+- Functional obsolescence: Document outdated building systems, inefficient layouts, ADA non-compliance costs, and environmental remediation needs.
+- Economic obsolescence: Market vacancy rates, declining rents, or changes in the competitive landscape that reduce income potential.
+
+SETTLEMENT & HEARING STRATEGY:
+- File with the County Board of Equalization by the statutory deadline (typically September 15, but varies — verify with county).
+- Appeal to the State Tax Commission within 30 days of the county board decision for a formal hearing.
+- Template: "The assessed value of [amount] exceeds fair market value of [amount] as supported by [number] comparable sales within [radius] miles, all adjusted for differences in size, condition, and location."
+- What wins: Well-organized comparable sales with clear adjustment grids, professional appraisals, income data for commercial properties, contractor repair bids.
+- Common mistakes: Missing the county filing deadline, not bringing sufficient comparable sales data, failing to adjust comparables for differences.`,
 
   VT: `VERMONT STRATEGIES:
 - Vermont's Common Level of Appraisal (CLA) adjusts assessments to reflect how far off each municipality's assessments are from market value. If your town's CLA is 0.85, your $200,000 assessment effectively represents $235,000 — challenge if market value is lower.
