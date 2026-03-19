@@ -991,12 +991,46 @@ SETTLEMENT & HEARING STRATEGY:
 - What wins: Three comparable sales within 12-18 months and 1 mile; professional appraisal for properties over $300K; clear photos showing condition differences between subject and comps; income analysis for commercial properties. The County Board of Equalization meets in April — file promptly upon receiving your notice of valuation.
 - Common mistakes: Missing the April filing deadline; presenting unadjusted comparable sales (must adjust for time, condition, size); arguing about tax rates instead of property value; failing to account for the 11% ratio in calculations; not bringing copies of evidence for all board members; failing to appeal to the County Equalization Board before seeking judicial review.`,
 
-  OR: `OREGON STRATEGIES:
-- Oregon has TWO values: Real Market Value (RMV) and Maximum Assessed Value (MAV). Your TAXES are based on the LOWER of the two. Measure 50 (1997) limits MAV growth to 3% per year.
-- Challenge the RMV: Even if your taxes are based on MAV, reducing RMV protects you in future years and prevents MAV from exceeding RMV.
-- Exception value: New construction, additions, and major remodeling create "exception value" that's added outside the 3% cap. Verify the exception value accurately reflects the improvement cost, not inflated estimates.
-- BOPTA (Board of Property Tax Appeals): Free, informal process. Present comparable sales within 12 months of January 1 assessment date. BOPTA hears thousands of appeals annually — be concise and data-driven.
-- Oregon Tax Court: For complex cases. Magistrate Division handles smaller cases with streamlined procedures.`,
+  OR: `OREGON STRATEGIES — THE MEASURE 50 / RMV-MAV DUAL VALUE STATE:
+
+ASSESSMENT FUNDAMENTALS:
+- Dual value system: Oregon has TWO values — Real Market Value (RMV) and Maximum Assessed Value (MAV). Your TAXES are based on the LOWER of the two (ORS 308.146). Measure 50 (1997) limits MAV growth to 3% per year, creating a constitutional cap on assessment growth.
+- Methodology: County assessors determine RMV annually using mass appraisal (comparable sales, cost, income approaches). MAV is calculated as: prior year MAV x 1.03, plus any exception value. The assessed value (AV) = min(RMV, MAV).
+- Classification: Oregon uses a single assessment ratio — 100% of RMV. There is no classification system that differentiates residential from commercial ratios. The Measure 50 MAV cap applies equally to all property types.
+- Burden of proof: The taxpayer must demonstrate by a preponderance of evidence that RMV exceeds actual market value (ORS 305.427). For BOPTA appeals, present clear comparable sales data.
+- Key statutes: ORS 308.205 (RMV definition), ORS 308.146 (MAV/AV calculation), ORS 308.149 (exception value), ORS 309.100 (BOPTA appeals), Measure 50 (Oregon Constitution Art. XI, § 11).
+- Common errors: Inflated exception value on new construction/remodeling, failure to reduce RMV when market declines (assessors sometimes lag), incorrect land-to-improvement ratio affecting MAV calculation, not challenging RMV even when taxes are based on MAV.
+
+FOR TAX APPEALS — PROVE LOWER VALUE:
+- Primary winning tactic: Challenge the RMV even if your taxes are currently based on MAV. Reducing RMV protects you in future years and prevents MAV from exceeding RMV (which triggers a tax increase). Present 3-5 comparable sales within 12 months of the January 1 assessment date, within 1 mile, adjusted for size, condition, and location.
+- Exception value challenges: New construction, additions, and major remodeling create "exception value" added outside the 3% MAV cap (ORS 308.149). Verify exception value accurately reflects actual improvement cost — assessors often use inflated estimates. Request the assessor's exception value calculation and compare to actual construction costs with receipts.
+- Cost-to-cure strategy: Oregon's wet climate causes extensive moisture damage. Document each defect: roof replacement ($8K-$25K), foundation drainage/waterproofing ($5K-$20K), dry rot repair ($3K-$15K), mold remediation ($2K-$10K), seismic retrofitting ($3K-$10K). Deferred maintenance directly reduces RMV.
+- Photo evidence guidance: Photograph moisture damage (extremely common in western OR), aging roofing, foundation settlement, outdated systems, and deferred maintenance. Include photos of comparable properties in better condition to illustrate value differences. Date-stamp everything.
+- Cap violations: The 3% MAV growth cap is constitutional (Measure 50). If your MAV increased by more than 3% without qualifying exception value, challenge immediately — this is a mathematical error the assessor must correct. Verify the MAV calculation: prior_year_MAV x 1.03 + exception_value = current_MAV.
+- Exemption checklist: Homestead exemption (not available in OR — Oregon has no general homestead exemption); Senior/disabled citizen property tax deferral (ORS 311.666); Disabled veteran exemption (up to $24,793 of assessed value, ORS 307.250); Active duty military exemption; Farm use special assessment (ORS 308A); Forest land special assessment (ORS 321); Historic property special assessment (ORS 358.475).
+
+FOR PRE-LISTING — PROVE HIGHER VALUE:
+- Assessment gap strategy: If RMV is well below your listing price, the assessor has undervalued the property. This gap independently validates your listing price. If MAV is far below RMV, highlight that the buyer will enjoy Measure 50 tax protection — their taxes will be based on the lower MAV, not the full market value. This is a powerful selling point unique to Oregon.
+- Upgrades as positive adjustments: Document all improvements — seismic retrofitting (high value in OR), energy-efficient upgrades, kitchen/bath renovations, ADU additions. Note that improvements may create exception value, but the MAV cap still limits future tax growth to 3% annually.
+- Appreciation evidence: Present neighborhood sales trends, urban growth boundary constraints (which limit supply and support prices), transit-oriented development premiums, and school district quality data. Oregon's UGB system creates natural price support.
+
+FOR PRE-PURCHASE — PROTECT THE BUYER:
+- Tax projection: Oregon's Measure 50 MAV cap is a major buyer benefit. Calculate current tax: AV (min of RMV, MAV) x tax rate. If MAV is well below RMV, future tax growth is capped at 3%/year regardless of market appreciation. This creates predictable tax bills — a significant advantage over states without caps.
+- Exception value warning: If the seller completed major renovations, exception value may have been added to MAV. Verify the current MAV reflects only legitimate exception value. Over-stated exception value inflates your tax basis permanently.
+- Deferred maintenance costs: Oregon's wet climate (especially west of the Cascades) creates endemic moisture, moss, and rot issues. Budget for: roof inspection ($200-$500), sewer scope ($200-$400), radon test ($150-$300, especially in central OR). Key costs: roof replacement ($8K-$25K), foundation drainage ($5K-$20K), dry rot repair ($3K-$15K).
+- Assessment vs market gap: If purchasing above RMV, the assessor will likely increase RMV. If above MAV, your taxes remain based on MAV (growing max 3%/year) — this is favorable. Always verify the MAV before purchase to understand the true tax trajectory.
+
+COMMERCIAL PROPERTY TACTICS:
+- Income approach: Oregon assessors accept income capitalization for commercial RMV determination. Present actual NOI with market-derived cap rates. Portland metro cap rates: 5-7% for Class A office/retail, 7-9% for suburban commercial, 8-11% for rural. The income approach often yields lower RMV than the cost approach for older commercial properties.
+- MAV advantage for commercial: Measure 50 benefits commercial properties significantly — a property purchased for $2M with a MAV of $1.2M pays taxes only on $1.2M (growing 3%/year). This creates a competitive advantage for long-held commercial properties. Highlight this in investment analysis.
+- Depreciation and obsolescence: Oregon recognizes physical depreciation (wet climate accelerates deterioration), functional obsolescence (Portland's evolving commercial landscape leaves older formats behind), and economic obsolescence (market shifts, remote work impact on office). Document all three for maximum RMV reduction.
+
+SETTLEMENT & HEARING STRATEGY:
+- BOPTA (Board of Property Tax Appeals): Free, informal process. File by December 31 for the current tax year (ORS 309.100). Present comparable sales within 12 months of January 1 assessment date. BOPTA hears thousands of appeals annually — be concise, data-driven, and organized. Bring a one-page summary with your comparable sales grid.
+- Template language: "The subject property's Real Market Value of $[RMV] exceeds its actual market value based on [number] comparable sales within [distance], all sold within 12 months of the January 1, [year] assessment date. The adjusted median sale price of $[Y] supports a reduced RMV. We request RMV reduction to $[Y]."
+- Oregon Tax Court: For complex cases or BOPTA denials, appeal to the Magistrate Division (ORS 305.501) within 30 days. Streamlined procedures, no attorney required for claims under $25,000. Regular Division handles larger cases with full trial procedures.
+- What wins at BOPTA: Three to five comparable sales with clear adjustments; a one-page property summary; photos showing condition issues; concise presentation (you typically get 15-20 minutes). BOPTA members are appointed citizens, not assessors — speak plainly, not technically.
+- Common mistakes: Missing the December 31 BOPTA filing deadline; using sales outside the 12-month window from January 1; failing to adjust comparable sales for differences; not challenging RMV because current taxes are based on MAV (RMV reduction protects future years); confusing RMV, MAV, and AV in the appeal.`,
 
   PA: `PENNSYLVANIA STRATEGIES:
 - Pennsylvania assessment practices vary dramatically by county. Some counties haven't reassessed in 20+ years. The Common Level Ratio (CLR) published by the State Tax Equalization Board adjusts for outdated base years.
@@ -1236,12 +1270,46 @@ SETTLEMENT & HEARING STRATEGY:
 - What wins: Multiple comparable sales with detailed adjustment grids, DOR ratio study data showing systemic over-assessment, professional appraisals, income data for commercial properties.
 - Common mistakes: Not meeting the higher evidentiary standard (clear, cogent, convincing), missing the July 1 filing deadline, using comparables from different market areas.`,
 
-  WV: `WEST VIRGINIA STRATEGIES:
-- West Virginia assesses at 60% of appraised value. Verify: assessed_value / 0.60 = appraised value, which must equal market value.
-- Classification: Class I (owner-occupied) has a lower rate than Class II (all other property). Verify correct classification.
-- Managed timberland has a separate assessment methodology based on productivity. Verify correct timber classification.
-- Appeal to the County Commission in February (very short window: Feb 1-20). Then to Circuit Court within 60 days.
-- West Virginia has a homestead exemption for seniors (65+) and disabled — first $20,000 of assessed value exempt.`,
+  WV: `WEST VIRGINIA STRATEGIES — MOUNTAIN STATE:
+
+ASSESSMENT FUNDAMENTALS:
+- Assessed at 60% of appraised (market) value (W. Va. Code § 11-3-1). Verify: assessed_value / 0.60 = implied appraised value, which must equal fair market value.
+- Four property classes with different levy rates: Class I (tangible personal property and owner-occupied residential), Class II (all other real property including rentals), Class III (outside municipalities), Class IV (inside municipalities). Classification directly impacts tax rate.
+- Annual assessment by the county assessor with a July 1 valuation date.
+- Burden of proof is on the taxpayer to show the assessment is erroneous or excessive.
+- Key statutes: W. Va. Code §§ 11-3-1 to 11-3-32 (assessment), § 11-3-24 (County Commission appeal), § 11-3-25 (Circuit Court appeal).
+- Common errors: incorrect classification (Class I vs Class II — owner-occupied vs rental), failure to apply homestead exemption, stale condition assessments, incorrect timber classification.
+
+FOR TAX APPEALS — PROVE LOWER VALUE:
+- Primary winning tactic: Comparable sales showing the implied appraised value (assessed / 0.60) exceeds market value. The 60% ratio means errors are amplified — a $10,000 market value error creates a $6,000 assessed value error.
+- Cost-to-cure: Document all deferred maintenance with contractor bids. West Virginia's climate and terrain create specific issues: mine subsidence, hillside drainage, foundation settling on slopes. Present as: "Appraised value of $X minus $Y in required repairs = adjusted value of $Z, assessed at 60% = $W."
+- Photo evidence: Photograph all structural defects, mine subsidence damage, drainage issues, outdated systems, and neighboring nuisances. County Commission members are elected officials — visual evidence is highly effective.
+- Classification verification: Class I (owner-occupied) has a lower rate than Class II. If a property is owner-occupied but classified as Class II (rental), correcting the classification alone can yield significant savings.
+- Managed timberland (W. Va. Code § 11-1C): Separate assessment based on productivity, not market value. Verify correct timber classification if property includes forested acreage.
+- Exemption checklist: Homestead exemption for seniors (65+) and permanently disabled — first $20,000 of assessed value exempt (W. Va. Code § 11-6B). Veterans' exemptions. Verify all applicable exemptions are applied.
+
+FOR PRE-LISTING — PROVE HIGHER VALUE:
+- The 60% ratio means assessed value is always below market value by design. Calculate the implied appraised value (assessed / 0.60) and compare to listing price — a gap suggests the assessor's appraised value trails the market.
+- Document all improvements and upgrades that may not be captured in the assessment, especially since reassessment practices vary by county.
+- Use recent comparable sales to demonstrate the property's market position exceeds the implied appraised value.
+
+FOR PRE-PURCHASE — PROTECT THE BUYER:
+- Calculate post-purchase tax projection: (purchase price × 0.60) × applicable class levy rate. Remember the classification determines which rate applies.
+- Watch for properties switching from Class I (owner-occupied) to Class II (rental) or vice versa on sale — this changes the levy rate.
+- Identify deferred maintenance specific to West Virginia: mine subsidence risk, hillside stability, well/septic condition, flood risk in valley properties. Factor these costs into the offer.
+
+COMMERCIAL PROPERTY TACTICS:
+- Classification impact: Class III (outside municipality) vs Class IV (inside municipality) have different rates. Verify correct classification.
+- Income approach: Use actual NOI and local cap rates. West Virginia's diverse economy (energy, tourism, manufacturing) means cap rates vary significantly by property type and location.
+- Functional obsolescence: Document outdated industrial/commercial layouts, environmental contamination (especially from coal/gas operations), ADA non-compliance.
+- Economic obsolescence: Coal industry decline, population loss, market vacancy rates — all can demonstrate reduced property value.
+
+SETTLEMENT & HEARING STRATEGY:
+- County Commission appeal: File between February 1-20 (very short window, W. Va. Code § 11-3-24). This is critical — missing this 20-day window forfeits the right to appeal for the year.
+- Circuit Court appeal: Within 60 days of the County Commission decision (W. Va. Code § 11-3-25).
+- Template: "The assessed value of [amount] implies an appraised value of [amount / 0.60] which exceeds the property's fair market value of [amount] as demonstrated by [number] comparable sales within [county]."
+- What wins: Comparable sales with the 60% ratio calculation clearly shown, classification verification evidence, contractor repair bids, photos of property defects and condition issues.
+- Common mistakes: Missing the February 1-20 filing window (most common error in West Virginia), not understanding the 60% ratio when presenting evidence, incorrect classification on the appeal form.`,
 
   WI: `WISCONSIN STRATEGIES:
 - Wisconsin assesses at 100% of full value. The DOR publishes assessment ratios for every municipality — if your municipality's ratio is significantly off, use it as evidence of systemic over-assessment.
