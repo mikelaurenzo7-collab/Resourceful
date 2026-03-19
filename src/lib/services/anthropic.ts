@@ -636,7 +636,7 @@ STRATEGY SELECTION DIRECTIVE: The state strategies above contain sections for di
 1. Read the "ASSESSMENT FUNDAMENTALS" section — this applies to ALL service types.
 2. Focus PRIMARILY on the section matching this report's service type: "${payload.serviceType === 'pre_listing' ? 'FOR PRE-LISTING — PROVE HIGHER VALUE' : payload.serviceType === 'pre_purchase' ? 'FOR PRE-PURCHASE — PROTECT THE BUYER' : 'FOR TAX APPEALS — PROVE LOWER VALUE'}".
 3. If this is a ${payload.propertyType === 'commercial' || payload.propertyType === 'industrial' ? 'commercial/industrial' : 'residential'} property, ${payload.propertyType === 'commercial' || payload.propertyType === 'industrial' ? 'ALSO apply the "COMMERCIAL PROPERTY TACTICS" section — income approach arguments are critical.' : 'you may still reference commercial tactics if the property has mixed-use characteristics.'}
-4. Use the "SETTLEMENT & HEARING STRATEGY" section to craft the appeal_argument_summary with language that wins at ${countyRule?.appeal_board_name || 'the local board'}.
+4. Use the "SETTLEMENT & HEARING STRATEGY" section to craft the appeal_argument_summary with language that wins at ${payload.countyRules.appealBoardName || 'the local board'}.
 5. When photo evidence exists, integrate the cost-to-cure and condition documentation guidance from the strategy into your condition_assessment and appeal arguments.` : ''}
 
 You must return valid JSON — an array of objects with these keys:
