@@ -65,17 +65,77 @@ SETTLEMENT & HEARING STRATEGY:
 - Evidence format: Alabama boards respond well to printed packets with comparable sales maps, photos, and a clear one-page summary. Keep presentations under 10 minutes.
 - Mistakes that lose appeals: failing to file on time (varies by county, typically May–June), not bringing comparable sales data, arguing about tax rates instead of assessed value, and not knowing which classification applies.`,
 
-  AK: `ALASKA STRATEGIES:
-- Alaska has no state property tax — each municipality sets its own. Appeal rules vary significantly by borough/municipality.
-- Senior and disabled veteran exemptions can dramatically reduce assessable value. Verify all applicable exemptions are applied.
-- In Anchorage, the Board of Equalization process allows informal hearings that frequently result in reductions without formal proceedings.
-- Alaska's housing market is highly seasonal and location-dependent. Urban vs rural valuation metrics differ enormously — ensure comps are truly comparable in location context.`,
+  AK: `ALASKA STRATEGIES — MUNICIPAL PROPERTY TAX STATE:
 
-  AZ: `ARIZONA STRATEGIES:
-- Arizona has TWO assessed values: Full Cash Value (FCV) and Limited Property Value (LPV). LPV cannot increase more than 5% per year (A.R.S. §42-13301). If the LPV jump exceeds 5%, it's automatically illegal.
-- Challenge the property class — Arizona has 9 legal classes with different ratios. Residential (Class 3, 10%) vs commercial (Class 1, 18%) classification errors are common for mixed-use properties.
-- Arizona allows "comparable sales" AND "income approach" AND "cost approach" evidence. Use ALL THREE — the Board must consider each.
-- County assessors must use the "five approaches to value" and apply the most appropriate. If they relied solely on mass appraisal without considering your property's specific characteristics, challenge the methodology.`,
+ASSESSMENT FUNDAMENTALS:
+- Alaska has NO state property tax — all property taxes are levied by municipalities and boroughs (Alaska Constitution Art. IX, §1). Assessment ratios, appeal procedures, and exemptions vary by jurisdiction.
+- Full market value assessment required by AS 29.45.060. Properties must be assessed at full and true value as of January 1 each year.
+- Burden of proof: the property owner bears the burden at the Board of Equalization. At Superior Court appeal, the standard shifts to "clear and convincing evidence" that the assessment is unequal or excessive (AS 29.45.210).
+- Key statutes: AS 29.45.030 (tax levy authority), AS 29.45.060 (assessment at full value), AS 29.45.190–.210 (appeal procedures), AS 29.45.050 (exemptions).
+- Common assessor errors: using stale comparable sales from prior seasons (Alaska's market is highly seasonal), failing to adjust for remote location access issues, incorrect lot size due to survey challenges, ignoring permafrost or environmental conditions that reduce usability.
+
+FOR TAX APPEALS — PROVE LOWER VALUE:
+- Primary winning tactic: seasonal and location comparability. Alaska's housing market varies dramatically by season and micro-location. Ensure comparables are from the same season, same access type (road-accessible vs fly-in), and similar infrastructure availability. Assessors frequently use comps from dissimilar locations.
+- Cost-to-cure: foundation repair from frost heave ($15,000–$40,000), heating system replacement ($8,000–$20,000), roof damage from snow load ($10,000–$25,000), water/sewer system issues in areas without municipal services ($15,000–$50,000). Alaska's extreme climate creates unique and expensive maintenance demands.
+- Photo evidence: document frost heave damage, permafrost settlement, ice dam damage, inadequate insulation, water intrusion from freeze-thaw cycles. Each defect with a contractor estimate in Alaska's high-cost labor market carries significant weight.
+- Cap/freeze violations: Anchorage Municipality caps assessment increases at the prior year's CPI for prior-ownership properties (AMC 12.15.015). Verify compliance with local caps.
+- Exemption checklist: senior exemption (AS 29.45.030(e), varies by municipality — Anchorage exempts first $150,000 for seniors 65+), disabled veteran exemption (AS 29.45.030(f), first $150,000), nonprofit/religious exemption (AS 29.45.050), community purpose exemption. Each municipality may offer additional local exemptions.
+
+FOR PRE-LISTING — PROVE HIGHER VALUE:
+- Assessment gap: if municipal assessment is below market value, use the gap to justify listing price. Alaska's infrequent interior inspections mean upgrades (insulation, heating, windows) are rarely captured in assessments.
+- Document cold-climate upgrades: energy-efficient windows ($500–$1,000 each), upgraded insulation (spray foam at $3–$7/sqft), modern heating systems, generator backup systems. These carry outsized value in Alaska.
+- Appreciation evidence: use recent sales in the same borough/municipality, adjusting for seasonal factors. Summer sales typically command 5–15% premiums over winter sales.
+
+FOR PRE-PURCHASE — PROTECT THE BUYER:
+- Tax projection: effective tax rates vary enormously by municipality (0% in some unincorporated areas to 2%+ in Juneau). Calculate post-purchase taxes based on the actual municipality and any applicable exemptions.
+- Deferred maintenance costs from photos: permafrost damage, aging fuel oil tanks ($3,000–$8,000 to replace), roof condition under heavy snow loads, foundation integrity. Remote properties may require $20,000–$50,000 in deferred maintenance.
+- Assessment vs market gap: purchases in rising Alaska markets (Anchorage, Fairbanks, Juneau) trigger reassessment to purchase price. Budget for the tax increase.
+
+COMMERCIAL PROPERTY TACTICS:
+- Income approach: Alaska's commercial property markets are thin, making comparable sales unreliable. Income capitalization is often the best approach. Local cap rates for Anchorage commercial properties typically range 8–12%; rural areas may be 10–15%+.
+- Classification impact: some municipalities assess commercial and residential differently. In Anchorage, all property is assessed at 100% but different mill rates may apply. Verify correct classification for mixed-use properties.
+- Depreciation/obsolescence: functional obsolescence is common in Alaska's aging commercial building stock (seismic deficiency requiring retrofit at $20–$50/sqft, energy inefficiency, ADA non-compliance). External obsolescence from population decline in rural areas is a strong argument.
+
+SETTLEMENT & HEARING STRATEGY:
+- Template language: "The Board of Equalization should find that the subject property's assessed value of $[X] exceeds its full and true value under AS 29.45.060, as demonstrated by [comparable sales/income analysis/cost approach] establishing a market value of $[Y]."
+- Evidence format: Anchorage and Fairbanks BOEs expect professional-quality presentations. Printed packets with property photos, comparable sales grid with adjustments, and a one-page summary work best. Hearing time is typically 15 minutes.
+- Mistakes that lose appeals: missing the 30-day appeal deadline from assessment notice, using comparables from different boroughs/municipalities, failing to adjust for seasonal sales differences, and arguing about mill rates rather than assessed value.`,
+
+  AZ: `ARIZONA STRATEGIES — DUAL VALUATION STATE:
+
+ASSESSMENT FUNDAMENTALS:
+- Arizona has TWO assessed values: Full Cash Value (FCV, market value) and Limited Property Value (LPV, capped growth). LPV cannot increase more than 5% per year (A.R.S. §42-13301). If the LPV jump exceeds 5%, it is automatically illegal — no further evidence needed.
+- Nine legal property classes with different assessment ratios: Class 1 (commercial/industrial, 18%), Class 2 (agricultural/vacant, 15%), Class 3 (residential owner-occupied, 10%), Class 4 (rental residential, 10%), Class 5 (railroad/utility, varies), and others.
+- Burden of proof: taxpayer bears the burden at the county assessor informal review and the County Board of Equalization. At the State Board of Equalization or Tax Court, the standard is preponderance of the evidence (A.R.S. §42-16213).
+- Key statutes: A.R.S. §42-11001 (definitions), §42-13001–13304 (valuation methods), §42-16051–16060 (appeal procedures), §42-15001–15010 (classification).
+- Common assessor errors: wrong classification (Class 1 vs Class 3 = 8% ratio difference on the same value), incorrect square footage, failing to apply the 5% LPV cap, using FCV when LPV should apply to secondary tax calculations, ignoring physical deterioration.
+
+FOR TAX APPEALS — PROVE LOWER VALUE:
+- Primary winning tactic: LPV cap violation. Calculate: prior_year_LPV × 1.05 = maximum_current_LPV. If the current LPV exceeds this, the assessment is illegal under A.R.S. §42-13301 regardless of market value. This is a mathematical argument that requires no appraisal evidence.
+- Cost-to-cure: roof replacement in Arizona's extreme heat ($8,000–$15,000), HVAC replacement ($6,000–$12,000 — critical in Arizona's climate), pool repair/resurfacing ($5,000–$15,000), stucco cracking/repair ($3,000–$8,000), termite damage remediation ($2,000–$6,000).
+- Photo evidence: sun damage to exterior surfaces, cracked stucco, deteriorating flat roofs (common in Arizona), worn pool surfaces, landscaping damage from extreme heat. Arizona's intense UV exposure accelerates deterioration — document with dated photos.
+- Cap/freeze violations: the 5% LPV cap is the most powerful tool. Also verify Rule B values for properties with new construction — only the new construction portion should be added at FCV.
+- Exemption checklist: widow/widower exemption (A.R.S. §42-11111, $4,375 assessed value), disabled person exemption (§42-11111, $4,375), disabled veteran exemption (§42-11107, up to 100% based on disability rating), religious/charitable exemption (§42-11109).
+
+FOR PRE-LISTING — PROVE HIGHER VALUE:
+- Assessment gap: Arizona's LPV system means long-held properties often have LPV far below FCV. The gap between LPV and FCV demonstrates suppressed tax burden — a selling point. Show buyers that current taxes are artificially low due to LPV cap history.
+- Upgrades as positive adjustments: pool additions ($25,000–$60,000 value), kitchen/bath remodels, solar panel installation (high value in Arizona's sun), covered patio/outdoor living spaces (premium feature in Arizona climate).
+- Appreciation evidence: Arizona's metro areas (Phoenix, Scottsdale, Tucson) have seen significant appreciation. Use recent comparable sales to demonstrate the FCV exceeds the assessed FCV.
+
+FOR PRE-PURCHASE — PROTECT THE BUYER:
+- Tax projection: WARNING — when a property sells, LPV resets to FCV. A property with decades of LPV cap history may see taxes DOUBLE or TRIPLE upon purchase. Calculate: new_LPV = current_FCV, not current_LPV. This is the single most important disclosure for Arizona buyers.
+- Deferred maintenance costs from photos: roof condition under extreme sun, HVAC age (10+ year units in Arizona heat are near end-of-life), pool condition, monsoon damage to landscaping and drainage. Estimate $10,000–$40,000 in climate-related deferred maintenance.
+- Assessment vs market gap: quantify the LPV-to-FCV gap and translate it to annual tax dollars the buyer will pay that the seller did not.
+
+COMMERCIAL PROPERTY TACTICS:
+- Income approach: Arizona allows all three approaches to value (A.R.S. §42-13002). For commercial properties, income capitalization is typically most favorable. Phoenix/Scottsdale cap rates range 6–9% for office/retail; industrial cap rates 5–7%.
+- Classification dollar impact: Class 1 (commercial) at 18% vs Class 3 (residential) at 10%. On a $1,000,000 property, the difference is $80,000 in assessed value = $8,000–$12,000/year in taxes. Mixed-use properties should be split by use.
+- Depreciation/obsolescence: Arizona's intense heat causes accelerated physical deterioration. Functional obsolescence arguments (outdated strip mall design, inadequate parking, poor energy efficiency) are strong in Arizona's competitive commercial market.
+
+SETTLEMENT & HEARING STRATEGY:
+- Template language: "The Assessor's valuation of $[FCV] exceeds the property's full cash value as defined by A.R.S. §42-11001(5), and/or the Limited Property Value of $[LPV] exceeds the statutory 5% cap under A.R.S. §42-13301. The taxpayer respectfully requests a reduction to $[requested value] based on [comparable sales/income analysis/cost approach]."
+- Evidence format: Arizona boards accept all three approaches to value and must consider each one presented. Submit a written packet with comparable sales (adjusted), income analysis (if commercial), and cost approach (if new construction). Include photos and a property condition report.
+- Mistakes that lose appeals: missing the petition deadline (within 60 days of notice of value, typically by April — A.R.S. §42-16051), confusing FCV and LPV arguments, failing to present comparables with proper adjustments, and not understanding that primary vs secondary taxes use different values.`,
 
   AR: `ARKANSAS STRATEGIES:
 - Arkansas requires uniform assessment at 20% of market value (Amendment 79). Calculate: if assessed_value / market_value ≠ 0.20, the assessment violates the state constitution.
@@ -135,20 +195,93 @@ SETTLEMENT & HEARING STRATEGY:
 - Evidence format that wins: Printed comparable sales analysis with photos, adjustment grid, and clear math showing assessed_value > market_value × 0.70. Connecticut boards respond to organized, data-driven presentations.
 - Mistakes that lose: Filing after the February 20 deadline, presenting comps from other municipalities without adjustment, arguing about taxes rather than value, failing to appeal to Superior Court within 2 months of BAA decision if the BAA denies relief.`,
 
-  DE: `DELAWARE STRATEGIES:
-- Delaware has NOT conducted statewide reassessment in decades (some counties since the 1980s). Base values are wildly outdated. Challenge whether the assessment reflects current methodology or frozen historical values.
-- No state property tax — all property tax is local (county + school district). Each jurisdiction may have different equalization practices.
-- Delaware has a very low effective tax rate compared to neighboring states, but assessments can still be disproportionate within jurisdictions.
-- Senior citizen school property tax credit and additional exemptions may apply. Verify all exemptions.`,
+  DE: `DELAWARE STRATEGIES — FIRST STATE:
+
+ASSESSMENT FUNDAMENTALS:
+- Assessment ratio: Delaware has no uniform statewide ratio. Each county sets its own assessment level. Kent County, New Castle County, and Sussex County each operate independently with different base years and methodologies.
+- Methodology: Delaware has NOT conducted statewide reassessment in decades — New Castle County's base year dates to 1983, Kent County to 1987, Sussex County to 1974. Base values are wildly outdated. Challenge whether the assessment reflects current methodology or frozen historical values.
+- Classification: No state property tax — all property tax is local (county + school district + vocational school district + municipality). Each taxing jurisdiction applies its own millage rate to the county-determined assessed value.
+- Burden of proof: The taxpayer bears the burden at the Board of Assessment Review. You must demonstrate the assessment is incorrect, not merely that you disagree. Present affirmative evidence of value.
+- Key statutes: Title 9, Chapter 83 (New Castle County assessment appeals), Title 9, §8311 (Board of Assessment Review), Title 9, §8002-8014 (assessment procedures), Title 14, §1917 (school tax exemptions).
+- Common assessor errors: Using decades-old base year values without proper trending, incorrect property classification, wrong lot size from outdated surveys, failure to account for environmental contamination or flood zone designation, applying incorrect neighborhood code.
+
+FOR TAX APPEALS — PROVE LOWER VALUE:
+- Primary winning tactic: Because Delaware assessments use base years from the 1970s-1980s, the key is demonstrating that the assessed value — even after trending adjustments — exceeds the property's proportionate share of the tax burden. Show that your property is assessed at a higher percentage of market value than comparable properties in the same taxing district.
+- Cost-to-cure: Delaware's coastal and near-coastal properties face unique issues. Foundation moisture damage ($10,000-$30,000), saltwater corrosion of systems ($5,000-$15,000), roof replacement ($12,000-$30,000), HVAC replacement ($6,000-$18,000), septic system failure ($15,000-$35,000 in Sussex County where municipal sewer is limited). Document each defect with contractor estimates.
+- Photo evidence: Photograph deferred maintenance — water damage, deteriorating siding, cracked foundations, outdated systems. In Sussex County beach communities, document storm damage and erosion. Each documented deficiency reduces the condition rating and supports a lower value.
+- Cap/freeze violations: Delaware has no assessment cap like Florida's SOH, but the outdated base years effectively function as a freeze. If a reassessment occurs (rare), verify the methodology is consistent across the jurisdiction.
+- Exemption checklist: Senior citizen school property tax exemption (Title 14, §1917, income-qualified, up to full school tax exemption), disabled veteran exemption (Title 9, §8131, up to $50,000 off assessed value for 100% disabled), homestead tax credit (varies by jurisdiction), agricultural use exemption (Title 9, §8330, assessed at use value rather than market value).
+
+FOR PRE-LISTING — PROVE HIGHER VALUE:
+- Assessment gap: Because Delaware assessments are based on 1970s-1980s values, the gap between assessed and market value is typically enormous. This gap itself demonstrates that the property's market value far exceeds what the county has recognized, supporting a higher listing price.
+- Upgrades as positive adjustments: Kitchen renovation (+$12,000-$35,000), bathroom updates (+$8,000-$18,000), additions that may not be reflected in decades-old assessment records, energy efficiency improvements, new construction additions. Delaware's outdated records frequently miss improvements made since the base year.
+- Appreciation evidence: Delaware's three counties have dramatically different market dynamics. New Castle County (Wilmington suburbs) trends with the Philadelphia metro. Sussex County (Rehoboth Beach, Lewes) has seen explosive appreciation as a resort/retirement destination. Use county-specific comparable sales to demonstrate appreciation.
+
+FOR PRE-PURCHASE — PROTECT THE BUYER:
+- Tax projection: Delaware has no state property tax and no sales tax, but property taxes fund schools, county services, and municipalities. Calculate total tax burden across all overlapping jurisdictions: county + school district + vocational district + municipality. Total effective rates range from $0.50 to $2.50 per $100 of assessed value depending on jurisdiction.
+- Deferred maintenance costs: Sussex County properties may have well and septic issues ($15,000-$35,000 each). Coastal properties face flood insurance requirements ($1,000-$5,000/year) and potential storm damage. New Castle County properties near industrial sites may have environmental contamination concerns.
+- Assessment vs market gap: Delaware's frozen assessments mean the assessed value bears almost no relationship to market value. Do not rely on assessed value as a market indicator. Instead, focus on comparable sales and the total tax dollar amount the buyer will actually pay.
+
+COMMERCIAL PROPERTY TACTICS:
+- Income approach: Present actual NOI with market-supported cap rates. Wilmington CBD office cap rates (7-10%) reflect the competitive pressure from Philadelphia. Sussex County retail/hospitality cap rates (6-9%) reflect seasonal tourism patterns. Kent County (Dover) rates reflect government/military employment stability.
+- Classification impact: Delaware does not have differential tax rates by property class, but commercial properties may be trended differently than residential in some jurisdictions. Verify the trending factor applied is appropriate for the property type.
+- Depreciation/obsolescence: Wilmington's office market faces economic obsolescence from remote work trends and competition with Philadelphia. Argue functional obsolescence for older commercial buildings lacking modern amenities (fiber connectivity, HVAC efficiency, ADA compliance costs of $20,000-$100,000+).
+
+SETTLEMENT & HEARING STRATEGY:
+- Informal review: Contact the county assessment office before filing a formal appeal. Template language: "I believe the current assessed value of $[X] for my property does not accurately reflect its fair market value relative to comparable properties in this taxing district. Based on recent comparable sales and property condition, I request an informal review and adjustment to $[Y]."
+- Evidence format that wins: Because Delaware assessments are so outdated, the most effective evidence is a ratio study — show that your property's assessment-to-market-value ratio exceeds that of comparable properties. Also present 3-5 comparable sales adjusted for differences, a cost approach showing depreciation, and photographs documenting condition.
+- Mistakes that lose: Missing the appeal deadline (varies by county — typically March for Board of Assessment Review), failing to present comparable properties from the same taxing district, arguing about the base year system rather than your specific property's value, not understanding that you are challenging the assessed value within the existing system rather than the system itself.`,
 
   FL: `FLORIDA STRATEGIES — SAVE OUR HOMES EXPERTISE:
-- SAVE OUR HOMES (SOH) CAP: Homestead property assessment increases are capped at 3% or CPI (whichever is LESS) per year (Article VII, §4). If the increase exceeds this cap, it's unconstitutional. Calculate precisely.
-- SOH PORTABILITY: When you sell and buy, you can transfer up to $500,000 of SOH benefit to your new homestead (§193.155). Verify the portability was properly applied at purchase.
-- Non-homestead properties have a 10% annual cap on assessment increases (§193.1555). Verify compliance.
-- TRIM NOTICE (Truth in Millage): You have only 25 DAYS from the TRIM notice to file with the Value Adjustment Board. Do NOT miss this deadline.
-- Florida has a $50,000 homestead exemption ($25,000 applies to all taxes, additional $25,000 to non-school taxes). Verify both exemptions are applied.
-- Agricultural classification (greenbelt) can reduce assessment by 50-90%. If the property has ANY agricultural use, investigate.
-- The Value Adjustment Board (VAB) hears appeals — these are quasi-judicial proceedings. Treat them seriously.`,
+
+ASSESSMENT FUNDAMENTALS:
+- Assessment ratio: Just value (market value) is the standard (F.S. §193.011). The assessed value equals just value minus exemptions and caps. Florida does NOT use a fractional assessment ratio — the assessor must determine 100% of just value.
+- Methodology: County Property Appraisers use mass appraisal with annual reassessment. Florida law requires consideration of 8 criteria for just value (F.S. §193.011): present cash value, highest and best use, location, quantity/size, cost/replacement value, condition, income, and net proceeds of sale.
+- Classification: Florida classifies property as residential, commercial, agricultural, high-water recharge, historic, and conservation. Classification determines which caps and exemptions apply.
+- Burden of proof: At the Value Adjustment Board (VAB), the Property Appraiser's assessment is presumed correct. The taxpayer bears the burden UNLESS the assessed value exceeds just value by at least 8% — then the burden shifts to the Property Appraiser (F.S. §194.301). This 8% threshold is critical.
+- Key statutes: F.S. §193.011 (just value factors), F.S. §193.155 (Save Our Homes), F.S. §193.1555 (non-homestead cap), F.S. §194.011-194.037 (VAB proceedings), F.S. §196.031-196.075 (exemptions), F.S. §193.461 (agricultural classification).
+- Common assessor errors: Incorrect effective age, wrong condition rating, using distressed sales as comparables, failing to account for deed restrictions, wrong land use classification, not applying portability correctly, incorrect square footage from outdated building sketches.
+
+SAVE OUR HOMES & CAPS:
+- SAVE OUR HOMES (SOH) CAP: Homestead property assessment increases are capped at 3% or CPI (whichever is LESS) per year (Article VII, §4, Florida Constitution). If the increase exceeds this cap, it's unconstitutional. Calculate precisely: prior_year_assessed × (1 + lesser_of(3%, CPI)) = maximum_current_assessed.
+- SOH PORTABILITY: When you sell and buy, you can transfer up to $500,000 of SOH benefit to your new homestead (F.S. §193.155(8)). Verify the portability was properly applied at purchase. The portability amount is calculated as: (just_value - assessed_value) / just_value × new_just_value, capped at $500,000. If upsizing, the full differential transfers. If downsizing, a proportional amount transfers.
+- Non-homestead properties have a 10% annual cap on assessment increases (F.S. §193.1555). Verify compliance. This applies to commercial, rental, and vacant properties. Calculate: prior_year_assessed × 1.10 = maximum_current_assessed.
+- TRIM NOTICE (Truth in Millage): You have only 25 DAYS from the TRIM notice to file with the Value Adjustment Board. Do NOT miss this deadline. The TRIM notice is mailed in August. Mark your calendar the day it arrives.
+
+FOR TAX APPEALS — PROVE LOWER VALUE:
+- Primary winning tactic: Florida's 8% burden-shift rule (F.S. §194.301) is your most powerful weapon. If you can demonstrate the assessment exceeds just value by more than 8%, the Property Appraiser must prove their value is correct — you don't have to prove yours. Present 3-5 comparable sales showing the just value is at least 8% below the assessed value.
+- Cost-to-cure: Florida's climate creates unique maintenance demands. Roof replacement ($15,000-$40,000, critical after hurricanes), HVAC replacement ($6,000-$15,000, systems degrade faster in FL humidity), stucco/exterior repair ($5,000-$20,000), pool resurfacing ($5,000-$15,000), termite/pest damage remediation ($3,000-$15,000), hurricane impact window upgrades ($15,000-$40,000), seawall repair ($20,000-$60,000 for waterfront). Document each defect with estimates from licensed FL contractors.
+- Photo evidence: Photograph deferred maintenance — roof deterioration, stucco cracking, pool damage, lanai screen damage, mold/mildew, outdated interiors. Florida's humidity and storm exposure accelerate deterioration. Each documented deficiency reduces the condition rating and therefore the just value.
+- Exemption checklist: $50,000 homestead exemption ($25,000 applies to all taxes, additional $25,000 to non-school taxes only, F.S. §196.031), senior additional homestead exemption ($50,000 for 65+, income-qualified, F.S. §196.075), disabled veteran exemption (up to full, F.S. §196.081), widow/widower exemption ($5,000, F.S. §196.202), disability exemption ($5,000, F.S. §196.202), homestead portability (F.S. §193.155(8)). Verify every applicable exemption is applied.
+- Agricultural classification (greenbelt): Can reduce assessment by 50-90% (F.S. §193.461). If the property has ANY bona fide agricultural use (cattle, citrus, timber, nursery, beekeeping, aquaculture), investigate. The classification is based on use, not zoning. Minimum acreage varies by county and use type.
+
+FOR PRE-LISTING — PROVE HIGHER VALUE:
+- Assessment gap: Florida's SOH cap creates massive gaps between assessed and just value for long-term homeowners. A property assessed at $200,000 with a just value of $500,000 demonstrates $300,000 of untapped value. This gap itself supports a higher listing price.
+- Upgrades as positive adjustments: Impact windows/doors (+$15,000-$40,000), kitchen renovation (+$15,000-$45,000), bathroom updates (+$8,000-$25,000), pool addition (+$30,000-$60,000), lanai/outdoor living (+$10,000-$30,000), hurricane-hardening improvements. Present permits and contractor invoices as evidence.
+- Appreciation evidence: Florida's markets vary dramatically — Miami-Dade, Broward, Palm Beach (Southeast FL), Tampa Bay, Orlando, Jacksonville, Southwest FL (Naples/Fort Myers), Panhandle. Use hyper-local comparable sales within the same neighborhood or subdivision to demonstrate appreciation trends.
+
+FOR PRE-PURCHASE — PROTECT THE BUYER:
+- Tax projection post-purchase: This is CRITICAL in Florida. When a homesteaded property sells, the SOH cap is removed and the property is reassessed to just value. A property paying $3,000/year in taxes under SOH could jump to $8,000-$15,000/year after purchase. Calculate: new_just_value × (total_millage_rate / 1000) - applicable_exemptions = projected_annual_tax. Always project the post-purchase tax burden for the buyer.
+- SOH reset warning: The buyer's SOH cap restarts from the new just value at purchase. Any accumulated SOH benefit from the seller is lost (unless the buyer has portability from selling their own homestead).
+- Deferred maintenance costs from photos: Florida-specific concerns include hurricane damage history (check permits for prior repairs), Chinese drywall ($50,000-$100,000+ remediation), polybutylene plumbing ($5,000-$15,000 to replace), aluminum wiring ($8,000-$20,000 to remediate), cast iron drain pipe deterioration ($10,000-$30,000 in pre-1975 homes), sinkhole risk (geological report $3,000-$5,000, remediation $10,000-$100,000+).
+- Assessment vs market gap: In Florida, the SOH-capped assessed value of the current owner tells the buyer NOTHING about their future tax burden. Focus entirely on the just value and projected millage rates.
+
+COMMERCIAL PROPERTY TACTICS:
+- Income approach: Florida VABs expect income capitalization for commercial properties. Present actual NOI with market-supported cap rates. Miami office (5-7%), Tampa/Orlando office (6-8%), retail strip centers (7-9%), hospitality/hotel (8-11%). Seasonal tourism properties require annualized income — do not use peak-season rates as annual benchmarks.
+- Classification dollar impact: Commercial properties in Florida face the 10% non-homestead cap (F.S. §193.1555) but no homestead exemption. Tangible personal property (business equipment, fixtures, furniture) is taxed separately — ensure no double-counting between real and tangible personal property assessments. File the DR-405 tangible personal property return annually.
+- Depreciation/obsolescence: Argue economic obsolescence for properties affected by changing retail patterns (dead malls, big-box vacancies), hurricane insurance cost increases ($50,000-$200,000/year for coastal commercial), rising flood insurance premiums, and functional obsolescence for buildings lacking modern hurricane standards (post-2002 Florida Building Code).
+
+SETTLEMENT & HEARING STRATEGY:
+- Informal review: Contact the Property Appraiser's office before the VAB hearing. Many counties have informal conference processes. Template language: "I am filing a petition with the Value Adjustment Board regarding parcel [number]. Before proceeding to hearing, I would like to meet informally to discuss the assessment. Based on comparable sales analysis, I believe the just value of $[X] exceeds the property's market value of $[Y] by more than 8%, shifting the burden of proof per F.S. §194.301."
+- The Value Adjustment Board (VAB) hears appeals — these are quasi-judicial proceedings. Treat them seriously. Special Magistrates (attorneys or appraisers) hear most cases and make recommendations to the VAB. Present professional-quality evidence.
+- Evidence format that wins: Florida VABs respond to organized comparable sales grids with adjustments, property condition photos, professional appraisals, and clear demonstration of the 8% burden-shift threshold. Present a summary exhibit with: subject property details, 3-5 comparable sales, adjustment grid, concluded value, and percentage by which the assessment exceeds just value.
+- Mistakes that lose: Missing the 25-day TRIM deadline (no extensions), failing to complete the petition form properly (DR-486), not bringing enough copies of evidence for the Magistrate and Property Appraiser, arguing about taxes instead of value, not understanding that the VAB can only address value and exemptions — not millage rates.
+
+RULES SPECIFIC TO FLORIDA:
+- Always verify SOH cap compliance before pursuing any other argument — cap violations are automatic wins.
+- Always calculate portability for recent purchasers who sold a prior homestead.
+- Always project post-purchase tax impact for pre-purchase clients — the SOH reset is the single biggest tax surprise in Florida real estate.
+- Always check agricultural classification eligibility — even small parcels with bona fide agricultural use may qualify.`,
 
   GA: `GEORGIA STRATEGIES — TAXPAYER BURDEN-SHIFT STATE:
 
