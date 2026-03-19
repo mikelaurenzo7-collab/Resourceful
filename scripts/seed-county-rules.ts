@@ -173,13 +173,46 @@ SETTLEMENT & HEARING STRATEGY:
 - Evidence format: Arkansas county boards are often less formal than other states. A clear one-page summary with comparable sales, photos, and the Amendment 79 cap calculation is most effective. Keep presentations concise — 5 to 10 minutes.
 - Mistakes that lose appeals: missing the equalization board filing deadline (typically 3rd Monday in August), filing with the wrong body (County Equalization Board for equalization issues vs County Court for value disputes under A.C.A. §26-27-318), not calculating the Amendment 79 cap correctly, and failing to apply for the homestead credit before appealing.`,
 
-  CA: `CALIFORNIA STRATEGIES — PROP 13 EXPERTISE:
-- Proposition 13 limits assessed value growth to 2% per year from the base year value (purchase price). If the current assessment exceeds purchase_price × 1.02^(years_owned), it's illegal under Article XIIIA.
-- PROPOSITION 8 DECLINE IN VALUE: If current market value drops BELOW the Prop 13 factored base year value, you're entitled to a temporary reduction to current market value (Revenue & Taxation Code §51). This resets annually — must file each year the decline exists.
-- Change of ownership triggers reassessment to current market value. But EXCLUDED transfers (parent-child via Prop 19, interspousal) should NOT trigger reassessment. Verify no improper reassessment occurred.
-- Proposition 19 (2021): Changed parent-child exclusion rules. Only primary residences qualify, with a $1M value difference cap. If a transfer occurred after Feb 2021, verify proper application.
+  CA: `CALIFORNIA STRATEGIES — PROP 13/8/19 EXPERTISE:
+
+ASSESSMENT FUNDAMENTALS:
+- Proposition 13 (Article XIIIA, California Constitution) limits assessed value growth to 2% per year from the base year value (purchase price). If the current assessment exceeds purchase_price × 1.02^(years_owned), it is illegal. This is the foundational protection for all California property owners.
+- PROPOSITION 8 DECLINE IN VALUE: If current market value drops BELOW the Prop 13 factored base year value, you are entitled to a temporary reduction to current market value (Revenue & Taxation Code §51). This resets annually — must file each year the decline exists. Prop 8 reductions are the single most common successful appeal type in California.
+- Change of ownership triggers reassessment to current market value. But EXCLUDED transfers (parent-child via Prop 19, interspousal under R&TC §63) should NOT trigger reassessment. Verify no improper reassessment occurred on excluded transfers.
+- Proposition 19 (2021): Changed parent-child exclusion rules. Only primary residences qualify, with a $1M value difference cap. If a transfer occurred after Feb 16, 2021, verify proper application. Transfers before that date fall under the prior Prop 58/193 rules (no cap, includes non-primary residence).
+- Assessment ratio: 100% of fair market value as of the lien date (January 1) or the base year value adjusted by the CPI factor (max 2%), whichever is LOWER (R&TC §51, §110.1).
+- Burden of proof: the taxpayer bears the burden at the Assessment Appeals Board (AAB). However, if the assessor increased the value by more than the 2% CPI factor, the burden shifts to the assessor to justify the reassessment event (R&TC §167).
+- Key statutes: Article XIIIA (Prop 13), R&TC §51 (Prop 8 decline in value), R&TC §60–69.5 (change of ownership), R&TC §70–74 (new construction), R&TC §110.1 (fair market value definition), R&TC §1601–1612 (assessment appeals).
+- Common assessor errors: applying CPI factor above 2%, improper change of ownership reassessment on excluded transfers, failing to restore Prop 8 reductions when market recovers only partially, double-counting new construction scope, incorrect base year value after legal entity transfers.
+
+FOR TAX APPEALS — PROVE LOWER VALUE:
+- Primary winning tactic: Prop 8 decline-in-value claim. If current market value is below the Prop 13 factored base year value, file for reduction. In down markets, this is nearly automatic. Calculate: factored_base_year = purchase_price × 1.02^(years). If current_market < factored_base_year, you are entitled to the reduction.
+- Cost-to-cure: earthquake retrofit ($15,000–$50,000 for soft-story buildings), foundation repair ($10,000–$30,000), roof replacement ($10,000–$25,000), seismic bracing ($5,000–$15,000), fire hardening in WUI zones ($10,000–$40,000), pool repair ($5,000–$15,000). California's seismic and fire exposure create unique deferred maintenance costs.
+- Photo evidence: earthquake damage (even hairline cracks suggest structural risk), fire damage or proximity to burn scars, deferred maintenance on exterior (stucco cracking, wood rot from coastal moisture, sun damage), unpermitted additions that may require removal or expensive permitting. Each defect with a licensed contractor estimate directly reduces provable fair market value.
+- Cap/freeze violations: verify the 2% CPI adjustment factor was correctly applied. In some years, the California CPI is below 2% — the factor must be the LESSER of 2% or the actual CPI (R&TC §51(a)(1)). Also verify no improper reassessment event occurred (entity transfers, inter-family transfers, refinancing without ownership change).
+- Supplemental assessments: after purchase or new construction, supplemental tax bills are issued separately and can be challenged independently from the regular roll (R&TC §75.31). These are frequently calculated incorrectly.
+- Exemption checklist: homeowners' exemption ($7,000 assessed value reduction, R&TC §218), disabled veterans' exemption (up to $254,656 assessed value for 100% disability, R&TC §205.5), church/welfare exemption (R&TC §214), historical property (Mills Act contract for 40–60% reduction in assessed value).
+
+FOR PRE-LISTING — PROVE HIGHER VALUE:
+- Assessment gap: California's Prop 13 system means long-held properties are almost always assessed far below market value. A property purchased in 2000 for $300,000 may be assessed at ~$400,000 but worth $900,000+. This gap proves the property is worth far more than the government values it — use to justify listing price.
+- Upgrades as positive adjustments: kitchen/bath remodels ($20,000–$80,000 value add), ADU construction (adds $100,000–$300,000 in value in many California markets), solar panel installation, seismic retrofit completion, pool/outdoor living additions. California assessors only reassess new construction if a permit was pulled — unpermitted improvements may not be in the assessment.
+- Appreciation evidence: California's coastal and urban markets have seen extraordinary appreciation. Use recent comparable sales to demonstrate market value far exceeds the Prop 13 assessed value.
+
+FOR PRE-PURCHASE — PROTECT THE BUYER:
+- Tax projection: upon purchase, the property will be reassessed to the purchase price (new base year value). For a property held 20+ years by the seller, this can mean a 3x–10x increase in property taxes. Calculate: new_annual_tax = purchase_price × 0.01 (approximate, varies by jurisdiction with additional local levies). Budget $1.0–1.5% of purchase price for total property tax.
+- Deferred maintenance costs from photos: seismic vulnerability (pre-1940 unreinforced masonry, 1950s–1970s soft-story), foundation condition, roof age, water intrusion, termite damage (common in California), fire defensible space compliance. Estimate $10,000–$60,000+ in deferred maintenance for older California properties.
+- Assessment vs market gap: the current owner's low Prop 13 assessment is irrelevant to the buyer — the buyer will pay taxes on the purchase price. Quantify the annual tax increase so the buyer can make an informed decision.
 - Assessment appeals in CA take 1-2 YEARS. File early. The refund is retroactive to the tax year in question.
-- Supplemental assessments after purchase or new construction can be challenged separately from the regular roll.`,
+
+COMMERCIAL PROPERTY TACTICS:
+- Income approach: California AABs give significant weight to income capitalization for commercial properties. Los Angeles, San Francisco, and San Diego cap rates typically range 4–7% for office/retail, 4–6% for industrial, 3–5% for multifamily. If the assessor used a lower cap rate, the resulting value is inflated.
+- Classification dollar impact: California does not use different assessment ratios by property type (all at 100%), but different property types receive different Prop 13 treatment. Verify that commercial leases with embedded property tax pass-throughs are properly accounted for in income approach analysis.
+- Depreciation/obsolescence: functional obsolescence (outdated office layouts, inadequate parking ratios, seismic non-compliance requiring expensive retrofit), economic obsolescence (remote work reducing office demand, retail competition from e-commerce), and physical deterioration from age and deferred maintenance. These arguments are powerful for older California commercial stock.
+
+SETTLEMENT & HEARING STRATEGY:
+- Template language: "The Assessment Appeals Board should find that the subject property's assessed value of $[X] exceeds its fair market value as of the lien date under Revenue & Taxation Code §110.1 [OR exceeds the Prop 13 factored base year value of $[base × 1.02^n]]. Based on [comparable sales/income capitalization], the fair market value is $[Y], and the assessment should be reduced accordingly."
+- Evidence format: California AABs are quasi-judicial and expect formal presentations. Submit a written appraisal or evidence packet with comparable sales (adjusted), income analysis (if commercial), and a clear summary. Hearing time is typically 15–30 minutes. Many counties allow phone/video hearings.
+- Mistakes that lose appeals: missing the filing deadline (July 2 to November 30 for regular roll, or within 60 days of supplemental notice — R&TC §1603), failing to distinguish between Prop 13 base year challenges and Prop 8 decline-in-value claims, not filing annually for Prop 8 reductions, withdrawing an appeal without understanding the waiver implications, and not appearing at the hearing (results in automatic denial).`,
 
   CO: `COLORADO STRATEGIES:
 - Colorado's residential ratio changes frequently (currently ~6.55%, but the legislature adjusts it). Verify the assessor used the CURRENT ratio, not last cycle's.
