@@ -38,7 +38,9 @@ const SEARCH_TIERS: Record<string, SearchTier[]> = {
     { radiusMiles: 2, monthsBack: 30, gbaVariance: 0.25 },
   ],
   land: [
+    { radiusMiles: 3, monthsBack: 24, gbaVariance: 0.40 },
     { radiusMiles: 5, monthsBack: 36, gbaVariance: 0.50 },
+    { radiusMiles: 10, monthsBack: 48, gbaVariance: 0.75 },
   ],
 };
 
@@ -46,11 +48,23 @@ const MIN_COMPS = 3;
 const MAX_COMPS = 10;
 
 // ─── Adjustment Calculations ────────────────────────────────────────────────
+// Based on paired-sales analysis methodology per USPAP and the Appraisal
+// Institute's "The Appraisal of Real Estate, 15th Edition."
+// Adjustments flow from the comparable TO the subject: if the comp is
+// SUPERIOR, adjust DOWN (negative); if INFERIOR, adjust UP (positive).
 
 interface SubjectData {
-  buildingSqFt: number;
+  buildingSqFt: number;       // GBA (gross building area) — used for search
+  livingSqFt: number;         // GLA (gross living area) — used for adjustments
   lotSqFt: number;
   yearBuilt: number;
+  bedrooms: number;
+  bathrooms: number;
+  garageSpaces: number;
+  basementSqFt: number;
+  stories: number;
+  propertyType: PropertyType;
+  serviceType: string;        // tax_appeal | pre_listing | pre_purchase
 }
 
 interface AdjustmentResult {
@@ -68,81 +82,173 @@ interface AdjustmentResult {
   is_weak_comparable: boolean;
 }
 
-function calculateAdjustments(
+// Round helper
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
+function calculateResidentialAdjustments(
   subject: SubjectData,
   comp: AttomSaleComp,
   calibration?: CalibrationParams | null
 ): AdjustmentResult {
-  let adjustment_pct_size = 0;
-  let adjustment_pct_condition = 0;
-  let adjustment_pct_land_to_building = 0;
-  const adjustment_pct_property_rights = 0;
-  const adjustment_pct_financing_terms = 0;
-  const adjustment_pct_conditions_of_sale = 0;
-  const adjustment_pct_location = 0;
-  const adjustment_pct_other = 0;
-
-  // Market trend adjustment: ~0.5% per month since sale, capped at ±10%.
-  // Adjusts older sales toward current market value. Positive = market has
-  // risen since comp sold (comp price needs upward adjustment), negative = declined.
+  // ── Market Conditions (Time) ──────────────────────────────────────────
+  // USPAP requires adjustment for changes in market conditions between
+  // comp sale date and effective date of valuation. Rate varies by market
+  // but 0.25-0.5%/month is typical nationwide. We use 0.3% and let
+  // calibration learn the actual local rate.
   let adjustment_pct_market_trends = 0;
   if (comp.saleDate) {
     const saleDate = new Date(comp.saleDate);
     const now = new Date();
     const monthsSinceSale = (now.getFullYear() - saleDate.getFullYear()) * 12 +
       (now.getMonth() - saleDate.getMonth());
-    // Conservative 0.3% per month appreciation — the AI narrative will
-    // analyze actual trend direction from the comp data set
-    if (monthsSinceSale > 6) {
-      adjustment_pct_market_trends = Math.round(Math.min(monthsSinceSale * 0.3, 10) * 100) / 100;
+    if (monthsSinceSale > 3) {
+      adjustment_pct_market_trends = r2(Math.min(monthsSinceSale * 0.3, 12));
     }
   }
 
-  // Size adjustment: -3% per 10% larger, +5% per 10% smaller
-  if (subject.buildingSqFt > 0 && comp.buildingSquareFeet && comp.buildingSquareFeet > 0) {
-    const sizeDiffPct = ((comp.buildingSquareFeet - subject.buildingSqFt) / subject.buildingSqFt) * 100;
-    const sizeBuckets = sizeDiffPct / 10;
-    if (sizeDiffPct > 0) {
-      adjustment_pct_size = Math.round(sizeBuckets * -3 * 100) / 100;
-    } else {
-      adjustment_pct_size = Math.round(Math.abs(sizeBuckets) * 5 * 100) / 100;
-    }
+  // ── GLA Size Adjustment (Diminishing Returns Curve) ───────────────────
+  // Appraisal principle: marginal value of each additional sqft DECREASES.
+  // A 2,000 sqft home is NOT worth 2x a 1,000 sqft home. We use a
+  // log-linear model: adjustment = ln(subject_sqft/comp_sqft) * elasticity.
+  // Elasticity of ~0.85 means a 10% size difference = ~8.5% price diff.
+  // This matches paired-sales research across multiple metro areas.
+  let adjustment_pct_size = 0;
+  const subjectGla = subject.livingSqFt > 0 ? subject.livingSqFt : subject.buildingSqFt;
+  const compGla = comp.buildingSquareFeet ?? 0;
+  if (subjectGla > 0 && compGla > 0) {
+    const sizeElasticity = 0.85; // from paired-sales research
+    // Negative when comp is larger (comp is superior → adjust down)
+    adjustment_pct_size = r2(Math.log(subjectGla / compGla) * sizeElasticity * 100);
+    // Cap at ±30% — beyond this the comp is too dissimilar
+    adjustment_pct_size = Math.max(-30, Math.min(30, adjustment_pct_size));
   }
 
-  // Age/condition adjustment: +/-5% per decade difference
+  // ── Age/Condition (Effective Age with Depreciation Curve) ─────────────
+  // Depreciation is NOT linear. Per Marshall & Swift cost manual:
+  // - Years 0-10: ~1.5%/year (new systems, low maintenance)
+  // - Years 10-30: ~1.0%/year (steady depreciation)
+  // - Years 30-50: ~0.5%/year (most depreciation already occurred)
+  // Adjustment is applied to the DIFFERENCE between subject and comp ages.
+  let adjustment_pct_condition = 0;
   if (subject.yearBuilt > 0 && comp.yearBuilt && comp.yearBuilt > 0) {
-    const ageDiffYears = comp.yearBuilt - subject.yearBuilt;
-    const decadeDiff = ageDiffYears / 10;
-    adjustment_pct_condition = Math.round(decadeDiff * -5 * 100) / 100;
+    const currentYear = new Date().getFullYear();
+    const subjectAge = currentYear - subject.yearBuilt;
+    const compAge = currentYear - comp.yearBuilt;
+
+    const cumulativeDepreciation = (age: number): number => {
+      if (age <= 0) return 0;
+      let total = 0;
+      const yearsAt15 = Math.min(age, 10);
+      total += yearsAt15 * 1.5;
+      if (age > 10) {
+        const yearsAt10 = Math.min(age - 10, 20);
+        total += yearsAt10 * 1.0;
+      }
+      if (age > 30) {
+        const yearsAt05 = age - 30;
+        total += yearsAt05 * 0.5;
+      }
+      return total;
+    };
+
+    const subjectDepr = cumulativeDepreciation(subjectAge);
+    const compDepr = cumulativeDepreciation(compAge);
+    // If comp is NEWER (less depreciated), it's superior → adjust DOWN
+    adjustment_pct_condition = r2(compDepr - subjectDepr);
+    // Cap at ±25%
+    adjustment_pct_condition = Math.max(-25, Math.min(25, adjustment_pct_condition));
   }
 
-  // Land-to-building ratio adjustment
-  if (
-    subject.buildingSqFt > 0 &&
-    subject.lotSqFt > 0 &&
-    comp.buildingSquareFeet &&
-    comp.buildingSquareFeet > 0 &&
-    comp.lotSquareFeet &&
-    comp.lotSquareFeet > 0
-  ) {
-    const subjectRatio = subject.lotSqFt / subject.buildingSqFt;
-    const compRatio = comp.lotSquareFeet / comp.buildingSquareFeet;
-    const ratioDiffPct = ((compRatio - subjectRatio) / subjectRatio) * 100;
-    if (Math.abs(ratioDiffPct) > 20) {
-      adjustment_pct_land_to_building = Math.round((ratioDiffPct / 20) * -1 * 100) / 100;
+  // ── Lot Size / Land-to-Building Ratio ─────────────────────────────────
+  // Land contributes 15-30% of residential value depending on market.
+  // Adjust based on lot size difference using typical 20% land allocation.
+  let adjustment_pct_land_to_building = 0;
+  if (subject.lotSqFt > 0 && comp.lotSquareFeet && comp.lotSquareFeet > 0) {
+    const lotDiffPct = ((subject.lotSqFt - comp.lotSquareFeet) / comp.lotSquareFeet) * 100;
+    // Only adjust if difference exceeds 15% (de minimis threshold)
+    if (Math.abs(lotDiffPct) > 15) {
+      const landContribution = 0.20; // land is ~20% of typical residential value
+      adjustment_pct_land_to_building = r2(lotDiffPct * landContribution);
+      // Cap at ±15%
+      adjustment_pct_land_to_building = Math.max(-15, Math.min(15, adjustment_pct_land_to_building));
     }
   }
 
-  // Apply calibration multipliers (learned from real appraisal feedback)
-  if (calibration) {
-    adjustment_pct_size = Math.round(adjustment_pct_size * calibration.size_multiplier * 100) / 100;
-    adjustment_pct_condition = Math.round(adjustment_pct_condition * calibration.condition_multiplier * 100) / 100;
-    adjustment_pct_market_trends = Math.round(adjustment_pct_market_trends * calibration.market_trend_multiplier * 100) / 100;
-    adjustment_pct_land_to_building = Math.round(adjustment_pct_land_to_building * calibration.land_ratio_multiplier * 100) / 100;
+  // ── Location (Distance-Based Proxy) ──────────────────────────────────
+  // Without school district or census tract data, use distance as a proxy.
+  // Comps within 0.5mi are assumed same neighborhood (no adjustment).
+  // Beyond 0.5mi, apply a conservative 1%/mile adjustment — the AI
+  // narrative will provide qualitative location analysis.
+  let adjustment_pct_location = 0;
+  if (comp.distanceMiles != null && comp.distanceMiles > 0.5) {
+    // Further comps get a modest adjustment — direction unknown, so
+    // conservative. Calibration will learn the actual local pattern.
+    adjustment_pct_location = r2(Math.min((comp.distanceMiles - 0.5) * -1.0, 0));
+    // For tax appeals, we don't penalize distant comps — we just flag them
+    if (subject.serviceType === 'tax_appeal') {
+      adjustment_pct_location = 0;
+    }
   }
 
-  // Calculate net adjustment
-  const net_adjustment_pct =
+  // ── Bedroom Count ────────────────────────────────────────────────────
+  // Per paired-sales analysis: each bedroom difference = ~2-3% for typical
+  // residential. We use 2.5% — calibration refines per market.
+  let bedroomAdj = 0;
+  if (subject.bedrooms > 0 && comp.bedrooms != null && comp.bedrooms > 0) {
+    const bedroomDiff = subject.bedrooms - comp.bedrooms;
+    bedroomAdj = r2(bedroomDiff * 2.5);
+  }
+
+  // ── Bathroom Count ───────────────────────────────────────────────────
+  // Bathrooms are higher-value: each full bath = ~3-4% of home value.
+  // Half baths ≈ 40% of a full bath value. We use 3.5% per full bath.
+  let bathroomAdj = 0;
+  if (subject.bathrooms > 0 && comp.bathrooms != null && comp.bathrooms > 0) {
+    const bathDiff = subject.bathrooms - comp.bathrooms;
+    bathroomAdj = r2(bathDiff * 3.5);
+  }
+
+  // ── Garage ───────────────────────────────────────────────────────────
+  // Each garage space = ~2% of home value in most markets.
+  let garageAdj = 0;
+  if (comp.garageSpaces != null) {
+    const garageDiff = subject.garageSpaces - comp.garageSpaces;
+    garageAdj = r2(garageDiff * 2.0);
+  }
+
+  // ── Basement ─────────────────────────────────────────────────────────
+  // Basement space valued at ~50% of above-grade per-sqft rate.
+  // Adjust proportionally to GLA.
+  let basementAdj = 0;
+  if (subjectGla > 0) {
+    const subjectBasement = subject.basementSqFt;
+    const compBasement = comp.basementSquareFeet ?? 0;
+    const basementDiff = subjectBasement - compBasement;
+    if (Math.abs(basementDiff) > 100) { // de minimis: 100 sqft
+      // Basement sqft at 50% the value of above-grade sqft
+      basementAdj = r2((basementDiff / subjectGla) * 50);
+      basementAdj = Math.max(-10, Math.min(10, basementAdj));
+    }
+  }
+
+  // Roll bedroom/bathroom/garage/basement into the "other" bucket
+  const adjustment_pct_other = r2(bedroomAdj + bathroomAdj + garageAdj + basementAdj);
+
+  // Transactional adjustments (always 0 for MLS/public record sales)
+  const adjustment_pct_property_rights = 0;
+  const adjustment_pct_financing_terms = 0;
+  const adjustment_pct_conditions_of_sale = 0;
+
+  // ── Apply Calibration Multipliers ─────────────────────────────────────
+  if (calibration) {
+    adjustment_pct_size = r2(adjustment_pct_size * calibration.size_multiplier);
+    adjustment_pct_condition = r2(adjustment_pct_condition * calibration.condition_multiplier);
+    adjustment_pct_market_trends = r2(adjustment_pct_market_trends * calibration.market_trend_multiplier);
+    adjustment_pct_land_to_building = r2(adjustment_pct_land_to_building * calibration.land_ratio_multiplier);
+  }
+
+  // ── Net Adjustment ────────────────────────────────────────────────────
+  const net_adjustment_pct = r2(
     adjustment_pct_property_rights +
     adjustment_pct_financing_terms +
     adjustment_pct_conditions_of_sale +
@@ -151,11 +257,15 @@ function calculateAdjustments(
     adjustment_pct_size +
     adjustment_pct_land_to_building +
     adjustment_pct_condition +
-    adjustment_pct_other;
+    adjustment_pct_other
+  );
 
-  const roundedNet = Math.round(net_adjustment_pct * 100) / 100;
-  const adjustedSalePrice = Math.round(comp.salePrice * (1 + roundedNet / 100));
-  const is_weak_comparable = Math.abs(roundedNet) > 25;
+  const adjustedSalePrice = Math.round(comp.salePrice * (1 + net_adjustment_pct / 100));
+  // USPAP: net adjustment >25% or gross >50% = weak comparable
+  const grossAdj = Math.abs(adjustment_pct_market_trends) + Math.abs(adjustment_pct_size) +
+    Math.abs(adjustment_pct_condition) + Math.abs(adjustment_pct_land_to_building) +
+    Math.abs(adjustment_pct_location) + Math.abs(adjustment_pct_other);
+  const is_weak_comparable = Math.abs(net_adjustment_pct) > 25 || grossAdj > 50;
 
   return {
     adjustment_pct_property_rights,
@@ -167,10 +277,92 @@ function calculateAdjustments(
     adjustment_pct_land_to_building,
     adjustment_pct_condition,
     adjustment_pct_other,
-    net_adjustment_pct: roundedNet,
+    net_adjustment_pct,
     adjustedSalePrice,
     is_weak_comparable,
   };
+}
+
+// ─── Land-Specific Adjustments ──────────────────────────────────────────────
+// Land valuation uses price-per-acre as the unit of comparison, with
+// adjustments for utility access, road frontage, topography, and zoning.
+// Physical characteristic adjustments (bedrooms, etc.) do not apply.
+
+function calculateLandAdjustments(
+  subject: SubjectData,
+  comp: AttomSaleComp,
+  calibration?: CalibrationParams | null
+): AdjustmentResult {
+  // Market conditions — same methodology as residential
+  let adjustment_pct_market_trends = 0;
+  if (comp.saleDate) {
+    const saleDate = new Date(comp.saleDate);
+    const now = new Date();
+    const monthsSinceSale = (now.getFullYear() - saleDate.getFullYear()) * 12 +
+      (now.getMonth() - saleDate.getMonth());
+    if (monthsSinceSale > 3) {
+      adjustment_pct_market_trends = r2(Math.min(monthsSinceSale * 0.25, 10));
+    }
+  }
+
+  // Size adjustment — price per acre exhibits diminishing returns
+  // Larger parcels sell for less per acre (economies of scale in land).
+  let adjustment_pct_size = 0;
+  if (subject.lotSqFt > 0 && comp.lotSquareFeet && comp.lotSquareFeet > 0) {
+    const subjectAcres = subject.lotSqFt / 43560;
+    const compAcres = comp.lotSquareFeet / 43560;
+    if (subjectAcres > 0 && compAcres > 0) {
+      // Log-linear: smaller parcels have higher per-acre price
+      adjustment_pct_size = r2(Math.log(subjectAcres / compAcres) * -30);
+      adjustment_pct_size = Math.max(-40, Math.min(40, adjustment_pct_size));
+    }
+  }
+
+  // Location — distance matters more for land
+  let adjustment_pct_location = 0;
+  if (comp.distanceMiles != null && comp.distanceMiles > 1.0) {
+    adjustment_pct_location = r2(Math.max((comp.distanceMiles - 1.0) * -1.5, -15));
+  }
+
+  if (calibration) {
+    adjustment_pct_size = r2(adjustment_pct_size * calibration.size_multiplier);
+    adjustment_pct_market_trends = r2(adjustment_pct_market_trends * calibration.market_trend_multiplier);
+  }
+
+  const net_adjustment_pct = r2(
+    adjustment_pct_market_trends +
+    adjustment_pct_location +
+    adjustment_pct_size
+  );
+
+  const adjustedSalePrice = Math.round(comp.salePrice * (1 + net_adjustment_pct / 100));
+  const is_weak_comparable = Math.abs(net_adjustment_pct) > 35;
+
+  return {
+    adjustment_pct_property_rights: 0,
+    adjustment_pct_financing_terms: 0,
+    adjustment_pct_conditions_of_sale: 0,
+    adjustment_pct_market_trends,
+    adjustment_pct_location,
+    adjustment_pct_size,
+    adjustment_pct_land_to_building: 0,
+    adjustment_pct_condition: 0,
+    adjustment_pct_other: 0,
+    net_adjustment_pct,
+    adjustedSalePrice,
+    is_weak_comparable,
+  };
+}
+
+function calculateAdjustments(
+  subject: SubjectData,
+  comp: AttomSaleComp,
+  calibration?: CalibrationParams | null
+): AdjustmentResult {
+  if (subject.propertyType === 'land') {
+    return calculateLandAdjustments(subject, comp, calibration);
+  }
+  return calculateResidentialAdjustments(subject, comp, calibration);
 }
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
@@ -233,10 +425,23 @@ export async function runComparables(
     );
   }
 
+  // Compute total bathrooms: full baths + half baths at 0.5 weight
+  const fullBaths = propertyData.full_bath_count ?? 0;
+  const halfBaths = propertyData.half_bath_count ?? 0;
+  const totalBathrooms = fullBaths + halfBaths * 0.5;
+
   const subject: SubjectData = {
     buildingSqFt: correctedBuildingSqft,
+    livingSqFt: propertyData.building_sqft_living_area ?? correctedBuildingSqft,
     lotSqFt: propertyData.lot_size_sqft ?? 0,
     yearBuilt: propertyData.year_built ?? 0,
+    bedrooms: propertyData.bedroom_count ?? 0,
+    bathrooms: totalBathrooms,
+    garageSpaces: propertyData.garage_spaces ?? 0,
+    basementSqFt: propertyData.basement_sqft ?? 0,
+    stories: propertyData.number_of_stories ?? 0,
+    propertyType,
+    serviceType: report.service_type ?? 'tax_appeal',
   };
 
   // Detect residential subtype for subtype-specific search tiers

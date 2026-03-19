@@ -434,6 +434,12 @@ export async function runNarratives(
       price_per_sqft: c.price_per_sqft,
       distance_miles: c.distance_miles,
       adjusted_price_per_sqft: c.adjusted_price_per_sqft,
+      year_built: c.year_built,
+      lot_size_sqft: c.lot_size_sqft,
+      bedrooms: null,   // Not stored in comparable_sales table yet
+      bathrooms: null,   // Not stored in comparable_sales table yet
+      net_adjustment_pct: c.net_adjustment_pct,
+      is_weak_comparable: c.is_weak_comparable,
     })),
     countyRules: countyRule
       ? {

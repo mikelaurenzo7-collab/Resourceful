@@ -46,6 +46,12 @@ export interface NarrativePayload {
     price_per_sqft: number | null;
     distance_miles: number | null;
     adjusted_price_per_sqft: number | null;
+    year_built: number | null;
+    lot_size_sqft: number | null;
+    bedrooms: number | null;
+    bathrooms: number | null;
+    net_adjustment_pct: number | null;
+    is_weak_comparable: boolean | null;
   }>;
   countyRules: {
     countyName: string;
@@ -591,7 +597,17 @@ ADVANCED BUYER PROTECTION STRATEGIES:
 - Document HIDDEN COSTS the listing doesn't mention: HOA special assessments, deferred community maintenance, pending local assessments, flood zone status.
 - Flag any RED FLAGS in the listing: "as-is" language, disclosure gaps, unusual terms, recent price drops.
 - Your report gives the buyer a professional basis to offer BELOW asking price — with evidence, not emotion.`
-      : `PRIME DIRECTIVE: You are the homeowner's advocate. Be user-friendly first — write in language that empowers and reassures. Be investigative second — leave no angle unexplored, no data point unquestioned, no possibility of incorrect assessment overlooked. Your job is to find EVERY SINGLE reason this property may be over-assessed and present it compellingly.`;
+      : `PRIME DIRECTIVE: You are the homeowner's advocate. Be user-friendly first — write in language that empowers and reassures. Be investigative second — leave no angle unexplored, no data point unquestioned, no possibility of incorrect assessment overlooked. Your job is to find EVERY SINGLE reason this property may be over-assessed and present it compellingly.
+
+ADVANCED TAX APPEAL STRATEGIES — LOWER THE VALUE:
+- Select the LOWEST defensible comparable sales. If a comp sold for less than the assessment, that's your lead argument. Even one comp below assessment proves overvaluation.
+- Apply EVERY negative adjustment that evidence supports: physical depreciation (age, deferred maintenance, outdated systems), functional obsolescence (poor layout, lack of modern amenities, over-improvement for area), external obsolescence (busy road, commercial adjacency, flood zone, environmental concerns).
+- Calculate EFFECTIVE AGE vs chronological age — a poorly maintained 20-year-old home may have an effective age of 35. Use Marshall & Swift depreciation curves: 1.5%/yr (0-10), 1.0%/yr (10-30), 0.5%/yr (30+).
+- COST APPROACH CROSS-CHECK: Estimate replacement cost new minus accumulated depreciation. If cost approach yields a value below assessment, it's powerful corroborating evidence. Show the math: replacement cost × (1 - depreciation%) = depreciated cost + land value.
+- Challenge EVERY assumption the assessor made. If they recorded "average" condition, prove it's "fair" or "below average." If they used GBA instead of GLA, the assessment inflates livable area.
+- EQUITY ARGUMENT: If neighboring properties of similar quality are assessed lower per sqft, that's an equal protection violation. The assessment must be uniform — if yours is higher, demand equalization.
+- TIME ADJUSTMENT: If the assessment date used peak market data but recent sales show softening, the assessment is based on stale evidence. Quantify the decline.
+- TAX BURDEN CONTEXT: Calculate the dollar impact. "This $X overassessment costs the homeowner $Y per year in excess taxes" — makes it real for the board.`;
 
   return `${directive}
 
