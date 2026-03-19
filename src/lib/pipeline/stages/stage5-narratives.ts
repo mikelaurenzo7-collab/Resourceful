@@ -382,6 +382,65 @@ export async function runNarratives(
     );
   }
 
+  // ── Cost Approach Cross-Check ──────────────────────────────────────
+  // Estimate replacement cost minus depreciation as a secondary value indicator.
+  // Uses regional construction cost averages (RS Means / Marshall & Swift ranges).
+  // This is a simplified cost approach — detailed cost would require a full
+  // cost manual integration, but this gives the AI concrete numbers to cite.
+  let costApproachValue: number | null = null;
+  let costApproachDetail: {
+    replacementCostNew: number;
+    accumulatedDepreciationPct: number;
+    depreciatedImprovementValue: number;
+    estimatedLandValue: number;
+    totalCostApproachValue: number;
+  } | null = null;
+
+  if (buildingSqft && buildingSqft > 0 && propertyData.year_built) {
+    // Regional replacement cost per sqft: $125-$175 for standard residential
+    // We use the median ($150/sqft) as a conservative national average.
+    // The AI will contextualize this for the local market.
+    const replacementCostPerSqft = 150;
+    const replacementCostNew = buildingSqft * replacementCostPerSqft;
+
+    // Marshall & Swift depreciation curve (same as stage2)
+    const currentYear = new Date().getFullYear();
+    const age = currentYear - propertyData.year_built;
+    let depreciationPct = 0;
+    if (age > 0) {
+      const yearsAt15 = Math.min(age, 10);
+      depreciationPct += yearsAt15 * 1.5;
+      if (age > 10) depreciationPct += Math.min(age - 10, 20) * 1.0;
+      if (age > 30) depreciationPct += (age - 30) * 0.5;
+      depreciationPct = Math.min(depreciationPct, 80); // max 80% depreciation
+    }
+
+    const depreciatedValue = Math.round(replacementCostNew * (1 - depreciationPct / 100));
+
+    // Estimate land value from lot size and median comp price-per-sqft
+    // Land typically = 15-25% of total residential value; use 20% of concluded value
+    // or derive from lot size × comp land rates
+    const estimatedLandValue = concludedValue > 0
+      ? Math.round(concludedValue * 0.20)
+      : (propertyData.lot_size_sqft ? Math.round(propertyData.lot_size_sqft * 3) : 0); // ~$3/sqft fallback
+
+    costApproachValue = depreciatedValue + estimatedLandValue;
+    costApproachDetail = {
+      replacementCostNew,
+      accumulatedDepreciationPct: Math.round(depreciationPct * 10) / 10,
+      depreciatedImprovementValue: depreciatedValue,
+      estimatedLandValue,
+      totalCostApproachValue: costApproachValue,
+    };
+
+    // If cost approach yields value below assessment, flag it
+    if (assessedValue && costApproachValue < assessedValue) {
+      dataAnomalies.push(
+        `Cost approach estimate ($${costApproachValue.toLocaleString()}) is below assessed value ($${assessedValue.toLocaleString()}) — accumulated depreciation of ${depreciationPct.toFixed(1)}% over ${age} years may not be reflected in assessment`
+      );
+    }
+  }
+
   const overvaluationAnalysis = {
     assessedValuePerSqft,
     medianCompPricePerSqft,
@@ -396,6 +455,8 @@ export async function runNarratives(
     effectiveAge: propertyData.effective_age,
     buildingSqftFromAssessor: buildingSqft,
     dataAnomalies,
+    costApproachValue,
+    costApproachDetail,
   };
 
   console.log(

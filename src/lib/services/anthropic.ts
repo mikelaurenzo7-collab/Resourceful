@@ -100,6 +100,14 @@ export interface NarrativePayload {
     effectiveAge: number | null;
     buildingSqftFromAssessor: number | null;
     dataAnomalies: string[]; // human-readable flags like "Assessor records show 2,400 sqft but comps average 1,800 sqft"
+    costApproachValue: number | null;
+    costApproachDetail: {
+      replacementCostNew: number;
+      accumulatedDepreciationPct: number;
+      depreciatedImprovementValue: number;
+      estimatedLandValue: number;
+      totalCostApproachValue: number;
+    } | null;
   };
   calibrationContext?: {
     sampleSize: number;
@@ -699,6 +707,13 @@ ${payload.overvaluationAnalysis.assessmentRatioMismatch ? `- SMOKING GUN: Implie
 ${payload.overvaluationAnalysis.assessedExceedsAttomRange ? `- INDEPENDENT CONFIRMATION: Assessed value EXCEEDS the high end of independent AVM estimate ($${payload.overvaluationAnalysis.attomMarketRangeHigh?.toLocaleString()}) — even aggressive market estimates can't justify this assessment` : ''}
 ${payload.overvaluationAnalysis.marketTrendPct != null && payload.overvaluationAnalysis.marketTrendPct < -2 ? `- STALE DATA ALERT: Comparable sales show a ${Math.abs(payload.overvaluationAnalysis.marketTrendPct).toFixed(1)}% declining trend — the assessor appears to be using outdated valuations that don't reflect current market reality` : ''}
 ${payload.overvaluationAnalysis.dataAnomalies.length > 0 ? `- ASSESSOR DATA ERRORS:\n${payload.overvaluationAnalysis.dataAnomalies.map(a => `  → ${a}`).join('\n')}` : ''}
+${payload.overvaluationAnalysis.costApproachDetail ? `- COST APPROACH CROSS-CHECK (pre-computed — cite these exact numbers):
+  → Replacement cost new: $${payload.overvaluationAnalysis.costApproachDetail.replacementCostNew.toLocaleString()} (${payload.overvaluationAnalysis.costApproachDetail.replacementCostNew / (payload.overvaluationAnalysis.buildingSqftFromAssessor || 1)}/sqft × national avg)
+  → Accumulated depreciation: ${payload.overvaluationAnalysis.costApproachDetail.accumulatedDepreciationPct}% (Marshall & Swift non-linear curve)
+  → Depreciated improvement value: $${payload.overvaluationAnalysis.costApproachDetail.depreciatedImprovementValue.toLocaleString()}
+  → Estimated land value: $${payload.overvaluationAnalysis.costApproachDetail.estimatedLandValue.toLocaleString()}
+  → COST APPROACH TOTAL: $${payload.overvaluationAnalysis.costApproachDetail.totalCostApproachValue.toLocaleString()}${payload.overvaluationAnalysis.costApproachValue && payload.overvaluationAnalysis.assessedValuePerSqft && payload.overvaluationAnalysis.costApproachValue < (payload.overvaluationAnalysis.assessedValuePerSqft * (payload.overvaluationAnalysis.buildingSqftFromAssessor || 0)) ? ` — BELOW the assessed value, confirming the sales comparison approach` : ''}
+  Use this in the reconciliation narrative as corroborating evidence. The cost approach is an independent check that validates (or challenges) the sales comparison conclusion.` : ''}
 ` : ''}
 ${hasPhotos ? buildPhotoEvidenceBrief(payload.photoAnalyses!, payload.photoAttribution) : ''}
 ${payload.calibrationContext && payload.calibrationContext.sampleSize > 0
