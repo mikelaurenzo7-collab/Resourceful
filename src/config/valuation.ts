@@ -11,24 +11,39 @@
 
 export const ECONOMIC_LIFE: Record<string, number> = {
   // Residential
-  residential_sfr:          60,  // Single-family residence
-  residential_condo:        50,  // Condominium / townhouse
-  residential_multifamily:  55,  // 2–4 unit multi-family
+  residential_sfr:           60,  // Single-family residence
+  residential_condo:         50,  // Condominium / townhouse
+  residential_multifamily:   55,  // 2–4 unit multi-family
+  residential_manufactured:  30,  // Mobile / manufactured home (shorter life)
+  residential_coop:          55,  // Cooperative apartment
   // Commercial
-  commercial_retail_strip:  40,  // Retail strip / neighborhood center
-  commercial_office:        45,  // Office building
-  commercial_restaurant:    35,  // Restaurant / fast food (high obsolescence rate)
-  commercial_hotel:         40,  // Hotel / motel
-  commercial_mixed_use:     45,
-  commercial_general:       40,  // Default for unclassified commercial
+  commercial_retail_strip:   40,  // Retail strip / neighborhood center
+  commercial_office:         45,  // Office building
+  commercial_restaurant:     35,  // Restaurant / fast food (high obsolescence rate)
+  commercial_hotel:          40,  // Hotel / motel
+  commercial_mixed_use:      45,  // Mixed-use (blended residential + commercial)
+  commercial_apartment:      55,  // Apartment complex 5+ units
+  commercial_medical:        40,  // Medical / healthcare (specialized build-out)
+  commercial_self_storage:   50,  // Self-storage (minimal mechanical systems)
+  commercial_general:        40,  // Default for unclassified commercial
   // Industrial
-  industrial_warehouse:     45,  // Warehouse / distribution center
-  industrial_manufacturing: 40,  // Manufacturing / heavy industrial
-  industrial_flex:          40,  // Flex / R&D space
-  industrial_self_storage:  50,  // Self-storage (minimal mechanical systems)
-  industrial_general:       40,  // Default for unclassified industrial
+  industrial_warehouse:      45,  // Warehouse / distribution center
+  industrial_manufacturing:  40,  // Manufacturing / heavy industrial
+  industrial_flex:           40,  // Flex / R&D space
+  industrial_cold_storage:   35,  // Cold storage (high mechanical load)
+  industrial_general:        40,  // Default for unclassified industrial
   // Land never depreciates
-  land:                      0,
+  land:                       0,
+  land_residential:           0,
+  land_commercial:            0,
+  land_agricultural:          0,
+  land_timberland:            0,
+  land_general:               0,
+  // Special purpose
+  special_senior_living:     40,  // Assisted living / senior housing
+  special_car_wash:          30,  // Car wash (high mechanical wear)
+  special_parking:           50,  // Parking lot / garage (minimal mechanical)
+  special_institutional:     60,  // Religious / institutional (well-maintained)
 };
 
 // ─── Property Subtype Map ─────────────────────────────────────────────────────
@@ -54,40 +69,87 @@ export const PROPERTY_SUBTYPE_MAP: Record<string, string> = {
   'DUPLEX': 'residential_multifamily',
   'TRIPLEX': 'residential_multifamily',
   'FOURPLEX': 'residential_multifamily',
+  'MOBILE HOME': 'residential_manufactured',
+  'MANUFACTURED': 'residential_manufactured',
+  'MANUFACTURED HOME': 'residential_manufactured',
+  'MOBILE': 'residential_manufactured',
+  'COOP': 'residential_coop',
+  'CO-OP': 'residential_coop',
+  'COOPERATIVE': 'residential_coop',
   // Commercial
   'C1': 'commercial_general',
   'RET': 'commercial_retail_strip',
   'RETAIL': 'commercial_retail_strip',
   'RETAIL STRIP': 'commercial_retail_strip',
+  'STRIP CENTER': 'commercial_retail_strip',
+  'SHOPPING CENTER': 'commercial_retail_strip',
   'OFF': 'commercial_office',
   'OFFICE': 'commercial_office',
+  'OFFICE BUILDING': 'commercial_office',
   'REST': 'commercial_restaurant',
   'RESTAURANT': 'commercial_restaurant',
+  'FAST FOOD': 'commercial_restaurant',
   'HOT': 'commercial_hotel',
   'HOTEL': 'commercial_hotel',
   'MOTEL': 'commercial_hotel',
   'MU': 'commercial_mixed_use',
   'MIXED USE': 'commercial_mixed_use',
+  'MIXED-USE': 'commercial_mixed_use',
+  'APT': 'commercial_apartment',
+  'APARTMENT': 'commercial_apartment',
+  'APARTMENTS': 'commercial_apartment',
+  'APARTMENT COMPLEX': 'commercial_apartment',
+  'MED': 'commercial_medical',
+  'MEDICAL': 'commercial_medical',
+  'HEALTHCARE': 'commercial_medical',
+  'MEDICAL OFFICE': 'commercial_medical',
   'COMMERCIAL': 'commercial_general',
+  'SS': 'commercial_self_storage',
+  'STORAGE': 'commercial_self_storage',
+  'SELF STORAGE': 'commercial_self_storage',
+  'SELF-STORAGE': 'commercial_self_storage',
   // Industrial
   'I1': 'industrial_general',
   'I2': 'industrial_general',
   'WARE': 'industrial_warehouse',
   'WAREHOUSE': 'industrial_warehouse',
   'DISTRIBUTION': 'industrial_warehouse',
+  'DISTRIBUTION CENTER': 'industrial_warehouse',
   'MFG': 'industrial_manufacturing',
   'MANUFACTURING': 'industrial_manufacturing',
+  'HEAVY INDUSTRIAL': 'industrial_manufacturing',
   'INDUSTRIAL': 'industrial_general',
   'FLEX': 'industrial_flex',
-  'SS': 'industrial_self_storage',
-  'STORAGE': 'industrial_self_storage',
-  'SELF STORAGE': 'industrial_self_storage',
-  'SELF-STORAGE': 'industrial_self_storage',
+  'FLEX SPACE': 'industrial_flex',
+  'R&D': 'industrial_flex',
+  'COLD STORAGE': 'industrial_cold_storage',
+  'REFRIGERATED': 'industrial_cold_storage',
   // Land
-  'LAND': 'land',
-  'VAC': 'land',
-  'VACANT': 'land',
-  'VACANT LAND': 'land',
+  'LAND': 'land_general',
+  'VAC': 'land_general',
+  'VACANT': 'land_general',
+  'VACANT LAND': 'land_general',
+  'VACANT RESIDENTIAL': 'land_residential',
+  'VACANT COMMERCIAL': 'land_commercial',
+  'AG': 'land_agricultural',
+  'AGRICULTURAL': 'land_agricultural',
+  'FARM': 'land_agricultural',
+  'FARMLAND': 'land_agricultural',
+  'TIMBER': 'land_timberland',
+  'TIMBERLAND': 'land_timberland',
+  // Special purpose
+  'SENIOR': 'special_senior_living',
+  'ASSISTED LIVING': 'special_senior_living',
+  'SENIOR LIVING': 'special_senior_living',
+  'NURSING HOME': 'special_senior_living',
+  'CAR WASH': 'special_car_wash',
+  'CARWASH': 'special_car_wash',
+  'PARKING': 'special_parking',
+  'PARKING LOT': 'special_parking',
+  'PARKING GARAGE': 'special_parking',
+  'CHURCH': 'special_institutional',
+  'RELIGIOUS': 'special_institutional',
+  'INSTITUTIONAL': 'special_institutional',
 };
 
 // ─── Condition → Effective Age Multiplier ─────────────────────────────────────
@@ -143,17 +205,29 @@ export interface IncomeParams {
 }
 
 export const INCOME_PARAMS: Record<string, IncomeParams> = {
-  commercial_retail_strip:  { vacancy_rate: 0.08, expense_ratio: 0.28, cap_rate_default: 0.065, rent_fallback_per_sqft_yr: 18 },
-  commercial_office:        { vacancy_rate: 0.12, expense_ratio: 0.38, cap_rate_default: 0.075, rent_fallback_per_sqft_yr: 22 },
-  commercial_restaurant:    { vacancy_rate: 0.06, expense_ratio: 0.30, cap_rate_default: 0.060, rent_fallback_per_sqft_yr: 25 },
-  commercial_hotel:         { vacancy_rate: 0.25, expense_ratio: 0.60, cap_rate_default: 0.085, rent_fallback_per_sqft_yr: 0  },
-  commercial_mixed_use:     { vacancy_rate: 0.08, expense_ratio: 0.32, cap_rate_default: 0.070, rent_fallback_per_sqft_yr: 18 },
-  commercial_general:       { vacancy_rate: 0.08, expense_ratio: 0.32, cap_rate_default: 0.070, rent_fallback_per_sqft_yr: 14 },
-  industrial_warehouse:     { vacancy_rate: 0.04, expense_ratio: 0.22, cap_rate_default: 0.065, rent_fallback_per_sqft_yr: 7  },
-  industrial_manufacturing: { vacancy_rate: 0.05, expense_ratio: 0.25, cap_rate_default: 0.075, rent_fallback_per_sqft_yr: 6  },
-  industrial_flex:          { vacancy_rate: 0.06, expense_ratio: 0.24, cap_rate_default: 0.070, rent_fallback_per_sqft_yr: 9  },
-  industrial_self_storage:  { vacancy_rate: 0.10, expense_ratio: 0.35, cap_rate_default: 0.060, rent_fallback_per_sqft_yr: 12 },
-  industrial_general:       { vacancy_rate: 0.05, expense_ratio: 0.24, cap_rate_default: 0.075, rent_fallback_per_sqft_yr: 6  },
+  // Residential (income approach used for 2+ unit residential)
+  residential_multifamily:   { vacancy_rate: 0.06, expense_ratio: 0.40, cap_rate_default: 0.055, rent_fallback_per_sqft_yr: 16 },
+  residential_coop:          { vacancy_rate: 0.05, expense_ratio: 0.42, cap_rate_default: 0.050, rent_fallback_per_sqft_yr: 20 },
+  // Commercial
+  commercial_retail_strip:   { vacancy_rate: 0.08, expense_ratio: 0.28, cap_rate_default: 0.065, rent_fallback_per_sqft_yr: 18 },
+  commercial_office:         { vacancy_rate: 0.12, expense_ratio: 0.38, cap_rate_default: 0.075, rent_fallback_per_sqft_yr: 22 },
+  commercial_restaurant:     { vacancy_rate: 0.06, expense_ratio: 0.30, cap_rate_default: 0.060, rent_fallback_per_sqft_yr: 25 },
+  commercial_hotel:          { vacancy_rate: 0.25, expense_ratio: 0.60, cap_rate_default: 0.085, rent_fallback_per_sqft_yr: 0  },
+  commercial_mixed_use:      { vacancy_rate: 0.08, expense_ratio: 0.32, cap_rate_default: 0.070, rent_fallback_per_sqft_yr: 18 },
+  commercial_apartment:      { vacancy_rate: 0.06, expense_ratio: 0.38, cap_rate_default: 0.055, rent_fallback_per_sqft_yr: 18 },
+  commercial_medical:        { vacancy_rate: 0.08, expense_ratio: 0.35, cap_rate_default: 0.065, rent_fallback_per_sqft_yr: 28 },
+  commercial_self_storage:   { vacancy_rate: 0.10, expense_ratio: 0.35, cap_rate_default: 0.060, rent_fallback_per_sqft_yr: 12 },
+  commercial_general:        { vacancy_rate: 0.08, expense_ratio: 0.32, cap_rate_default: 0.070, rent_fallback_per_sqft_yr: 14 },
+  // Industrial
+  industrial_warehouse:      { vacancy_rate: 0.04, expense_ratio: 0.22, cap_rate_default: 0.065, rent_fallback_per_sqft_yr: 7  },
+  industrial_manufacturing:  { vacancy_rate: 0.05, expense_ratio: 0.25, cap_rate_default: 0.075, rent_fallback_per_sqft_yr: 6  },
+  industrial_flex:           { vacancy_rate: 0.06, expense_ratio: 0.24, cap_rate_default: 0.070, rent_fallback_per_sqft_yr: 9  },
+  industrial_cold_storage:   { vacancy_rate: 0.03, expense_ratio: 0.28, cap_rate_default: 0.060, rent_fallback_per_sqft_yr: 10 },
+  industrial_general:        { vacancy_rate: 0.05, expense_ratio: 0.24, cap_rate_default: 0.075, rent_fallback_per_sqft_yr: 6  },
+  // Special purpose
+  special_senior_living:     { vacancy_rate: 0.10, expense_ratio: 0.65, cap_rate_default: 0.075, rent_fallback_per_sqft_yr: 0  },
+  special_car_wash:          { vacancy_rate: 0.00, expense_ratio: 0.45, cap_rate_default: 0.070, rent_fallback_per_sqft_yr: 0  },
+  special_parking:           { vacancy_rate: 0.15, expense_ratio: 0.30, cap_rate_default: 0.065, rent_fallback_per_sqft_yr: 0  },
 };
 
 // ─── Case Strength Scoring ─────────────────────────────────────────────────────
@@ -204,22 +278,32 @@ export type QualityGrade = 'economy' | 'average' | 'good' | 'excellent' | 'luxur
 
 export const REPLACEMENT_COST_PER_SQFT: Record<string, Record<QualityGrade, number>> = {
   // Residential
-  residential_sfr:          { economy: 95,  average: 130, good: 175, excellent: 230, luxury: 350 },
-  residential_condo:        { economy: 100, average: 140, good: 185, excellent: 245, luxury: 380 },
-  residential_multifamily:  { economy: 90,  average: 120, good: 155, excellent: 200, luxury: 200 },
+  residential_sfr:            { economy: 95,  average: 130, good: 175, excellent: 230, luxury: 350 },
+  residential_condo:          { economy: 100, average: 140, good: 185, excellent: 245, luxury: 380 },
+  residential_multifamily:    { economy: 90,  average: 120, good: 155, excellent: 200, luxury: 200 },
+  residential_manufactured:   { economy: 45,  average: 65,  good: 85,  excellent: 110, luxury: 110 },
+  residential_coop:           { economy: 100, average: 140, good: 185, excellent: 245, luxury: 380 },
   // Commercial
-  commercial_retail_strip:  { economy: 75,  average: 105, good: 140, excellent: 185, luxury: 185 },
-  commercial_office:        { economy: 100, average: 145, good: 195, excellent: 260, luxury: 260 },
-  commercial_restaurant:    { economy: 110, average: 160, good: 215, excellent: 280, luxury: 280 },
-  commercial_hotel:         { economy: 90,  average: 135, good: 185, excellent: 250, luxury: 250 },
-  commercial_mixed_use:     { economy: 90,  average: 130, good: 175, excellent: 230, luxury: 230 },
-  commercial_general:       { economy: 80,  average: 110, good: 150, excellent: 200, luxury: 200 },
+  commercial_retail_strip:    { economy: 75,  average: 105, good: 140, excellent: 185, luxury: 185 },
+  commercial_office:          { economy: 100, average: 145, good: 195, excellent: 260, luxury: 260 },
+  commercial_restaurant:      { economy: 110, average: 160, good: 215, excellent: 280, luxury: 280 },
+  commercial_hotel:           { economy: 90,  average: 135, good: 185, excellent: 250, luxury: 250 },
+  commercial_mixed_use:       { economy: 90,  average: 130, good: 175, excellent: 230, luxury: 230 },
+  commercial_apartment:       { economy: 85,  average: 120, good: 160, excellent: 215, luxury: 215 },
+  commercial_medical:         { economy: 130, average: 190, good: 260, excellent: 340, luxury: 340 },
+  commercial_self_storage:    { economy: 35,  average: 50,  good: 70,  excellent: 95,  luxury: 95  },
+  commercial_general:         { economy: 80,  average: 110, good: 150, excellent: 200, luxury: 200 },
   // Industrial
-  industrial_warehouse:     { economy: 45,  average: 65,  good: 90,  excellent: 120, luxury: 120 },
-  industrial_manufacturing: { economy: 55,  average: 80,  good: 110, excellent: 150, luxury: 150 },
-  industrial_flex:          { economy: 65,  average: 95,  good: 130, excellent: 170, luxury: 170 },
-  industrial_self_storage:  { economy: 35,  average: 50,  good: 70,  excellent: 95,  luxury: 95  },
-  industrial_general:       { economy: 50,  average: 72,  good: 100, excellent: 135, luxury: 135 },
+  industrial_warehouse:       { economy: 45,  average: 65,  good: 90,  excellent: 120, luxury: 120 },
+  industrial_manufacturing:   { economy: 55,  average: 80,  good: 110, excellent: 150, luxury: 150 },
+  industrial_flex:            { economy: 65,  average: 95,  good: 130, excellent: 170, luxury: 170 },
+  industrial_cold_storage:    { economy: 80,  average: 115, good: 155, excellent: 205, luxury: 205 },
+  industrial_general:         { economy: 50,  average: 72,  good: 100, excellent: 135, luxury: 135 },
+  // Special purpose
+  special_senior_living:      { economy: 110, average: 165, good: 225, excellent: 300, luxury: 300 },
+  special_car_wash:           { economy: 90,  average: 130, good: 175, excellent: 230, luxury: 230 },
+  special_parking:            { economy: 25,  average: 40,  good: 60,  excellent: 85,  luxury: 85  },
+  special_institutional:      { economy: 100, average: 150, good: 205, excellent: 270, luxury: 270 },
 };
 
 // ─── Conditions of Sale Adjustment ────────────────────────────────────────────
@@ -259,7 +343,7 @@ export function resolvePropertySubtype(
     case 'residential': return 'residential_sfr';
     case 'commercial':  return 'commercial_general';
     case 'industrial':  return 'industrial_general';
-    case 'land':        return 'land';
+    case 'land':        return 'land_general';
     default:            return 'residential_sfr';
   }
 }
