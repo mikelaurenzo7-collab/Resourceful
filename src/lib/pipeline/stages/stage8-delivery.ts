@@ -122,6 +122,27 @@ export async function runDelivery(
     report.state,
   ].filter(Boolean).join(', ');
 
+  // ── Mark as delivered FIRST, then send email ─────────────────────────
+  // Update status before sending email so that if the email step fails,
+  // the report is still marked delivered and the admin can resend manually.
+  // The reverse order risks sending the email but leaving status=pending_approval,
+  // causing the admin to resend and the client to receive a duplicate.
+  const now = new Date().toISOString();
+
+  const { error: statusUpdateError } = await supabase
+    .from('reports')
+    .update({
+      status: 'delivered',
+      delivered_at: now,
+      approved_at: now,
+      approved_by: adminUserId,
+    })
+    .eq('id', reportId);
+
+  if (statusUpdateError) {
+    return { success: false, error: `Report status update failed: ${statusUpdateError.message}` };
+  }
+
   // ── Send client email ─────────────────────────────────────────────────
   console.log(`[stage8] Sending report delivery email to ${clientEmail}`);
   const emailResult = await sendReportDeliveryEmail({
@@ -136,27 +157,9 @@ export async function runDelivery(
   });
 
   if (emailResult.error) {
-    return { success: false, error: `Email delivery failed: ${emailResult.error}` };
-  }
-
-  // ── Record approval and delivery ──────────────────────────────────────
-  const now = new Date().toISOString();
-
-  // Update report status
-  const { error: statusUpdateError } = await supabase
-    .from('reports')
-    .update({
-      status: 'delivered',
-      delivered_at: now,
-      approved_at: now,
-      approved_by: adminUserId,
-    })
-    .eq('id', reportId);
-
-  if (statusUpdateError) {
-    // Email was already sent — log but report as failure so admin can investigate
-    console.error(`[stage8] CRITICAL: Email sent but report status update failed: ${statusUpdateError.message}`);
-    return { success: false, error: `Report status update failed after email delivery: ${statusUpdateError.message}` };
+    // Report is already marked delivered — log the failure but don't return an error.
+    // Admin can trigger a re-send from the dashboard; client can also access via direct link.
+    console.error(`[stage8] Email delivery failed for report ${reportId}: ${emailResult.error}`);
   }
 
   // Record approval event (non-fatal — audit trail entry)

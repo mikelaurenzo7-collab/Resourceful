@@ -5,12 +5,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report, PropertyData, CountyRule, ReportNarrative } from '@/types/database';
 
 const SIGNED_URL_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: reportId } = await params;
@@ -18,6 +19,10 @@ export async function GET(
   if (!reportId) {
     return NextResponse.json({ error: 'Report ID required' }, { status: 400 });
   }
+
+  // Rate limit: 60 requests per 15 minutes per IP (prevents UUID enumeration)
+  const rateLimited = await applyRateLimit(req, { prefix: 'report-viewer', limit: 60, windowSeconds: 900 });
+  if (rateLimited) return rateLimited;
 
   const supabase = createAdminClient();
 

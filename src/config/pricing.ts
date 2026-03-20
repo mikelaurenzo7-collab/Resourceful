@@ -70,9 +70,9 @@ export const PRICING_GUIDED = {
   PRE_LISTING_COMMERCIAL:  34900, // $349
   PRE_LISTING_INDUSTRIAL:  34900, // $349
   PRE_LISTING_LAND:        17900, // $179
-  // Legacy aliases
-  PRE_PURCHASE: 17900,
-  PRE_LISTING:  17900,
+  // Legacy aliases (residential pricing)
+  PRE_PURCHASE: 19900,
+  PRE_LISTING:  19900,
 } as const;
 
 // ─── Full Representation (POA) Tier Pricing ──────────────────────────────────
@@ -97,9 +97,9 @@ export const PRICING_FULL_REPRESENTATION = {
   PRE_LISTING_COMMERCIAL:  59900, // $599
   PRE_LISTING_INDUSTRIAL:  59900, // $599
   PRE_LISTING_LAND:        29900, // $299
-  // Legacy aliases
-  PRE_PURCHASE: 17900,
-  PRE_LISTING:  17900,
+  // Legacy aliases (residential pricing)
+  PRE_PURCHASE: 39900,
+  PRE_LISTING:  39900,
 } as const;
 
 // ─── Tax Bill Discount ───────────────────────────────────────────────────────
@@ -138,6 +138,7 @@ export function getPriceForReport(
   } else {
     // tax_appeal
     if (propertyType === 'residential') base = table.TAX_APPEAL_RESIDENTIAL;
+    else if (propertyType === 'industrial') base = table.TAX_APPEAL_INDUSTRIAL;
     else if (propertyType === 'land') base = table.TAX_APPEAL_LAND;
     else base = table.TAX_APPEAL_COMMERCIAL;
   }
