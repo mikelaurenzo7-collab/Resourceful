@@ -4,6 +4,7 @@ import QualityFlags from '@/components/admin/QualityFlags';
 import ApprovalAuditTrail from '@/components/admin/ApprovalAuditTrail';
 import ReportStatusBadge from '@/components/admin/ReportStatusBadge';
 import ReviewControls from './ReviewControls';
+import PhotoReviewPanel from '@/components/admin/PhotoReviewPanel';
 import type { Report, PropertyData, ComparableSale, Measurement, IncomeAnalysis, Photo, ReportNarrative, ApprovalEvent } from '@/types/database';
 
 function formatCurrency(value: number | null | undefined): string {
@@ -257,6 +258,14 @@ export default async function ReviewPage({
               photos={photos}
             />
           </section>
+
+          {/* Photo Analysis Review — adjust AI analysis before approving */}
+          {photos.some((p) => p.ai_analysis != null) && (
+            <section>
+              <h2 className="text-lg font-bold text-gray-900 mb-4">Photo Analysis Review</h2>
+              <PhotoReviewPanel reportId={reportId} photos={photos} />
+            </section>
+          )}
 
           {/* Section Review + Decision Buttons + Rerun Pipeline (client component) */}
           <ReviewControls

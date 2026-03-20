@@ -247,19 +247,13 @@ export const CASE_STRENGTH = {
   comp_pts_each: 4,
   comp_max_pts: 20,
 
-  // Points for photo evidence (0–25 pts)
-  // 5 pts per significant defect (up to 3), 1 pt each minor/moderate (up to 10)
+  // Points for photo evidence (0–40 pts)
+  // Significant defects: 5 pts each, capped at 4 defects (20 pts max)
+  // Minor/moderate defects: 1 pt each, capped at 20 (20 pts max)
   sig_defect_pts_each: 5,
-  sig_defect_max_pts: 15,
+  sig_defect_max_pts: 20,
   defect_pts_each: 1,
-  defect_max_pts: 10,
-
-  // Points for calibration confidence (0–15 pts)
-  // Based on number of real appraisal outcomes used to train the model
-  calibration_pts_50plus: 15,
-  calibration_pts_10to49: 8,
-  calibration_pts_5to9:   4,
-  calibration_pts_lt5:    0,
+  defect_max_pts: 20,
 
   // Attorney referral thresholds
   attorney_referral_min_score: 75,

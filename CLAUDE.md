@@ -198,7 +198,7 @@ If a county is corrupt or wrong, ATTOM inherits that same bad data. Therefore:
 - **Pre-payment valuation**: Pure statistical estimate only (IAAO error rates). NEVER compare against ATTOM `marketValue` or any third-party "market value" that could originate from the same county records. The 8% human-error rate is mathematically defensible regardless of county data quality.
 - **Full pipeline analysis**: Uses comparable sales, user photos, and our own measurements — independent evidence that does NOT depend on the county's numbers.
 - **User photos + measurements**: This is OUR proprietary data. As it compounds over time, it becomes our strongest independent data source. Always treat as higher-trust than county or ATTOM assessment data.
-- **Calibration system**: Learns from real outcomes to improve accuracy over time. This is the feedback loop that makes our data increasingly independent from county sources.
+- **Admin photo review**: Stage 4 runs AI photo analysis automatically. The admin can adjust condition ratings, defects, captions, and adjustment notes in the review step (`/admin/reports/[id]/review`) before approving. Overrides are written to `photos.ai_analysis` via `PATCH /api/admin/reports/[id]/photos` and reflected in the final PDF.
 - **Pre-purchase/pre-listing**: Market value conclusions are based on comparable sales and income analysis — NOT on the current assessed value. The assessed value is presented as a data point (potential tax liability, buyer leverage), not as value evidence.
 
 ---
