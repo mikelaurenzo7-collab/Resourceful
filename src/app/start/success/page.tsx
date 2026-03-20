@@ -54,7 +54,7 @@ function SuccessContent() {
               {
                 step: '3',
                 title: 'Report Delivered',
-                desc: 'Your complete report with verified savings, filing instructions, and step-by-step hearing guidance — delivered to your inbox.',
+                desc: 'Your complete analysis report and tailored action guide — delivered to your inbox with everything you need to move forward.',
                 active: false,
               },
             ].map((item) => (

@@ -123,16 +123,22 @@ export default function GoalsPage() {
         })}
       </div>
 
-      {/* Desired outcome — appears after selection */}
-      {state.serviceType === 'tax_appeal' && (
+      {/* Desired outcome — appears after any service type is selected */}
+      {state.serviceType && (
         <div className="mt-8 animate-fade-in">
           <label className="block text-sm text-cream/60 mb-2">
-            What outcome are you hoping for? <span className="text-cream/30">(optional)</span>
+            Anything specific you want us to focus on? <span className="text-cream/30">(optional)</span>
           </label>
           <textarea
             value={state.desiredOutcome}
             onChange={(e) => updateState({ desiredOutcome: e.target.value })}
-            placeholder="e.g., My taxes went up 40% last year and I think my home is over-assessed compared to my neighbors..."
+            placeholder={
+              state.serviceType === 'tax_appeal'
+                ? 'e.g., My taxes went up 40% last year and I think my home is over-assessed compared to my neighbors...'
+                : state.serviceType === 'pre_purchase'
+                  ? 'e.g., The asking price feels high for the neighborhood. I want to know if there is room to negotiate...'
+                  : 'e.g., I want to price it competitively but not leave money on the table. Thinking of updating the kitchen first...'
+            }
             rows={3}
             className="w-full rounded-lg bg-navy-light border border-gold/15 px-4 py-3 text-sm text-cream placeholder-cream/25 focus:outline-none focus:border-gold/40 focus:ring-1 focus:ring-gold/20 resize-none"
           />

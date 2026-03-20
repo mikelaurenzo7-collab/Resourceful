@@ -52,10 +52,6 @@ export interface WizardState {
   // Step 4: Photos
   photosSkipped: boolean;
   photoCount: number;
-  streetViewUrls: string[]; // auto-fetched exterior images
-  // Step 5: Measurements
-  measurementSkipped: boolean;
-  measurementComplete: boolean;
   // Review tier
   reviewTier: ReviewTier;
   // Backend IDs
@@ -80,9 +76,6 @@ const INITIAL_STATE: WizardState = {
   previousAppeal: null,
   photosSkipped: false,
   photoCount: 0,
-  streetViewUrls: [],
-  measurementSkipped: false,
-  measurementComplete: false,
   reviewTier: 'auto',
   reportId: null,
   clientSecret: null,
