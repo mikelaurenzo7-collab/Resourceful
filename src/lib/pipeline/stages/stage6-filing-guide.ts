@@ -28,6 +28,13 @@ export async function runFilingGuide(
     return { success: false, error: `Failed to fetch report: ${reportError?.message}` };
   }
 
+  // ── Skip non-tax-appeal service types ────────────────────────────────
+  // TODO: Generate buyer action guide for pre_purchase and listing strategy guide for pre_listing
+  if (report.service_type !== 'tax_appeal') {
+    console.log(`[stage6] Skipping filing guide for service_type="${report.service_type}"`);
+    return { success: true };
+  }
+
   // ── Fetch county rules ────────────────────────────────────────────────
   let countyRule: CountyRule | null = null;
   if (report.county_fips) {

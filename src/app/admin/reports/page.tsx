@@ -27,6 +27,13 @@ function formatCents(cents: number | null): string {
   return formatCurrency(cents / 100);
 }
 
+function formatStage(stage: string | null): string {
+  if (!stage) return '--';
+  const match = stage.match(/^stage-(\d+)-(.+)$/);
+  if (!match) return stage;
+  return `Stage ${match[1]} — ${match[2].charAt(0).toUpperCase() + match[2].slice(1)}`;
+}
+
 function formatDate(iso: string | null): string {
   if (!iso) return '--';
   return new Date(iso).toLocaleDateString('en-US', {
@@ -173,9 +180,7 @@ export default async function ReportsQueuePage({
                     {formatCents(report.amount_paid_cents)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
-                    {report.pipeline_last_completed_stage != null
-                      ? `Stage ${report.pipeline_last_completed_stage}`
-                      : '--'}
+                    {formatStage(report.pipeline_last_completed_stage)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
                     {formatDate(report.pipeline_completed_at)}

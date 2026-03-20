@@ -13,14 +13,6 @@ const STATUS_MESSAGES: Partial<Record<ReportStatus, { title: string; description
     title: 'Payment Received',
     description: 'Your payment has been confirmed. Data collection will begin shortly.',
   },
-  data_pull: {
-    title: 'Collecting Data',
-    description: 'We are pulling property records, comparable sales, and assessment data for your report.',
-  },
-  photo_pending: {
-    title: 'Analyzing Photos',
-    description: 'Your property photos are being analyzed for condition assessment and documentation.',
-  },
   processing: {
     title: 'Generating Your Report',
     description: 'Your report is being prepared by our analysis engine. This typically takes 2-6 hours.',

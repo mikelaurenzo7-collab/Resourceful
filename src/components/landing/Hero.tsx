@@ -11,7 +11,7 @@ export default function Hero() {
         <div className="mb-6 flex items-center gap-3">
           <span className="h-px w-12 bg-gold/60" />
           <span className="text-sm font-medium tracking-widest text-gold uppercase">
-            Property Tax Intelligence
+            Property Intelligence Platform
           </span>
         </div>
 
@@ -22,8 +22,8 @@ export default function Hero() {
         </h1>
 
         <p className="mt-6 max-w-2xl text-lg text-cream/60 leading-relaxed">
-          Professional-grade property tax appeal reports that arm you with the evidence
-          assessors respect. No attorney required.
+          Professional-grade property analysis reports for tax appeals, pre-purchase due diligence,
+          and pre-listing strategy. Real market data. No attorney required.
         </p>
 
         {/* Dollar example */}

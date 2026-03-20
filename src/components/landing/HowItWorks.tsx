@@ -26,7 +26,7 @@ const steps = [
     number: '03',
     title: 'Receive Your Full Report',
     description:
-      'We conduct a final review for accuracy, then deliver your professional report — comparable sales, evidence package, and step-by-step filing instructions.',
+      'We conduct a final review for accuracy, then deliver your professional report — comparable sales, evidence package, and a tailored action guide for your specific situation.',
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -43,7 +43,7 @@ export default function HowItWorks() {
           How It Works
         </span>
         <h2 className="font-display text-3xl md:text-4xl text-cream mt-3">
-          Three Steps to Lower Taxes
+          Three Steps to a Smarter Decision
         </h2>
       </div>
 

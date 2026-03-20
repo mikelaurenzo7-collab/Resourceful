@@ -8,6 +8,7 @@ import type { Database, ComparableRentalInsert, PropertyType, Report, PropertyDa
 import type { StageResult } from '../orchestrator';
 import { getRentalComparables } from '@/lib/services/attom';
 import { INCOME_PARAMS, resolvePropertySubtype } from '@/config/valuation';
+import { isIncomeApproachEligible } from '@/config/services';
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
 
@@ -37,12 +38,7 @@ export async function runIncomeAnalysis(
   const subtype = propertyData.property_subtype
     ?? resolvePropertySubtype(propertyData.property_class, report.property_type);
 
-  const INCOME_ELIGIBLE_RESIDENTIAL = new Set(['residential_multifamily', 'residential_coop']);
-  const needsIncome =
-    report.property_type === 'commercial' ||
-    report.property_type === 'industrial' ||
-    report.property_type === 'special_purpose' ||
-    INCOME_ELIGIBLE_RESIDENTIAL.has(subtype);
+  const needsIncome = isIncomeApproachEligible(subtype);
 
   if (!needsIncome) {
     console.log(`[stage3] Skipping income analysis for subtype="${subtype}"`);

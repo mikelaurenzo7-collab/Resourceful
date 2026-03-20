@@ -28,6 +28,21 @@ const faqs = [
     answer:
       'While we can\'t guarantee outcomes — every Board of Review is different — our reports are built on the same evidence standards that professional tax attorneys use. Historically, properties with documented over-assessment and strong comparable sales evidence have a high success rate. Even if the Board doesn\'t adopt your full requested value, partial reductions are common and still result in meaningful tax savings. There is no penalty for filing an appeal that isn\'t granted.',
   },
+  {
+    question: 'What does a Pre-Purchase Analysis tell me?',
+    answer:
+      'A Pre-Purchase Analysis gives you an independent, data-driven fair market value for a property you\'re considering buying — before you\'re committed. It compares the seller\'s asking price against adjusted comparable sales from the actual market, flags red flags like deferred maintenance or flood zone exposure, and delivers a negotiation memo with dollar-specific justification for a lower offer. For investment properties, it also projects NOI, cap rate, and cash-on-cash return at different purchase prices. You\'ll know exactly what the property is worth and what leverage you have.',
+  },
+  {
+    question: 'How does a Pre-Listing Report help me sell for more?',
+    answer:
+      'A Pre-Listing Report arms you with the same comparable sales data your buyers will bring to the table — so you can set a defensible price instead of guessing. It identifies your property\'s market ceiling, ranks value-add improvements by return on investment so you spend money only where it pays off, and profiles the likely buyer so you can position the listing accordingly. The report also analyzes market timing and absorption rates so you can choose when to list for maximum competition. Sellers who price based on evidence typically receive stronger offers and fewer low-ball counters.',
+  },
+  {
+    question: 'Do you cover commercial and industrial properties?',
+    answer:
+      'Yes. We cover every property type across all 3,143 U.S. counties — residential single-family, condos, multifamily, commercial office, retail, hotel, industrial warehouse, flex space, self-storage, mixed-use, land, and special-purpose properties. Commercial and industrial reports include an income approach analysis (NOI/cap rate capitalization) alongside the comparable sales analysis. Pricing varies by property type; see the pricing section for details.',
+  },
 ];
 
 export default function FAQ() {

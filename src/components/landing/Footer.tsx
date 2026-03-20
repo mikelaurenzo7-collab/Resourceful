@@ -11,8 +11,8 @@ export default function Footer() {
               Resourceful
             </Link>
             <p className="mt-4 text-sm text-cream/40 leading-relaxed max-w-sm">
-              Professional property tax appeal reports for homeowners
-              who refuse to overpay. Built on real data, powered by professional analysis.
+              Professional property intelligence reports for owners, buyers, and sellers
+              who demand accurate data. Built on real market evidence, powered by professional analysis.
             </p>
           </div>
 

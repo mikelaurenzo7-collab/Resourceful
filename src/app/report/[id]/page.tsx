@@ -91,12 +91,8 @@ export default function ReportViewerPage() {
     };
 
     fetchReport();
-    // Poll every 30s if not ready
+    // Poll every 30s until the report is ready
     const interval = setInterval(async () => {
-      if (data?.ready) {
-        clearInterval(interval);
-        return;
-      }
       try {
         const res = await fetch(`/api/reports/${reportId}/viewer`);
         if (res.ok) {

@@ -70,8 +70,7 @@ const STAGES: StageDefinition[] = [
   {
     number: 6,
     name: 'stage-6-filing',
-    // Filing guide is only relevant for tax appeals
-    skipWhen: (_pt, st) => st !== 'tax_appeal',
+    // Skip logic (tax_appeal only) is handled inside the stage; runs for all service types
     run: runFilingGuide,
   },
   {

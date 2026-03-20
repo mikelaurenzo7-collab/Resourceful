@@ -19,8 +19,8 @@ const services = [
     title: 'Pre-Purchase Analysis',
     service: 'pre_purchase' as const,
     description:
-      'Know what you\'ll really pay in taxes before you buy. Independent valuation analysis reveals whether the asking price aligns with the assessment — or if a tax appeal is in your future.',
-    features: ['Market value vs. assessed value comparison', 'Projected annual tax liability', 'Appeal feasibility assessment', 'Neighborhood tax trend analysis'],
+      'Know what the property is actually worth before you commit. Independent comparable sales analysis gives you the negotiating leverage to buy at the right price — or walk away.',
+    features: ['Independent fair market value conclusion', 'Negotiation memo with dollar-specific justification', 'Projected annual tax liability', 'Red flag risk scan (deferred maintenance, flood zone, turnover)'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -32,8 +32,8 @@ const services = [
     title: 'Pre-Listing Report',
     service: 'pre_listing' as const,
     description:
-      'Attract buyers with evidence their tax burden will be manageable. A professional valuation report that strengthens your listing and removes a common buyer objection.',
-    features: ['Independent market valuation', 'Tax projection for buyers', 'Professional PDF report', 'Listing-ready presentation'],
+      'Set the right listing price backed by real comparable sales. Identify your property\'s ceiling, rank value-add improvements by ROI, and enter the market with a data-driven strategy.',
+    features: ['Comp-supported listing price recommendation', 'Value-add ROI analysis (ranked improvements)', 'Buyer profile targeting strategy', 'Market timing and absorption rate analysis'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
