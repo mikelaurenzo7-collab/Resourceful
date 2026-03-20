@@ -54,8 +54,7 @@ const STAGES: StageDefinition[] = [
   {
     number: 3,
     name: 'stage-3-income',
-    // Only run for commercial and industrial properties
-    skipWhen: (pt, _st) => pt !== 'commercial' && pt !== 'industrial',
+    // Skip logic is subtype-aware and lives inside the stage (residential_multifamily eligible)
     run: runIncomeAnalysis,
   },
   {

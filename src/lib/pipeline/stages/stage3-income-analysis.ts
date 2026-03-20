@@ -15,34 +15,38 @@ export async function runIncomeAnalysis(
   reportId: string,
   supabase: SupabaseClient<Database>
 ): Promise<StageResult> {
-  // ── Fetch report ──────────────────────────────────────────────────────
-  const { data: reportData, error: reportError } = await supabase
-    .from('reports')
-    .select('*')
-    .eq('id', reportId)
-    .single();
+  // ── Fetch report + property data in parallel ──────────────────────────
+  const [
+    { data: reportData, error: reportError },
+    { data: pdData, error: pdError },
+  ] = await Promise.all([
+    supabase.from('reports').select('*').eq('id', reportId).single(),
+    supabase.from('property_data').select('*').eq('report_id', reportId).single(),
+  ]);
   const report = reportData as Report | null;
+  const propertyData = pdData as PropertyData | null;
 
   if (reportError || !report) {
     return { success: false, error: `Failed to fetch report: ${reportError?.message}` };
   }
-
-  // Only run for commercial/industrial
-  if (report.property_type !== 'commercial' && report.property_type !== 'industrial') {
-    console.log(`[stage3] Skipping income analysis for ${report.property_type} property`);
-    return { success: true };
-  }
-
-  // ── Fetch property data ───────────────────────────────────────────────
-  const { data: pdData, error: pdError } = await supabase
-    .from('property_data')
-    .select('*')
-    .eq('report_id', reportId)
-    .single();
-  const propertyData = pdData as PropertyData | null;
-
   if (pdError || !propertyData) {
     return { success: false, error: `No property_data found: ${pdError?.message}` };
+  }
+
+  // ── Resolve subtype and skip if income approach doesn't apply ─────────
+  const subtype = propertyData.property_subtype
+    ?? resolvePropertySubtype(propertyData.property_class, report.property_type);
+
+  const INCOME_ELIGIBLE_RESIDENTIAL = new Set(['residential_multifamily', 'residential_coop']);
+  const needsIncome =
+    report.property_type === 'commercial' ||
+    report.property_type === 'industrial' ||
+    report.property_type === 'special_purpose' ||
+    INCOME_ELIGIBLE_RESIDENTIAL.has(subtype);
+
+  if (!needsIncome) {
+    console.log(`[stage3] Skipping income analysis for subtype="${subtype}"`);
+    return { success: true };
   }
 
   // Use report-level lat/lng (set in stage 1)
@@ -56,8 +60,6 @@ export async function runIncomeAnalysis(
   const buildingSqFt = propertyData.building_sqft_gross ?? 0;
 
   // ── Resolve subtype-specific income parameters ────────────────────────
-  const subtype = propertyData.property_subtype
-    ?? resolvePropertySubtype(propertyData.property_class, report.property_type);
   const incomeParams = INCOME_PARAMS[subtype] ?? INCOME_PARAMS['commercial_general'];
   const DEFAULT_VACANCY_RATE = incomeParams.vacancy_rate;
   const DEFAULT_EXPENSE_RATIO = incomeParams.expense_ratio;
@@ -160,9 +162,10 @@ export async function runIncomeAnalysis(
     expenseReserves +
     expenseRepairsMaintenance;
 
-  const expenseRatioPct = effectiveGrossIncome > 0
-    ? Math.round((totalExpenses / effectiveGrossIncome) * 10000) / 100
-    : DEFAULT_EXPENSE_RATIO * 100;
+  const expenseRatioDecimal = effectiveGrossIncome > 0
+    ? totalExpenses / effectiveGrossIncome
+    : DEFAULT_EXPENSE_RATIO;
+  const expenseRatioPct = Math.round(expenseRatioDecimal * 10000) / 100;
 
   const netOperatingIncome = effectiveGrossIncome - totalExpenses;
 
@@ -177,14 +180,12 @@ export async function runIncomeAnalysis(
   let capRateMarketLow: number | null = null;
   let capRateMarketHigh: number | null = null;
 
-  if (salesComps && salesComps.length > 0) {
+  if (salesComps.length > 0) {
     // Derive implied cap rates from sale prices and estimated NOI
     const impliedRates = salesComps
       .filter((c) => c.sale_price && c.sale_price > 0 && c.building_sqft && c.building_sqft > 0)
       .map((c) => {
-        // Estimate NOI for each comp using our expense ratio
-        const compAnnualRent = (c.building_sqft! * concludedMarketRentPerSqFtYr);
-        const compNoi = compAnnualRent * (1 - DEFAULT_VACANCY_RATE) * (1 - totalExpenses / effectiveGrossIncome);
+        const compNoi = c.building_sqft! * concludedMarketRentPerSqFtYr * (1 - DEFAULT_VACANCY_RATE) * (1 - expenseRatioDecimal);
         return compNoi / c.sale_price!;
       })
       .filter((r) => r > 0.03 && r < 0.15) // reasonable cap rate range
@@ -204,9 +205,9 @@ export async function runIncomeAnalysis(
   }
 
   // ── Concluded value = NOI / cap rate, rounded to $10,000 ──────────────
-  const rawCapitalizedValue = concludedCapRate > 0 ? netOperatingIncome / concludedCapRate : 0;
-  const capitalizedValue = Math.round(rawCapitalizedValue / 10000) * 10000;
-  const concludedValueIncomeApproach = capitalizedValue;
+  const capitalizedValue = concludedCapRate > 0
+    ? Math.round((netOperatingIncome / concludedCapRate) / 10000) * 10000
+    : 0;
 
   // ── Delete existing income_analysis ───────────────────────────────────
   const { error: deleteIncomeError } = await supabase
@@ -244,7 +245,7 @@ export async function runIncomeAnalysis(
       cap_rate_investor_survey_avg: null,
       concluded_cap_rate: concludedCapRate,
       capitalized_value: capitalizedValue,
-      concluded_value_income_approach: concludedValueIncomeApproach,
+      concluded_value_income_approach: capitalizedValue,
       investor_survey_reference: null,
     });
 
@@ -253,7 +254,7 @@ export async function runIncomeAnalysis(
   }
 
   console.log(
-    `[stage3] Income analysis complete. NOI: $${netOperatingIncome}, Cap: ${(concludedCapRate * 100).toFixed(2)}%, Value: $${concludedValueIncomeApproach}`
+    `[stage3] Income analysis complete. NOI: $${netOperatingIncome}, Cap: ${(concludedCapRate * 100).toFixed(2)}%, Value: $${capitalizedValue}`
   );
 
   return { success: true };
