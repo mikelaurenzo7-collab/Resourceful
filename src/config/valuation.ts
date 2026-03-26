@@ -224,6 +224,12 @@ export const INCOME_PARAMS: Record<string, IncomeParams> = {
   industrial_flex:           { vacancy_rate: 0.06, expense_ratio: 0.24, cap_rate_default: 0.070, rent_fallback_per_sqft_yr: 9  },
   industrial_cold_storage:   { vacancy_rate: 0.03, expense_ratio: 0.28, cap_rate_default: 0.060, rent_fallback_per_sqft_yr: 10 },
   industrial_general:        { vacancy_rate: 0.05, expense_ratio: 0.24, cap_rate_default: 0.075, rent_fallback_per_sqft_yr: 6  },
+  // Land (income approach applies to commercial/agricultural/timberland land parcels)
+  // rent_fallback_per_sqft_yr uses annual ground lease rate; agricultural uses per-sqft
+  // (typical farmland lease ≈ $200/acre/yr = ~$0.0046/sqft — stored as per-sqft for consistency)
+  land_commercial:           { vacancy_rate: 0.10, expense_ratio: 0.20, cap_rate_default: 0.070, rent_fallback_per_sqft_yr: 6   },
+  land_agricultural:         { vacancy_rate: 0.05, expense_ratio: 0.15, cap_rate_default: 0.040, rent_fallback_per_sqft_yr: 0   }, // crop/cash rent varies too widely for a reliable fallback
+  land_timberland:           { vacancy_rate: 0.00, expense_ratio: 0.10, cap_rate_default: 0.035, rent_fallback_per_sqft_yr: 0   }, // timber income is periodic harvest; no reliable per-sqft fallback
   // Special purpose
   special_senior_living:     { vacancy_rate: 0.10, expense_ratio: 0.65, cap_rate_default: 0.075, rent_fallback_per_sqft_yr: 0  },
   special_car_wash:          { vacancy_rate: 0.00, expense_ratio: 0.45, cap_rate_default: 0.070, rent_fallback_per_sqft_yr: 0  },

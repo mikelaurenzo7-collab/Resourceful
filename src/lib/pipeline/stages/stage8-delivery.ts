@@ -7,11 +7,41 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Report, PropertyData, ReportNarrative } from '@/types/database';
 import type { StageResult } from '../orchestrator';
-import { sendReportDeliveryEmail } from '@/lib/services/resend-email';
+import { sendReportDeliveryEmail, type ReportDeliveryParams, type EmailResult, type ServiceResult } from '@/lib/services/resend-email';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const SIGNED_URL_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Send delivery email with exponential backoff retry.
+ * Report is already marked 'delivered' before this is called, so failure
+ * is non-fatal — admin can trigger a manual resend from the dashboard.
+ */
+async function sendWithRetry(
+  params: ReportDeliveryParams,
+  maxAttempts = 3
+): Promise<ServiceResult<EmailResult>> {
+  const delays = [2000, 4000, 8000];
+  let lastResult: ServiceResult<EmailResult> = { data: null, error: 'No attempts made' };
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    lastResult = await sendReportDeliveryEmail(params);
+    if (!lastResult.error) return lastResult;
+
+    if (attempt < maxAttempts - 1) {
+      console.warn(
+        `[stage8] Email attempt ${attempt + 1}/${maxAttempts} failed (${lastResult.error}), retrying in ${delays[attempt]}ms`
+      );
+      await new Promise((r) => setTimeout(r, delays[attempt]));
+    }
+  }
+
+  console.error(`[stage8] All ${maxAttempts} email attempts failed: ${lastResult.error}`);
+  return lastResult;
+}
 
 // ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -79,19 +109,28 @@ export async function runDelivery(
     .single();
   const propertyData = pdData as PropertyData | null;
 
-  // ── Fetch filing guide for email ──────────────────────────────────────
+  // ── Fetch action guide narrative (content varies by service type) ─────
+  // tax_appeal → pro_se_filing_guide
+  // pre_purchase → buyer_action_guide
+  // pre_listing → listing_strategy_guide
+  const serviceType = report.service_type ?? 'tax_appeal';
+  const actionGuideSectionName =
+    serviceType === 'pre_purchase' ? 'buyer_action_guide' :
+    serviceType === 'pre_listing' ? 'listing_strategy_guide' :
+    'pro_se_filing_guide';
+
   const { data: filingGuideData } = await supabase
     .from('report_narratives')
     .select('content')
     .eq('report_id', reportId)
-    .eq('section_name', 'pro_se_filing_guide')
+    .eq('section_name', actionGuideSectionName)
     .single();
   const filingGuide = filingGuideData as Pick<ReportNarrative, 'content'> | null;
 
   // ── Calculate values ──────────────────────────────────────────────────
   const assessedValue = propertyData?.assessed_value ?? 0;
 
-  // Derive concluded value from comps
+  // Derive concluded value from comps (median adjusted $/sqft × GLA)
   const { data: compsData } = await supabase
     .from('comparable_sales')
     .select('adjusted_price_per_sqft, sale_price')
@@ -114,7 +153,16 @@ export async function runDelivery(
     }
   }
 
-  const potentialSavings = Math.max(0, assessedValue - concludedValue);
+  // For pre_purchase: the email shows "list price vs independent value".
+  // We use ATTOM's market_value_estimate_high as a proxy for the asking price
+  // since we don't yet persist the client-submitted list price.
+  // For tax_appeal and pre_listing: assessedValue retains its standard meaning.
+  const emailAssessedValue =
+    serviceType === 'pre_purchase'
+      ? (propertyData?.market_value_estimate_high ?? assessedValue)
+      : assessedValue;
+
+  const potentialSavings = Math.max(0, emailAssessedValue - concludedValue);
 
   const propertyAddress = [
     report.property_address,
@@ -143,14 +191,15 @@ export async function runDelivery(
     return { success: false, error: `Report status update failed: ${statusUpdateError.message}` };
   }
 
-  // ── Send client email ─────────────────────────────────────────────────
-  console.log(`[stage8] Sending report delivery email to ${clientEmail}`);
-  const emailResult = await sendReportDeliveryEmail({
+  // ── Send client email (with retry) ───────────────────────────────────
+  console.log(`[stage8] Sending ${serviceType} delivery email to ${clientEmail}`);
+  const emailResult = await sendWithRetry({
     to: clientEmail,
     reportId,
+    serviceType,
     propertyAddress,
     concludedValue,
-    assessedValue,
+    assessedValue: emailAssessedValue,
     potentialSavings,
     pdfUrl: signedUrlData.signedUrl,
     filingGuide: filingGuide?.content ?? '',

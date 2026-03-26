@@ -997,3 +997,317 @@ function parsePhotoAnalysisJson(text: string): PhotoAiAnalysis | null {
   console.error('[anthropic] Could not parse photo analysis JSON from response');
   return null;
 }
+
+// ─── Buyer Action Guide ───────────────────────────────────────────────────────
+
+export interface BuyerActionGuidePayload {
+  propertyAddress: string;
+  concludedValue: number;
+  assessedValue: number | null;
+  countyName: string;
+  state: string;
+  assessmentCycle?: string | null;
+  assessmentRatioResidential?: number | null;
+  // Stage 5 narrative sections as context
+  reconciliationNarrative: string;
+  negotiationMemo: string;
+  riskFlagsSummary: string;
+  taxProjectionNarrative: string;
+  // Market data
+  comparableSalesCount: number;
+  photoCount: number;
+}
+
+/**
+ * Generate a concise, numbered buyer action guide from Stage 5 narrative content.
+ * This is Stage 6 for pre_purchase — a closing coach in written form.
+ */
+export async function generateBuyerActionGuide(
+  payload: BuyerActionGuidePayload
+): Promise<ServiceResult<FilingGuideResponse>> {
+  const systemPrompt = `You are a buyer's closing coach who has guided hundreds of buyers through the final stages of real estate negotiations. Your client is considering purchasing ${payload.propertyAddress} and has just received a full independent valuation analysis. Now they need a clear, actionable plan.
+
+Your job: distill the analysis into a numbered action guide they can act on TODAY. No fluff, no hedging — just the next steps, in the right order, with the right dollar amounts.
+
+STRUCTURE YOUR GUIDE WITH THESE EXACT MARKDOWN HEADINGS:
+
+## What the Numbers Say
+- Your independent concluded value: $${payload.concludedValue.toLocaleString()}
+- State the gap vs asking price (use the reconciliation context below)
+- One sentence verdict: is this a fair deal, a negotiating opportunity, or a walk?
+
+## Your Offer Strategy
+- Specific recommended offer price with market-data justification
+- List each negotiating point with a dollar amount (from the negotiation memo context)
+- Priority order: lead with your strongest argument
+
+## What You're Buying (Risk Summary)
+- Bullet-point risk register from the risk flags analysis
+- For each risk: finding → estimated dollar exposure → your recommendation (accept/negotiate credit/walk)
+- Total estimated deferred maintenance / risk exposure in dollars
+
+## Tax Reality Check
+- Estimated annual property tax AFTER purchase (using county assessment data)
+- Whether ${payload.countyName} County reassesses on sale and when
+- Net carrying cost impact vs current assessed value
+
+## Due Diligence Checklist
+- Numbered checklist of items to verify before closing
+- Prioritized by dollar exposure
+- Include: inspections needed, title review flags, HOA documents, permit history
+
+## Your Next 5 Steps
+- Numbered, in chronological order
+- Each step should be actionable TODAY or THIS WEEK
+- Include the offer price in Step 1
+
+Write in plain, direct language. The buyer is making one of the largest financial decisions of their life — give them clarity, not caveats.`;
+
+  const userMessage = JSON.stringify({
+    propertyAddress: payload.propertyAddress,
+    concludedValue: payload.concludedValue,
+    assessedValue: payload.assessedValue,
+    county: payload.countyName,
+    state: payload.state,
+    assessmentCycle: payload.assessmentCycle,
+    reconciliationNarrative: payload.reconciliationNarrative,
+    negotiationMemo: payload.negotiationMemo,
+    riskFlagsSummary: payload.riskFlagsSummary,
+    taxProjectionNarrative: payload.taxProjectionNarrative,
+    comparableSalesCount: payload.comparableSalesCount,
+    photoCount: payload.photoCount,
+  }, null, 2);
+
+  const startMs = Date.now();
+
+  try {
+    const response = await getClient().messages.create({
+      model: AI_MODELS.FAST,
+      max_tokens: AI_CONFIG.maxTokens.actionGuide,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }],
+    });
+
+    const durationMs = Date.now() - startMs;
+    const textContent = response.content
+      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+      .map((block) => block.text)
+      .join('');
+
+    return {
+      data: {
+        guide: textContent,
+        prompt_tokens: response.usage.input_tokens,
+        completion_tokens: response.usage.output_tokens,
+        generation_duration_ms: durationMs,
+      },
+      error: null,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[anthropic] generateBuyerActionGuide error: ${message}`);
+    return { data: null, error: `Buyer action guide generation failed: ${message}` };
+  }
+}
+
+// ─── Listing Strategy Guide ───────────────────────────────────────────────────
+
+export interface ListingStrategyGuidePayload {
+  propertyAddress: string;
+  concludedValue: number;
+  countyName: string;
+  state: string;
+  // Stage 5 narrative sections as context
+  reconciliationNarrative: string;
+  valueAddRecommendations: string;
+  listingStrategySummary: string;
+  buyerProfileBrief: string;
+  // Market data
+  comparableSalesCount: number;
+  photoCount: number;
+}
+
+/**
+ * Generate a concise, actionable listing strategy guide from Stage 5 narrative content.
+ * This is Stage 6 for pre_listing — the seller's launch plan.
+ */
+export async function generateListingStrategyGuide(
+  payload: ListingStrategyGuidePayload
+): Promise<ServiceResult<FilingGuideResponse>> {
+  const systemPrompt = `You are a listing strategist who has helped hundreds of sellers maximize their net proceeds. Your client is preparing to list ${payload.propertyAddress}. They've received a full market analysis. Now they need a launch plan.
+
+Your job: turn the analysis into a numbered, actionable guide they can execute before and after listing day. Be direct. Prioritize ruthlessly. Every recommendation should have a dollar figure attached.
+
+STRUCTURE YOUR GUIDE WITH THESE EXACT MARKDOWN HEADINGS:
+
+## Your Listing Price
+- Recommended list price (state it as a specific number, not a range)
+- Floor price (if you need to sell in 30 days)
+- Ceiling (what the best possible comp would support — set expectations)
+- One sentence on why this price is right for THIS market right now
+
+## Pre-Listing To-Do List
+- Numbered list of everything to do BEFORE going live, in priority order
+- For each item: task → estimated cost → expected value recovery (only include if value > cost)
+- Items buyers will negotiate away if left uncured — flag these clearly
+- Target timeline: X weeks to listing-ready
+
+## Your Buyer
+- Who is most likely to buy this property (be specific — investor vs owner-occupant, age bracket, priorities)
+- What they care about most (schools, commute, yield, lifestyle)
+- How to stage and present the property to appeal to THAT specific buyer
+- What marketing channel reaches them first
+
+## Pricing Contingency Plan
+- If no showing activity in 7 days: [action]
+- If showings but no offers in 14 days: [price adjustment recommendation]
+- If offer below floor price: [negotiation guidance]
+
+## Launch Checklist
+- Numbered pre-listing checklist in execution order
+- Includes: repairs, staging, photography, disclosure prep, portal listing
+- Week-by-week timeline to listing day
+
+## Projected Net Proceeds
+- Estimated gross sale price (list price)
+- Less: estimated commission (typical for ${payload.countyName} County market)
+- Less: estimated seller concessions
+- Less: top pre-listing improvements (from To-Do List)
+- = Estimated net to seller
+
+Write with the energy of a trusted advisor who is on the seller's side. Be specific with numbers. No generic advice.`;
+
+  const userMessage = JSON.stringify({
+    propertyAddress: payload.propertyAddress,
+    concludedValue: payload.concludedValue,
+    county: payload.countyName,
+    state: payload.state,
+    reconciliationNarrative: payload.reconciliationNarrative,
+    valueAddRecommendations: payload.valueAddRecommendations,
+    listingStrategySummary: payload.listingStrategySummary,
+    buyerProfileBrief: payload.buyerProfileBrief,
+    comparableSalesCount: payload.comparableSalesCount,
+    photoCount: payload.photoCount,
+  }, null, 2);
+
+  const startMs = Date.now();
+
+  try {
+    const response = await getClient().messages.create({
+      model: AI_MODELS.FAST,
+      max_tokens: AI_CONFIG.maxTokens.actionGuide,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }],
+    });
+
+    const durationMs = Date.now() - startMs;
+    const textContent = response.content
+      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+      .map((block) => block.text)
+      .join('');
+
+    return {
+      data: {
+        guide: textContent,
+        prompt_tokens: response.usage.input_tokens,
+        completion_tokens: response.usage.output_tokens,
+        generation_duration_ms: durationMs,
+      },
+      error: null,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[anthropic] generateListingStrategyGuide error: ${message}`);
+    return { data: null, error: `Listing strategy guide generation failed: ${message}` };
+  }
+}
+
+// ─── Appeal Filing Email ──────────────────────────────────────────────────────
+
+export interface AppealFilingEmailPayload {
+  propertyAddress: string;
+  parcelId: string | null;
+  ownerName: string | null;
+  countyName: string;
+  state: string;
+  appealBoardName: string | null;
+  assessedValue: number;
+  concludedValue: number;
+  potentialSavings: number;
+  taxYear: number | null;
+  comparableSalesCount: number;
+  photoCount: number;
+  appealArgumentSummary: string;
+}
+
+/**
+ * Generate the cover letter text for an auto-filed email appeal.
+ * This is sent on the client's behalf to the county's filing email address.
+ * Professional, formal, and persuasive — written for a board clerk, not a homeowner.
+ */
+export async function generateAppealFilingEmail(
+  payload: AppealFilingEmailPayload
+): Promise<ServiceResult<FilingGuideResponse>> {
+  const systemPrompt = `You are drafting a formal property tax appeal cover letter that will be submitted on behalf of a property owner to ${payload.countyName} County, ${payload.state}. This letter will be sent via email directly to the county's appeal board.
+
+Write in formal, professional language appropriate for a government filing. Address the ${payload.appealBoardName ?? 'Board of Review'}. The letter should be concise (one page equivalent) and persuasive.
+
+REQUIRED STRUCTURE:
+
+[Date]
+
+${payload.appealBoardName ?? 'Board of Review'}
+${payload.countyName} County, ${payload.state}
+
+**RE: Property Tax Appeal — ${payload.propertyAddress}${payload.parcelId ? ` — Parcel No. ${payload.parcelId}` : ''}${payload.taxYear ? ` — Tax Year ${payload.taxYear}` : ''}**
+
+Dear Members of the ${payload.appealBoardName ?? 'Board of Review'},
+
+[Opening paragraph: identify the property, the owner, and the purpose of the letter — to formally appeal the current assessment]
+
+[Evidence paragraph: state the current assessed value ($${payload.assessedValue.toLocaleString()}), the market value supported by evidence ($${payload.concludedValue.toLocaleString()}), and the requested reduction ($${payload.potentialSavings.toLocaleString()}). Reference the attached market analysis which includes ${payload.comparableSalesCount} comparable sales${payload.photoCount > 0 ? ` and ${payload.photoCount} property photographs` : ''}.]
+
+[Strongest arguments paragraph: use the appeal argument summary to present the 2-3 most compelling points in formal language. Cite specific data.]
+
+[Closing paragraph: request that the board reduce the assessed value, state willingness to provide additional documentation, provide contact information placeholder]
+
+Respectfully submitted,
+
+[OWNER NAME PLACEHOLDER]
+Re: ${payload.propertyAddress}
+
+---
+This appeal is supported by an independent market analysis prepared by Resourceful Analytics. The attached report contains comparable sales data, property condition documentation, and a full reconciliation of market value. Please contact the property owner directly with any questions or to schedule a hearing.`;
+
+  const userMessage = JSON.stringify(payload, null, 2);
+  const startMs = Date.now();
+
+  try {
+    const response = await getClient().messages.create({
+      model: AI_MODELS.FAST,
+      max_tokens: 1200,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }],
+    });
+
+    const durationMs = Date.now() - startMs;
+    const textContent = response.content
+      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+      .map((block) => block.text)
+      .join('');
+
+    return {
+      data: {
+        guide: textContent,
+        prompt_tokens: response.usage.input_tokens,
+        completion_tokens: response.usage.output_tokens,
+        generation_duration_ms: durationMs,
+      },
+      error: null,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[anthropic] generateAppealFilingEmail error: ${message}`);
+    return { data: null, error: `Appeal filing email generation failed: ${message}` };
+  }
+}

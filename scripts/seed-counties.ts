@@ -1,4 +1,5 @@
 #!/usr/bin/env npx tsx
+/// <reference types="node" />
 // ─── County Seeding Script ──────────────────────────────────────────────────
 // Fetches all ~3,143 US counties from the Census Bureau API and bulk-inserts
 // them into the county_rules table via Supabase. Only populates geographic
