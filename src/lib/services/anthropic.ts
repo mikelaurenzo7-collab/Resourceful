@@ -26,6 +26,15 @@ export interface NarrativePayload {
   serviceType: string;
   propertyType: string;
   propertyAddress: string;
+  /** The client's desired outcome — drives narrative emphasis and tone */
+  desiredOutcome?: string | null;
+  /** Resolved strategy: sections, weights, and outcome directive from config/strategies.ts */
+  resolvedStrategy?: {
+    sections: string[];
+    outcomeEmphasis: string;
+    primaryApproach: 'sales_comparison' | 'income' | 'cost';
+    approachWeights: { sales_comparison: number; income: number; cost: number };
+  } | null;
   propertyData: {
     year_built: number | null;
     building_sqft_gross: number | null;
@@ -192,9 +201,11 @@ export interface FilingGuidePayload {
 }
 
 // ─── Section Names ──────────────────────────────────────────────────────────
-// These must match the section_name values stored in the report_narratives table.
+// Union of ALL possible section_name values across all three service types.
+// Must match section_name values stored in the report_narratives table.
 
 const NARRATIVE_SECTION_NAMES = [
+  // ── Shared across all service types ──────────────────────────────────────
   'executive_summary',
   'property_description',
   'site_description_narrative',
@@ -209,8 +220,18 @@ const NARRATIVE_SECTION_NAMES = [
   'sales_comparison_narrative',
   'adjustment_grid_narrative',
   'income_approach_narrative',
+  'cost_approach_narrative',
   'reconciliation_narrative',
+  // ── tax_appeal only ───────────────────────────────────────────────────────
   'appeal_argument_summary',
+  // ── pre_purchase only ─────────────────────────────────────────────────────
+  'risk_flags_summary',
+  'tax_projection_narrative',
+  'negotiation_memo',
+  // ── pre_listing only ──────────────────────────────────────────────────────
+  'value_add_recommendations',
+  'buyer_profile_brief',
+  'listing_strategy_summary',
 ] as const;
 
 export type NarrativeSectionName = typeof NARRATIVE_SECTION_NAMES[number];
@@ -567,7 +588,21 @@ condition of the property as documented by our independent inspection, not a the
 ═══════════════════════════════════════════════════════════════════════`;
 }
 
+/**
+ * Dispatch to the correct system-prompt builder based on service type.
+ * Each service type gets a tailored persona, mandate, and section list.
+ */
 function buildNarrativeSystemPrompt(payload: NarrativePayload): string {
+  switch (payload.serviceType) {
+    case 'pre_purchase': return buildPrePurchaseSystemPrompt(payload);
+    case 'pre_listing':  return buildPreListingSystemPrompt(payload);
+    default:             return buildTaxAppealSystemPrompt(payload);
+  }
+}
+
+// ─── Tax Appeal Prompt ────────────────────────────────────────────────────────
+
+function buildTaxAppealSystemPrompt(payload: NarrativePayload): string {
   const county = payload.countyRules.countyName;
   const state = payload.countyRules.state;
 
@@ -685,7 +720,193 @@ ${payload.overvaluationAnalysis.dataAnomalies.length > 0 ? `- ASSESSOR DATA ERRO
 ` : ''}
 ${hasPhotos ? buildPhotoEvidenceBrief(payload.photoAnalyses!, payload.photoAttribution) : ''}
 
-TONE: Write with the confidence of an expert witness who has testified before ${payload.countyRules.appealBoardName || 'boards of review'} hundreds of times. Be specific, cite numbers, and make every paragraph advance the homeowner's case. Professional but assertive — never timid, never hedging. The homeowner is paying for advocacy, not neutrality.`;
+TONE: Write with the confidence of an expert witness who has testified before ${payload.countyRules.appealBoardName || 'boards of review'} hundreds of times. Be specific, cite numbers, and make every paragraph advance the homeowner's case. Professional but assertive — never timid, never hedging. The homeowner is paying for advocacy, not neutrality.
+${payload.resolvedStrategy?.outcomeEmphasis ? `\nOUTCOME DIRECTIVE — follow this precisely:\n${payload.resolvedStrategy.outcomeEmphasis}` : ''}`;
+}
+
+// ─── Pre-Purchase Prompt ──────────────────────────────────────────────────────
+
+function buildPrePurchaseSystemPrompt(payload: NarrativePayload): string {
+  const county = payload.countyRules.countyName;
+  const state = payload.countyRules.state;
+  const hasPhotos = payload.photoAnalyses && payload.photoAnalyses.length > 0;
+  const hasIncome = !!payload.comparableRentals?.length || !!payload.incomeAnalysis;
+  const hasCost = payload.overvaluationAnalysis?.costApproachValue != null;
+
+  const countyTaxContext: string[] = [];
+  if (payload.countyRules.assessmentMethodology) {
+    countyTaxContext.push(`Assessment methodology: ${payload.countyRules.assessmentMethodology}`);
+  }
+  if (payload.countyRules.assessmentRatioResidential != null) {
+    countyTaxContext.push(`Residential assessment ratio: ${payload.countyRules.assessmentRatioResidential}`);
+  }
+  if (payload.countyRules.assessmentRatioCommercial != null) {
+    countyTaxContext.push(`Commercial assessment ratio: ${payload.countyRules.assessmentRatioCommercial}`);
+  }
+  if (payload.countyRules.assessmentCycle) {
+    countyTaxContext.push(`Assessment cycle: ${payload.countyRules.assessmentCycle}`);
+  }
+
+  const sections = payload.resolvedStrategy?.sections ?? [
+    'executive_summary', 'property_description', 'site_description_narrative',
+    'improvement_description_narrative', 'condition_assessment',
+    'area_analysis_neighborhood', 'market_analysis', 'hbu_as_improved',
+    'sales_comparison_narrative', 'adjustment_grid_narrative',
+    ...(hasIncome ? ['income_approach_narrative'] : []),
+    ...(hasCost ? ['cost_approach_narrative'] : []),
+    'reconciliation_narrative', 'risk_flags_summary',
+    'tax_projection_narrative', 'negotiation_memo',
+  ];
+
+  let sectionNum = 1;
+  const sectionList = sections.map((s) => {
+    const labels: Record<string, string> = {
+      executive_summary: 'Lead with your independent value conclusion vs the list price. If the property is overpriced, state the gap immediately and confidently. If fairly priced, confirm it with data.',
+      property_description: 'Physical description of the property. Note any characteristics that could affect value — positively or negatively.',
+      site_description_narrative: 'Site factors: lot size, shape, access, flood zone, noise, adverse adjacencies.',
+      improvement_description_narrative: `Improvement description. Flag deferred maintenance, outdated systems, and functional deficiencies the buyer will inherit.${hasPhotos ? ' Cite specific photo evidence.' : ''}`,
+      condition_assessment: hasPhotos
+        ? 'THIS IS CRITICAL for the buyer. Document every condition issue visible in the photographs. For each defect: state what it is, what it means for the buyer, and estimate the cost to cure. The buyer is inheriting these problems at closing.'
+        : 'Assess property condition based on age, year built, and available data. Estimate deferred maintenance exposure.',
+      area_analysis_county: `${county} County market context: tax burden, infrastructure, economic trends.`,
+      area_analysis_city: 'City-level market factors affecting value and resale liquidity.',
+      area_analysis_neighborhood: 'Hyperlocal neighborhood analysis: comparable listings, school ratings, walkability, any negative externalities the buyer should weigh.',
+      market_analysis: 'Current market conditions: absorption rate, days on market, list-to-sale price ratios. Is this a buyer\'s or seller\'s market right now?',
+      hbu_as_vacant: 'Highest and best use as if vacant.',
+      hbu_as_improved: 'Highest and best use as improved. Confirm the current use is the HBU, or flag upside/downside.',
+      sales_comparison_narrative: 'Independent comparable sales analysis establishing fair market value. If the concluded value is below list price, call it out directly with exact dollar figures.',
+      adjustment_grid_narrative: 'Methodical adjustment explanation. Flag any comp that sold significantly above the list price — it means the market supports the asking price.',
+      income_approach_narrative: 'Income analysis for investment properties: NOI, cap rate, GRM, cash-on-cash return at list price vs a negotiated price. Does this deal cash-flow at list?',
+      cost_approach_narrative: 'Cost approach as a value ceiling. If cost approach indicates a value below list price, this is additional buyer leverage.',
+      reconciliation_narrative: 'Final independent value conclusion. State the concluded value, compare it to list price, and quantify the buyer\'s negotiating position in dollars.',
+      risk_flags_summary: 'A comprehensive risk register. Every issue that could cost the buyer money post-closing: deferred maintenance estimate, flood risk, environmental red flags, rapid-turnover history, HOA exposure, functional obsolescence. Each flag needs: finding, estimated dollar exposure, recommendation (accept / negotiate / walk away).',
+      tax_projection_narrative: `Project the buyer\'s tax bill after this purchase in ${county} County, ${state}. State whether the county reassesses on sale, what the new assessed value will likely be, and the estimated annual property tax. Quantify the carrying cost impact.`,
+      negotiation_memo: 'A formal written negotiation memo the buyer\'s agent can use. Lead with the independent value conclusion. List each negotiating point with a specific dollar ask and the market-data justification. Conclude with a recommended offer price.',
+    };
+    const label = labels[s] ?? `Generate the ${s.replace(/_/g, ' ')} section.`;
+    return `${sectionNum++}. "${s}" — ${label}`;
+  }).join('\n');
+
+  return `You are an independent property valuation analyst and buyer's advocate retained to protect the financial interests of a prospective buyer considering the purchase of ${payload.propertyAddress}.
+
+Your mission: deliver a data-backed independent valuation of this property so the buyer knows exactly whether the listing price is justified, and arm them with specific dollar-justified negotiation leverage if it is not. You are not a neutral appraiser — you work for the buyer.
+
+COUNTY TAX CONTEXT — ${county} County, ${state}:
+${countyTaxContext.length ? countyTaxContext.map(c => `- ${c}`).join('\n') : '- Standard assessment methodology applies'}
+
+${payload.resolvedStrategy?.outcomeEmphasis ? `OUTCOME DIRECTIVE — follow this precisely:\n${payload.resolvedStrategy.outcomeEmphasis}\n` : ''}
+You must return valid JSON — an array of objects with these keys:
+- "section_name": one of the exact values listed below
+- "content": the narrative text (may include Markdown)
+
+REQUIRED SECTIONS (generate ALL listed, in order):
+${sectionList}
+
+BUYER PROTECTION MANDATE:
+You are the buyer's last line of defense before they commit hundreds of thousands of dollars. Every section must answer the question: "What does this mean for the buyer's financial position?"
+
+1. VALUE GAP ANALYSIS: Calculate the difference between your concluded value and the list price. If overpriced, state it prominently in the executive summary. If fairly priced, confirm it with data — the buyer needs certainty either way.
+
+2. RISK INVENTORY: For every risk factor identified, assign a dollar range to the exposure. Deferred maintenance is not just "the roof shows wear" — it's "the roof shows wear consistent with 15-20 years of age on a shingle system that costs $12,000-$18,000 to replace."
+
+3. INVESTMENT METRICS: If this is an income property, the buyer needs full underwriting — not just a value. Cap rate, GRM, cash-on-cash, and IRR at multiple price points.
+
+4. TAX TRAP IDENTIFICATION: ${county} County's assessment cycle and reassessment-on-sale policy are critical. If the buyer's tax bill will jump significantly after closing, they need to know that before they finalize the offer price.
+
+5. NEGOTIATION LEVERAGE: The negotiation_memo must be a document the buyer's agent can hand to the seller's agent. Specific asks, specific dollar amounts, specific market-data justifications. Not general suggestions.
+${payload.overvaluationAnalysis ? `
+MARKET DATA (verified — cite these exact numbers):
+${payload.overvaluationAnalysis.overvaluationPct != null ? `- Independent value vs list: ${payload.overvaluationAnalysis.overvaluationPct > 0 ? `List price is ${payload.overvaluationAnalysis.overvaluationPct.toFixed(1)}% ABOVE market evidence` : `List price is within ${Math.abs(payload.overvaluationAnalysis.overvaluationPct).toFixed(1)}% of market evidence`}` : ''}
+${payload.overvaluationAnalysis.physicalDepreciationPct != null && payload.overvaluationAnalysis.physicalDepreciationPct > 20 ? `- Physical depreciation: ${payload.overvaluationAnalysis.physicalDepreciationPct.toFixed(1)}% accumulated (effective age ${payload.overvaluationAnalysis.effectiveAge ?? 'N/A'} years) — quantify deferred maintenance exposure for the buyer` : ''}
+${payload.overvaluationAnalysis.dataAnomalies.length > 0 ? `- Data anomalies flagged:\n${payload.overvaluationAnalysis.dataAnomalies.map(a => `  → ${a}`).join('\n')}` : ''}` : ''}
+${hasPhotos ? buildPhotoEvidenceBrief(payload.photoAnalyses!, payload.photoAttribution) : ''}
+
+TONE: Write as a knowledgeable, protective advisor who is unambiguously on the buyer's side. Be direct, specific, and quantify everything. The buyer is about to make one of the largest financial decisions of their life — give them the clarity and confidence to make it well.`;
+}
+
+// ─── Pre-Listing Prompt ───────────────────────────────────────────────────────
+
+function buildPreListingSystemPrompt(payload: NarrativePayload): string {
+  const county = payload.countyRules.countyName;
+  const state = payload.countyRules.state;
+  const hasPhotos = payload.photoAnalyses && payload.photoAnalyses.length > 0;
+  const hasIncome = !!payload.comparableRentals?.length || !!payload.incomeAnalysis;
+  const hasCost = payload.overvaluationAnalysis?.costApproachValue != null;
+
+  const sections = payload.resolvedStrategy?.sections ?? [
+    'executive_summary', 'property_description', 'site_description_narrative',
+    'improvement_description_narrative', 'condition_assessment',
+    'area_analysis_neighborhood', 'market_analysis', 'hbu_as_improved',
+    'sales_comparison_narrative', 'adjustment_grid_narrative',
+    ...(hasIncome ? ['income_approach_narrative'] : []),
+    ...(hasCost ? ['cost_approach_narrative'] : []),
+    'reconciliation_narrative', 'value_add_recommendations',
+    'buyer_profile_brief', 'listing_strategy_summary',
+  ];
+
+  let sectionNum = 1;
+  const sectionList = sections.map((s) => {
+    const labels: Record<string, string> = {
+      executive_summary: 'Your listing price recommendation with a specific range (floor / target / ceiling) justified by market data. Lead with the number.',
+      property_description: 'Property description framed for marketing. Highlight features that command premiums in this market. Note any condition issues that must be addressed before listing.',
+      site_description_narrative: 'Site factors that affect value: lot size, privacy, views, access. Note any negative adjacencies that will suppress value or limit the buyer pool.',
+      improvement_description_narrative: `Improvement description emphasizing features buyers in this market price segment value most.${hasPhotos ? ' Reference photo evidence of condition and quality.' : ''}`,
+      condition_assessment: hasPhotos
+        ? 'Identify every condition issue buyers will discover and use to negotiate price reductions. For each: cost to cure pre-listing vs expected buyer discount if left uncured. Only recommend curing items where the value recovery exceeds the cure cost.'
+        : 'Assess property condition. Identify items buyers will discover and negotiate — quantify the likely discount vs cure cost for each.',
+      area_analysis_county: `${county} County market context relevant to the seller: buyer demand, inventory levels, tax competitiveness.`,
+      area_analysis_city: 'City-level factors affecting the buyer pool size and price ceiling.',
+      area_analysis_neighborhood: 'Neighborhood market dynamics: current inventory, days on market, recent sold prices, seasonal patterns. What is the competitive landscape the seller is entering?',
+      market_analysis: 'Market timing analysis: absorption rate trend, list-to-sale price ratios, days on market trend. Is now an optimal time to list, or should the seller wait?',
+      hbu_as_vacant: 'Highest and best use as if vacant — relevant if the property has development potential.',
+      hbu_as_improved: 'Highest and best use as improved. If the current use is not the HBU, there may be upside to pursue before listing.',
+      sales_comparison_narrative: 'Comparable sales analysis oriented toward finding the CEILING, not the median. Identify the highest sales that are defensible comparables. Explain what features drove those prices and whether this property shares them.',
+      adjustment_grid_narrative: 'Adjustment grid with a focus on features that command premiums in this market. Quantify the value of every positive characteristic.',
+      income_approach_narrative: 'Income analysis for investment-grade properties. What cap rate does the current rent roll support? This is the floor the market will pay a yield buyer.',
+      cost_approach_narrative: 'Replacement cost sets the market ceiling — no rational buyer will pay more than cost to build new. If the concluded value approaches replacement cost, that\'s a marketing advantage.',
+      reconciliation_narrative: 'Listing price recommendation: state the floor, target, and ceiling price with market-data justification for each. Explain the trade-off between price and time-to-close.',
+      value_add_recommendations: 'Ranked list of pre-listing improvements by net ROI. For each: item, estimated cost, expected value increase, net return, and recommendation (do it / skip it). Flag items buyers will price-discount at closing if left uncured.',
+      buyer_profile_brief: `Profile of the most likely buyer for this property in ${county} County. Who are they? What do they prioritize? Which marketing channels reach them? How should the property be staged and positioned to appeal to their specific criteria?`,
+      listing_strategy_summary: 'Comprehensive listing strategy: optimal list date, recommended list price, pricing strategy (aggressive-to-attract-offers vs. test-the-market), staging priorities, marketing channels, and contingency pricing (if no offer in X days, reduce by Y). Conclude with the seller\'s expected net proceeds after commission and concessions.',
+    };
+    const label = labels[s] ?? `Generate the ${s.replace(/_/g, ' ')} section.`;
+    return `${sectionNum++}. "${s}" — ${label}`;
+  }).join('\n');
+
+  return `You are a property valuation analyst and listing strategist retained by a seller to maximize net proceeds from the sale of ${payload.propertyAddress} in ${county} County, ${state}.
+
+Your mission: deliver a defensible listing price with full market context, identify value-add improvements that increase net proceeds more than they cost, and develop a buyer-targeting strategy that positions this property to sell at the top of its range.
+
+You work for the seller. Every finding is interpreted through the lens of: "Does this maximize net proceeds?"
+
+${payload.resolvedStrategy?.outcomeEmphasis ? `OUTCOME DIRECTIVE — follow this precisely:\n${payload.resolvedStrategy.outcomeEmphasis}\n` : ''}
+You must return valid JSON — an array of objects with these keys:
+- "section_name": one of the exact values listed below
+- "content": the narrative text (may include Markdown)
+
+REQUIRED SECTIONS (generate ALL listed, in order):
+${sectionList}
+
+SELLER MAXIMIZATION MANDATE:
+The seller hired you to find the top of the market, not the middle. Every section must answer: "How does this information help the seller get more money?"
+
+1. CEILING ANALYSIS: The sales_comparison_narrative targets the CEILING of the defensible range, not the median. Identify comps that sold at the top of the market and explain what drove those prices. Does this property share those characteristics?
+
+2. PRE-LISTING ROI: The value_add_recommendations must be a prioritized action list. Quantify everything. A fresh coat of paint costs $2,000 and returns $5,000. A new roof costs $15,000 and returns $12,000 — skip it. Only recommend what pencils.
+
+3. BUYER PSYCHOLOGY: The buyer_profile_brief must go beyond demographics. What does this buyer fear? What excites them? How should the property be staged to trigger the emotional response that leads to an above-asking offer?
+
+4. MARKET TIMING: If the absorption rate is rising and inventory is falling, say so — and tell the seller to list now before the window closes. If it's a slow season, quantify the cost of waiting vs listing early.
+
+5. CONDITION ARBITRAGE: For every condition issue, frame the choice in dollars: "If you cure this $800 repair pre-listing, you avoid a $3,000 buyer concession at closing." That's the decision the seller needs to make.
+${payload.overvaluationAnalysis ? `
+MARKET INTELLIGENCE (verified — cite these numbers):
+${payload.overvaluationAnalysis.medianCompPricePerSqft != null ? `- Median comp price/sqft: $${payload.overvaluationAnalysis.medianCompPricePerSqft}/sqft — this is your pricing floor` : ''}
+${payload.overvaluationAnalysis.marketTrendPct != null ? `- Market trend: ${payload.overvaluationAnalysis.marketTrendPct > 0 ? `+${payload.overvaluationAnalysis.marketTrendPct}% appreciating` : `${payload.overvaluationAnalysis.marketTrendPct}% softening`} — factor this into timing advice` : ''}
+${payload.overvaluationAnalysis.costApproachValue != null ? `- Cost approach ceiling: $${payload.overvaluationAnalysis.costApproachValue.toLocaleString()} (RCN $${payload.overvaluationAnalysis.costApproachRcn?.toLocaleString()}) — no buyer pays above replacement cost` : ''}` : ''}
+${hasPhotos ? buildPhotoEvidenceBrief(payload.photoAnalyses!, payload.photoAttribution) : ''}
+
+TONE: Write as a trusted listing advisor who combines appraiser-grade data rigor with a marketer's eye for what sells. Be specific about numbers, direct about recommendations, and confident about the strategy. The seller needs actionable guidance, not generic observations.`;
 }
 
 function buildNarrativeUserMessage(payload: NarrativePayload): string {
@@ -694,6 +915,7 @@ function buildNarrativeUserMessage(payload: NarrativePayload): string {
       propertyAddress: payload.propertyAddress,
       serviceType: payload.serviceType,
       propertyType: payload.propertyType,
+      desiredOutcome: payload.desiredOutcome ?? null,
       propertyData: payload.propertyData,
       comparableSales: payload.comparableSales,
       comparableRentals: payload.comparableRentals ?? [],

@@ -20,32 +20,45 @@ import {
   OVER_IMPROVEMENT_ADJ_MAX_PCT,
   type QualityGrade,
 } from '@/config/valuation';
+import { resolveStrategy } from '@/config/strategies';
+import { type ServiceType, type DesiredOutcome } from '@/config/services';
 import { findAttorneyForReferral, createAttorneyReferral } from '@/lib/repository/attorneys';
 
 // ─── Section Mapping ────────────────────────────────────────────────────────
 
+// Covers all sections across all three service types.
 const SECTION_SORT_ORDER: Record<string, { title: string; order: number }> = {
-  executive_summary: { title: 'Executive Summary', order: 1 },
-  property_description: { title: 'Property Description', order: 2 },
-  site_description_narrative: { title: 'Site Description', order: 3 },
-  improvement_description_narrative: { title: 'Improvement Description', order: 4 },
-  condition_assessment: { title: 'Property Condition Evidence', order: 5 },
-  area_analysis_county: { title: 'County Area Analysis', order: 6 },
-  area_analysis_city: { title: 'City Area Analysis', order: 7 },
-  area_analysis_neighborhood: { title: 'Neighborhood Analysis', order: 8 },
-  market_analysis: { title: 'Market Analysis', order: 9 },
-  hbu_as_vacant: { title: 'Highest & Best Use — As Vacant', order: 10 },
-  hbu_as_improved: { title: 'Highest & Best Use — As Improved', order: 11 },
-  sales_comparison_narrative: { title: 'Sales Comparison Approach', order: 12 },
-  adjustment_grid_narrative: { title: 'Adjustment Grid Analysis', order: 13 },
-  income_approach_narrative: { title: 'Income Approach', order: 14 },
-  cost_approach_narrative: { title: 'Cost Approach', order: 15 },
-  reconciliation_narrative: { title: 'Reconciliation & Final Value', order: 16 },
-  appeal_argument_summary: { title: 'Appeal Argument Summary', order: 17 },
-  // legacy aliases
-  neighborhood_analysis: { title: 'Neighborhood Analysis', order: 8 },
-  value_conclusion: { title: 'Reconciliation & Final Value', order: 15 },
-  assessment_equity: { title: 'Assessment Equity Analysis', order: 16 },
+  // ── Shared ────────────────────────────────────────────────────────────────
+  executive_summary:                    { title: 'Executive Summary',                    order: 1  },
+  property_description:                 { title: 'Property Description',                 order: 2  },
+  site_description_narrative:           { title: 'Site Description',                     order: 3  },
+  improvement_description_narrative:    { title: 'Improvement Description',              order: 4  },
+  condition_assessment:                 { title: 'Property Condition Evidence',           order: 5  },
+  area_analysis_county:                 { title: 'County Area Analysis',                 order: 6  },
+  area_analysis_city:                   { title: 'City Area Analysis',                   order: 7  },
+  area_analysis_neighborhood:           { title: 'Neighborhood Analysis',                order: 8  },
+  market_analysis:                      { title: 'Market Analysis',                      order: 9  },
+  hbu_as_vacant:                        { title: 'Highest & Best Use — As Vacant',       order: 10 },
+  hbu_as_improved:                      { title: 'Highest & Best Use — As Improved',     order: 11 },
+  sales_comparison_narrative:           { title: 'Sales Comparison Approach',            order: 12 },
+  adjustment_grid_narrative:            { title: 'Adjustment Grid Analysis',             order: 13 },
+  income_approach_narrative:            { title: 'Income Approach',                      order: 14 },
+  cost_approach_narrative:              { title: 'Cost Approach',                        order: 15 },
+  reconciliation_narrative:             { title: 'Reconciliation & Final Value',         order: 16 },
+  // ── tax_appeal only ───────────────────────────────────────────────────────
+  appeal_argument_summary:              { title: 'Appeal Argument Summary',              order: 17 },
+  // ── pre_purchase only ─────────────────────────────────────────────────────
+  risk_flags_summary:                   { title: 'Risk Flags & Red Flags',               order: 17 },
+  tax_projection_narrative:             { title: 'Post-Purchase Tax Projection',         order: 18 },
+  negotiation_memo:                     { title: 'Negotiation Memo',                     order: 19 },
+  // ── pre_listing only ──────────────────────────────────────────────────────
+  value_add_recommendations:            { title: 'Value-Add Recommendations',            order: 17 },
+  buyer_profile_brief:                  { title: 'Buyer Profile Brief',                  order: 18 },
+  listing_strategy_summary:             { title: 'Listing Strategy',                     order: 19 },
+  // ── legacy aliases ────────────────────────────────────────────────────────
+  neighborhood_analysis:                { title: 'Neighborhood Analysis',                order: 8  },
+  value_conclusion:                     { title: 'Reconciliation & Final Value',         order: 16 },
+  assessment_equity:                    { title: 'Assessment Equity Analysis',           order: 16 },
 };
 
 // ─── Cost Approach Helpers ───────────────────────────────────────────────────
@@ -175,6 +188,13 @@ export async function runNarratives(
       .single();
     countyRule = data as CountyRule | null;
   }
+
+  // ── Resolve strategy (service × subtype × outcome) ────────────────────
+  const strategy = resolveStrategy(
+    (report.service_type ?? 'tax_appeal') as ServiceType,
+    propertyData.property_subtype ?? `${report.property_type ?? 'residential'}_general`,
+    (report.desired_outcome ?? 'reduce_taxes') as DesiredOutcome
+  );
 
   // ── Extract photo analyses from photo records ─────────────────────────
   const photos = (photosRes.data ?? []) as Photo[];
@@ -315,15 +335,18 @@ export async function runNarratives(
   concludedValue = Math.round(concludedValue / 1000) * 1000;
   concludedValueWithoutPhotos = Math.round(concludedValueWithoutPhotos / 1000) * 1000;
 
-  // If income approach is available, weight it in (apply to both)
-  if (incomeData?.concluded_value_income_approach) {
+  // If income approach is available, weight it in using strategy-resolved weights.
+  if (incomeData?.concluded_value_income_approach && strategy.incomeEligible) {
     const incomeValue = incomeData.concluded_value_income_approach;
-    // 70% sales comparison, 30% income approach for commercial/industrial
+    const { sales_comparison: wSales, income: wIncome } = strategy.approachWeights;
+    const combinedWeight = wSales + wIncome;
+    const salesShare = combinedWeight > 0 ? wSales / combinedWeight : 0.7;
+    const incomeShare = combinedWeight > 0 ? wIncome / combinedWeight : 0.3;
     concludedValue = Math.round(
-      (concludedValue * 0.7 + incomeValue * 0.3) / 1000
+      (concludedValue * salesShare + incomeValue * incomeShare) / 1000
     ) * 1000;
     concludedValueWithoutPhotos = Math.round(
-      (concludedValueWithoutPhotos * 0.7 + incomeValue * 0.3) / 1000
+      (concludedValueWithoutPhotos * salesShare + incomeValue * incomeShare) / 1000
     ) * 1000;
   }
 
@@ -774,8 +797,15 @@ export async function runNarratives(
   // ── Build narrative payload ───────────────────────────────────────────
   const payload: NarrativePayload = {
     reportId,
-    serviceType: report.service_type ?? 'tax_appeal',
+    serviceType: strategy.serviceType,
     propertyType: report.property_type ?? 'residential',
+    desiredOutcome: report.desired_outcome,
+    resolvedStrategy: {
+      sections: strategy.sections,
+      outcomeEmphasis: strategy.outcomeEmphasis,
+      primaryApproach: strategy.primaryApproach,
+      approachWeights: strategy.approachWeights,
+    },
     propertyAddress: [
       report.property_address,
       report.city,
