@@ -36,6 +36,8 @@ export interface ReportDeliveryParams {
   potentialSavings: number;
   pdfUrl: string;
   filingGuide: string;
+  reviewTier?: string;
+  hasHearingPrep?: boolean;
 }
 
 export interface AdminNotificationParams {
@@ -43,6 +45,8 @@ export interface AdminNotificationParams {
   propertyAddress: string;
   propertyType: string;
   reviewUrl: string;
+  reviewTier?: string;
+  tierLabel?: string;
 }
 
 export interface ReportRejectionAlertParams {
@@ -120,8 +124,25 @@ export async function sendReportDeliveryEmail(
             View Your Report &amp; Filing Instructions
           </a>
 
+          ${params.reviewTier === 'full_representation' ? `
+          <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
+            <strong style="color: #065f46;">We Filed Your Appeal</strong>
+            <p style="margin: 4px 0 0; font-size: 13px; color: #555;">
+              Our team has filed the property tax appeal on your behalf. Your report page includes the full filing details and next steps. We will attend the hearing as your authorized representative and keep you updated on the outcome.
+            </p>
+          </div>
+          ` : params.reviewTier === 'guided_filing' ? `
+          <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
+            <strong style="color: #065f46;">Your Guided Filing Session</strong>
+            <p style="margin: 4px 0 0; font-size: 13px; color: #555;">
+              Your report includes a hearing preparation guide with opening statements, evidence presentation order, and talking points. Our team will reach out within 1 business day to schedule your live guided filing session where we walk you through the entire process step by step.
+            </p>
+          </div>
+          ` : ''}
+
           <p style="margin-top: 16px; font-size: 13px; color: #666;">
-            Your report page includes your full PDF, county-specific filing instructions, deadlines, required forms, and step-by-step guidance.
+            Your report page includes your full PDF${params.reviewTier !== 'full_representation' ? ', county-specific filing instructions, deadlines, required forms, and step-by-step guidance' : ' and the complete case documentation'}.
+            ${params.hasHearingPrep ? ' It also includes a hearing preparation guide with scripted opening statements and practice Q&A.' : ''}
           </p>
 
           <p style="margin-top: 12px;">
@@ -161,11 +182,24 @@ export async function sendAdminNotification(
     const { data, error } = await getResend().emails.send({
       from: FROM_ADDRESS,
       to: ADMIN_EMAIL,
-      subject: `[Review Needed] Report ${params.reportId.slice(0, 8)} — ${params.propertyAddress}`,
+      subject: `[${params.tierLabel ?? 'Review Needed'}] Report ${params.reportId.slice(0, 8)} — ${params.propertyAddress}`,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #1a1a1a; font-size: 24px;">Report Ready for Review</h1>
           <p>A new report has been generated and needs approval before delivery.</p>
+
+          ${params.reviewTier && params.reviewTier !== 'auto' ? `
+          <div style="background: ${params.reviewTier === 'full_representation' ? '#fef2f2' : params.reviewTier === 'guided_filing' ? '#ecfdf5' : '#eff6ff'}; border-left: 4px solid ${params.reviewTier === 'full_representation' ? '#ef4444' : params.reviewTier === 'guided_filing' ? '#10b981' : '#3b82f6'}; padding: 12px 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
+            <strong>${escapeHtml(params.tierLabel ?? params.reviewTier)}</strong>
+            <p style="margin: 4px 0 0; font-size: 13px; color: #555;">
+              ${params.reviewTier === 'full_representation'
+                ? 'This client paid for full representation. After approval, our team must file the appeal on their behalf via the county portal before delivering the report.'
+                : params.reviewTier === 'guided_filing'
+                  ? 'This client paid for guided filing. After approval, schedule a guided filing session before or alongside report delivery.'
+                  : 'This client paid for expert review. A licensed appraiser must review before delivery.'}
+            </p>
+          </div>
+          ` : ''}
 
           <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
             <table style="width: 100%; border-collapse: collapse;">
@@ -180,6 +214,10 @@ export async function sendAdminNotification(
               <tr>
                 <td style="padding: 8px 0; color: #666;">Type</td>
                 <td style="padding: 8px 0; text-align: right;">${params.propertyType}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Tier</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${escapeHtml(params.tierLabel ?? 'Standard')}</td>
               </tr>
             </table>
           </div>

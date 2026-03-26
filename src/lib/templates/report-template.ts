@@ -141,7 +141,10 @@ export function generateReportHtml(data: ReportTemplateData): string {
   }
   tocSections.push({ num: hasIncome ? 'X' : 'IX', title: 'Reconciliation & Final Value' });
   if (filingGuide) {
-    tocSections.push({ num: 'Addendum', title: 'Pro Se Filing Guide' });
+    tocSections.push({ num: 'Addendum A', title: 'Pro Se Filing Guide' });
+  }
+  if (narrativeMap.has('hearing_prep_guide')) {
+    tocSections.push({ num: 'Addendum B', title: 'Hearing Preparation Guide' });
   }
 
   return `<!DOCTYPE html>
@@ -868,6 +871,8 @@ ${hasIncome ? renderIncomeSection(data, incomeAnalysis!, comparableRentals, narr
 ${renderReconciliationSection(data, narrativeMap, clientName)}
 
 ${filingGuide ? renderFilingGuideAddendum(filingGuide) : ''}
+
+${narrativeMap.has('hearing_prep_guide') ? renderNarrativeSection('hearing_prep_guide', 'Addendum B', 'Hearing Preparation Guide', narrativeMap) : ''}
 
 </body>
 </html>`;

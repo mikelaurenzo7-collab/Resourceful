@@ -3,9 +3,15 @@
 // Send." Generates a signed 7-day Supabase Storage URL, sends client email
 // via Resend, records approval/delivery timestamps, and sets status to
 // 'delivered'.
+//
+// Tier-aware delivery:
+//   auto             → Report + filing guide email
+//   expert_reviewed  → Same (expert review happened pre-approval)
+//   guided_filing    → Report + filing guide + guided session booking prompt
+//   full_representation → Report + confirmation that team filed on their behalf
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Report, PropertyData, ReportNarrative } from '@/types/database';
+import type { Database, Report, PropertyData, ReportNarrative, ReviewTier } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { sendReportDeliveryEmail } from '@/lib/services/resend-email';
 import { calculateConcludedValue, buildPropertyAddress, DELIVERABLE_STATUSES } from '@/lib/utils/valuation-math';
@@ -79,14 +85,23 @@ export async function runDelivery(
     .single();
   const propertyData = pdData as PropertyData | null;
 
-  // ── Fetch filing guide for email ──────────────────────────────────────
-  const { data: filingGuideData } = await supabase
-    .from('report_narratives')
-    .select('content')
-    .eq('report_id', reportId)
-    .eq('section_name', 'pro_se_filing_guide')
-    .single();
-  const filingGuide = filingGuideData as Pick<ReportNarrative, 'content'> | null;
+  // ── Fetch filing guide and hearing prep for email ─────────────────────
+  const [filingGuideRes, hearingPrepRes] = await Promise.all([
+    supabase
+      .from('report_narratives')
+      .select('content')
+      .eq('report_id', reportId)
+      .eq('section_name', 'pro_se_filing_guide')
+      .single(),
+    supabase
+      .from('report_narratives')
+      .select('content')
+      .eq('report_id', reportId)
+      .eq('section_name', 'hearing_prep_guide')
+      .single(),
+  ]);
+  const filingGuide = filingGuideRes.data as Pick<ReportNarrative, 'content'> | null;
+  const hearingPrep = hearingPrepRes.data as Pick<ReportNarrative, 'content'> | null;
 
   // ── Calculate values (shared utility) ─────────────────────────────────
   const assessedValue = propertyData?.assessed_value ?? 0;
@@ -106,7 +121,8 @@ export async function runDelivery(
   const propertyAddress = buildPropertyAddress(report.property_address, report.city, report.state);
 
   // ── Send client email ─────────────────────────────────────────────────
-  console.log(`[stage8] Sending report delivery email to ${clientEmail}`);
+  const reviewTier = (report.review_tier as ReviewTier) ?? 'auto';
+  console.log(`[stage8] Sending report delivery email to ${clientEmail} (tier: ${reviewTier})`);
   const emailResult = await sendReportDeliveryEmail({
     to: clientEmail,
     reportId,
@@ -116,6 +132,8 @@ export async function runDelivery(
     potentialSavings,
     pdfUrl: signedUrlData.signedUrl,
     filingGuide: filingGuide?.content ?? '',
+    reviewTier,
+    hasHearingPrep: !!hearingPrep?.content,
   });
 
   if (emailResult.error) {

@@ -77,6 +77,13 @@ export interface NarrativePayload {
     assessmentCycle?: string | null;
     appealDeadlineRule?: string | null;
     hearingFormat?: string | null;
+    hearingDurationMinutes?: number | null;
+    hearingSchedulingNotes?: string | null;
+    virtualHearingPlatform?: string | null;
+    typicalResolutionWeeksMin?: number | null;
+    typicalResolutionWeeksMax?: number | null;
+    furtherAppealBody?: string | null;
+    furtherAppealDeadlineRule?: string | null;
     informalReviewAvailable?: boolean | null;
     proSeTips?: string | null;
   };
@@ -216,6 +223,7 @@ const NARRATIVE_SECTION_NAMES = [
   'income_approach_narrative',
   'reconciliation_narrative',
   'appeal_argument_summary',
+  'hearing_prep_guide',
 ] as const;
 
 export type NarrativeSectionName = typeof NARRATIVE_SECTION_NAMES[number];
@@ -646,6 +654,15 @@ ${payload.comparableRentals?.length ? `${hasPhotos ? '14' : '13'}. "income_appro
 ${payload.overvaluationAnalysis?.costApproachValue != null ? `${hasPhotos ? '15' : '14'}. "cost_approach_narrative" — USPAP Cost Approach: present the replacement cost new (RCN), physical depreciation, ${payload.overvaluationAnalysis.functionalObsolescencePct ? 'functional obsolescence, ' : ''}and land value. Show the math step by step: "RCN of $[X] × (1 − [Y]% total depreciation) + land value of $[Z] = cost approach indicator of $[W]." If the cost approach value is BELOW the assessed value, this is a powerful third line of evidence converging with the sales comparison${payload.comparableRentals?.length ? ' and income approaches' : ''}. State explicitly: "Three independent valuation approaches all indicate a market value below the assessor's figure." If it exceeds the assessed value, address it honestly — explain why the cost approach may be less reliable here (e.g., land value uncertainty, market obsolescence) — do not suppress it.` : ''}
 ${hasPhotos ? '16' : '15'}. "reconciliation_narrative" — final value reconciliation: state the concluded value with conviction, quantify the exact overassessment in dollars and percentage, and recommend the assessment be reduced. When cost approach data is present, state which approaches were used and how they were weighted. ${hasPhotos ? 'Explicitly state that the concluded value reflects documented property condition from firsthand photographic evidence — evidence the assessor did not have when setting the assessed value.' : ''}
 ${payload.serviceType === 'tax_appeal' ? `${hasPhotos ? '17' : '16'}. "appeal_argument_summary" — the homeowner's battle plan: 5-7 numbered arguments, each a specific, quotable statement they can read to ${payload.countyRules.appealBoardName || 'the board'}. Lead with the strongest argument. Include exact dollar figures. End with a clear ask: "I respectfully request the assessed value be reduced from $X to $Y."${hasPhotos ? ' At least 2 of the arguments MUST reference the photographic evidence directly — these are your most persuasive points because the board can see the evidence with their own eyes.' : ''}` : ''}
+${payload.serviceType === 'tax_appeal' ? `${hasPhotos ? '18' : '17'}. "hearing_prep_guide" — a comprehensive hearing preparation guide written directly to the homeowner. Structure it as:
+**Before the Hearing**: What to bring (report, comps printout, photos, form copies), how to organize evidence into a binder/folder, what to wear, when to arrive.
+**Understanding the Format**: Explain whether this is ${payload.countyRules.hearingFormat === 'virtual' ? 'a virtual hearing' : payload.countyRules.hearingFormat === 'written_only' ? 'a written-only (desk) review' : payload.countyRules.hearingFormat === 'both' ? 'either in-person or virtual (their choice)' : 'an in-person hearing'} before ${payload.countyRules.appealBoardName || 'the Board of Review'}${payload.countyRules.hearingDurationMinutes ? `, typically lasting ${payload.countyRules.hearingDurationMinutes} minutes` : ''}. Explain who will be in the room, who speaks first, and the general flow.
+**Your Opening Statement**: Write a 60-second opening statement they can read verbatim: introduce yourself, state the property address, state your conclusion ("My property is assessed at $X but market evidence shows it's worth $Y"), and preview your 3 strongest arguments.
+**Presenting Evidence**: Walk them through presenting each piece of evidence in order — the comparable sales grid, the photo documentation, the valuation reconciliation. Tell them exactly what to say: "I'd like to direct the board's attention to comparable sale #1 at [address]..."
+**Handling Questions**: Common questions the board will ask and how to answer them. "Why do you think these comps are better than the ones the assessor used?" "Have you made any improvements to the property?" "Are you aware of any sales closer to the assessed value?"
+**Closing Statement**: A scripted closing they can read: restate the concluded value, the dollar reduction requested, and thank the board.
+**After the Hearing**: What to expect for the decision timeline (${payload.countyRules.typicalResolutionWeeksMin && payload.countyRules.typicalResolutionWeeksMax ? `typically ${payload.countyRules.typicalResolutionWeeksMin}-${payload.countyRules.typicalResolutionWeeksMax} weeks` : 'varies by county'}), what the decision letter looks like, and when/how to file a further appeal if needed${payload.countyRules.furtherAppealBody ? ` with ${payload.countyRules.furtherAppealBody}` : ''}.
+Write this as a coach talking to someone who has NEVER been to a government hearing before. Be warm, specific, and confidence-building. No legal jargon.` : ''}
 
 INVESTIGATIVE MANDATE — LEAVE NO STONE UNTURNED:
 You are an investigator, not a reporter. Do not merely describe the data — interrogate it. For every data point, ask: "Does this help the homeowner's case?" If yes, amplify it with context. If no, explain why it's irrelevant or misleading.

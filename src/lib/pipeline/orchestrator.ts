@@ -9,7 +9,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendAdminNotification } from '@/lib/services/resend-email';
 
-import type { PropertyType, Report } from '@/types/database';
+import type { PropertyType, ReviewTier, Report } from '@/types/database';
 import { REPORT_STATUS } from '@/lib/utils/valuation-math';
 
 import { runDataCollection } from './stages/stage1-data-collection';
@@ -36,6 +36,18 @@ interface StageDefinition {
   skipWhen?: (propertyType: PropertyType, serviceType: string) => boolean;
   run: (reportId: string, supabase: SupabaseAdmin) => Promise<StageResult>;
 }
+
+// ─── Tier Labels ────────────────────────────────────────────────────────────
+// Human-readable labels for admin notifications and dashboard display.
+
+const TIER_LABELS: Record<ReviewTier, string> = {
+  auto: 'Standard Review',
+  expert_reviewed: 'Expert Appraiser Review Required',
+  guided_filing: 'Guided Filing Session Required',
+  full_representation: 'Team Files on Behalf of Client',
+};
+
+export { TIER_LABELS };
 
 // ─── Stage Registry ─────────────────────────────────────────────────────────
 
@@ -193,19 +205,34 @@ export async function runPipeline(
     })
     .eq('id', reportId);
 
-  // ALL reports route to admin for approval after Stage 7.
-  // This is intentional during the quality-control training phase: the admin
-  // reviews the AI's photo analysis and report narrative before the client
-  // receives anything. Once real-appraisal training data is established,
-  // high-confidence reports can be auto-delivered. Until then, every report
-  // lands in the admin dashboard for a final human check.
-  console.log(`[pipeline] Stages 1-7 complete for report ${reportId}. Routing to admin for approval.`);
+  // ── Tier-aware post-pipeline routing ──────────────────────────────────
+  // EVERY report routes to admin for human-in-the-loop approval. No report
+  // reaches a client without explicit admin sign-off. The review_tier
+  // determines what the admin needs to do beyond the standard quality check.
+  //
+  // Tier routing:
+  //   auto             → Admin reviews AI output, approves, Stage 8 delivers
+  //   expert_reviewed  → Admin + licensed appraiser review, then delivery
+  //   guided_filing    → Admin + appraiser review, then delivery + scheduling
+  //                      a guided filing session (screen share / call)
+  //   full_representation → Admin + appraiser review, then OUR TEAM files
+  //                         the appeal on behalf of the client via the
+  //                         county portal, then delivers report + confirmation
+  //
+  const reviewTier = (report.review_tier as ReviewTier) ?? 'auto';
+  const tierLabel = TIER_LABELS[reviewTier] ?? 'Standard Review';
+
+  console.log(
+    `[pipeline] Stages 1-7 complete for report ${reportId}. ` +
+    `Tier: ${reviewTier} (${tierLabel}). Routing to admin for approval.`
+  );
+
   await supabase
     .from('reports')
     .update({ status: REPORT_STATUS.PENDING_APPROVAL })
     .eq('id', reportId);
 
-  // ── Notify admin (non-blocking, for monitoring) ───────────────────────
+  // ── Notify admin with tier context (non-blocking) ─────────────────────
   try {
     const adminReviewUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/admin/reports/${reportId}/review`;
     await sendAdminNotification({
@@ -213,6 +240,8 @@ export async function runPipeline(
       propertyAddress: report.property_address,
       propertyType: report.property_type ?? 'residential',
       reviewUrl: adminReviewUrl,
+      reviewTier,
+      tierLabel,
     });
   } catch (emailErr) {
     console.error(`[pipeline] Failed to send admin notification email:`, emailErr);

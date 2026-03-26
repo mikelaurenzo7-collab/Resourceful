@@ -21,7 +21,7 @@ import {
   OVER_IMPROVEMENT_ADJ_MAX_PCT,
   type QualityGrade,
 } from '@/config/valuation';
-import { findAttorneyForReferral, createAttorneyReferral } from '@/lib/repository/attorneys';
+// Attorney referral imports removed — all filing handled in-house or pro se.
 import {
   DEFECT_ADJUSTMENT,
   MAX_CONDITION_ADJUSTMENT_PCT,
@@ -48,6 +48,7 @@ const SECTION_SORT_ORDER: Record<string, { title: string; order: number }> = {
   cost_approach_narrative: { title: 'Cost Approach', order: 15 },
   reconciliation_narrative: { title: 'Reconciliation & Final Value', order: 16 },
   appeal_argument_summary: { title: 'Appeal Argument Summary', order: 17 },
+  hearing_prep_guide: { title: 'Hearing Preparation Guide', order: 18 },
   // legacy aliases
   neighborhood_analysis: { title: 'Neighborhood Analysis', order: 8 },
   value_conclusion: { title: 'Reconciliation & Final Value', order: 15 },
@@ -655,45 +656,10 @@ export async function runNarratives(
     `market trend: ${marketTrendPct != null ? `${marketTrendPct}%` : 'N/A'}, anomalies: ${dataAnomalies.length}`
   );
 
-  // ── Attorney routing ───────────────────────────────────────────────────
-  // When a tax appeal case is strong enough (score ≥ 75, value ≥ $5,000) and
-  // the county allows authorized representation, route to the attorney network.
-  // Non-fatal — pipeline continues even if routing fails.
-  if (
-    report.service_type === 'tax_appeal' &&
-    strengthScore >= CASE_STRENGTH.attorney_referral_min_score &&
-    overassessmentDollars >= CASE_STRENGTH.attorney_referral_min_value_dollars &&
-    countyRule?.authorized_rep_allowed === true
-  ) {
-    try {
-      const attorney = await findAttorneyForReferral(
-        report.state_abbreviation ?? report.state ?? null,
-        report.county_fips ?? null,
-        report.property_type,
-        overassessmentDollars,
-        supabase
-      );
-      if (attorney) {
-        await createAttorneyReferral(
-          {
-            report_id: reportId,
-            attorney_id: attorney.id,
-            case_strength_score: strengthScore,
-            case_value_at_stake: overassessmentDollars,
-          },
-          supabase
-        );
-        console.log(
-          `[stage5] Attorney referral: ${attorney.firm_name} — ${attorney.attorney_name} ` +
-          `(${attorney.contingency_fee_pct}% contingency, case=$${overassessmentDollars.toLocaleString()})`
-        );
-      } else {
-        console.log(`[stage5] No attorney match for state=${report.state_abbreviation}, fips=${report.county_fips}`);
-      }
-    } catch (err) {
-      console.warn(`[stage5] Attorney routing failed (non-fatal): ${err}`);
-    }
-  }
+  // ── Attorney routing (DISABLED) ──────────────────────────────────────
+  // All filing is handled in-house or by the user pro se. Attorney referral
+  // network is reserved for a future phase. Case strength is still computed
+  // and stored for internal prioritization and admin triage.
 
   // ── Form prefill data (tax_appeal only) ────────────────────────────────
   // Generate structured form field values from the pipeline's concluded data.
@@ -848,6 +814,13 @@ export async function runNarratives(
           assessmentCycle: countyRule.assessment_cycle ?? null,
           appealDeadlineRule: countyRule.appeal_deadline_rule ?? null,
           hearingFormat: countyRule.hearing_format ?? null,
+          hearingDurationMinutes: countyRule.hearing_duration_minutes ?? null,
+          hearingSchedulingNotes: countyRule.hearing_scheduling_notes ?? null,
+          virtualHearingPlatform: countyRule.virtual_hearing_platform ?? null,
+          typicalResolutionWeeksMin: countyRule.typical_resolution_weeks_min ?? null,
+          typicalResolutionWeeksMax: countyRule.typical_resolution_weeks_max ?? null,
+          furtherAppealBody: countyRule.further_appeal_body ?? null,
+          furtherAppealDeadlineRule: countyRule.further_appeal_deadline_rule ?? null,
           informalReviewAvailable: countyRule.informal_review_available ?? null,
           proSeTips: countyRule.pro_se_tips ?? null,
         }
@@ -860,6 +833,13 @@ export async function runNarratives(
           assessmentCycle: null,
           appealDeadlineRule: null,
           hearingFormat: null,
+          hearingDurationMinutes: null,
+          hearingSchedulingNotes: null,
+          virtualHearingPlatform: null,
+          typicalResolutionWeeksMin: null,
+          typicalResolutionWeeksMax: null,
+          furtherAppealBody: null,
+          furtherAppealDeadlineRule: null,
           informalReviewAvailable: null,
           proSeTips: null,
         },

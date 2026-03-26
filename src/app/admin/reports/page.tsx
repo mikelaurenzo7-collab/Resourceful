@@ -167,6 +167,16 @@ export default async function ReportsQueuePage({
                           Expert
                         </span>
                       )}
+                      {report.review_tier === 'guided_filing' && (
+                        <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+                          Guided
+                        </span>
+                      )}
+                      {report.review_tier === 'full_representation' && (
+                        <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700 ring-1 ring-inset ring-red-600/20">
+                          We File
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
