@@ -3,56 +3,59 @@
 
 import type { ReviewTier } from '@/types/database';
 
-// ─── Base Prices (Auto-Report tier) ─────────────────────────────────────────
+// ─── Price Table ─────────────────────────────────────────────────────────────
+// Single source of truth. Each tier maps to the same 6 price keys.
 
-export const PRICING = {
-  TAX_APPEAL_RESIDENTIAL: 4900, // $49
-  TAX_APPEAL_COMMERCIAL: 9900, // $99
-  TAX_APPEAL_INDUSTRIAL: 9900, // $99
-  TAX_APPEAL_LAND: 4900, // $49
-  PRE_PURCHASE: 5900, // $59
-  PRE_LISTING: 5900, // $59
-} as const;
+interface PriceTable {
+  TAX_APPEAL_RESIDENTIAL: number;
+  TAX_APPEAL_COMMERCIAL: number;
+  TAX_APPEAL_INDUSTRIAL: number;
+  TAX_APPEAL_LAND: number;
+  PRE_PURCHASE: number;
+  PRE_LISTING: number;
+}
 
-// ─── Expert-Reviewed Tier Pricing ───────────────────────────────────────────
-// Professional appraiser reviews the report before delivery.
+const PRICING_BY_TIER: Record<ReviewTier, PriceTable> = {
+  auto: {
+    TAX_APPEAL_RESIDENTIAL: 4900,   // $49
+    TAX_APPEAL_COMMERCIAL: 9900,    // $99
+    TAX_APPEAL_INDUSTRIAL: 9900,    // $99
+    TAX_APPEAL_LAND: 4900,          // $49
+    PRE_PURCHASE: 5900,             // $59
+    PRE_LISTING: 5900,              // $59
+  },
+  expert_reviewed: {
+    TAX_APPEAL_RESIDENTIAL: 14900,  // $149
+    TAX_APPEAL_COMMERCIAL: 24900,   // $249
+    TAX_APPEAL_INDUSTRIAL: 24900,   // $249
+    TAX_APPEAL_LAND: 14900,         // $149
+    PRE_PURCHASE: 17900,            // $179
+    PRE_LISTING: 17900,             // $179
+  },
+  guided_filing: {
+    TAX_APPEAL_RESIDENTIAL: 19900,  // $199
+    TAX_APPEAL_COMMERCIAL: 34900,   // $349
+    TAX_APPEAL_INDUSTRIAL: 34900,   // $349
+    TAX_APPEAL_LAND: 19900,         // $199
+    PRE_PURCHASE: 17900,            // $179 (same as expert — no filing guidance for non-appeal)
+    PRE_LISTING: 17900,             // $179
+  },
+  full_representation: {
+    TAX_APPEAL_RESIDENTIAL: 39900,  // $399
+    TAX_APPEAL_COMMERCIAL: 59900,   // $599
+    TAX_APPEAL_INDUSTRIAL: 59900,   // $599
+    TAX_APPEAL_LAND: 39900,         // $399
+    PRE_PURCHASE: 17900,            // $179 (same as expert — no filing for non-appeal)
+    PRE_LISTING: 17900,             // $179
+  },
+};
 
-export const PRICING_EXPERT = {
-  TAX_APPEAL_RESIDENTIAL: 14900, // $149
-  TAX_APPEAL_COMMERCIAL: 24900, // $249
-  TAX_APPEAL_INDUSTRIAL: 24900, // $249
-  TAX_APPEAL_LAND: 14900, // $149
-  PRE_PURCHASE: 17900, // $179
-  PRE_LISTING: 17900, // $179
-} as const;
+// ─── Backward-Compatible Exports ────────────────────────────────────────────
 
-// ─── Guided Filing Tier Pricing ─────────────────────────────────────────────
-// Report + live guided filing session. We walk the homeowner through the form,
-// evidence prep, and hearing prep on a call/screen-share.
-// Only available for tax_appeal service type.
-
-export const PRICING_GUIDED = {
-  TAX_APPEAL_RESIDENTIAL: 19900, // $199
-  TAX_APPEAL_COMMERCIAL: 34900, // $349
-  TAX_APPEAL_INDUSTRIAL: 34900, // $349
-  TAX_APPEAL_LAND: 19900, // $199
-  PRE_PURCHASE: 17900, // $179 (same as expert — no filing guidance for non-appeal)
-  PRE_LISTING: 17900, // $179
-} as const;
-
-// ─── Full Representation (POA) Tier Pricing ─────────────────────────────────
-// Report + we file on their behalf + attend the hearing as authorized rep.
-// Only available in counties where authorized_rep_allowed = true.
-// Only available for tax_appeal service type.
-
-export const PRICING_FULL_REPRESENTATION = {
-  TAX_APPEAL_RESIDENTIAL: 39900, // $399
-  TAX_APPEAL_COMMERCIAL: 59900, // $599
-  TAX_APPEAL_INDUSTRIAL: 59900, // $599
-  TAX_APPEAL_LAND: 39900, // $399
-  PRE_PURCHASE: 17900, // $179 (same as expert — no filing for non-appeal)
-  PRE_LISTING: 17900, // $179
-} as const;
+export const PRICING = PRICING_BY_TIER.auto;
+export const PRICING_EXPERT = PRICING_BY_TIER.expert_reviewed;
+export const PRICING_GUIDED = PRICING_BY_TIER.guided_filing;
+export const PRICING_FULL_REPRESENTATION = PRICING_BY_TIER.full_representation;
 
 // ─── Tax Bill Discount ──────────────────────────────────────────────────────
 // Users who upload their tax bill get 15% off — they provide data we'd
@@ -68,13 +71,8 @@ export function getPriceForReport(
   reviewTier: ReviewTier = 'auto',
   hasTaxBill: boolean = false
 ): number {
-  const table = reviewTier === 'full_representation'
-    ? PRICING_FULL_REPRESENTATION
-    : reviewTier === 'guided_filing'
-      ? PRICING_GUIDED
-      : reviewTier === 'expert_reviewed'
-        ? PRICING_EXPERT
-        : PRICING;
+  const table = PRICING_BY_TIER[reviewTier] ?? PRICING_BY_TIER.auto;
+
   let base: number;
   if (serviceType === 'pre_purchase') base = table.PRE_PURCHASE;
   else if (serviceType === 'pre_listing') base = table.PRE_LISTING;
@@ -89,7 +87,7 @@ export function getPriceForReport(
   return base;
 }
 
-// Backward-compatible aliases used by existing code
+// Backward-compatible alias
 export function getPriceCents(
   serviceType: ServiceType,
   propertyType: PropertyType,

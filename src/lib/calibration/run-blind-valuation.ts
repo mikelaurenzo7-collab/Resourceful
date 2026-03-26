@@ -5,6 +5,7 @@
 
 import { geocodeAddress } from '@/lib/services/google-maps';
 import { getPropertyDetail, getSalesComparables, type AttomSaleComp } from '@/lib/services/attom';
+import { median } from '@/lib/utils/valuation-math';
 import type { PropertyType } from '@/types/database';
 
 // ─── Search tiers (same as stage2) ──────────────────────────────────────────
@@ -220,19 +221,13 @@ export async function runBlindValuation(
   let medianAdjustedPsf: number | null = null;
 
   if (adjustedPsfs.length > 0 && subjectSqft > 0) {
-    const mid = Math.floor(adjustedPsfs.length / 2);
-    medianAdjustedPsf = adjustedPsfs.length % 2 === 0
-      ? (adjustedPsfs[mid - 1] + adjustedPsfs[mid]) / 2
-      : adjustedPsfs[mid];
+    medianAdjustedPsf = median(adjustedPsfs);
     concludedValue = Math.round(medianAdjustedPsf * subjectSqft);
   } else {
     // Fallback: median sale price
     const salePrices = compResults.map(c => c.salePrice).sort((a, b) => a - b);
     if (salePrices.length > 0) {
-      const mid = Math.floor(salePrices.length / 2);
-      concludedValue = salePrices.length % 2 === 0
-        ? Math.round((salePrices[mid - 1] + salePrices[mid]) / 2)
-        : salePrices[mid];
+      concludedValue = Math.round(median(salePrices));
     }
   }
 

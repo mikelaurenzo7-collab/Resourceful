@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 const propertyTypeEnum = z.enum(['residential', 'commercial', 'industrial', 'land']);
 const serviceTypeEnum = z.enum(['tax_appeal', 'pre_purchase', 'pre_listing']);
-const reviewTierEnum = z.enum(['auto', 'expert_reviewed']);
+const reviewTierEnum = z.enum(['auto', 'expert_reviewed', 'guided_filing', 'full_representation']);
 const photoTypeEnum = z.enum([
   'exterior_front', 'exterior_rear',
   'exterior_north', 'exterior_south', 'exterior_east', 'exterior_west',
@@ -47,7 +47,10 @@ export const reportCreateSchema = z.object({
   tax_bill_tax_amount: z.number().positive().nullable().optional(),
   tax_bill_tax_year: z.string().nullable().optional(),
   tax_bill_pin: z.string().nullable().optional(),
-});
+}).refine(
+  (data) => !data.has_tax_bill || (data.tax_bill_assessed_value != null && data.tax_bill_assessed_value > 0),
+  { message: 'Tax bill assessed value is required when has_tax_bill is true', path: ['tax_bill_assessed_value'] }
+);
 
 export type ReportCreateInput = z.infer<typeof reportCreateSchema>;
 

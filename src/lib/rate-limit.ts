@@ -24,6 +24,11 @@ export interface RateLimitResult {
   resetAt: number;
 }
 
+// Track consecutive DB failures for observability.
+// Resets on success. Serverless instances each have their own counter,
+// but even a per-instance count is useful for log-based alerting.
+let consecutiveFailures = 0;
+
 /**
  * Check and consume a rate limit token for the given identifier (typically IP).
  * Uses Supabase RPC for atomic check-and-increment across all serverless instances.
@@ -50,11 +55,17 @@ export async function checkRateLimit(
     });
 
     if (error) {
-      // On DB errors, fail open (allow the request) to avoid blocking users
-      console.error('[rate-limit] DB error, failing open:', error.message);
+      // Fail open: blocking all users on a DB outage is worse than allowing
+      // unthrottled traffic temporarily. Log at error level for alerting.
+      consecutiveFailures++;
+      console.error(
+        `[rate-limit] DB error (consecutive: ${consecutiveFailures}), failing open:`,
+        { prefix: config.prefix, error: error.message }
+      );
       return { success: true, limit: config.limit, remaining: config.limit, resetAt };
     }
 
+    consecutiveFailures = 0;
     const count = (data as number) ?? 1;
 
     if (count > config.limit) {
@@ -67,9 +78,12 @@ export async function checkRateLimit(
       remaining: config.limit - count,
       resetAt,
     };
-  } catch {
-    // Fail open on unexpected errors
-    console.error('[rate-limit] Unexpected error, failing open');
+  } catch (err) {
+    consecutiveFailures++;
+    console.error(
+      `[rate-limit] Unexpected error (consecutive: ${consecutiveFailures}), failing open:`,
+      { prefix: config.prefix, error: err instanceof Error ? err.message : String(err) }
+    );
     return { success: true, limit: config.limit, remaining: config.limit, resetAt: now + windowMs };
   }
 }

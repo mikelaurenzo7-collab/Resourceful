@@ -72,9 +72,16 @@ describe('reportCreateSchema', () => {
     }
   });
 
-  it('accepts expert_reviewed tier', () => {
-    const result = reportCreateSchema.safeParse({ ...validInput, review_tier: 'expert_reviewed' });
-    expect(result.success).toBe(true);
+  it('accepts all valid review tiers', () => {
+    for (const tier of ['auto', 'expert_reviewed', 'guided_filing', 'full_representation']) {
+      const result = reportCreateSchema.safeParse({ ...validInput, review_tier: tier });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it('rejects invalid review tier', () => {
+    const result = reportCreateSchema.safeParse({ ...validInput, review_tier: 'premium' });
+    expect(result.success).toBe(false);
   });
 
   it('defaults photos_skipped to false', () => {
@@ -101,6 +108,23 @@ describe('reportCreateSchema', () => {
       tax_bill_assessed_value: -100,
     });
     expect(result.success).toBe(false);
+  });
+
+  it('rejects has_tax_bill=true without assessed value', () => {
+    const result = reportCreateSchema.safeParse({
+      ...validInput,
+      has_tax_bill: true,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts has_tax_bill=true with assessed value', () => {
+    const result = reportCreateSchema.safeParse({
+      ...validInput,
+      has_tax_bill: true,
+      tax_bill_assessed_value: 250000,
+    });
+    expect(result.success).toBe(true);
   });
 });
 
