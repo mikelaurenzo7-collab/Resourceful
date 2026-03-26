@@ -11,6 +11,7 @@ import {
   type NarrativePayload,
 } from '@/lib/services/anthropic';
 import { AI_MODELS } from '@/config/ai';
+import { getStateAppealLaw } from '@/config/state-appeal-law';
 import { getCalibrationParams } from '@/lib/calibration/recalculate';
 import {
   ECONOMIC_LIFE,
@@ -32,27 +33,28 @@ import {
 
 const SECTION_SORT_ORDER: Record<string, { title: string; order: number }> = {
   executive_summary: { title: 'Executive Summary', order: 1 },
-  property_description: { title: 'Property Description', order: 2 },
-  site_description_narrative: { title: 'Site Description', order: 3 },
-  improvement_description_narrative: { title: 'Improvement Description', order: 4 },
-  condition_assessment: { title: 'Property Condition Evidence', order: 5 },
-  area_analysis_county: { title: 'County Area Analysis', order: 6 },
-  area_analysis_city: { title: 'City Area Analysis', order: 7 },
-  area_analysis_neighborhood: { title: 'Neighborhood Analysis', order: 8 },
-  market_analysis: { title: 'Market Analysis', order: 9 },
-  hbu_as_vacant: { title: 'Highest & Best Use — As Vacant', order: 10 },
-  hbu_as_improved: { title: 'Highest & Best Use — As Improved', order: 11 },
-  sales_comparison_narrative: { title: 'Sales Comparison Approach', order: 12 },
-  adjustment_grid_narrative: { title: 'Adjustment Grid Analysis', order: 13 },
-  income_approach_narrative: { title: 'Income Approach', order: 14 },
-  cost_approach_narrative: { title: 'Cost Approach', order: 15 },
-  reconciliation_narrative: { title: 'Reconciliation & Final Value', order: 16 },
-  appeal_argument_summary: { title: 'Appeal Argument Summary', order: 17 },
-  hearing_prep_guide: { title: 'Hearing Preparation Guide', order: 18 },
+  scope_of_work: { title: 'Scope of Work', order: 2 },
+  property_description: { title: 'Property Description', order: 3 },
+  site_description_narrative: { title: 'Site Description', order: 4 },
+  improvement_description_narrative: { title: 'Improvement Description', order: 5 },
+  condition_assessment: { title: 'Property Condition Evidence', order: 6 },
+  area_analysis_county: { title: 'County Area Analysis', order: 7 },
+  area_analysis_city: { title: 'City Area Analysis', order: 8 },
+  area_analysis_neighborhood: { title: 'Neighborhood Analysis', order: 9 },
+  market_analysis: { title: 'Market Analysis', order: 10 },
+  hbu_as_vacant: { title: 'Highest & Best Use — As Vacant', order: 11 },
+  hbu_as_improved: { title: 'Highest & Best Use — As Improved', order: 12 },
+  sales_comparison_narrative: { title: 'Sales Comparison Approach', order: 13 },
+  adjustment_grid_narrative: { title: 'Adjustment Grid Analysis', order: 14 },
+  income_approach_narrative: { title: 'Income Approach', order: 15 },
+  cost_approach_narrative: { title: 'Cost Approach', order: 16 },
+  reconciliation_narrative: { title: 'Reconciliation & Final Value', order: 17 },
+  appeal_argument_summary: { title: 'Appeal Argument Summary', order: 18 },
+  hearing_prep_guide: { title: 'Hearing Preparation Guide', order: 19 },
   // legacy aliases
-  neighborhood_analysis: { title: 'Neighborhood Analysis', order: 8 },
-  value_conclusion: { title: 'Reconciliation & Final Value', order: 15 },
-  assessment_equity: { title: 'Assessment Equity Analysis', order: 16 },
+  neighborhood_analysis: { title: 'Neighborhood Analysis', order: 9 },
+  value_conclusion: { title: 'Reconciliation & Final Value', order: 16 },
+  assessment_equity: { title: 'Assessment Equity Analysis', order: 17 },
 };
 
 // ─── Cost Approach Helpers ───────────────────────────────────────────────────
@@ -823,6 +825,9 @@ export async function runNarratives(
           furtherAppealDeadlineRule: countyRule.further_appeal_deadline_rule ?? null,
           informalReviewAvailable: countyRule.informal_review_available ?? null,
           proSeTips: countyRule.pro_se_tips ?? null,
+          stateLaw: getStateAppealLaw(countyRule.state_abbreviation),
+          winningStrategies: countyRule.winning_strategies ?? null,
+          commonAssessorErrors: countyRule.common_assessor_errors ?? null,
         }
       : {
           countyName: report.county ?? '',
@@ -842,6 +847,9 @@ export async function runNarratives(
           furtherAppealDeadlineRule: null,
           informalReviewAvailable: null,
           proSeTips: null,
+          stateLaw: getStateAppealLaw(report.state ?? ''),
+          winningStrategies: null,
+          commonAssessorErrors: null,
         },
     concludedValue,
     photoAnalyses: photoAnalyses.length > 0 ? photoAnalyses : undefined,

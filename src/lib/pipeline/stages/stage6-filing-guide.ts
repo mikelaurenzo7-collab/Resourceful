@@ -9,6 +9,7 @@ import type { Database, Report, CountyRule, ReportNarrative, PropertyData, Incom
 import type { StageResult } from '../orchestrator';
 import { generateFilingGuide, type FilingGuidePayload } from '@/lib/services/anthropic';
 import { AI_MODELS } from '@/config/ai';
+import { getStateAppealLaw } from '@/config/state-appeal-law';
 import { calculateConcludedValue, blendWithIncomeApproach, buildPropertyAddress } from '@/lib/utils/valuation-math';
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
@@ -171,6 +172,7 @@ export async function runFilingGuide(
     furtherAppealBody: countyRule?.further_appeal_body ?? null,
     furtherAppealDeadlineRule: countyRule?.further_appeal_deadline_rule ?? null,
     furtherAppealUrl: countyRule?.further_appeal_url ?? null,
+    stateLaw: getStateAppealLaw(countyRule?.state_abbreviation ?? report.state ?? ''),
   };
 
   // ── Generate filing guide via AI ──────────────────────────────────────

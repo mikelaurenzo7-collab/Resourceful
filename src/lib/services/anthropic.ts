@@ -4,6 +4,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODELS, AI_CONFIG } from '@/config/ai';
 import type { PhotoAiAnalysis, PhotoDefect } from '@/types/database';
+import type { StateAppealLaw } from '@/config/state-appeal-law';
 
 // ─── Client ──────────────────────────────────────────────────────────────────
 
@@ -86,6 +87,11 @@ export interface NarrativePayload {
     furtherAppealDeadlineRule?: string | null;
     informalReviewAvailable?: boolean | null;
     proSeTips?: string | null;
+    // State appeal law (injected from config/state-appeal-law.ts)
+    stateLaw?: StateAppealLaw | null;
+    // County-specific strategy (from county_rules migration 012)
+    winningStrategies?: string | null;
+    commonAssessorErrors?: string | null;
   };
   concludedValue: number;
   photoAnalyses?: Array<{
@@ -201,6 +207,8 @@ export interface FilingGuidePayload {
   furtherAppealBody?: string | null;
   furtherAppealDeadlineRule?: string | null;
   furtherAppealUrl?: string | null;
+  // State appeal law context
+  stateLaw?: StateAppealLaw | null;
 }
 
 // ─── Section Names ──────────────────────────────────────────────────────────
@@ -208,6 +216,7 @@ export interface FilingGuidePayload {
 
 const NARRATIVE_SECTION_NAMES = [
   'executive_summary',
+  'scope_of_work',
   'property_description',
   'site_description_narrative',
   'improvement_description_narrative',
@@ -354,6 +363,7 @@ REQUIRED SECTIONS (use these exact Markdown headings):
 
 ## What to Expect at Your Hearing
 - Hearing format specific to ${county} County (in-person, virtual, written review). If virtual, name the platform and any technical setup needed.
+- If stateLaw data is provided, explain the legal standard in plain English: "The board evaluates your evidence under the '${payload.stateLaw?.standard_of_proof ?? 'preponderance of the evidence'}' standard — meaning your evidence just needs to be more convincing than the assessor's. You do not need to prove your case beyond all doubt."
 - How long hearings typically last — set expectations so they don't panic about time.
 - How hearings are scheduled after filing (days? weeks? how will they be notified?).
 - COACH THEM on what to say. Give them an opening statement template: "Good morning. My name is [name], and I'm here to appeal the assessment on [address]. My property is currently assessed at $X, but market evidence shows it's worth $Y — an overassessment of $Z. I have [number] pieces of evidence to present."
@@ -363,6 +373,7 @@ REQUIRED SECTIONS (use these exact Markdown headings):
 ## Your Five Strongest Arguments
 - Based on the appeal_argument_summary, distill the 5 most persuasive points to make at the hearing.
 - Number them and frame each as a clear, quotable statement the homeowner can literally read aloud to the board.
+- Frame each argument in terms of the state's legal standard. If stateLaw data is provided, open argument #1 with the statute citation and standard of proof.
 - Lead with the strongest argument. End with the emotional closer.
 - After the 5 arguments, give them their closing statement: "Based on this evidence, I respectfully request the assessed value be reduced from $[assessed] to $[concluded]. Thank you for your time."
 
@@ -622,6 +633,21 @@ You are NOT a neutral party. You are the homeowner's expert witness. Every numbe
 
 YOUR EXPERTISE IN ${county.toUpperCase()} COUNTY, ${state.toUpperCase()}:
 ${countyExpertise.map(e => `- ${e}`).join('\n')}
+${payload.countyRules.stateLaw ? `
+APPLICABLE STATE LAW — CITE IN EVERY LEGAL ARGUMENT:
+- Governing statute: ${payload.countyRules.stateLaw.statute_citation}
+- Standard of proof: ${payload.countyRules.stateLaw.standard_of_proof} (${payload.countyRules.stateLaw.burden_of_proof})
+- Market value definition: "${payload.countyRules.stateLaw.market_value_definition}"
+- Valuation date: ${payload.countyRules.stateLaw.valuation_date_rule}
+- De novo review: ${payload.countyRules.stateLaw.de_novo_review ? `Yes — ${payload.countyRules.stateLaw.de_novo_explanation}` : `No — ${payload.countyRules.stateLaw.de_novo_explanation}`}
+- Equalization standard: ${payload.countyRules.stateLaw.equalization_standard}
+${payload.countyRules.stateLaw.assessment_cap_rule ? `- Assessment cap: ${payload.countyRules.stateLaw.assessment_cap_rule}` : ''}
+- Key precedent cases:
+${payload.countyRules.stateLaw.key_precedents.map(p => `  * ${p.case_name} (${p.citation}): ${p.holding_summary}`).join('\n')}
+
+You MUST cite the governing statute and at least one precedent case in the appeal_argument_summary and reconciliation_narrative. Frame your legal arguments using the specific standard of proof and market value definition above.` : ''}
+${payload.countyRules.winningStrategies ? `\nCOUNTY-SPECIFIC WINNING STRATEGIES (proven tactics for ${county} County):\n${payload.countyRules.winningStrategies}` : ''}
+${payload.countyRules.commonAssessorErrors ? `\nKNOWN ASSESSOR ERRORS IN ${county.toUpperCase()} COUNTY (exploit these):\n${payload.countyRules.commonAssessorErrors}` : ''}
 
 You must return valid JSON — an array of objects with these keys:
 - "section_name": one of the exact values listed below
@@ -629,6 +655,16 @@ You must return valid JSON — an array of objects with these keys:
 
 Required section_name values (generate ALL that apply, in this order):
 1. "executive_summary" — lead with the dollar amount the homeowner is being overcharged, the concluded market value, and a confident summary of why the assessment is wrong${hasPhotos ? '. Mention that the analysis includes firsthand photographic evidence of property condition that the assessor never reviewed.' : ''}
+1b. "scope_of_work" — USPAP-compliant Scope of Work statement. Include:
+   - Problem identification: estimate the market value of the subject property for ${payload.serviceType === 'tax_appeal' ? 'property tax appeal purposes' : payload.serviceType === 'pre_purchase' ? 'pre-purchase due diligence' : 'pre-listing market positioning'}
+   - Intended use: ${payload.serviceType === 'tax_appeal' ? 'support a property tax assessment appeal' : payload.serviceType === 'pre_purchase' ? 'inform a purchase decision' : 'inform a listing price decision'}
+   - Intended user: the property owner and ${payload.serviceType === 'tax_appeal' ? `the ${payload.countyRules.appealBoardName || 'applicable assessment appeal board'}` : 'their advisors'}
+   - Type of value: market value${payload.countyRules.stateLaw ? ` as defined by ${payload.countyRules.stateLaw.statute_citation}: "${payload.countyRules.stateLaw.market_value_definition}"` : ''}
+   - Effective date of value: ${payload.countyRules.stateLaw?.valuation_date_rule ?? 'as of the current assessment date'}
+   - Scope of analysis: data sources used (public records, MLS, county assessor records), analysis methods applied (sales comparison approach${payload.comparableRentals?.length ? ', income capitalization approach' : ''}${payload.overvaluationAnalysis?.costApproachValue != null ? ', cost approach' : ''}), and property inspection basis (owner-submitted photographs${hasPhotos ? ' with AI-assisted condition analysis' : ''})
+   - Extraordinary assumptions: none, unless the data suggests otherwise
+   - Hypothetical conditions: none
+   Keep this section concise and formal — it establishes the professional framework for the entire report.
 2. "property_description" — physical description emphasizing any characteristics that would LOWER value (age, deferred maintenance, functional obsolescence, layout inefficiencies)${hasPhotos ? '. Weave in specific observations from the photo evidence — reference individual photos by type (e.g., "as shown in the front elevation photograph") when describing condition.' : ''}
 3. "site_description_narrative" — site description noting any adverse factors (flood zone, noise, traffic, easements, irregular lot shape, proximity to commercial/industrial)${hasPhotos ? '. Reference any site-level issues visible in exterior photos (drainage, grading, neighboring conditions).' : ''}
 4. "improvement_description_narrative" — improvement description, emphasizing depreciation, outdated systems, and any features that don't add proportional value${hasPhotos ? '. Cite specific photo evidence of deterioration, deferred maintenance, and age-related wear documented in the condition analysis.' : ''}
@@ -652,8 +688,8 @@ ${hasPhotos ? '12' : '11'}. "sales_comparison_narrative" — aggressive comparab
 ${hasPhotos ? '13' : '12'}. "adjustment_grid_narrative" — methodical explanation of every adjustment, framed to support the lower concluded value${hasPhotos ? '. The condition adjustment line item should reference the photo evidence summary.' : ''}
 ${payload.comparableRentals?.length ? `${hasPhotos ? '14' : '13'}. "income_approach_narrative" — rental income analysis showing the income-derived value is below the assessed value` : ''}
 ${payload.overvaluationAnalysis?.costApproachValue != null ? `${hasPhotos ? '15' : '14'}. "cost_approach_narrative" — USPAP Cost Approach: present the replacement cost new (RCN), physical depreciation, ${payload.overvaluationAnalysis.functionalObsolescencePct ? 'functional obsolescence, ' : ''}and land value. Show the math step by step: "RCN of $[X] × (1 − [Y]% total depreciation) + land value of $[Z] = cost approach indicator of $[W]." If the cost approach value is BELOW the assessed value, this is a powerful third line of evidence converging with the sales comparison${payload.comparableRentals?.length ? ' and income approaches' : ''}. State explicitly: "Three independent valuation approaches all indicate a market value below the assessor's figure." If it exceeds the assessed value, address it honestly — explain why the cost approach may be less reliable here (e.g., land value uncertainty, market obsolescence) — do not suppress it.` : ''}
-${hasPhotos ? '16' : '15'}. "reconciliation_narrative" — final value reconciliation: state the concluded value with conviction, quantify the exact overassessment in dollars and percentage, and recommend the assessment be reduced. When cost approach data is present, state which approaches were used and how they were weighted. ${hasPhotos ? 'Explicitly state that the concluded value reflects documented property condition from firsthand photographic evidence — evidence the assessor did not have when setting the assessed value.' : ''}
-${payload.serviceType === 'tax_appeal' ? `${hasPhotos ? '17' : '16'}. "appeal_argument_summary" — the homeowner's battle plan: 5-7 numbered arguments, each a specific, quotable statement they can read to ${payload.countyRules.appealBoardName || 'the board'}. Lead with the strongest argument. Include exact dollar figures. End with a clear ask: "I respectfully request the assessed value be reduced from $X to $Y."${hasPhotos ? ' At least 2 of the arguments MUST reference the photographic evidence directly — these are your most persuasive points because the board can see the evidence with their own eyes.' : ''}` : ''}
+${hasPhotos ? '16' : '15'}. "reconciliation_narrative" — final value reconciliation: state the concluded value with conviction, quantify the exact overassessment in dollars and percentage, and recommend the assessment be reduced. When cost approach data is present, state which approaches were used and how they were weighted. ${hasPhotos ? 'Explicitly state that the concluded value reflects documented property condition from firsthand photographic evidence — evidence the assessor did not have when setting the assessed value.' : ''}${payload.countyRules.stateLaw ? ` Frame the conclusion using USPAP-standard language: "Based on the data, analyses, and conclusions contained herein, it is my opinion that the market value of the subject property, as of [effective date], is $[value]." Then cite the legal framework: "Under ${payload.countyRules.stateLaw.statute_citation}, market value is defined as [definition]. The evidence presented establishes by ${payload.countyRules.stateLaw.standard_of_proof} that the market value is $X, not the assessed $Y." When multiple approaches are available, state: (1) the value indicated by each approach, (2) which approach was given most weight and why, (3) whether the approaches converge (strengthens conclusion) or diverge (explain why), (4) the final reconciled value.` : ''}
+${payload.serviceType === 'tax_appeal' ? `${hasPhotos ? '17' : '16'}. "appeal_argument_summary" — the homeowner's battle plan: 5-7 numbered arguments, each a specific, quotable statement they can read to ${payload.countyRules.appealBoardName || 'the board'}. Lead with the strongest argument. Include exact dollar figures. End with a clear ask: "I respectfully request the assessed value be reduced from $X to $Y."${hasPhotos ? ' At least 2 of the arguments MUST reference the photographic evidence directly — these are your most persuasive points because the board can see the evidence with their own eyes.' : ''}${payload.countyRules.stateLaw ? ` Open with the statutory basis: "Under ${payload.countyRules.stateLaw.statute_citation}, I bear the burden of proving by ${payload.countyRules.stateLaw.standard_of_proof} that the assessment exceeds fair market value as of ${payload.countyRules.stateLaw.valuation_date_rule}. The following evidence meets that standard." Reference at least one precedent case (e.g., "${payload.countyRules.stateLaw.key_precedents[0]?.case_name}") to demonstrate legal grounding.` : ''}` : ''}
 ${payload.serviceType === 'tax_appeal' ? `${hasPhotos ? '18' : '17'}. "hearing_prep_guide" — a comprehensive hearing preparation guide written directly to the homeowner. Structure it as:
 **Before the Hearing**: What to bring (report, comps printout, photos, form copies), how to organize evidence into a binder/folder, what to wear, when to arrive.
 **Understanding the Format**: Explain whether this is ${payload.countyRules.hearingFormat === 'virtual' ? 'a virtual hearing' : payload.countyRules.hearingFormat === 'written_only' ? 'a written-only (desk) review' : payload.countyRules.hearingFormat === 'both' ? 'either in-person or virtual (their choice)' : 'an in-person hearing'} before ${payload.countyRules.appealBoardName || 'the Board of Review'}${payload.countyRules.hearingDurationMinutes ? `, typically lasting ${payload.countyRules.hearingDurationMinutes} minutes` : ''}. Explain who will be in the room, who speaks first, and the general flow.
@@ -662,7 +698,7 @@ ${payload.serviceType === 'tax_appeal' ? `${hasPhotos ? '18' : '17'}. "hearing_p
 **Handling Questions**: Common questions the board will ask and how to answer them. "Why do you think these comps are better than the ones the assessor used?" "Have you made any improvements to the property?" "Are you aware of any sales closer to the assessed value?"
 **Closing Statement**: A scripted closing they can read: restate the concluded value, the dollar reduction requested, and thank the board.
 **After the Hearing**: What to expect for the decision timeline (${payload.countyRules.typicalResolutionWeeksMin && payload.countyRules.typicalResolutionWeeksMax ? `typically ${payload.countyRules.typicalResolutionWeeksMin}-${payload.countyRules.typicalResolutionWeeksMax} weeks` : 'varies by county'}), what the decision letter looks like, and when/how to file a further appeal if needed${payload.countyRules.furtherAppealBody ? ` with ${payload.countyRules.furtherAppealBody}` : ''}.
-Write this as a coach talking to someone who has NEVER been to a government hearing before. Be warm, specific, and confidence-building. No legal jargon.` : ''}
+Write this as a coach talking to someone who has NEVER been to a government hearing before. Be warm, specific, and confidence-building. No legal jargon.${payload.countyRules.stateLaw ? ` In the "Understanding the Format" section, explain the legal standard in plain English: "You need to show, by ${payload.countyRules.stateLaw.standard_of_proof}, that your home is worth less than the assessed value. In plain terms, this means your evidence just needs to be more convincing than the assessor's — you don't need to prove it beyond all doubt." ${payload.countyRules.stateLaw.de_novo_review ? 'Reassure them: "The board will look at your evidence fresh — they don\'t just rubber-stamp the assessor\'s number."' : 'Note: "The board starts with the assessor\'s value and you need to convince them it should be different — but strong comparable sales evidence does exactly that."'}` : ''}` : ''}
 
 INVESTIGATIVE MANDATE — LEAVE NO STONE UNTURNED:
 You are an investigator, not a reporter. Do not merely describe the data — interrogate it. For every data point, ask: "Does this help the homeowner's case?" If yes, amplify it with context. If no, explain why it's irrelevant or misleading.

@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import type { Report, PropertyData, CountyRule, ReportNarrative } from '@/types/database';
+import type { Report, PropertyData, CountyRule, ReportNarrative, FormSubmission } from '@/types/database';
 import { calculateConcludedValue, buildPropertyAddress, VIEWABLE_STATUSES } from '@/lib/utils/valuation-math';
 
 const SIGNED_URL_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
@@ -45,7 +45,7 @@ export async function GET(
   }
 
   // Fetch in parallel: property data, filing guide, county rules, PDF URL
-  const [propertyResult, filingGuideResult, countyResult, compsResult] = await Promise.all([
+  const [propertyResult, filingGuideResult, countyResult, compsResult, formSubmissionResult] = await Promise.all([
     supabase.from('property_data').select('*').eq('report_id', reportId).single(),
     supabase.from('report_narratives').select('content').eq('report_id', reportId).eq('section_name', 'pro_se_filing_guide').single(),
     report.county_fips
@@ -54,11 +54,13 @@ export async function GET(
         ? supabase.from('county_rules').select('*').eq('county_name', report.county).eq('state_abbreviation', report.state).single()
         : Promise.resolve({ data: null, error: null }),
     supabase.from('comparable_sales').select('adjusted_price_per_sqft, sale_price').eq('report_id', reportId),
+    supabase.from('form_submissions').select('prefill_data').eq('report_id', reportId).single(),
   ]);
 
   const propertyData = propertyResult.data as PropertyData | null;
   const filingGuide = (filingGuideResult.data as Pick<ReportNarrative, 'content'> | null)?.content ?? null;
   const countyRule = countyResult.data as CountyRule | null;
+  const formSubmission = formSubmissionResult.data as Pick<FormSubmission, 'prefill_data'> | null;
 
   // Calculate concluded value (shared utility)
   const comps = (compsResult.data ?? []) as { adjusted_price_per_sqft: number | null; sale_price: number | null }[];
@@ -89,6 +91,15 @@ export async function GET(
     pdfUrl,
     filingGuide,
     deliveredAt: report.delivered_at,
+    // Filing status tracking
+    reviewTier: report.review_tier,
+    filingStatus: report.filing_status,
+    filedAt: report.filed_at,
+    hearingDate: report.hearing_date,
+    appealOutcome: report.appeal_outcome,
+    savingsAmountCents: report.savings_amount_cents,
+    // Prefill data for appeal form
+    prefillData: formSubmission?.prefill_data ?? null,
     // County filing info
     county: countyRule ? {
       name: countyRule.county_name,

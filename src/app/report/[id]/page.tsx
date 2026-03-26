@@ -52,6 +52,192 @@ interface ReportData {
   filingGuide: string | null;
   deliveredAt: string | null;
   county: CountyInfo | null;
+  // Filing status tracking
+  reviewTier: string | null;
+  filingStatus: string | null;
+  filedAt: string | null;
+  hearingDate: string | null;
+  appealOutcome: string | null;
+  savingsAmountCents: number | null;
+  // Prefill data
+  prefillData: Record<string, unknown> | null;
+}
+
+// ─── Filing Status Stepper (full_representation tier) ─────────────────────
+
+function FilingStatusStepper({ data }: { data: ReportData }) {
+  const steps = [
+    { label: 'Report Completed', done: true, date: data.deliveredAt },
+    { label: 'Appeal Filed', done: ['filed', 'hearing_scheduled', 'resolved_win', 'resolved_loss'].includes(data.filingStatus ?? ''), date: data.filedAt },
+    { label: 'Hearing Scheduled', done: ['hearing_scheduled', 'resolved_win', 'resolved_loss'].includes(data.filingStatus ?? ''), date: data.hearingDate },
+    { label: 'Decision', done: ['resolved_win', 'resolved_loss'].includes(data.filingStatus ?? ''), date: null },
+  ];
+
+  return (
+    <div className="card-premium rounded-xl p-6 mb-6">
+      <p className="text-xs uppercase tracking-widest text-gold/70 mb-4">Your Appeal Status</p>
+      <div className="flex items-center justify-between gap-2">
+        {steps.map((step, i) => (
+          <div key={step.label} className="flex items-center gap-2 flex-1">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+              step.done ? 'bg-emerald-500/20' : 'bg-cream/5'
+            }`}>
+              {step.done ? (
+                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <span className="text-xs text-cream/30">{i + 1}</span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className={`text-xs font-medium ${step.done ? 'text-emerald-400' : 'text-cream/30'}`}>{step.label}</p>
+              {step.done && step.date && (
+                <p className="text-[10px] text-cream/25">{new Date(step.date).toLocaleDateString()}</p>
+              )}
+              {step.label === 'Decision' && data.appealOutcome && (
+                <p className={`text-[10px] font-medium ${data.appealOutcome === 'loss' ? 'text-red-400' : 'text-emerald-400'}`}>
+                  {data.appealOutcome === 'win' ? 'Reduction Granted' : data.appealOutcome === 'partial' ? 'Partial Reduction' : 'Denied'}
+                  {data.savingsAmountCents != null && data.savingsAmountCents > 0 && ` — ${formatDollar(data.savingsAmountCents / 100)} saved`}
+                </p>
+              )}
+            </div>
+            {i < steps.length - 1 && (
+              <div className={`flex-1 h-px ${step.done ? 'bg-emerald-500/30' : 'bg-cream/10'}`} />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Filing Checklist (pro se tiers) ──────────────────────────────────────
+
+const CHECKLIST_ITEMS = [
+  { key: 'downloaded_pdf', label: 'Downloaded the report PDF' },
+  { key: 'downloaded_form', label: 'Downloaded/printed the appeal form' },
+  { key: 'filled_address', label: 'Filled in property address and PIN on the form' },
+  { key: 'entered_value', label: 'Entered concluded market value as opinion of value' },
+  { key: 'attached_report', label: 'Attached report as supporting evidence' },
+  { key: 'filed_before_deadline', label: 'Filed before the deadline' },
+];
+
+function FilingChecklist({ reportId, county }: { reportId: string; county: CountyInfo | null }) {
+  const storageKey = `filing-checklist-${reportId}`;
+  const [checked, setChecked] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) setChecked(JSON.parse(saved));
+    } catch { /* ignore */ }
+  }, [storageKey]);
+
+  const toggle = (key: string) => {
+    const next = { ...checked, [key]: !checked[key] };
+    setChecked(next);
+    try { localStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* ignore */ }
+  };
+
+  const completedCount = Object.values(checked).filter(Boolean).length;
+
+  return (
+    <div className="card-premium rounded-xl overflow-hidden">
+      <div className="border-b border-gold/10 px-6 py-4 bg-gold/5 flex items-center justify-between">
+        <p className="text-xs uppercase tracking-widest text-gold/70">Your Filing Checklist</p>
+        <span className="text-xs text-cream/30">{completedCount}/{CHECKLIST_ITEMS.length}</span>
+      </div>
+      <div className="p-6 space-y-3">
+        {CHECKLIST_ITEMS.map((item) => (
+          <label key={item.key} className="flex items-center gap-3 cursor-pointer group">
+            <div
+              onClick={() => toggle(item.key)}
+              className={`w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-all ${
+                checked[item.key]
+                  ? 'bg-emerald-500/20 border-emerald-500/40'
+                  : 'border-cream/20 group-hover:border-cream/40'
+              }`}
+            >
+              {checked[item.key] && (
+                <svg className="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
+            <span className={`text-sm ${checked[item.key] ? 'text-cream/40 line-through' : 'text-cream/70'}`}>
+              {item.label}
+              {item.key === 'filed_before_deadline' && county?.nextAppealDeadline && (
+                <span className="text-amber-400/60 ml-1">
+                  ({new Date(county.nextAppealDeadline).toLocaleDateString()})
+                </span>
+              )}
+            </span>
+          </label>
+        ))}
+        {county?.filingFeeCents != null && county.filingFeeCents > 0 && (
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <div
+              onClick={() => toggle('paid_fee')}
+              className={`w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-all ${
+                checked['paid_fee']
+                  ? 'bg-emerald-500/20 border-emerald-500/40'
+                  : 'border-cream/20 group-hover:border-cream/40'
+              }`}
+            >
+              {checked['paid_fee'] && (
+                <svg className="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </div>
+            <span className={`text-sm ${checked['paid_fee'] ? 'text-cream/40 line-through' : 'text-cream/70'}`}>
+              Paid filing fee ({formatFee(county.filingFeeCents)})
+            </span>
+          </label>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Prefill Data Download ────────────────────────────────────────────────
+
+function PrefillDownloadButton({ prefillData, propertyAddress }: { prefillData: Record<string, unknown>; propertyAddress: string }) {
+  const handleDownload = () => {
+    const lines = [
+      'PROPERTY TAX APPEAL — PRE-FILLED DATA',
+      '═'.repeat(50),
+      '',
+    ];
+    for (const [key, value] of Object.entries(prefillData)) {
+      if (value != null && value !== '') {
+        const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        lines.push(`${label}: ${String(value)}`);
+      }
+    }
+    lines.push('', '═'.repeat(50), 'Generated by Resourceful — resourceful.app');
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `appeal-data-${propertyAddress.replace(/[^a-z0-9]/gi, '-').toLowerCase()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <button
+      onClick={handleDownload}
+      className="flex items-center gap-2 text-sm text-gold border border-gold/20 px-4 py-2 rounded-lg hover:bg-gold/10 transition-all"
+    >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      </svg>
+      Download Appeal Data
+    </button>
+  );
 }
 
 function formatDollar(value: number): string {
@@ -194,6 +380,11 @@ export default function ReportViewerPage() {
           </p>
         </div>
 
+        {/* Filing status stepper for full_representation tier */}
+        {data.reviewTier === 'full_representation' && isTaxAppeal && (
+          <FilingStatusStepper data={data} />
+        )}
+
         {/* Tabs */}
         {isTaxAppeal && (
           <div className="flex gap-1 mb-8 bg-navy-light/50 rounded-lg p-1 w-fit">
@@ -313,6 +504,49 @@ export default function ReportViewerPage() {
         {/* ─── FILING TAB ─────────────────────────────────────────────── */}
         {activeTab === 'filing' && county && (
           <div className="space-y-6 animate-fade-in">
+            {/* Informal review — elevated to top */}
+            {county.informalReviewAvailable && (
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-950/10 p-5">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-semibold text-emerald-400 mb-1">Start Here: Request an Informal Review</p>
+                    <p className="text-sm text-emerald-400/70">
+                      Call the assessor&apos;s office before filing your formal appeal. Many cases resolve at this stage, saving you the hearing process entirely.
+                    </p>
+                    {county.informalReviewNotes && (
+                      <p className="text-xs text-emerald-400/50 mt-1">{county.informalReviewNotes}</p>
+                    )}
+                    {county.appealBoardPhone && (
+                      <a href={`tel:${county.appealBoardPhone}`} className="inline-flex items-center gap-2 mt-3 text-sm font-medium text-emerald-400 border border-emerald-500/20 px-4 py-2 rounded-lg hover:bg-emerald-500/10 transition-all">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        Call {county.appealBoardPhone}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Prefill data download + Filing checklist */}
+            {data.prefillData && (
+              <div className="card-premium rounded-xl p-6 flex items-center justify-between">
+                <div>
+                  <p className="text-cream font-medium">Your Appeal Form Data</p>
+                  <p className="text-xs text-cream/40 mt-0.5">
+                    Pre-filled values ready to copy into your appeal form — property address, PIN, concluded value, and appeal grounds.
+                  </p>
+                </div>
+                <PrefillDownloadButton prefillData={data.prefillData} propertyAddress={data.propertyAddress} />
+              </div>
+            )}
+
+            <FilingChecklist reportId={data.reportId} county={county} />
+
             {/* Deadline alert */}
             <div className="rounded-xl border border-amber-500/20 bg-amber-950/10 p-5 flex items-start gap-3">
               <svg className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -474,16 +708,6 @@ export default function ReportViewerPage() {
                     )}
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* Informal review */}
-            {county.informalReviewAvailable && (
-              <div className="rounded-xl border border-blue-500/20 bg-blue-950/10 p-5">
-                <p className="text-sm font-medium text-blue-400 mb-1">Informal Review Available</p>
-                <p className="text-sm text-blue-400/60">
-                  {county.informalReviewNotes || `${county.name} offers an informal review process before the formal hearing. This is often a quicker way to get a reduction without a formal proceeding.`}
-                </p>
               </div>
             )}
 

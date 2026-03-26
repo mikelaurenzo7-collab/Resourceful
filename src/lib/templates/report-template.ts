@@ -124,7 +124,9 @@ export function generateReportHtml(data: ReportTemplateData): string {
 
   // Build section list for TOC
   const tocSections: { num: string; title: string }[] = [
+    { num: '', title: 'Letter of Transmittal' },
     { num: 'I', title: 'Summary of Findings' },
+    { num: 'I-B', title: 'Scope of Work' },
     { num: 'II', title: 'Property Description' },
     { num: 'III', title: 'Site Description' },
     { num: 'IV', title: 'Improvement Description' },
@@ -532,11 +534,12 @@ export function generateReportHtml(data: ReportTemplateData): string {
   }
 
   .adj-grid .group-header td {
-    background: #e4e9f0;
-    font-weight: 700;
-    font-size: 8pt;
+    background: #e5e7eb;
+    font-weight: 600;
+    font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.05em;
+    padding: 6px 8px;
     text-align: left;
     color: ${NAVY};
     border-bottom: 2px solid ${NAVY};
@@ -842,9 +845,13 @@ export function generateReportHtml(data: ReportTemplateData): string {
 
 ${renderCoverPage(data, addr, subjectPhoto, clientName)}
 
+${renderLetterOfTransmittal(data, addr, clientName)}
+
 ${renderTableOfContents(tocSections)}
 
 ${renderSummarySection(data, addr, subjectPhoto, photos, narrativeMap)}
+
+${renderNarrativeSection('scope_of_work', 'I-B', 'Scope of Work', narrativeMap)}
 
 ${renderNarrativeSection('property_description', 'II', 'Property Description', narrativeMap)}
 
@@ -935,6 +942,63 @@ function renderCoverPage(
   </div>`;
 }
 
+// ─── Letter of Transmittal ───────────────────────────────────────────────────
+
+function renderLetterOfTransmittal(
+  data: ReportTemplateData,
+  addr: string,
+  clientName: string
+): string {
+  const { report, concludedValue, reportDate } = data;
+
+  // Determine purpose language based on service type
+  let purposePhrase: string;
+  switch (report.service_type) {
+    case 'pre_purchase':
+      purposePhrase = 'inform a purchase decision';
+      break;
+    case 'pre_listing':
+      purposePhrase = 'inform a listing price decision';
+      break;
+    case 'tax_appeal':
+    default:
+      purposePhrase = 'estimate market value for property tax appeal purposes';
+      break;
+  }
+
+  // Determine approaches used
+  const hasIncome =
+    data.incomeAnalysis != null &&
+    (report.property_type === 'commercial' || report.property_type === 'industrial');
+  let approachesPhrase = 'comparable sales';
+  if (hasIncome) {
+    approachesPhrase += ', rental income data,';
+  }
+
+  return `
+  <div class="page-break" style="page-break-before: always;">
+    <div style="max-width: 640px; margin: 60px auto; font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif; font-size: 10.5pt; line-height: 1.65; color: ${BODY_TEXT};">
+      <p style="text-align: right; color: #666;">${escapeHtml(formatDate(reportDate))}</p>
+
+      <p style="margin-top: 40px;">${escapeHtml(clientName)}</p>
+
+      <p>RE: Market Value Analysis &mdash; ${escapeHtml(addr)}</p>
+
+      <p style="margin-top: 24px;">Dear ${escapeHtml(clientName)},</p>
+
+      <p>At your request, we have prepared a market value analysis of the above-referenced property located at ${escapeHtml(addr)}. The purpose of this analysis is to ${purposePhrase}.</p>
+
+      <p>Based on our analysis of ${approachesPhrase} and replacement cost, it is our opinion that the market value of the subject property, as of the effective date, is <strong>${formatCurrency(concludedValue)}</strong>.</p>
+
+      <p>This report is subject to the assumptions and limiting conditions stated herein. It is intended solely for the use of the intended user(s) identified in the Scope of Work.</p>
+
+      <p style="margin-top: 40px;">Respectfully submitted,</p>
+
+      <p style="margin-top: 24px; font-weight: 600;">Resourceful Property Intelligence</p>
+    </div>
+  </div>`;
+}
+
 // ─── Table of Contents ──────────────────────────────────────────────────────
 
 function renderTableOfContents(
@@ -968,7 +1032,7 @@ function renderSummarySection(
   addr: string,
   subjectPhoto: Photo | undefined,
   photos: Photo[],
-  narrativeMap: Map<string, ReportNarrative>
+  _narrativeMap: Map<string, ReportNarrative>
 ): string {
   const { report, property, concludedValue, valuationDate, maps } = data;
 

@@ -104,6 +104,9 @@ export type Report = {
   case_value_at_stake: number | null;
   is_underassessed: boolean;
   underassessment_pct: number | null;
+  // Hearing tracking (migration 012)
+  hearing_date: string | null;
+  hearing_notes: string | null;
 };
 
 export type PropertyData = {
@@ -392,6 +395,9 @@ export type CountyRule = {
   further_appeal_deadline_rule: string | null;
   further_appeal_url: string | null;
   further_appeal_fee_cents: number;
+  // Strategy fields (migration 012)
+  winning_strategies: string | null;
+  common_assessor_errors: string | null;
   // Standard fields
   is_active: boolean;
   last_verified_date: string | null;
@@ -544,7 +550,7 @@ export type CalibrationParams = {
 
 // ─── Insert Types (omit server-generated fields) ────────────────────────────
 
-export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_score' | 'case_value_at_stake' | 'is_underassessed' | 'underassessment_pct'> & {
+export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_score' | 'case_value_at_stake' | 'is_underassessed' | 'underassessment_pct' | 'hearing_date' | 'hearing_notes'> & {
   id?: string;
   created_at?: string;
   // Computed by Stage 5 — not needed at creation time; DB defaults apply
@@ -552,6 +558,9 @@ export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_sco
   case_value_at_stake?: number | null;
   is_underassessed?: boolean;
   underassessment_pct?: number | null;
+  // Set by admin filing workflow — not needed at creation time
+  hearing_date?: string | null;
+  hearing_notes?: string | null;
 };
 
 export type PropertyDataInsert = Omit<PropertyData, 'id' | 'created_at'> & {

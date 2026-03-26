@@ -55,6 +55,18 @@ export interface ReportRejectionAlertParams {
   notes: string;
 }
 
+export interface DeskReviewSubmissionParams {
+  to: string; // county filing email
+  reportId: string;
+  propertyAddress: string;
+  pin: string | null;
+  assessedValue: number;
+  concludedValue: number;
+  appealBoardName: string;
+  pdfUrl: string;
+  clientName: string | null;
+}
+
 export interface EmailResult {
   id: string;
 }
@@ -65,10 +77,6 @@ export interface ServiceResult<T> {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function formatCurrency(cents: number): string {
-  return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 0 })}`;
-}
 
 function formatDollarValue(value: number): string {
   return `$${value.toLocaleString('en-US', { minimumFractionDigits: 0 })}`;
@@ -289,5 +297,76 @@ export async function sendReportRejectionAlert(
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[resend] sendReportRejectionAlert error: ${message}`);
     return { data: null, error: `Rejection alert failed: ${message}` };
+  }
+}
+
+/**
+ * Send a desk review / written-only appeal submission to the county filing email.
+ * Used for full_representation tier when the county accepts email filing
+ * and uses a written-only hearing format.
+ */
+export async function sendDeskReviewSubmission(
+  params: DeskReviewSubmissionParams
+): Promise<ServiceResult<EmailResult>> {
+  try {
+    const clientName = params.clientName ? escapeHtml(params.clientName) : 'Property Owner';
+
+    const { data, error } = await getResend().emails.send({
+      from: FROM_ADDRESS,
+      to: params.to,
+      subject: `Property Tax Appeal — ${params.propertyAddress}${params.pin ? ` (PIN: ${params.pin})` : ''}`,
+      html: `
+        <div style="font-family: 'Times New Roman', Times, serif; max-width: 640px; margin: 0 auto; font-size: 14px; line-height: 1.6; color: #1a1a1a;">
+          <p style="text-align: right; color: #666;">${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+
+          <p style="margin-top: 40px;">${escapeHtml(params.appealBoardName)}</p>
+
+          <p style="margin-top: 24px;">RE: Property Tax Assessment Appeal</p>
+          <p>Property: ${escapeHtml(params.propertyAddress)}</p>
+          ${params.pin ? `<p>PIN/Parcel Number: ${escapeHtml(params.pin)}</p>` : ''}
+
+          <p style="margin-top: 24px;">Dear Members of the ${escapeHtml(params.appealBoardName)},</p>
+
+          <p>On behalf of ${clientName}, I respectfully submit this appeal of the current property tax assessment for the above-referenced property.</p>
+
+          <p>The property is currently assessed at <strong>${formatDollarValue(params.assessedValue)}</strong>. Based on a comprehensive market value analysis including comparable sales data, property condition documentation, and market trend analysis, it is our professional opinion that the market value of this property is <strong>${formatDollarValue(params.concludedValue)}</strong> — an overassessment of <strong>${formatDollarValue(Math.max(0, params.assessedValue - params.concludedValue))}</strong>.</p>
+
+          <p><strong>Evidence Enclosed:</strong></p>
+          <ul>
+            <li>Complete Market Value Analysis Report (PDF)</li>
+            <li>Comparable sales data with adjustment grid</li>
+            <li>Property condition documentation with photographs</li>
+            <li>Valuation reconciliation</li>
+          </ul>
+
+          <p>We respectfully request that the assessed value be reduced from ${formatDollarValue(params.assessedValue)} to ${formatDollarValue(params.concludedValue)} to reflect the property's true market value as supported by the enclosed evidence.</p>
+
+          <p>Please find the complete report attached or accessible at the following link:</p>
+          <p><a href="${params.pdfUrl}" style="color: #2563eb;">${params.pdfUrl}</a></p>
+
+          <p style="margin-top: 32px;">Respectfully submitted,</p>
+          <p style="margin-top: 16px;">
+            <strong>Resourceful Property Intelligence</strong><br />
+            Authorized Representative for ${clientName}
+          </p>
+
+          <p style="margin-top: 40px; font-size: 11px; color: #999; border-top: 1px solid #eee; padding-top: 12px;">
+            This submission is made on behalf of the property owner as their authorized representative.
+            All evidence referenced herein is included in the attached market value analysis report.
+          </p>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error(`[resend] sendDeskReviewSubmission error:`, error);
+      return { data: null, error: `Desk review submission failed: ${error.message}` };
+    }
+
+    return { data: { id: data?.id ?? '' }, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[resend] sendDeskReviewSubmission error: ${message}`);
+    return { data: null, error: `Desk review submission failed: ${message}` };
   }
 }
