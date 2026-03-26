@@ -299,6 +299,13 @@ export const REPLACEMENT_COST_PER_SQFT: Record<string, Record<QualityGrade, numb
   industrial_flex:            { economy: 65,  average: 95,  good: 130, excellent: 170, luxury: 170 },
   industrial_cold_storage:    { economy: 80,  average: 115, good: 155, excellent: 205, luxury: 205 },
   industrial_general:         { economy: 50,  average: 72,  good: 100, excellent: 135, luxury: 135 },
+  // Land — no improvement to replace; cost per sqft is $0 by definition.
+  // The cost approach for land properties equals land value only (no depreciation).
+  land_general:               { economy: 0,   average: 0,   good: 0,   excellent: 0,   luxury: 0   },
+  land_residential:           { economy: 0,   average: 0,   good: 0,   excellent: 0,   luxury: 0   },
+  land_commercial:            { economy: 0,   average: 0,   good: 0,   excellent: 0,   luxury: 0   },
+  land_agricultural:          { economy: 0,   average: 0,   good: 0,   excellent: 0,   luxury: 0   },
+  land_timberland:            { economy: 0,   average: 0,   good: 0,   excellent: 0,   luxury: 0   },
   // Special purpose
   special_senior_living:      { economy: 110, average: 165, good: 225, excellent: 300, luxury: 300 },
   special_car_wash:           { economy: 90,  average: 130, good: 175, excellent: 230, luxury: 230 },
