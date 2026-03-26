@@ -6,9 +6,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { reportCreateSchema } from '@/lib/validations/report';
 import { createPaymentIntent } from '@/lib/services/stripe-service';
-import { getPriceCents } from '@/config/pricing';
+import { getPriceCents, isFounderEmail } from '@/config/pricing';
 import { createReport, updateReport } from '@/lib/repository/reports';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { runPipeline } from '@/lib/pipeline/orchestrator';
 import type { Report } from '@/types/database';
 
 export async function POST(request: NextRequest) {
@@ -98,6 +99,31 @@ export async function POST(request: NextRequest) {
       appeal_outcome: null,
       savings_amount_cents: null,
     })) as Report;
+
+    // ── Founder bypass: free access, skip Stripe, trigger pipeline ─────────
+    if (isFounderEmail(client_email)) {
+      console.log(`[api/reports] Founder email detected: ${client_email}. Bypassing payment.`);
+      await updateReport(report.id, {
+        status: 'paid' as Report['status'],
+        payment_status: 'founder_access',
+        amount_paid_cents: 0,
+      });
+
+      // Trigger pipeline asynchronously (non-blocking)
+      runPipeline(report.id).catch((err) => {
+        console.error(`[api/reports] Founder pipeline trigger failed:`, err);
+      });
+
+      return NextResponse.json(
+        {
+          reportId: report.id,
+          clientSecret: null,
+          priceCents: 0,
+          founderAccess: true,
+        },
+        { status: 201 }
+      );
+    }
 
     // ── Create Stripe PaymentIntent ────────────────────────────────────────
     const { data: payment, error: paymentError } = await createPaymentIntent({

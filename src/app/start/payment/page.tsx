@@ -299,7 +299,15 @@ export default function PaymentPage() {
         throw new Error(body.error || `Server error (${response.status})`);
       }
 
-      const { reportId, clientSecret, priceCents } = await response.json();
+      const result = await response.json();
+      const { reportId, clientSecret, priceCents, founderAccess } = result;
+
+      // Founder access: skip payment, go directly to report
+      if (founderAccess) {
+        window.location.href = `/report/${reportId}`;
+        return;
+      }
+
       updateState({ reportId, clientSecret, priceCents });
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Failed to create report.');

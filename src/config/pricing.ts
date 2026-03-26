@@ -87,6 +87,18 @@ export function getPriceForReport(
   return base;
 }
 
+// ─── Founder Access ──────────────────────────────────────────────────────────
+// Comma-separated list of emails with free access to all services.
+// Set via FOUNDER_EMAILS env var. Never hardcoded.
+const FOUNDER_EMAILS_RAW = process.env.FOUNDER_EMAILS ?? '';
+const FOUNDER_EMAIL_SET = new Set(
+  FOUNDER_EMAILS_RAW.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+);
+
+export function isFounderEmail(email: string): boolean {
+  return FOUNDER_EMAIL_SET.has(email.trim().toLowerCase());
+}
+
 // Backward-compatible alias
 export function getPriceCents(
   serviceType: ServiceType,
