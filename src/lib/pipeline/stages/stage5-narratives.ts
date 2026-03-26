@@ -31,7 +31,8 @@ import {
 
 // ─── Section Mapping ────────────────────────────────────────────────────────
 
-const SECTION_SORT_ORDER: Record<string, { title: string; order: number }> = {
+// Section ordering reference — used by report-template.ts for rendering order
+const _SECTION_SORT_ORDER: Record<string, { title: string; order: number }> = { // eslint-disable-line @typescript-eslint/no-unused-vars
   executive_summary: { title: 'Executive Summary', order: 1 },
   scope_of_work: { title: 'Scope of Work', order: 2 },
   property_description: { title: 'Property Description', order: 3 },

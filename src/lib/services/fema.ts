@@ -106,10 +106,13 @@ export async function getFloodZone(
       };
     }
 
-    const json = (await response.json()) as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const json = (await response.json()) as Record<string, any>;
 
     // The identify endpoint returns { results: [...] }
-    if (!json.results || json.results.length === 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const results = json.results as Array<Record<string, any>> | undefined;
+    if (!results || results.length === 0) {
       // No flood zone data means the point is likely outside mapped areas
       // or in a zone X (minimal risk) area without explicit mapping.
       return {
@@ -128,7 +131,8 @@ export async function getFloodZone(
     }
 
     // Take the first (most relevant) result
-    const attrs = json.results[0].attributes ?? {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const attrs = (results[0].attributes ?? {}) as Record<string, any>;
 
     return {
       data: {

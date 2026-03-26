@@ -79,7 +79,30 @@ export async function geocodeAddress(
       };
     }
 
-    const json = (await response.json()) as any;
+    interface GeoAddressComponent {
+      long_name: string;
+      short_name: string;
+      types: string[];
+    }
+
+    interface GeoGeometry {
+      location: { lat: number; lng: number };
+    }
+
+    interface GeoResult {
+      address_components?: GeoAddressComponent[];
+      geometry?: GeoGeometry;
+      formatted_address?: string;
+      place_id?: string;
+    }
+
+    interface GeocodeApiResponse {
+      status: string;
+      error_message?: string;
+      results?: GeoResult[];
+    }
+
+    const json = (await response.json()) as GeocodeApiResponse;
 
     if (json.status !== 'OK' || !json.results?.length) {
       return {
@@ -89,14 +112,14 @@ export async function geocodeAddress(
     }
 
     const result = json.results[0];
-    const components: any[] = result.address_components ?? [];
-    const geo = result.geometry?.location ?? {};
+    const components: GeoAddressComponent[] = result.address_components ?? [];
+    const geo = result.geometry?.location ?? { lat: 0, lng: 0 };
 
     const find = (type: string): string | null =>
-      components.find((c: any) => c.types?.includes(type))?.long_name ?? null;
+      components.find((c: GeoAddressComponent) => c.types?.includes(type))?.long_name ?? null;
 
     const findShort = (type: string): string | null =>
-      components.find((c: any) => c.types?.includes(type))?.short_name ?? null;
+      components.find((c: GeoAddressComponent) => c.types?.includes(type))?.short_name ?? null;
 
     return {
       data: {

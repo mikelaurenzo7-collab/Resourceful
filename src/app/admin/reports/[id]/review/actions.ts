@@ -57,6 +57,7 @@ export async function approveReport(reportId: string) {
 
   // Run Stage 8: generates signed PDF URL, emails client, updates status,
   // and records approval event — all in one atomic flow.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const result = await runDelivery(reportId, adminUserId, supabase as any);
 
   if (!result.success) {

@@ -214,7 +214,7 @@ export interface FilingGuidePayload {
 // ─── Section Names ──────────────────────────────────────────────────────────
 // These must match the section_name values stored in the report_narratives table.
 
-const NARRATIVE_SECTION_NAMES = [
+const NARRATIVE_SECTION_NAMES = [ // eslint-disable-line @typescript-eslint/no-unused-vars -- used as type source
   'executive_summary',
   'scope_of_work',
   'property_description',
@@ -793,7 +793,7 @@ function parseNarrativeJson(text: string): NarrativeSection[] | null {
   return null;
 }
 
-function validateNarrativeSections(raw: any[]): NarrativeSection[] {
+function validateNarrativeSections(raw: Record<string, unknown>[]): NarrativeSection[] {
   return raw
     .filter((s) => s.section_name && s.content)
     .map((s) => ({
@@ -803,19 +803,19 @@ function validateNarrativeSections(raw: any[]): NarrativeSection[] {
 }
 
 function parsePhotoAnalysisJson(text: string): PhotoAiAnalysis | null {
-  function normalize(parsed: any): PhotoAiAnalysis {
+  function normalize(parsed: Record<string, unknown>): PhotoAiAnalysis {
     return {
-      condition_rating: parsed.condition_rating ?? 'average',
-      defects: (parsed.defects ?? []).map((d: any) => ({
-        type: d.type ?? '',
-        description: d.description ?? '',
-        severity: d.severity ?? 'minor',
-        value_impact: d.value_impact ?? 'low',
-        report_language: d.report_language ?? '',
+      condition_rating: (parsed.condition_rating ?? 'average') as PhotoAiAnalysis['condition_rating'],
+      defects: ((parsed.defects ?? []) as Record<string, unknown>[]).map((d: Record<string, unknown>) => ({
+        type: (d.type ?? '') as string,
+        description: (d.description ?? '') as string,
+        severity: (d.severity ?? 'minor') as PhotoDefect['severity'],
+        value_impact: (d.value_impact ?? 'low') as PhotoDefect['value_impact'],
+        report_language: (d.report_language ?? '') as string,
       })),
-      inferred_direction: parsed.inferred_direction ?? '',
-      professional_caption: parsed.professional_caption ?? '',
-      comparable_adjustment_note: parsed.comparable_adjustment_note ?? '',
+      inferred_direction: (parsed.inferred_direction ?? '') as string,
+      professional_caption: (parsed.professional_caption ?? '') as string,
+      comparable_adjustment_note: (parsed.comparable_adjustment_note ?? '') as string,
     };
   }
 

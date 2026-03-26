@@ -95,6 +95,20 @@ const STAGES: StageDefinition[] = [
   },
 ];
 
+// ─── RPC Helper ─────────────────────────────────────────────────────────
+// Supabase's generated types may not include custom RPC functions like
+// acquire_pipeline_lock / release_pipeline_lock. This helper avoids
+// casting to `any` by going through `unknown` to a typed callable.
+
+type RpcFn = (
+  fn: string,
+  params: Record<string, unknown>
+) => ReturnType<SupabaseAdmin['rpc']>;
+
+function rpc(supabase: SupabaseAdmin): RpcFn {
+  return supabase.rpc as unknown as RpcFn;
+}
+
 // ─── Orchestrator ───────────────────────────────────────────────────────────
 
 /**
@@ -110,7 +124,7 @@ export async function runPipeline(
   const supabase = createAdminClient();
 
   // ── Acquire pipeline lock (prevents concurrent runs for same report) ──
-  const { data: lockAcquired } = await (supabase.rpc as any)('acquire_pipeline_lock', {
+  const { data: lockAcquired } = await rpc(supabase)('acquire_pipeline_lock', {
     p_report_id: reportId,
   });
 
@@ -131,7 +145,7 @@ export async function runPipeline(
   if (fetchError || !report) {
     const msg = `Failed to fetch report ${reportId}: ${fetchError?.message ?? 'not found'}`;
     console.error(`[pipeline] ${msg}`);
-    await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+    await rpc(supabase)('release_pipeline_lock', { p_report_id: reportId });
     return { success: false, error: msg };
   }
 
@@ -173,7 +187,7 @@ export async function runPipeline(
 
       if (!result.success) {
         await handleStageFailure(supabase, reportId, stage, result.error ?? 'Unknown error');
-        await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+        await rpc(supabase)('release_pipeline_lock', { p_report_id: reportId });
         return { success: false, error: `Stage ${stage.number} (${stage.name}) failed: ${result.error}` };
       }
 
@@ -192,7 +206,7 @@ export async function runPipeline(
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await handleStageFailure(supabase, reportId, stage, message);
-      await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+      await rpc(supabase)('release_pipeline_lock', { p_report_id: reportId });
       return { success: false, error: `Stage ${stage.number} (${stage.name}) threw: ${message}` };
     }
   }
@@ -248,7 +262,7 @@ export async function runPipeline(
   }
 
   // ── Release pipeline lock ───────────────────────────────────────────────
-  await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+  await rpc(supabase)('release_pipeline_lock', { p_report_id: reportId });
 
   console.log(`[pipeline] Pipeline complete and delivered for report ${reportId}`);
   return { success: true };

@@ -117,7 +117,7 @@ async function collectFromCountyApi(
   }
 
   // Route by county FIPS code (not hardcoded county names)
-  const _fips = _params.countyRules.county_fips;
+  const _fips = _params.countyRules.county_fips; // eslint-disable-line @typescript-eslint/no-unused-vars
 
   // No adapters currently active — ATTOM handles all counties.
   // When a county adapter is needed, add a case here:

@@ -85,6 +85,48 @@ export default function MeasurementTool({
   useEffect(() => {
     if (activeTab !== 'map' || !mapsLoaded || !mapRef.current || mapInstanceRef.current) return;
 
+    function initMap(center: { lat: number; lng: number }, zoom: number) {
+      if (!mapRef.current) return;
+
+      const map = new google.maps.Map(mapRef.current, {
+        center,
+        zoom,
+        mapTypeId: 'satellite',
+        tilt: 0,
+        disableDefaultUI: true,
+        zoomControl: true,
+        mapTypeControl: false,
+      });
+      mapInstanceRef.current = map;
+
+      // Add Drawing Manager for polygon drawing
+      const drawingManager = new google.maps.drawing.DrawingManager({
+        drawingMode: google.maps.drawing.OverlayType.POLYGON,
+        drawingControl: true,
+        drawingControlOptions: {
+          position: google.maps.ControlPosition.TOP_CENTER,
+          drawingModes: [google.maps.drawing.OverlayType.POLYGON],
+        },
+        polygonOptions: {
+          fillColor: '#d4a853',
+          fillOpacity: 0.3,
+          strokeColor: '#d4a853',
+          strokeWeight: 2,
+          editable: true,
+          draggable: false,
+        },
+      });
+
+      drawingManager.setMap(map);
+      drawingManagerRef.current = drawingManager;
+
+      google.maps.event.addListener(
+        drawingManager,
+        'polygoncomplete',
+        handlePolygonComplete
+      );
+    }
+
     // Geocode the address to center the map
     const geocoder = new google.maps.Geocoder();
     geocoder.geocode({ address }, (results, status) => {
@@ -98,48 +140,6 @@ export default function MeasurementTool({
       initMap({ lat: loc.lat(), lng: loc.lng() }, 19);
     });
   }, [activeTab, mapsLoaded, address, handlePolygonComplete]);
-
-  function initMap(center: { lat: number; lng: number }, zoom: number) {
-    if (!mapRef.current) return;
-
-    const map = new google.maps.Map(mapRef.current, {
-      center,
-      zoom,
-      mapTypeId: 'satellite',
-      tilt: 0,
-      disableDefaultUI: true,
-      zoomControl: true,
-      mapTypeControl: false,
-    });
-    mapInstanceRef.current = map;
-
-    // Add Drawing Manager for polygon drawing
-    const drawingManager = new google.maps.drawing.DrawingManager({
-      drawingMode: google.maps.drawing.OverlayType.POLYGON,
-      drawingControl: true,
-      drawingControlOptions: {
-        position: google.maps.ControlPosition.TOP_CENTER,
-        drawingModes: [google.maps.drawing.OverlayType.POLYGON],
-      },
-      polygonOptions: {
-        fillColor: '#d4a853',
-        fillOpacity: 0.3,
-        strokeColor: '#d4a853',
-        strokeWeight: 2,
-        editable: true,
-        draggable: false,
-      },
-    });
-
-    drawingManager.setMap(map);
-    drawingManagerRef.current = drawingManager;
-
-    google.maps.event.addListener(
-      drawingManager,
-      'polygoncomplete',
-      handlePolygonComplete
-    );
-  }
 
   const handleManualSubmit = () => {
     const sqft = parseInt(manualSqFt);

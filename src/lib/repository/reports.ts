@@ -91,7 +91,7 @@ export async function getReportWithDetails(
   }
 
   // Normalize joined data — Supabase returns arrays for one-to-many, objects for one-to-one
-  const d = data as any;
+  const d = data as unknown as Record<string, unknown>;
   return {
     ...d,
     property_data: Array.isArray(d.property_data)

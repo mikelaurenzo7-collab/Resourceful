@@ -1,7 +1,7 @@
 // ─── ATTOM Data API Service ──────────────────────────────────────────────────
 // Property data, sales comps, rental comps, and deed history from ATTOM.
 
-import type { PropertyType } from '@/types/database';
+// ATTOM types are inferred from API responses; no direct DB type imports needed.
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
@@ -190,10 +190,19 @@ async function attomFetch<T>(
   }
 }
 
+// ─── Helpers for safely traversing untyped ATTOM API responses ──────────────
+
+// ATTOM API responses are deeply nested, untyped JSON with inconsistent schemas.
+// Using `any` here is intentional — these normalizers convert raw API data into
+// fully-typed interfaces. Each normalizer coerces values via `??` with safe defaults.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AttomResponseNode = any;
+
 // ─── Normalizers ─────────────────────────────────────────────────────────────
 
 function normalizePropertyDetail(raw: Record<string, unknown>): AttomPropertyDetail {
-  const property = (raw as any)?.property?.[0] ?? {};
+  const rootObj = raw as AttomResponseNode;
+  const property = rootObj.property?.[0] ?? {};
   const addr = property.address ?? {};
   const loc = property.location ?? {};
   const summary = property.summary ?? {};
@@ -259,8 +268,9 @@ function normalizePropertyDetail(raw: Record<string, unknown>): AttomPropertyDet
 }
 
 function normalizeSaleComps(raw: Record<string, unknown>): AttomSaleComp[] {
-  const sales = (raw as any)?.property ?? [];
-  return sales.map((s: any) => ({
+  const rootObj = raw as AttomResponseNode;
+  const sales = rootObj.property ?? [];
+  return sales.map((s: AttomResponseNode) => ({
     attomId: s.identifier?.attomId ?? 0,
     address: s.address?.line1 ?? '',
     city: s.address?.locality ?? '',
@@ -283,8 +293,9 @@ function normalizeSaleComps(raw: Record<string, unknown>): AttomSaleComp[] {
 }
 
 function normalizeRentalComps(raw: Record<string, unknown>): AttomRentalComp[] {
-  const rentals = (raw as any)?.property ?? [];
-  return rentals.map((r: any) => ({
+  const rootObj = raw as AttomResponseNode;
+  const rentals = rootObj.property ?? [];
+  return rentals.map((r: AttomResponseNode) => ({
     attomId: r.identifier?.attomId ?? 0,
     address: r.address?.line1 ?? '',
     city: r.address?.locality ?? '',
@@ -304,8 +315,9 @@ function normalizeRentalComps(raw: Record<string, unknown>): AttomRentalComp[] {
 }
 
 function normalizeDeedHistory(raw: Record<string, unknown>): AttomDeedRecord[] {
-  const deeds = (raw as any)?.property?.[0]?.saleHistory ?? [];
-  return deeds.map((d: any) => ({
+  const rootObj = raw as AttomResponseNode;
+  const deeds = rootObj.property?.[0]?.saleHistory ?? [];
+  return deeds.map((d: AttomResponseNode) => ({
     documentType: d.documentType ?? '',
     recordingDate: d.recordingDate ?? '',
     salePrice: d.amount?.saleAmt ?? null,

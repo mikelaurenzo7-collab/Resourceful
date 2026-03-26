@@ -16,7 +16,7 @@
 // but are never required. See data-router.ts for the adapter pattern.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Report, PropertyData, CountyRule } from '@/types/database';
+import type { Database, Report, PropertyData, PropertyDataInsert, CountyRule } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { geocodeAddress } from '@/lib/services/google-maps';
 import { getPropertyDetail } from '@/lib/services/attom';
@@ -293,7 +293,7 @@ export async function runDataCollection(
   } else {
     const { error: insertError } = await supabase
       .from('property_data')
-      .insert(propertyDataPayload as any);
+      .insert(propertyDataPayload as unknown as PropertyDataInsert);
 
     if (insertError) {
       return { success: false, error: `Failed to insert property_data: ${insertError.message}` };
