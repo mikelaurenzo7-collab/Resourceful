@@ -372,11 +372,16 @@ export async function runComparables(
         ? Math.round((comp.lotSquareFeet / comp.buildingSquareFeet) * 100) / 100
         : null;
 
-    // Build Street View URL for this comp
+    // Build Street View URL for this comp using its approximate location.
+    // ATTOM doesn't return comp coordinates directly, so we offset
+    // deterministically from subject based on comp's distance and index.
+    const compIndex = sortedComps.indexOf(comp);
+    const angle = (2 * Math.PI * compIndex) / sortedComps.length;
+    const offsetDeg = (comp.distanceMiles ?? 0.5) * 0.014; // ~1 mile ≈ 0.014° lat
     const comparablePhotoStoragePath = comp.distanceMiles != null
       ? getStreetViewUrl({
-          lat: latitude + (Math.random() - 0.5) * 0.01,
-          lng: longitude + (Math.random() - 0.5) * 0.01,
+          lat: latitude + offsetDeg * Math.cos(angle),
+          lng: longitude + offsetDeg * Math.sin(angle),
           width: 640,
           height: 480,
         })

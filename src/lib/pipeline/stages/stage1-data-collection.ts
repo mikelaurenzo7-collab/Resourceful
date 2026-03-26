@@ -20,52 +20,14 @@ import type { Database, Report, PropertyData, CountyRule } from '@/types/databas
 import type { StageResult } from '../orchestrator';
 import { geocodeAddress } from '@/lib/services/google-maps';
 import { getPropertyDetail } from '@/lib/services/attom';
+import { getFloodZone } from '@/lib/services/fema';
 import {
   resolvePropertySubtype,
   computeEffectiveAge,
   computePhysicalDepreciation,
   ECONOMIC_LIFE,
 } from '@/config/valuation';
-
-// ─── FEMA Flood Zone API ────────────────────────────────────────────────────
-
-interface FemaFloodResult {
-  floodZone: string | null;
-  panelNumber: string | null;
-}
-
-async function queryFemaFloodZone(lat: number, lng: number): Promise<FemaFloodResult> {
-  try {
-    const url = new URL('https://hazards.fema.gov/gis/nfhl/rest/services/public/NFHL/MapServer/28/query');
-    url.searchParams.set('geometry', `${lng},${lat}`);
-    url.searchParams.set('geometryType', 'esriGeometryPoint');
-    url.searchParams.set('inSR', '4326');
-    url.searchParams.set('spatialRel', 'esriSpatialRelIntersects');
-    url.searchParams.set('outFields', 'FLD_ZONE,FIRM_PAN');
-    url.searchParams.set('returnGeometry', 'false');
-    url.searchParams.set('f', 'json');
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15_000);
-    const response = await fetch(url.toString(), { signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (!response.ok) {
-      console.warn(`[stage1] FEMA API returned ${response.status}`);
-      return { floodZone: null, panelNumber: null };
-    }
-
-    const json = (await response.json()) as any;
-    const feature = json.features?.[0]?.attributes;
-
-    return {
-      floodZone: feature?.FLD_ZONE ?? null,
-      panelNumber: feature?.FIRM_PAN ?? null,
-    };
-  } catch (err) {
-    console.warn(`[stage1] FEMA flood zone query failed: ${err}`);
-    return { floodZone: null, panelNumber: null };
-  }
-}
+import { buildPropertyAddress } from '@/lib/utils/valuation-math';
 
 // ─── County Rules Lookup ────────────────────────────────────────────────────
 // Finds the county_rules row for this property. Uses FIPS code as the primary
@@ -133,13 +95,7 @@ export async function runDataCollection(
     return { success: false, error: `Failed to fetch report: ${reportError?.message}` };
   }
 
-  const fullAddress = [
-    report.property_address,
-    report.city,
-    report.state,
-  ]
-    .filter(Boolean)
-    .join(', ');
+  const fullAddress = buildPropertyAddress(report.property_address, report.city, report.state);
 
   // ── Geocode (always needed) + ATTOM (skip assessment lookup if tax bill) ─
   // When the user uploaded a tax bill, we already have their assessed value
@@ -197,11 +153,15 @@ export async function runDataCollection(
     );
   }
 
-  // Query FEMA now that we have coordinates
-  const femaResult = await queryFemaFloodZone(geo.latitude, geo.longitude);
+  // Query FEMA now that we have coordinates — uses the proper fema.ts service
+  const femaResult = await getFloodZone(geo.latitude, geo.longitude);
+  const floodData = femaResult.data;
 
-  if (femaResult.floodZone && !['X', 'C'].includes(femaResult.floodZone)) {
-    notes.push(`FLOOD RISK: Property is in FEMA flood zone ${femaResult.floodZone}`);
+  if (floodData?.flood_zone_designation && !['X', 'C'].includes(floodData.flood_zone_designation)) {
+    notes.push(`FLOOD RISK: Property is in FEMA flood zone ${floodData.flood_zone_designation}`);
+  }
+  if (femaResult.error) {
+    notes.push(`FEMA lookup warning: ${femaResult.error}`);
   }
 
   // ── Determine assessment ratio based on property type ──────────────────
@@ -266,11 +226,11 @@ export async function runDataCollection(
       : (attom?.assessment.assessmentYear || null),
     assessment_ratio: assessmentRatio,
     assessment_methodology: countyRule?.assessment_methodology ?? null,
-    flood_zone_designation: femaResult.floodZone,
-    flood_map_panel_number: femaResult.panelNumber,
+    flood_zone_designation: floodData?.flood_zone_designation ?? null,
+    flood_map_panel_number: floodData?.flood_map_panel_number ?? null,
     attom_raw_response: attom as unknown as Record<string, unknown>,
     county_assessor_raw_response: null,
-    fema_raw_response: femaResult as unknown as Record<string, unknown>,
+    fema_raw_response: (floodData?.raw_response ?? null) as Record<string, unknown> | null,
     data_collection_notes: notes.length > 0 ? notes.join('\n') : null,
     // Valuation intelligence (migration 009)
     property_subtype: propertySubtype,

@@ -9,6 +9,7 @@ import type { Database, Report, CountyRule, ReportNarrative, PropertyData, Incom
 import type { StageResult } from '../orchestrator';
 import { generateFilingGuide, type FilingGuidePayload } from '@/lib/services/anthropic';
 import { AI_MODELS } from '@/config/ai';
+import { calculateConcludedValue, blendWithIncomeApproach, buildPropertyAddress } from '@/lib/utils/valuation-math';
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
 
@@ -80,32 +81,19 @@ export async function runFilingGuide(
 
   const assessedValue = propertyData?.assessed_value ?? 0;
 
-  // ── Fetch concluded value from comparable sales median ─────────────────
-  // (The concluded value was calculated in stage 5 and used in narratives.
-  //  Re-derive it here from comps for consistency.)
+  // ── Calculate concluded value using shared utility ─────────────────────
   const { data: compsData } = await supabase
     .from('comparable_sales')
     .select('adjusted_price_per_sqft, sale_price')
     .eq('report_id', reportId);
   const comps = (compsData ?? []) as Pick<import('@/types/database').ComparableSale, 'adjusted_price_per_sqft' | 'sale_price'>[];
 
-  let concludedValue = 0;
-  if (comps.length > 0 && propertyData?.building_sqft_gross) {
-    const adjustedPrices = comps
-      .map((c) => c.adjusted_price_per_sqft)
-      .filter((p): p is number => p != null && p > 0)
-      .sort((a, b) => a - b);
+  let concludedValue = calculateConcludedValue({
+    comps,
+    buildingSqft: propertyData?.building_sqft_gross ?? null,
+  });
 
-    if (adjustedPrices.length > 0) {
-      const mid = Math.floor(adjustedPrices.length / 2);
-      const medianPricePerSqft = adjustedPrices.length % 2 === 0
-        ? (adjustedPrices[mid - 1] + adjustedPrices[mid]) / 2
-        : adjustedPrices[mid];
-      concludedValue = Math.round((medianPricePerSqft * propertyData.building_sqft_gross) / 1000) * 1000;
-    }
-  }
-
-  // Check income approach
+  // Blend with income approach for commercial/industrial
   if (report.property_type === 'commercial' || report.property_type === 'industrial') {
     const { data: incomeRaw } = await supabase
       .from('income_analysis')
@@ -113,12 +101,7 @@ export async function runFilingGuide(
       .eq('report_id', reportId)
       .single();
     const incomeData = incomeRaw as Pick<IncomeAnalysis, 'concluded_value_income_approach'> | null;
-
-    if (incomeData?.concluded_value_income_approach && concludedValue > 0) {
-      concludedValue = Math.round(
-        (concludedValue * 0.7 + incomeData.concluded_value_income_approach * 0.3) / 1000
-      ) * 1000;
-    }
+    concludedValue = blendWithIncomeApproach(concludedValue, incomeData?.concluded_value_income_approach);
   }
 
   if (concludedValue <= 0) {
@@ -139,11 +122,7 @@ export async function runFilingGuide(
 
   // ── Build filing guide payload ────────────────────────────────────────
   const payload: FilingGuidePayload = {
-    propertyAddress: [
-      report.property_address,
-      report.city,
-      report.state,
-    ].filter(Boolean).join(', '),
+    propertyAddress: buildPropertyAddress(report.property_address, report.city, report.state),
     countyName: countyRule?.county_name ?? report.county ?? '',
     state: countyRule?.state_name ?? report.state ?? '',
     assessedValue,

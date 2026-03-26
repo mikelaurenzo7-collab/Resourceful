@@ -10,6 +10,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendAdminNotification } from '@/lib/services/resend-email';
 
 import type { PropertyType, Report } from '@/types/database';
+import { REPORT_STATUS } from '@/lib/utils/valuation-math';
 
 import { runDataCollection } from './stages/stage1-data-collection';
 import { runComparables } from './stages/stage2-comparables';
@@ -126,7 +127,7 @@ export async function runPipeline(
   await supabase
     .from('reports')
     .update({
-      status: 'processing' as const,
+      status: REPORT_STATUS.PROCESSING,
       pipeline_started_at: new Date().toISOString(),
       pipeline_error_log: null,
     })
@@ -201,7 +202,7 @@ export async function runPipeline(
   console.log(`[pipeline] Stages 1-7 complete for report ${reportId}. Routing to admin for approval.`);
   await supabase
     .from('reports')
-    .update({ status: 'pending_approval' as const })
+    .update({ status: REPORT_STATUS.PENDING_APPROVAL })
     .eq('id', reportId);
 
   // ── Notify admin (non-blocking, for monitoring) ───────────────────────
@@ -246,7 +247,7 @@ async function handleStageFailure(
   await supabase
     .from('reports')
     .update({
-      status: 'failed' as const,
+      status: REPORT_STATUS.FAILED,
       pipeline_error_log: errorLog,
     })
     .eq('id', reportId);

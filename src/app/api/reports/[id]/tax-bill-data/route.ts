@@ -3,6 +3,7 @@
 // Clears the tax bill fields from the report but preserves the report itself.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 export async function DELETE(
@@ -12,12 +13,26 @@ export async function DELETE(
   const { id: reportId } = await params;
 
   try {
-    const supabase = createAdminClient();
+    // ── Authenticate user ──────────────────────────────────────────────────
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
-    // Verify the report exists
-    const { data: report, error: fetchError } = await supabase
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    const admin = createAdminClient();
+
+    // Verify the report exists and user owns it
+    const { data: report, error: fetchError } = await admin
       .from('reports')
-      .select('id, has_tax_bill')
+      .select('id, has_tax_bill, user_id, client_email')
       .eq('id', reportId)
       .single();
 
@@ -28,8 +43,17 @@ export async function DELETE(
       );
     }
 
+    // Verify ownership
+    const ownsReport = report.user_id === user.id || report.client_email === user.email;
+    if (!ownsReport) {
+      return NextResponse.json(
+        { error: 'Not authorized to modify this report' },
+        { status: 403 }
+      );
+    }
+
     // Clear tax bill data fields
-    const { error: updateError } = await supabase
+    const { error: updateError } = await admin
       .from('reports')
       .update({
         has_tax_bill: false,

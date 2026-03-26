@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PropertyType, PhotoType } from '@/types/database';
 
 interface PhotoRequirement {
@@ -71,6 +71,18 @@ export default function PhotoUploader({ propertyType, onPhotosChange, onFileUplo
   const [uploadingType, setUploadingType] = useState<PhotoType | null>(null);
   const [captions, setCaptions] = useState<Record<string, string>>({});
   const requirements = requirementsByPropertyType[propertyType];
+
+  // Clean up blob URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      photos.forEach((p) => {
+        if (p.preview.startsWith('blob:')) {
+          URL.revokeObjectURL(p.preview);
+        }
+      });
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- cleanup on unmount only
+  }, []);
 
   const handleFileSelect = async (type: PhotoType, file: File) => {
     const caption = captions[type] ?? '';

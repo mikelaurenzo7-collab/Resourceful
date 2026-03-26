@@ -22,6 +22,11 @@ import {
   type QualityGrade,
 } from '@/config/valuation';
 import { findAttorneyForReferral, createAttorneyReferral } from '@/lib/repository/attorneys';
+import {
+  DEFECT_ADJUSTMENT,
+  MAX_CONDITION_ADJUSTMENT_PCT,
+  computeConditionMode,
+} from '@/lib/utils/valuation-math';
 
 // ─── Section Mapping ────────────────────────────────────────────────────────
 
@@ -252,11 +257,8 @@ export async function runNarratives(
       }
     }
 
-    const DEFECT_ADJ: Record<string, Record<string, number>> = {
-      minor:       { low: -0.5, medium: -1.0, high: -1.5 },
-      moderate:    { low: -1.0, medium: -2.0, high: -3.0 },
-      significant: { low: -2.0, medium: -3.5, high: -5.0 },
-    };
+    // Use unified defect adjustment constants (same as stage4)
+    const DEFECT_ADJ = DEFECT_ADJUSTMENT;
 
     let defectAdj = 0;
     for (const defect of allPhotoDefects) {
@@ -264,29 +266,14 @@ export async function runNarratives(
       defectAdj += severityMap[defect.value_impact] ?? severityMap.low;
     }
 
-    // Condition ratings from photo analyses
+    // Use shared condition mode calculation (same logic as stage4)
     const conditionRatings = photoAnalyses.map(p => p.condition_rating);
-    const overallCondition: string = conditionRatings.length > 0
-      ? (() => {
-          const freq: Record<string, number> = {};
-          for (const v of conditionRatings) freq[v] = (freq[v] ?? 0) + 1;
-          const order = ['poor', 'fair', 'average', 'good', 'excellent'];
-          let maxCount = 0;
-          let mode: string = conditionRatings[0];
-          for (const [val, count] of Object.entries(freq)) {
-            if (count > maxCount || (count === maxCount && order.indexOf(val) < order.indexOf(mode))) {
-              maxCount = count;
-              mode = val;
-            }
-          }
-          return mode;
-        })()
-      : 'average';
+    const overallCondition = computeConditionMode(conditionRatings);
 
     const baseOffset = overallCondition === 'poor' ? -3 : overallCondition === 'fair' ? -1.5 : 0;
     photoConditionAdjustmentPct = Math.max(
       Math.round((defectAdj + baseOffset) * 100) / 100,
-      -25
+      MAX_CONDITION_ADJUSTMENT_PCT
     );
 
     // Only compute the "without photos" value if photos actually changed anything

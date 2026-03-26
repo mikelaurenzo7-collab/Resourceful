@@ -9,6 +9,7 @@ import { getReportById } from '@/lib/repository/reports';
 import { getPropertyDetail } from '@/lib/services/attom';
 import { getCountyByName } from '@/lib/repository/county-rules';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { calculateOptimisticEstimate, buildPropertyAddress } from '@/lib/utils/valuation-math';
 
 export async function GET(
   _request: NextRequest,
@@ -45,7 +46,8 @@ export async function GET(
       );
     }
 
-    if (report.user_id !== user.id) {
+    const ownsReport = report.user_id === user.id || report.client_email === user.email;
+    if (!ownsReport) {
       return NextResponse.json(
         { error: 'Not authorized to view this report' },
         { status: 403 }
@@ -53,23 +55,15 @@ export async function GET(
     }
 
     // ── ATTOM property lookup ──────────────────────────────────────────────
-    const fullAddress = [
-      report.property_address,
-      report.city,
-      report.state,
-    ]
-      .filter(Boolean)
-      .join(', ');
+    const fullAddress = buildPropertyAddress(report.property_address, report.city, report.state);
 
     const { data: propertyDetail, error: attomError } =
       await getPropertyDetail(fullAddress);
 
     if (attomError || !propertyDetail) {
+      console.error('[api/assessment] ATTOM error:', attomError);
       return NextResponse.json(
-        {
-          error: 'Unable to retrieve property assessment data',
-          details: attomError,
-        },
+        { error: 'Unable to retrieve property assessment data' },
         { status: 502 }
       );
     }
@@ -91,17 +85,9 @@ export async function GET(
     const assessedValue = propertyDetail.assessment.assessedValue;
 
     // Statistical estimate: IAAO mass-appraisal error rates average 5-15%.
-    // We use a conservative 8% — always mathematically defensible.
-    const conservativeErrorRate = 0.08;
-    const estimatedOverassessment = Math.round(assessedValue * conservativeErrorRate);
-
-    const taxRate = propertyDetail.assessment.taxAmount > 0 && assessedValue > 0
-      ? propertyDetail.assessment.taxAmount / assessedValue
-      : null;
-
-    const estimatedSavings = taxRate
-      ? Math.max(Math.round(estimatedOverassessment * taxRate), 50)
-      : null;
+    // Use shared optimistic estimate (IAAO-standard 8% error rate)
+    const { overassessment: estimatedOverassessment, estimatedAnnualSavings: estimatedSavings } =
+      calculateOptimisticEstimate(assessedValue, propertyDetail.assessment.taxAmount);
 
     return NextResponse.json(
       {

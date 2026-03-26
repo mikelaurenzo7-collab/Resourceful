@@ -525,6 +525,9 @@ export default function ReportViewerPage() {
           <div className="animate-fade-in">
             {data.filingGuide ? (
               <div className="card-premium rounded-xl p-6 md:p-8">
+                {/* Safety: HTML entities are escaped FIRST, then safe markdown
+                     transforms are applied to the already-escaped text. The $1
+                     captures can only contain escaped content — no XSS vectors. */}
                 <div className="prose-legal text-sm text-cream/60 leading-relaxed whitespace-pre-wrap"
                      style={{ maxWidth: 'none' }}
                      dangerouslySetInnerHTML={{
@@ -532,8 +535,10 @@ export default function ReportViewerPage() {
                          .replace(/&/g, '&amp;')
                          .replace(/</g, '&lt;')
                          .replace(/>/g, '&gt;')
-                         .replace(/^## (.+)$/gm, '<h2 class="text-lg font-semibold text-cream mt-8 mb-3">$1</h2>')
+                         .replace(/"/g, '&quot;')
+                         .replace(/'/g, '&#039;')
                          .replace(/^### (.+)$/gm, '<h3 class="text-base font-medium text-cream/80 mt-6 mb-2">$1</h3>')
+                         .replace(/^## (.+)$/gm, '<h2 class="text-lg font-semibold text-cream mt-8 mb-3">$1</h2>')
                          .replace(/\*\*(.+?)\*\*/g, '<strong class="text-cream/80">$1</strong>')
                          .replace(/^\d+\.\s/gm, (match) => `<span class="text-gold font-medium">${match}</span>`)
                      }}

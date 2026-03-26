@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { Report, PropertyData, CountyRule, ReportNarrative } from '@/types/database';
+import { calculateConcludedValue, buildPropertyAddress, VIEWABLE_STATUSES } from '@/lib/utils/valuation-math';
 
 const SIGNED_URL_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
@@ -35,7 +36,7 @@ export async function GET(
   const report = reportData as Report;
 
   // Only show reports that have been delivered
-  if (!['delivered', 'approved', 'pending_approval'].includes(report.status)) {
+  if (!VIEWABLE_STATUSES.includes(report.status)) {
     return NextResponse.json({
       status: report.status,
       ready: false,
@@ -59,22 +60,12 @@ export async function GET(
   const filingGuide = (filingGuideResult.data as Pick<ReportNarrative, 'content'> | null)?.content ?? null;
   const countyRule = countyResult.data as CountyRule | null;
 
-  // Calculate concluded value
+  // Calculate concluded value (shared utility)
   const comps = (compsResult.data ?? []) as { adjusted_price_per_sqft: number | null; sale_price: number | null }[];
-  let concludedValue = 0;
-  if (comps.length > 0 && propertyData?.building_sqft_gross) {
-    const adjustedPrices = comps
-      .map((c) => c.adjusted_price_per_sqft)
-      .filter((p): p is number => p != null && p > 0)
-      .sort((a, b) => a - b);
-    if (adjustedPrices.length > 0) {
-      const mid = Math.floor(adjustedPrices.length / 2);
-      const median = adjustedPrices.length % 2 === 0
-        ? (adjustedPrices[mid - 1] + adjustedPrices[mid]) / 2
-        : adjustedPrices[mid];
-      concludedValue = Math.round((median * propertyData.building_sqft_gross) / 1000) * 1000;
-    }
-  }
+  const concludedValue = calculateConcludedValue({
+    comps,
+    buildingSqft: propertyData?.building_sqft_gross ?? null,
+  });
 
   // Generate signed PDF URL
   let pdfUrl: string | null = null;
@@ -90,7 +81,7 @@ export async function GET(
     ready: true,
     status: report.status,
     reportId: report.id,
-    propertyAddress: [report.property_address, report.city, report.state].filter(Boolean).join(', '),
+    propertyAddress: buildPropertyAddress(report.property_address, report.city, report.state),
     serviceType: report.service_type,
     assessedValue: propertyData?.assessed_value ?? 0,
     concludedValue,

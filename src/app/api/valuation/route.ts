@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPropertyDetail } from '@/lib/services/attom';
 import { getCountyByName } from '@/lib/repository/county-rules';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { calculateOptimisticEstimate, buildPropertyAddress } from '@/lib/utils/valuation-math';
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ── ATTOM property lookup ────────────────────────────────────────────
-    const fullAddress = [address, city, state].filter(Boolean).join(', ');
+    const fullAddress = buildPropertyAddress(address, city, state);
     const { data: propertyDetail, error: attomError } =
       await getPropertyDetail(fullAddress);
 
@@ -59,15 +60,8 @@ export async function POST(request: NextRequest) {
     const assessedValue = propertyDetail.assessment.assessedValue;
     const taxAmount = propertyDetail.assessment.taxAmount;
 
-    const conservativeErrorRate = 0.08;
-    const estimatedOverassessment = Math.round(assessedValue * conservativeErrorRate);
-
-    const taxRate =
-      taxAmount > 0 && assessedValue > 0 ? taxAmount / assessedValue : null;
-
-    const estimatedAnnualSavings = taxRate
-      ? Math.max(Math.round(estimatedOverassessment * taxRate), 50)
-      : null;
+    const { overassessment: estimatedOverassessment, estimatedAnnualSavings } =
+      calculateOptimisticEstimate(assessedValue, taxAmount);
 
     return NextResponse.json({
       assessedValue,

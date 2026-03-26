@@ -13,6 +13,11 @@ import {
   computePhysicalDepreciation,
   ECONOMIC_LIFE,
 } from '@/config/valuation';
+import {
+  DEFECT_ADJUSTMENT,
+  MAX_CONDITION_ADJUSTMENT_PCT,
+  computeConditionMode as sharedComputeConditionMode,
+} from '@/lib/utils/valuation-math';
 
 // ─── Photo Analysis System Prompt ───────────────────────────────────────────
 
@@ -81,33 +86,8 @@ const REQUIRED_PHOTO_TYPES: Record<string, string[]> = {
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-/**
- * Compute the mode (most frequent value) from an array of condition ratings.
- * In case of tie, returns the worse condition (conservative estimate).
- */
-const CONDITION_ORDER = ['poor', 'fair', 'average', 'good', 'excellent'] as const;
-
-function computeConditionMode(values: string[]): string {
-  if (values.length === 0) return 'average';
-
-  const freq: Record<string, number> = {};
-  for (const v of values) {
-    freq[v] = (freq[v] ?? 0) + 1;
-  }
-
-  let maxCount = 0;
-  let mode = values[0];
-  for (const [val, count] of Object.entries(freq)) {
-    const valIdx = CONDITION_ORDER.indexOf(val as any);
-    const modeIdx = CONDITION_ORDER.indexOf(mode as any);
-    if (count > maxCount || (count === maxCount && valIdx < modeIdx)) {
-      maxCount = count;
-      mode = val;
-    }
-  }
-
-  return mode;
-}
+// computeConditionMode is imported from @/lib/utils/valuation-math
+const computeConditionMode = sharedComputeConditionMode;
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
 
@@ -304,14 +284,7 @@ export async function runPhotoAnalysis(
   }
 
   // Map each defect to an adjustment percentage based on severity + value_impact.
-  // Ranges reflect market evidence: appraisers typically apply 5-25% condition
-  // adjustments in comparable sales grids.
-  const DEFECT_ADJUSTMENT: Record<string, Record<string, number>> = {
-    // severity → value_impact → adjustment %
-    minor:       { low: -0.5, medium: -1.0, high: -1.5 },
-    moderate:    { low: -1.0, medium: -2.0, high: -3.0 },
-    significant: { low: -2.5, medium: -4.0, high: -6.0 },
-  };
+  // Uses the unified DEFECT_ADJUSTMENT constant from valuation-math.ts.
 
   let defectBasedAdjustment = 0;
   for (const defect of allDefects) {
@@ -336,9 +309,9 @@ export async function runPhotoAnalysis(
     ((defectBasedAdjustment * completenessMultiplier) + baseConditionOffset) * 100
   ) / 100;
 
-  // Cap the total adjustment at -30% — severe deferred maintenance cases
+  // Cap the total adjustment — severe deferred maintenance cases
   // can legitimately reach this range (vs the old -25% which was too conservative).
-  const cappedAdjustment = Math.max(totalConditionAdjustment, -30);
+  const cappedAdjustment = Math.max(totalConditionAdjustment, MAX_CONDITION_ADJUSTMENT_PCT);
 
   console.log(
     `[stage4] Condition adjustment: ${cappedAdjustment}% ` +

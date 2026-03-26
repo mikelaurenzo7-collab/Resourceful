@@ -45,7 +45,8 @@ export async function POST(
       );
     }
 
-    if (report.user_id !== user.id) {
+    const ownsReport = report.user_id === user.id || report.client_email === user.email;
+    if (!ownsReport) {
       return NextResponse.json(
         { error: 'Not authorized to upload photos to this report' },
         { status: 403 }

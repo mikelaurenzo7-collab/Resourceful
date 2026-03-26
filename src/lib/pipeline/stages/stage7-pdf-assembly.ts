@@ -18,9 +18,9 @@ import type {
 import type { StageResult } from '../orchestrator';
 import { generatePdf } from '@/lib/services/pdf';
 import { getStaticMapUrl, getStreetViewUrl } from '@/lib/services/google-maps';
-import { sendAdminNotification } from '@/lib/services/resend-email';
 import { generateReportHtml } from '@/lib/templates/report-template';
 import type { ReportTemplateData, FilingGuide } from '@/lib/templates/report-template';
+import { calculateConcludedValue } from '@/lib/utils/valuation-math';
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
 
@@ -88,12 +88,6 @@ export async function runPdfAssembly(
   const latitude = report.latitude ?? 0;
   const longitude = report.longitude ?? 0;
 
-  const propertyAddress = [
-    report.property_address,
-    report.city,
-    report.state,
-  ].filter(Boolean).join(', ');
-
   // ── Generate map URLs ─────────────────────────────────────────────────
   const locationMapUrl = getStaticMapUrl({
     lat: latitude,
@@ -104,12 +98,18 @@ export async function runPdfAssembly(
     markers: [{ lat: latitude, lng: longitude, color: 'red', label: 'S' }],
   });
 
-  const compMarkers = comps.slice(0, 6).map((c, i) => ({
-    lat: latitude + (Math.random() - 0.5) * 0.02,
-    lng: longitude + (Math.random() - 0.5) * 0.02,
-    color: 'blue',
-    label: String(i + 1),
-  }));
+  // Use deterministic offsets so regenerated PDFs show consistent comp locations.
+  // Each comp gets a position on a circle around the subject property.
+  const compMarkers = comps.slice(0, 6).map((c, i) => {
+    const angle = (2 * Math.PI * i) / Math.min(comps.length, 6);
+    const radius = 0.008; // ~0.5 miles at mid-latitudes
+    return {
+      lat: latitude + radius * Math.cos(angle),
+      lng: longitude + radius * Math.sin(angle),
+      color: 'blue' as const,
+      label: String(i + 1),
+    };
+  });
 
   const compsMapUrl = getStaticMapUrl({
     lat: latitude,
@@ -166,22 +166,11 @@ export async function runPdfAssembly(
     }
   }
 
-  // ── Derive concluded value from comps ─────────────────────────────────
-  let concludedValue = 0;
-  if (comps.length > 0 && propertyData.building_sqft_gross) {
-    const adjustedPrices = comps
-      .map((c) => c.adjusted_price_per_sqft)
-      .filter((p): p is number => p != null && p > 0)
-      .sort((a, b) => a - b);
-
-    if (adjustedPrices.length > 0) {
-      const mid = Math.floor(adjustedPrices.length / 2);
-      const median = adjustedPrices.length % 2 === 0
-        ? (adjustedPrices[mid - 1] + adjustedPrices[mid]) / 2
-        : adjustedPrices[mid];
-      concludedValue = Math.round((median * propertyData.building_sqft_gross) / 1000) * 1000;
-    }
-  }
+  // ── Derive concluded value from comps (shared utility) ────────────────
+  const concludedValue = calculateConcludedValue({
+    comps,
+    buildingSqft: propertyData.building_sqft_gross,
+  });
 
   // ── Parse filing guide from narrative ─────────────────────────────────
   let filingGuide: FilingGuide | null = null;
@@ -259,8 +248,7 @@ export async function runPdfAssembly(
     .from('reports')
     .update({
       report_pdf_storage_path: storagePath,
-      status: 'pending_approval',
-      pipeline_completed_at: new Date().toISOString(),
+      // Status transition and pipeline_completed_at are managed by the orchestrator.
     })
     .eq('id', reportId);
 
@@ -268,20 +256,7 @@ export async function runPdfAssembly(
     return { success: false, error: `Failed to update report after PDF upload: ${reportUpdateError.message}` };
   }
 
-  // ── Send admin notification ───────────────────────────────────────────
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.resourceful.com';
-  const reviewUrl = `${appUrl}/admin/reports/${reportId}`;
-
-  const notifResult = await sendAdminNotification({
-    reportId,
-    propertyAddress,
-    propertyType: report.property_type ?? 'residential',
-    reviewUrl,
-  });
-
-  if (notifResult.error) {
-    console.warn(`[stage7] Admin notification failed: ${notifResult.error}`);
-  }
+  // Admin notification is sent by the orchestrator after all stages complete.
 
   console.log(
     `[stage7] PDF assembled and uploaded for report ${reportId}. Size: ${(pdfBuffer.length / 1024).toFixed(0)}KB`

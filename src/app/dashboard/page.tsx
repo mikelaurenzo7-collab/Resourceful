@@ -234,7 +234,7 @@ export default async function DashboardPage() {
                             : 'bg-gold/10 text-gold border border-gold/20'
                         }`}
                       >
-                        {report.status.replace('_', ' ').replace(/^\w/, (c) => c.toUpperCase())}
+                        {report.status.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())}
                       </span>
                       {isDelivered && report.report_pdf_storage_path && (
                         <a

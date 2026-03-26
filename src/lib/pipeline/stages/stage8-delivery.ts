@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Report, PropertyData, ReportNarrative } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { sendReportDeliveryEmail } from '@/lib/services/resend-email';
+import { calculateConcludedValue, buildPropertyAddress, DELIVERABLE_STATUSES } from '@/lib/utils/valuation-math';
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -40,8 +41,7 @@ export async function runDelivery(
     return { success: false, error: `Failed to fetch report: ${reportError?.message}` };
   }
 
-  const deliverableStatuses = ['processing', 'pending_approval', 'approved'];
-  if (!deliverableStatuses.includes(report.status)) {
+  if (!DELIVERABLE_STATUSES.includes(report.status)) {
     return {
       success: false,
       error: `Report status is '${report.status}' — must be processing, pending_approval, or approved to deliver`,
@@ -88,39 +88,22 @@ export async function runDelivery(
     .single();
   const filingGuide = filingGuideData as Pick<ReportNarrative, 'content'> | null;
 
-  // ── Calculate values ──────────────────────────────────────────────────
+  // ── Calculate values (shared utility) ─────────────────────────────────
   const assessedValue = propertyData?.assessed_value ?? 0;
 
-  // Derive concluded value from comps
   const { data: compsData } = await supabase
     .from('comparable_sales')
     .select('adjusted_price_per_sqft, sale_price')
     .eq('report_id', reportId);
   const comps = (compsData ?? []) as Pick<import('@/types/database').ComparableSale, 'adjusted_price_per_sqft' | 'sale_price'>[];
 
-  let concludedValue = 0;
-  if (comps.length > 0 && propertyData?.building_sqft_gross) {
-    const adjustedPrices = comps
-      .map((c) => c.adjusted_price_per_sqft)
-      .filter((p): p is number => p != null && p > 0)
-      .sort((a, b) => a - b);
-
-    if (adjustedPrices.length > 0) {
-      const mid = Math.floor(adjustedPrices.length / 2);
-      const median = adjustedPrices.length % 2 === 0
-        ? (adjustedPrices[mid - 1] + adjustedPrices[mid]) / 2
-        : adjustedPrices[mid];
-      concludedValue = Math.round((median * propertyData.building_sqft_gross) / 1000) * 1000;
-    }
-  }
+  const concludedValue = calculateConcludedValue({
+    comps,
+    buildingSqft: propertyData?.building_sqft_gross ?? null,
+  });
 
   const potentialSavings = Math.max(0, assessedValue - concludedValue);
-
-  const propertyAddress = [
-    report.property_address,
-    report.city,
-    report.state,
-  ].filter(Boolean).join(', ');
+  const propertyAddress = buildPropertyAddress(report.property_address, report.city, report.state);
 
   // ── Send client email ─────────────────────────────────────────────────
   console.log(`[stage8] Sending report delivery email to ${clientEmail}`);

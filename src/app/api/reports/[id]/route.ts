@@ -38,7 +38,12 @@ export async function GET(
     }
 
     // ── Verify ownership ───────────────────────────────────────────────────
-    if (report.user_id !== user.id) {
+    // Reports store user_id as client_email (no auth account required at creation).
+    // Check both: email match (primary) and UUID match (future auth integration).
+    const ownsReport =
+      report.user_id === user.id ||
+      report.client_email === user.email;
+    if (!ownsReport) {
       return NextResponse.json(
         { error: 'Not authorized to view this report' },
         { status: 403 }

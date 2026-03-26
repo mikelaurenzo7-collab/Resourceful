@@ -13,6 +13,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getPropertyDetail } from '@/lib/services/attom';
 import { getCountyByName } from '@/lib/repository/county-rules';
 import type { Report } from '@/types/database';
+import { calculateOptimisticEstimate, buildPropertyAddress } from '@/lib/utils/valuation-math';
 
 export async function POST(
   _request: NextRequest,
@@ -57,9 +58,7 @@ export async function POST(
       taxAmount = report.tax_bill_tax_amount ?? 0;
     } else {
       // ── Path B: No tax bill — use ATTOM ────────────────────────────────
-      const fullAddress = [report.property_address, report.city, report.state]
-        .filter(Boolean)
-        .join(', ');
+      const fullAddress = buildPropertyAddress(report.property_address, report.city, report.state);
 
       const { data: propertyDetail, error: attomError } =
         await getPropertyDetail(fullAddress);
@@ -83,28 +82,11 @@ export async function POST(
       ? await getCountyByName(countyName, report.state)
       : null;
 
-    // ── Calculate optimistic result ──────────────────────────────────────
-    // This is based on pure statistics, NOT on any third-party "market value."
-    // Human error in mass appraisals averages 5-15% (IAAO standards allow up
-    // to 10-15% COD). We use a conservative 8% — this is always mathematically
-    // defensible regardless of the county's data quality or potential corruption.
-    // We deliberately do NOT compare against ATTOM's marketValue here because
-    // ATTOM often sources from the same county records — if the county is wrong,
-    // ATTOM inherits that error. The real analysis happens in the full pipeline
-    // with comparable sales, not here.
-    const conservativeErrorRate = 0.08;
-    const overassessment = Math.round(assessedValue * conservativeErrorRate);
-
-    // Tax rate from actual data or county average
-    const effectiveTaxRate =
-      taxAmount > 0 && assessedValue > 0
-        ? taxAmount / assessedValue
-        : 0.02; // conservative 2% fallback
-
-    const estimatedAnnualSavings = Math.max(
-      Math.round(overassessment * effectiveTaxRate),
-      50 // minimum $50 to always show something
-    );
+    // ── Calculate optimistic result (shared utility) ────────────────────
+    // Pure statistics, NOT any third-party "market value." See CLAUDE.md
+    // Data Trust Hierarchy for rationale.
+    const { overassessment, estimatedAnnualSavings } =
+      calculateOptimisticEstimate(assessedValue, taxAmount);
 
     return NextResponse.json({
       estimatedOverassessment: overassessment,
