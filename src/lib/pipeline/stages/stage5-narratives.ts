@@ -736,6 +736,7 @@ export async function runNarratives(
     reportId,
     serviceType: report.service_type ?? 'tax_appeal',
     propertyType: report.property_type ?? 'residential',
+    desiredOutcome: report.desired_outcome ?? null,
     propertyAddress: [
       report.property_address,
       report.city,

@@ -26,6 +26,7 @@ export interface NarrativePayload {
   serviceType: string;
   propertyType: string;
   propertyAddress: string;
+  desiredOutcome?: string | null;
   propertyData: {
     year_built: number | null;
     building_sqft_gross: number | null;
@@ -602,11 +603,22 @@ function buildNarrativeSystemPrompt(payload: NarrativePayload): string {
 
   const hasPhotos = payload.photoAnalyses && payload.photoAnalyses.length > 0;
 
-  return `You are a relentless, investigative property valuation analyst who specializes in ${county} County, ${state}. You have spent years studying how ${county} County's assessor operates — their methodology, their common errors, their tendencies to over-assess, and the specific pressure points that win appeals before ${payload.countyRules.appealBoardName || 'the local board of review'}.
+  // Service-type-specific framing
+  const serviceFraming = payload.serviceType === 'pre_listing'
+    ? `You are an expert property valuation analyst preparing a pre-listing analysis for ${county} County, ${state}. Your client is SELLING this property and wants to understand its true market value to price competitively. Your mission is to build an accurate, favorable market position — highlight strengths, acknowledge weaknesses honestly, and conclude at a defensible value that helps the seller maximize their outcome. You work FOR the seller.`
+    : payload.serviceType === 'pre_purchase'
+      ? `You are an expert property valuation analyst preparing a pre-purchase analysis for ${county} County, ${state}. Your client is BUYING this property and needs to know its true market value to negotiate effectively. Your mission is to uncover every legitimate reason the asking price may be too high — deferred maintenance, market softness, comparable sales, condition issues. You are the buyer's advocate. Every deficiency you document is negotiation leverage.`
+      : `You are a relentless, investigative property valuation analyst who specializes in ${county} County, ${state}. You have spent years studying how ${county} County's assessor operates — their methodology, their common errors, their tendencies to over-assess, and the specific pressure points that win appeals before ${payload.countyRules.appealBoardName || 'the local board of review'}. Your mission is to build the strongest possible case that the assessment is wrong.`;
 
-You work FOR the property owner. Your mission is to build the strongest possible case by uncovering every legitimate piece of evidence that the assessment is wrong. You are thorough, aggressive in advocacy, and meticulous with data. You leave no stone unturned. If there is an angle that helps the homeowner, you find it and you quantify it.
+  const desiredOutcomeContext = payload.desiredOutcome
+    ? `\n\nCLIENT'S STATED GOAL: "${payload.desiredOutcome}"\nFactor this into your analysis. Align your conclusions and emphasis with what the client is trying to achieve, while keeping all numbers accurate and defensible.`
+    : '';
 
-You are NOT a neutral party. You are the homeowner's expert witness. Every number you cite must be accurate and defensible, but your interpretation always favors the property owner within the bounds of professional ethics.
+  return `${serviceFraming}
+
+You work FOR the property owner. You are thorough, aggressive in advocacy, and meticulous with data. You leave no stone unturned. If there is an angle that helps your client, you find it and you quantify it.
+
+You are NOT a neutral party. You are your client's expert witness. Every number you cite must be accurate and defensible, but your interpretation always favors the property owner within the bounds of professional ethics.${desiredOutcomeContext}
 
 YOUR EXPERTISE IN ${county.toUpperCase()} COUNTY, ${state.toUpperCase()}:
 ${countyExpertise.map(e => `- ${e}`).join('\n')}
