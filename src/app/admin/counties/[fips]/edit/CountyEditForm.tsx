@@ -311,6 +311,102 @@ export default function CountyEditForm({ county, isNew }: CountyEditFormProps) {
         </div>
       </fieldset>
 
+      {/* Assessment Schedule & Deadlines */}
+      <fieldset className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <legend className="px-2 text-sm font-semibold text-gray-900">Assessment Schedule & Deadlines</legend>
+        <p className="text-xs text-gray-500 mt-1 mb-4">Precise deadline data powers the filing guide&apos;s urgency messaging and countdown timers.</p>
+        <div className="grid grid-cols-2 gap-6 mt-4">
+          <div>
+            <label htmlFor="assessment_cycle" className="block text-sm font-medium text-gray-700">Assessment Cycle</label>
+            <select id="assessment_cycle" name="assessment_cycle" defaultValue={county?.assessment_cycle ?? ''} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]">
+              <option value="">-- Select --</option>
+              <option value="Annual">Annual</option>
+              <option value="Biennial">Biennial (every 2 years)</option>
+              <option value="Triennial">Triennial (every 3 years)</option>
+              <option value="Quadrennial">Quadrennial (every 4 years)</option>
+              <option value="Sexennial">Sexennial (every 6 years)</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="current_tax_year" className="block text-sm font-medium text-gray-700">Current Tax Year</label>
+            <input id="current_tax_year" name="current_tax_year" type="number" min="2020" max="2030" defaultValue={county?.current_tax_year ?? new Date().getFullYear()} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+          <div>
+            <label htmlFor="next_appeal_deadline" className="block text-sm font-medium text-gray-700">
+              Next Appeal Deadline <span className="text-amber-600 text-xs">(critical)</span>
+            </label>
+            <input id="next_appeal_deadline" name="next_appeal_deadline" type="date" defaultValue={county?.next_appeal_deadline ?? ''} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+            <p className="text-xs text-gray-400 mt-1">Exact date shown prominently in filing guide</p>
+          </div>
+          <div>
+            <label htmlFor="appeal_window_days" className="block text-sm font-medium text-gray-700">Appeal Window (days from notice)</label>
+            <input id="appeal_window_days" name="appeal_window_days" type="number" min="0" defaultValue={county?.appeal_window_days ?? ''} placeholder="30" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+          <div>
+            <label htmlFor="assessment_notices_mailed" className="block text-sm font-medium text-gray-700">Assessment Notices Mailed</label>
+            <input id="assessment_notices_mailed" name="assessment_notices_mailed" type="text" defaultValue={county?.assessment_notices_mailed ?? ''} placeholder="February 1 annually" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+          <div>
+            <label htmlFor="typical_resolution_weeks_min" className="block text-sm font-medium text-gray-700">Resolution Timeline (weeks)</label>
+            <div className="flex gap-2 mt-1">
+              <input id="typical_resolution_weeks_min" name="typical_resolution_weeks_min" type="number" min="0" defaultValue={county?.typical_resolution_weeks_min ?? ''} placeholder="Min" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+              <input id="typical_resolution_weeks_max" name="typical_resolution_weeks_max" type="number" min="0" defaultValue={county?.typical_resolution_weeks_max ?? ''} placeholder="Max" className="w-1/2 rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+            </div>
+          </div>
+        </div>
+        <div className="mt-4">
+          <label htmlFor="required_documents" className="block text-sm font-medium text-gray-700">Required Documents (comma separated)</label>
+          <input id="required_documents" name="required_documents" type="text" defaultValue={county?.required_documents?.join(', ') ?? ''} placeholder="Appeal form, evidence of value, photos, comparable sales, tax bill" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+        </div>
+      </fieldset>
+
+      {/* Informal Review & Hearing Details */}
+      <fieldset className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <legend className="px-2 text-sm font-semibold text-gray-900">Informal Review & Hearing Details</legend>
+        <p className="text-xs text-gray-500 mt-1 mb-4">Informal review is the #1 tip for homeowners — most appeals resolve here without a formal hearing.</p>
+        <div className="grid grid-cols-2 gap-6 mt-4">
+          <div className="col-span-2 flex items-center gap-2">
+            <input id="informal_review_available" name="informal_review_available" type="checkbox" defaultChecked={county?.informal_review_available ?? false} className="h-4 w-4 rounded border-gray-300 text-[#1a2744] focus:ring-[#1a2744]" />
+            <label htmlFor="informal_review_available" className="text-sm font-medium text-gray-700">Informal review available before formal hearing</label>
+          </div>
+          <div className="col-span-2">
+            <label htmlFor="informal_review_notes" className="block text-sm font-medium text-gray-700">Informal Review Instructions</label>
+            <textarea id="informal_review_notes" name="informal_review_notes" rows={2} defaultValue={county?.informal_review_notes ?? ''} placeholder='e.g., "Call assessor office at (312) 443-7550 and request informal review. Bring evidence packet."' className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+          <div>
+            <label htmlFor="hearing_duration_minutes" className="block text-sm font-medium text-gray-700">Hearing Duration (minutes)</label>
+            <input id="hearing_duration_minutes" name="hearing_duration_minutes" type="number" min="0" defaultValue={county?.hearing_duration_minutes ?? ''} placeholder="15" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+          <div className="flex items-center gap-2 mt-6">
+            <input id="virtual_hearing_available" name="virtual_hearing_available" type="checkbox" defaultChecked={county?.virtual_hearing_available ?? false} className="h-4 w-4 rounded border-gray-300 text-[#1a2744] focus:ring-[#1a2744]" />
+            <label htmlFor="virtual_hearing_available" className="text-sm text-gray-700">Virtual hearing available</label>
+          </div>
+          <div>
+            <label htmlFor="virtual_hearing_platform" className="block text-sm font-medium text-gray-700">Virtual Platform</label>
+            <input id="virtual_hearing_platform" name="virtual_hearing_platform" type="text" defaultValue={county?.virtual_hearing_platform ?? ''} placeholder="Zoom, WebEx, Microsoft Teams" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+          <div>
+            <label htmlFor="hearing_scheduling_notes" className="block text-sm font-medium text-gray-700">Hearing Scheduling Notes</label>
+            <input id="hearing_scheduling_notes" name="hearing_scheduling_notes" type="text" defaultValue={county?.hearing_scheduling_notes ?? ''} placeholder='e.g., "Scheduled 2-4 weeks after filing. Notification by mail."' className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+        </div>
+      </fieldset>
+
+      {/* Data Freshness */}
+      <fieldset className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <legend className="px-2 text-sm font-semibold text-gray-900">Data Freshness</legend>
+        <div className="grid grid-cols-2 gap-6 mt-4">
+          <div>
+            <label htmlFor="last_verified_date" className="block text-sm font-medium text-gray-700">Last Verified Date</label>
+            <input id="last_verified_date" name="last_verified_date" type="date" defaultValue={county?.last_verified_date ?? ''} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+          <div>
+            <label htmlFor="verified_by" className="block text-sm font-medium text-gray-700">Verified By</label>
+            <input id="verified_by" name="verified_by" type="text" defaultValue={county?.verified_by ?? ''} placeholder="Your name" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+        </div>
+      </fieldset>
+
       {/* Filing Resources */}
       <fieldset className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <legend className="px-2 text-sm font-semibold text-gray-900">Filing Resources</legend>

@@ -99,6 +99,25 @@ export async function saveCounty(existingFips: string | null, formData: FormData
     further_appeal_deadline_rule: parseOptionalString(formData.get('further_appeal_deadline_rule')),
     further_appeal_fee_cents: parseOptionalInt(formData.get('further_appeal_fee_cents')) ?? 0,
     notes: parseOptionalString(formData.get('notes')),
+    // Assessment schedule & deadlines
+    assessment_cycle: parseOptionalString(formData.get('assessment_cycle')),
+    current_tax_year: parseOptionalInt(formData.get('current_tax_year')),
+    next_appeal_deadline: parseOptionalString(formData.get('next_appeal_deadline')),
+    appeal_window_days: parseOptionalInt(formData.get('appeal_window_days')),
+    assessment_notices_mailed: parseOptionalString(formData.get('assessment_notices_mailed')),
+    typical_resolution_weeks_min: parseOptionalInt(formData.get('typical_resolution_weeks_min')),
+    typical_resolution_weeks_max: parseOptionalInt(formData.get('typical_resolution_weeks_max')),
+    required_documents: parseStringArray(formData.get('required_documents')),
+    // Informal review & hearing details
+    informal_review_available: parseCheckbox(formData, 'informal_review_available'),
+    informal_review_notes: parseOptionalString(formData.get('informal_review_notes')),
+    hearing_duration_minutes: parseOptionalInt(formData.get('hearing_duration_minutes')),
+    virtual_hearing_available: parseCheckbox(formData, 'virtual_hearing_available'),
+    virtual_hearing_platform: parseOptionalString(formData.get('virtual_hearing_platform')),
+    hearing_scheduling_notes: parseOptionalString(formData.get('hearing_scheduling_notes')),
+    // Data freshness
+    last_verified_date: parseOptionalString(formData.get('last_verified_date')),
+    verified_by: parseOptionalString(formData.get('verified_by')),
   };
 
   if (existingFips) {
