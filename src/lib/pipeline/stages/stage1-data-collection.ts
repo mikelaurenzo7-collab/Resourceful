@@ -20,6 +20,7 @@ import type { Database, Report, PropertyData, CountyRule } from '@/types/databas
 import type { StageResult } from '../orchestrator';
 import { geocodeAddress } from '@/lib/services/google-maps';
 import { collectPropertyData } from '@/lib/services/data-router';
+import { needsEnrichment, enrichCounty } from '@/lib/services/county-enrichment';
 import {
   resolvePropertySubtype,
   computeEffectiveAge,
@@ -228,7 +229,21 @@ export async function runDataCollection(
   );
 
   // ── Look up county_rules ───────────────────────────────────────────────
-  const countyRule = await findCountyRule(supabase, resolvedFips, resolvedCountyName, resolvedState);
+  let countyRule = await findCountyRule(supabase, resolvedFips, resolvedCountyName, resolvedState);
+
+  // ── Auto-enrich county if data is sparse ──────────────────────────────
+  // When a report comes in for a county with generic/missing data, auto-research
+  // the county's appeal process using web search + AI. The enriched data persists
+  // so subsequent reports get it instantly.
+  if (countyRule && needsEnrichment(countyRule)) {
+    console.log(`[stage1] County ${countyRule.county_name} needs enrichment — auto-researching...`);
+    const enrichResult = await enrichCounty(countyRule, supabase as never);
+    if (enrichResult.enriched) {
+      // Re-fetch the enriched county rule
+      countyRule = await findCountyRule(supabase, resolvedFips, resolvedCountyName, resolvedState);
+      console.log(`[stage1] County enriched: ${enrichResult.fieldsUpdated.join(', ')}`);
+    }
+  }
 
   // ── Build data collection notes ────────────────────────────────────────
   const notes: string[] = [];
