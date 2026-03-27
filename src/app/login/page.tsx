@@ -20,17 +20,27 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error('Supabase is not configured. Run the setup script first.');
+      }
+
+      const supabase = createBrowserClient(supabaseUrl, supabaseKey);
 
       const { error: authError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        // Translate common Supabase errors to user-friendly messages
+        if (authError.message.includes('schema') || authError.message.includes('relation')) {
+          throw new Error('Database not initialized. Run: npx supabase db reset');
+        }
+        throw authError;
+      }
 
       router.push(redirect);
       router.refresh();

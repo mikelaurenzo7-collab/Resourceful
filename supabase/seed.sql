@@ -4,9 +4,8 @@
 -- ============================================================================
 
 -- ── Create founder auth user ────────────────────────────────────────────────
--- This inserts directly into auth.users (Supabase GoTrue table).
 -- Password: Resourceful2026!
--- The password hash below is bcrypt for "Resourceful2026!"
+-- Compatible with Supabase GoTrue v2+ (all required columns included)
 INSERT INTO auth.users (
   id,
   instance_id,
@@ -20,7 +19,21 @@ INSERT INTO auth.users (
   created_at,
   updated_at,
   confirmation_token,
-  recovery_token
+  recovery_token,
+  email_change_token_new,
+  email_change,
+  phone,
+  phone_confirmed_at,
+  phone_change,
+  phone_change_token,
+  confirmed_at,
+  email_change_token_current,
+  email_change_confirm_status,
+  banned_until,
+  reauthentication_token,
+  is_sso_user,
+  deleted_at,
+  is_anonymous
 ) VALUES (
   'a0000000-0000-0000-0000-000000000001',
   '00000000-0000-0000-0000-000000000000',
@@ -34,10 +47,24 @@ INSERT INTO auth.users (
   now(),
   now(),
   '',
-  ''
+  '',
+  '',
+  '',
+  null,
+  null,
+  '',
+  '',
+  now(),
+  '',
+  0,
+  null,
+  '',
+  false,
+  null,
+  false
 ) ON CONFLICT (id) DO NOTHING;
 
--- Also insert the identity record (required for email/password login)
+-- Identity record (required for email/password login in GoTrue v2+)
 INSERT INTO auth.identities (
   id,
   user_id,
@@ -50,7 +77,7 @@ INSERT INTO auth.identities (
 ) VALUES (
   'a0000000-0000-0000-0000-000000000001',
   'a0000000-0000-0000-0000-000000000001',
-  '{"sub":"a0000000-0000-0000-0000-000000000001","email":"mikelaurenzo7@gmail.com"}',
+  jsonb_build_object('sub', 'a0000000-0000-0000-0000-000000000001', 'email', 'mikelaurenzo7@gmail.com', 'email_verified', true, 'phone_verified', false),
   'email',
   'a0000000-0000-0000-0000-000000000001',
   now(),
