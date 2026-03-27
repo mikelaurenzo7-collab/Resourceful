@@ -12,13 +12,20 @@ function SuccessContent() {
   const [taxBillDeleted, setTaxBillDeleted] = useState(false);
 
   return (
-    <div className="min-h-screen bg-pattern flex items-center justify-center px-6">
-      <div className="max-w-lg text-center animate-fade-in">
-        {/* Success icon */}
-        <div className="w-20 h-20 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-8">
-          <svg className="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+    <div className="min-h-screen bg-pattern relative overflow-hidden flex items-center justify-center px-6">
+      {/* Decorative glow orbs */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-gold/5 rounded-full blur-[100px] pointer-events-none" />
+
+      <div className="relative max-w-lg text-center animate-fade-in">
+        {/* Success icon with glow ring */}
+        <div className="relative w-24 h-24 mx-auto mb-8">
+          <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-glow" />
+          <div className="relative w-24 h-24 rounded-full bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center animate-scale-in">
+            <svg className="w-12 h-12 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
         </div>
 
         <h1 className="font-display text-3xl md:text-4xl text-cream mb-4">

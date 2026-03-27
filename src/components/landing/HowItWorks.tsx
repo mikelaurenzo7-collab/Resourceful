@@ -49,15 +49,25 @@ export default function HowItWorks() {
 
       <div className="grid md:grid-cols-3 gap-12">
         {steps.map((step, i) => (
-          <div key={step.number} className="relative">
+          <div
+            key={step.number}
+            className="relative"
+            data-animate={i % 2 === 0 ? 'slide-left' : 'slide-right'}
+            data-delay={String((i + 1) * 200)}
+          >
             {/* Connector line */}
             {i < steps.length - 1 && (
-              <div className="hidden md:block absolute top-10 left-full w-full h-px bg-gradient-to-r from-gold/30 to-transparent -translate-x-6" />
+              <div className="hidden md:block absolute top-10 left-full w-full h-px bg-gradient-to-r from-gold/30 to-transparent -translate-x-6 animate-draw-line" />
             )}
 
             <div className="flex items-center gap-4 mb-5">
-              <div className="flex items-center justify-center w-14 h-14 rounded-full border border-gold/30 bg-gold/5 text-gold">
-                {step.icon}
+              <div
+                className="flex items-center justify-center w-16 h-16 rounded-full border border-gold/30 bg-gold/5 text-gold"
+                style={{ boxShadow: '0 0 20px rgba(212, 168, 71, 0.15), 0 0 40px rgba(212, 168, 71, 0.05)' }}
+              >
+                <div className={i === 0 ? 'animate-float' : ''}>
+                  {step.icon}
+                </div>
               </div>
               <span className="font-display text-4xl text-gold/20">{step.number}</span>
             </div>

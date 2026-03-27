@@ -48,7 +48,11 @@ export default function FAQ() {
         {faqs.map((faq, i) => (
           <div
             key={i}
-            className="card-premium rounded-xl overflow-hidden transition-all duration-300"
+            data-animate
+            data-delay={String((i + 1) * 100)}
+            className={`card-premium rounded-xl overflow-hidden transition-all duration-300 hover:shadow-gold ${
+              openIndex === i ? 'border-l-2 border-l-gold/60' : ''
+            }`}
           >
             <button
               onClick={() => setOpenIndex(openIndex === i ? null : i)}
@@ -56,7 +60,7 @@ export default function FAQ() {
             >
               <span className="font-medium text-cream pr-4">{faq.question}</span>
               <svg
-                className={`w-5 h-5 text-gold flex-shrink-0 transition-transform duration-300 ${
+                className={`w-5 h-5 text-gold flex-shrink-0 transition-transform duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
                   openIndex === i ? 'rotate-180' : ''
                 }`}
                 fill="none"
@@ -72,6 +76,7 @@ export default function FAQ() {
               style={{
                 maxHeight: openIndex === i ? '500px' : '0',
                 opacity: openIndex === i ? 1 : 0,
+                transition: 'max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease-out',
               }}
             >
               <div className="px-6 pb-5 text-sm text-cream/60 leading-relaxed">

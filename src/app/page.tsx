@@ -4,11 +4,13 @@ import HowItWorks from '@/components/landing/HowItWorks';
 import FAQ from '@/components/landing/FAQ';
 import Footer from '@/components/landing/Footer';
 import { ServiceJsonLd, FAQJsonLd } from '@/components/seo/JsonLd';
+import { ScrollAnimations } from '@/components/ui/ScrollAnimations';
 import Link from 'next/link';
 
 export default function HomePage() {
   return (
     <main className="min-h-screen">
+      <ScrollAnimations />
       <ServiceJsonLd />
       <FAQJsonLd />
       {/* Navigation */}
@@ -38,9 +40,9 @@ export default function HomePage() {
       <Hero />
 
       {/* Social proof bar */}
-      <section className="border-y border-gold/10 bg-navy/30">
+      <section className="border-y border-gold/10 bg-navy/30" data-animate>
         <div className="mx-auto max-w-6xl px-6 py-8 flex flex-col md:flex-row items-center justify-center gap-8">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" data-animate data-delay="100">
             <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
               <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
@@ -52,7 +54,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="hidden md:block h-8 w-px bg-gold/10" />
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" data-animate data-delay="250">
             <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center">
               <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -64,7 +66,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="hidden md:block h-8 w-px bg-gold/10" />
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3" data-animate data-delay="400">
             <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
               <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -83,7 +85,7 @@ export default function HomePage() {
 
       {/* Divider */}
       <div className="mx-auto max-w-6xl px-6">
-        <div className="h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
+        <div className="divider-glow" />
       </div>
 
       {/* How it works */}
@@ -91,24 +93,27 @@ export default function HomePage() {
 
       {/* Divider */}
       <div className="mx-auto max-w-6xl px-6">
-        <div className="h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
+        <div className="divider-glow" />
       </div>
 
       {/* FAQ */}
       <FAQ />
 
       {/* Final CTA */}
-      <section className="mx-auto max-w-6xl px-6 py-24">
-        <div className="card-premium rounded-2xl p-12 text-center">
-          <h2 className="font-display text-3xl md:text-4xl text-cream">
+      <section className="mx-auto max-w-6xl px-6 py-24" data-animate>
+        <div className="relative card-elevated rounded-2xl p-12 md:p-16 text-center overflow-hidden">
+          {/* Background glow */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[200px] bg-gold/5 rounded-full blur-[80px] pointer-events-none" />
+
+          <h2 className="relative font-display text-3xl md:text-5xl text-cream">
             Ready to Stop Overpaying?
           </h2>
-          <p className="mt-4 text-cream/50 max-w-lg mx-auto">
+          <p className="relative mt-4 text-cream/50 max-w-lg mx-auto text-lg">
             Enter your address and let us run the numbers. Upload your tax bill to save 15% on your report.
           </p>
           <Link
             href="/start"
-            className="mt-8 inline-flex items-center gap-3 rounded-lg bg-gradient-to-r from-gold-light via-gold to-gold-dark px-8 py-4 text-lg font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.02]"
+            className="relative mt-8 inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-10 py-5 text-lg font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.03] btn-glow animate-glow"
           >
             Check My Property
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

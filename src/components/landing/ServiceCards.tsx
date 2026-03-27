@@ -57,19 +57,22 @@ export default function ServiceCards() {
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
-        {services.map((svc) => (
+        {services.map((svc, i) => (
           <div
             key={svc.service}
+            data-animate
+            data-delay={String((i + 1) * 100)}
             className={`
-              relative card-premium rounded-xl p-8 flex flex-col
-              transition-all duration-300 hover:border-gold/40 hover:shadow-gold-lg
-              ${svc.popular ? 'ring-1 ring-gold/30' : ''}
+              relative rounded-xl p-8 flex flex-col
+              transition-all duration-300 hover:border-gold/40 hover:shadow-gold-lg hover:scale-[1.03]
+              ${svc.popular ? 'card-elevated ring-2 ring-gold/30 animate-glow' : 'card-premium'}
             `}
           >
             {svc.popular && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="bg-gradient-to-r from-gold-light via-gold to-gold-dark text-navy-deep text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                <span className="relative bg-gradient-to-r from-gold-light via-gold to-gold-dark text-navy-deep text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider overflow-hidden">
                   Most Popular
+                  <span className="absolute inset-0 animate-shimmer rounded-full" />
                 </span>
               </div>
             )}
@@ -95,7 +98,7 @@ export default function ServiceCards() {
             <div className="flex items-end justify-between mt-auto">
               <div>
                 <span className="text-xs text-cream/40 uppercase tracking-wider">From</span>
-                <p className="font-display text-2xl text-gold">
+                <p className="font-display text-3xl text-gold animate-count">
                   {formatPrice(getPriceCents(svc.service, 'residential'))}
                 </p>
               </div>
