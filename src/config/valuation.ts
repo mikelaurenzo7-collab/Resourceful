@@ -158,9 +158,9 @@ export const INCOME_PARAMS: Record<string, IncomeParams> = {
 
 // ─── Case Strength Scoring ─────────────────────────────────────────────────────
 // Used in Stage 5 to compute a 0-100 case strength score that drives:
-//   - Attorney network routing (score ≥ 75 + value at stake ≥ $5,000)
 //   - Admin review priority
 //   - User-facing confidence indicators
+//   - Filing strategy recommendations (pro se vs our full-service filing)
 
 export const CASE_STRENGTH = {
   // Points for overassessment magnitude (0–40 pts)
@@ -187,9 +187,6 @@ export const CASE_STRENGTH = {
   calibration_pts_5to9:   4,
   calibration_pts_lt5:    0,
 
-  // Attorney referral thresholds
-  attorney_referral_min_score: 75,
-  attorney_referral_min_value_dollars: 5000,
 } as const;
 
 // ─── Replacement Cost New (RCN) Per Square Foot ───────────────────────────────

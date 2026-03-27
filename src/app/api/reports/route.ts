@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     // ── Create report row via repository ─────────────────────────────────
     const report = (await createReport({
-      user_id: client_email, // email as user identifier (no auth account)
+      user_id: null, // no auth account — email-only identification
       client_email,
       client_name: client_name ?? null,
       status: founderAccess ? 'paid' : 'intake',

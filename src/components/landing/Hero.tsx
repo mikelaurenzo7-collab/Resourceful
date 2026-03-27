@@ -23,7 +23,7 @@ export default function Hero() {
 
         <p className="mt-6 max-w-2xl text-lg text-cream/60 leading-relaxed">
           Professional-grade property tax appeal reports that arm you with the evidence
-          assessors respect. No attorney required.
+          assessors respect. We handle the analysis, filing guidance, and even full representation.
         </p>
 
         {/* Dollar example */}

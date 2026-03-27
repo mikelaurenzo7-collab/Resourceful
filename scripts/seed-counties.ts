@@ -9,6 +9,8 @@
 //   SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... npx tsx scripts/seed-counties.ts
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { STATE_RULES } from './state-assessment-rules';
+
 const CENSUS_API_URL =
   'https://api.census.gov/data/2020/dec/pl?get=NAME&for=county:*&in=state:*';
 
@@ -99,24 +101,28 @@ async function seedCounties() {
       const fips = `${row.stateFips}${row.countyFips}`;
       const countyName = parseCountyName(row.name);
 
+      // Look up state-level defaults — every state has real assessment data
+      const stateDefaults = STATE_RULES[stateAbbrev];
+
       return {
         county_fips: fips,
         county_name: countyName,
         state_name: stateName,
         state_abbreviation: stateAbbrev,
-        // Defaults for required fields — to be filled via admin UI
-        assessment_ratio_residential: 0,
-        assessment_ratio_commercial: 0,
-        assessment_ratio_industrial: 0,
-        assessment_methodology: 'Unknown — needs configuration',
-        appeal_board_name: 'Unknown — needs configuration',
-        appeal_deadline_rule: 'Unknown — needs configuration',
-        accepts_online_filing: false,
-        accepts_email_filing: false,
-        requires_mail_filing: false,
-        hearing_typically_required: false,
+        // State-level defaults — county-specific overrides via admin UI
+        assessment_ratio_residential: stateDefaults?.assessment_ratio_residential ?? 1.000,
+        assessment_ratio_commercial: stateDefaults?.assessment_ratio_commercial ?? 1.000,
+        assessment_ratio_industrial: stateDefaults?.assessment_ratio_industrial ?? 1.000,
+        assessment_methodology: stateDefaults?.assessment_methodology ?? 'Full market value assessment',
+        appeal_board_name: stateDefaults?.appeal_board_name ?? 'County Board of Review',
+        appeal_deadline_rule: stateDefaults?.appeal_deadline_rule ?? 'Check with county assessor for deadlines',
+        accepts_online_filing: stateDefaults?.accepts_online_filing ?? false,
+        accepts_email_filing: stateDefaults?.accepts_email_filing ?? false,
+        requires_mail_filing: stateDefaults?.requires_mail_filing ?? true,
+        hearing_typically_required: stateDefaults?.hearing_typically_required ?? true,
+        authorized_rep_allowed: stateDefaults?.authorized_rep_allowed ?? true,
         filing_fee_cents: 0,
-        is_active: false, // inactive until admin configures rules
+        is_active: true, // Active with state-level defaults — counties work immediately
       };
     });
 
@@ -143,7 +149,7 @@ async function seedCounties() {
   }
 
   console.log(`\nDone! Upserted ${inserted} counties. Errors: ${errors}`);
-  console.log('Counties are created with is_active=false. Use the admin UI to configure rules and activate.');
+  console.log('Counties are created with state-level defaults and is_active=true. Use the admin UI for county-specific overrides.');
 }
 
 seedCounties().catch((err) => {

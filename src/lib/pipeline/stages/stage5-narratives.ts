@@ -21,7 +21,7 @@ import {
   OVER_IMPROVEMENT_ADJ_MAX_PCT,
   type QualityGrade,
 } from '@/config/valuation';
-import { findAttorneyForReferral, createAttorneyReferral } from '@/lib/repository/attorneys';
+// Attorney referral system removed — all filing handled in-house or guided pro se.
 
 // ─── Section Mapping ────────────────────────────────────────────────────────
 
@@ -667,46 +667,6 @@ export async function runNarratives(
     `ratio mismatch: ${assessmentRatioMismatch}, exceeds ATTOM: ${assessedExceedsAttomRange}, ` +
     `market trend: ${marketTrendPct != null ? `${marketTrendPct}%` : 'N/A'}, anomalies: ${dataAnomalies.length}`
   );
-
-  // ── Attorney routing ───────────────────────────────────────────────────
-  // When a tax appeal case is strong enough (score ≥ 75, value ≥ $5,000) and
-  // the county allows authorized representation, route to the attorney network.
-  // Non-fatal — pipeline continues even if routing fails.
-  if (
-    report.service_type === 'tax_appeal' &&
-    strengthScore >= CASE_STRENGTH.attorney_referral_min_score &&
-    overassessmentDollars >= CASE_STRENGTH.attorney_referral_min_value_dollars &&
-    countyRule?.authorized_rep_allowed === true
-  ) {
-    try {
-      const attorney = await findAttorneyForReferral(
-        report.state_abbreviation ?? report.state ?? null,
-        report.county_fips ?? null,
-        report.property_type,
-        overassessmentDollars,
-        supabase
-      );
-      if (attorney) {
-        await createAttorneyReferral(
-          {
-            report_id: reportId,
-            attorney_id: attorney.id,
-            case_strength_score: strengthScore,
-            case_value_at_stake: overassessmentDollars,
-          },
-          supabase
-        );
-        console.log(
-          `[stage5] Attorney referral: ${attorney.firm_name} — ${attorney.attorney_name} ` +
-          `(${attorney.contingency_fee_pct}% contingency, case=$${overassessmentDollars.toLocaleString()})`
-        );
-      } else {
-        console.log(`[stage5] No attorney match for state=${report.state_abbreviation}, fips=${report.county_fips}`);
-      }
-    } catch (err) {
-      console.warn(`[stage5] Attorney routing failed (non-fatal): ${err}`);
-    }
-  }
 
   // ── Form prefill data (tax_appeal only) ────────────────────────────────
   // Generate structured form field values from the pipeline's concluded data.

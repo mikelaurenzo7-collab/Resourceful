@@ -362,14 +362,15 @@ REQUIRED SECTIONS (use these exact Markdown headings):
 - Explain ${county} County's further appeal process (state-level board, court) with specific deadlines and costs.
 - Be honest about whether further appeal is worth it based on the dollar amount at stake.
 
-## Representation Options
-- If ${county} County allows authorized representatives (non-attorneys) to file on behalf of property owners, explain this option clearly. Include:
-  - Who qualifies as an authorized representative (from the authorizedRepTypes data)
-  - How to designate a representative (POA form URL if available from authorizedRepFormUrl)
-  - Any restrictions (from repRestrictionsNotes — e.g., entities may require attorneys)
-  - Benefits: "If you'd rather have a professional handle the filing and hearing on your behalf, ${county} County allows authorized representatives to act for you"
-- If authorized representatives are NOT allowed in this county, state that the homeowner must file personally (pro se) and omit this section.
-- If the data is null/unknown, omit this section entirely rather than guessing.
+## Our Filing Services
+- If ${county} County allows authorized representatives to file on behalf of property owners (authorizedRepAllowed is true), explain that Resourceful offers full-service filing:
+  - "If you purchased our Full Representation package, our team will handle the entire filing process and attend the hearing on your behalf. You don't need to do anything else."
+  - "If you purchased Guided Filing, we'll walk you through every step on a live call — you'll file it yourself, but you won't be guessing."
+  - If they're on the standard package, mention: "If you'd like us to handle the filing and hearing for you, you can upgrade to our Full Representation package."
+  - Include the POA form URL if available from authorizedRepFormUrl.
+  - Note any restrictions (from repRestrictionsNotes).
+- If ${county} County does NOT allow authorized representatives, explain that the homeowner files pro se (themselves) and reassure them: "Don't worry — we've designed this guide to make you feel like you've done this a dozen times before. You've got this."
+- If the data is null/unknown, default to pro se guidance and omit the full-service mention.
 
 ## Important Reminders
 - Filing deadline reiterated in bold
