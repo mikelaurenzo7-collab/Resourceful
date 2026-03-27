@@ -9,7 +9,8 @@ import { formatPrice, getPriceCents, TAX_BILL_DISCOUNT } from '@/config/pricing'
 import type { ReviewTier } from '@/types/database';
 import Button from '@/components/ui/Button';
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
 const SERVICE_LABELS: Record<string, string> = {
   tax_appeal: 'Tax Appeal Report',
@@ -299,8 +300,15 @@ export default function PaymentPage() {
         throw new Error(body.error || `Server error (${response.status})`);
       }
 
-      const { reportId, clientSecret, priceCents } = await response.json();
-      updateState({ reportId, clientSecret, priceCents });
+      const data = await response.json();
+      if (data.founderAccess) {
+        // Founder bypass — pipeline already triggered, go straight to success
+        sessionStorage.removeItem('wizard');
+        sessionStorage.removeItem('intake');
+        router.push(`/start/success?reportId=${data.reportId}`);
+        return;
+      }
+      updateState({ reportId: data.reportId, clientSecret: data.clientSecret, priceCents: data.priceCents });
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Failed to create report.');
     } finally {
@@ -589,6 +597,19 @@ export default function PaymentPage() {
   }
 
   // Phase 2: Stripe payment
+  if (!stripePromise) {
+    return (
+      <main className="max-w-2xl mx-auto px-6 py-12">
+        <div className="text-center animate-fade-in">
+          <h1 className="font-display text-3xl text-cream mb-3">Payment Unavailable</h1>
+          <p className="text-cream/50">
+            Payment processing is not configured. Please contact support if this issue persists.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="max-w-2xl mx-auto px-6 py-12">
       <div className="text-center mb-10 animate-fade-in">
