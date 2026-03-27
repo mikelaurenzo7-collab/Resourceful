@@ -108,17 +108,20 @@ port = 54324
 
 [storage]
 enabled = true
-# The maximum file size allowed (e.g. "5MB", "500KB").
 file_size_limit = "50MiB"
 
-# Uncomment to configure local storage buckets
-# [storage.buckets.images]
-# public = false
-# file_size_limit = "50MiB"
-# allowed_mime_types = ["image/png", "image/jpeg"]
-# objects_path = "./images"
+# ── Report files: PDFs, assets, maps ──
+[storage.buckets.reports]
+public = false
+file_size_limit = "50MiB"
+allowed_mime_types = ["application/pdf", "image/png", "image/jpeg", "image/webp"]
 
-# Allow connections via S3 compatible clients
+# ── User-uploaded property photos ──
+[storage.buckets.photos]
+public = false
+file_size_limit = "20MiB"
+allowed_mime_types = ["image/png", "image/jpeg", "image/webp", "image/heic"]
+
 [storage.s3_protocol]
 enabled = true
 

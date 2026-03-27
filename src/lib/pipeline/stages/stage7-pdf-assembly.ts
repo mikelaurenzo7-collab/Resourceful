@@ -237,7 +237,10 @@ export async function runPdfAssembly(
   const pdfBuffer = pdfResult.data;
 
   // ── Upload to Supabase Storage ────────────────────────────────────────
-  const storagePath = `reports/${reportId}/final_report.pdf`;
+  // Clean path: {reportId}/report_{short_id}_{date}.pdf
+  const shortId = reportId.split('-')[0];
+  const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+  const storagePath = `${reportId}/report_${shortId}_${dateStr}.pdf`;
 
   const { error: uploadError } = await supabase
     .storage

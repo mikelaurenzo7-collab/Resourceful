@@ -100,14 +100,17 @@ export async function POST(
 
     // ── Upload to Supabase Storage ─────────────────────────────────────────
     const admin = createAdminClient();
-    const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
-    const storagePath = `photos/${reportId}/${filename}`;
+    // Clean filename: {reportId}/{type}_{order}_{timestamp}.{ext}
+    const fileExt = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const uploadType = parsed.data.photo_type ?? 'other';
+    const uploadOrder = String(parsed.data.sort_order ?? 0).padStart(2, '0');
+    const filename = `${reportId}/${uploadType}_${uploadOrder}_${Date.now()}.${fileExt}`;
 
     const fileBuffer = Buffer.from(await file.arrayBuffer());
 
     const { error: uploadError } = await admin.storage
-      .from('reports')
-      .upload(storagePath, fileBuffer, {
+      .from('photos')
+      .upload(filename, fileBuffer, {
         contentType: file.type,
         upsert: false,
       });
@@ -124,7 +127,7 @@ export async function POST(
     const photoData: PhotoInsert = {
       report_id: reportId,
       photo_type: parsed.data.photo_type,
-      storage_path: storagePath,
+      storage_path: filename,
       sort_order: parsed.data.sort_order,
       caption: parsed.data.caption ?? null,
       ai_analysis: null,
@@ -139,7 +142,7 @@ export async function POST(
     if (insertError || !photo) {
       console.error('[api/photos] Insert error:', insertError?.message);
       // Clean up uploaded file on DB insert failure
-      await admin.storage.from('reports').remove([storagePath]);
+      await admin.storage.from('photos').remove([filename]);
       return NextResponse.json(
         { error: 'Failed to create photo record' },
         { status: 500 }
