@@ -132,23 +132,7 @@ STATE-SPECIFIC REQUIREMENTS:
 - Always check access type (road, fly-in, boat-only, seasonal) and ensure comparable sales reflect the same access classification — using road-accessible comps for a fly-in property inflates value by 30-100%.
 - Always verify the senior/disabled veteran exemption ($150,000 in most municipalities) has been applied — this is the single largest residential exemption available and must be renewed annually in most jurisdictions.
 - Always check for service area surcharges (fire, road, water/sewer districts) that add 2-5 mills beyond the base borough rate — these are frequently overlooked in tax burden calculations.
-- Always document Alaska-specific maintenance costs (heating fuel at $4-7/gallon, snow removal, freeze-thaw damage) as evidence of accelerated depreciation — mass appraisal models from Lower 48 states grossly underestimate Alaska's climate impact on building lifespan.
-
-FULL VALUE ASSESSMENT & MUNICIPAL VARIATION:
-- Alaska has NO statewide property tax — all property taxes are levied by municipalities (boroughs and cities). Assessment standards and appeal procedures vary by municipality. The state requires assessment at full and true value (AS 29.45.110) but enforcement is municipal.
-- Municipality of Anchorage uses annual assessment with a Board of Equalization appeal (file by January 15). Fairbanks North Star Borough, Matanuska-Susitna Borough, and Kenai Peninsula Borough each have distinct procedures and deadlines.
-- Alaska's 20-mill cap (AS 29.45.090) limits the total property tax levy to 20 mills ($20 per $1,000 of assessed value) unless voters approve an exemption. Verify your municipality's total levy is within the cap.
-- Senior/disabled exemption: first $150,000 of assessed value exempt for qualifying seniors (65+) and disabled persons (AS 29.45.030(e)). Verify application and eligibility.
-
-STATE-SPECIFIC REQUIREMENTS:
-- Always verify which municipality levies the tax and its specific assessment cycle and appeal deadlines.
-- Always check the 20-mill cap — if the municipality is at or near the cap, further levy increases require voter approval.
-- Always apply for the senior/disabled exemption ($150,000) if eligible — this is NOT automatic.
-- Always verify the assessment methodology used by your specific borough — Anchorage, Fairbanks, and Mat-Su each differ.
-- For remote/rural properties, challenge land valuations that use urban comparable sales without rural adjustments.
-- For commercial properties, present income capitalization with Alaska-specific cap rates (higher than Lower 48 due to market risk).
-- Always verify property characteristics on the assessment card — Alaska's rapid development means records may lag construction.
-- File appeals within the municipality's deadline — missing it means waiting a full year for the next opportunity.`,
+- Always document Alaska-specific maintenance costs (heating fuel at $4-7/gallon, snow removal, freeze-thaw damage) as evidence of accelerated depreciation — mass appraisal models from Lower 48 states grossly underestimate Alaska's climate impact on building lifespan.`,
 
   AZ: `ARIZONA STRATEGIES — DUAL VALUATION STATE:
 
