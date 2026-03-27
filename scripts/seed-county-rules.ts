@@ -2792,21 +2792,15 @@ SETTLEMENT & HEARING STRATEGY:
 - What wins: Comparable sales with the 60% ratio calculation clearly shown, classification verification evidence, contractor repair bids, photos of property defects and condition issues.
 - Common mistakes: Missing the February 1-20 filing window (most common error in West Virginia — this 20-day window is the shortest in the nation), not understanding the 60% ratio when presenting evidence, incorrect classification on the appeal form, not verifying mineral rights inclusion in the assessment.
 
-60% RATIO & FOUR-CLASS SYSTEM:
-- West Virginia assesses at 60% of market value (WV Code §11-3-1). The state has FOUR property classes with different CLASS RATES applied to the 60% assessed value: Class I (tangible personal property on intangible investments): 1%. Class II (owner-occupied residential): 2%. Class III (all other real/personal property including rental, commercial): 3%. Class IV (any not in other classes): 4%.
-- CLASSIFICATION IMPACT: A $200,000 property at 60% = $120,000 assessed. Class II (owner-occupied): $120,000 × 2% = $2,400 taxable. Class III (rental): $120,000 × 3% = $3,600 taxable. That's a 50% HIGHER tax burden just from classification. ALWAYS verify correct classification.
-- Farm use valuation: Agricultural land may be assessed at use value rather than market value. Minimum 5 contiguous acres in agricultural production. The property must demonstrate active farming — not merely rural location.
-- Coal mine subsidence: Properties in coal-producing regions face unique valuation challenges from mine subsidence risk. Document subsidence damage ($10,000-$50,000+) and reduced marketability.
-
 STATE-SPECIFIC REQUIREMENTS:
-- Always verify property classification — Class II (2%) vs Class III (3%) = 50% tax difference. Owner-occupancy determines classification.
-- Always verify the 60% ratio is correctly applied — assessed value should equal exactly 60% of appraised market value.
-- For agricultural land, verify use-value assessment is applied for qualifying properties (minimum 5 contiguous acres).
-- Always file with the County Commission sitting as Board of Equalization and Review (February session, WV Code §11-3-24).
-- For properties in coal regions, document mine subsidence risk and damage as value-reducing factors.
-- Always check for applicable exemptions: homestead ($20,000 assessed value for 65+ or disabled), veteran.
-- For commercial properties, present income capitalization — Charleston (8-10%), Eastern Panhandle (7-9%), rural (10-13%).
-- Always appeal to the State Tax Commissioner within 60 days of county board decision for state-level review.`,
+- Always verify property classification as the FIRST check — Class II owner-occupied (2%) vs. Class III non-owner-occupied (3%) vs. Class IV inside municipality (4%) creates 50-100% tax differences on the same assessed value. Classification errors are the highest-leverage correction available.
+- Always verify the 60% ratio math: assessed_value / 0.60 = implied appraised value. If implied appraised value exceeds demonstrable market value from comparable sales, the assessment is excessive. Present this calculation explicitly in every appeal.
+- Always file with the County Commission between February 1-20 — this is the SHORTEST appeal window in the nation (20 days). Missing it forfeits the right to appeal for the entire year. Calendar this deadline immediately.
+- For agricultural land, always verify farm use valuation is applied for qualifying properties with 5+ contiguous acres in bona fide agricultural production — cropland/pasture use values of $50-$500/acre vs. market values of $2,000-$10,000/acre create 90-95% reductions.
+- In coalfield counties (McDowell, Mingo, Logan, Boone, Raleigh, Fayette, Wyoming), always check for mine subsidence risk and verify that severed mineral rights are NOT included in the surface assessment — mineral separation reduces surface value by 10-30%.
+- Always verify the homestead exemption ($20,000 first assessed value exempt) is applied for qualifying homeowners 65+ or permanently disabled — this saves $400-$800/year depending on the class levy rate.
+- For commercial properties, always present income capitalization with West Virginia-specific cap rates — Charleston (8-10%), Eastern Panhandle/Martinsburg (7-9%), Morgantown (7-9%), rural/small town (10-13%).
+- Always document West Virginia-specific deferred maintenance: mine subsidence damage ($15,000-$80,000), hillside drainage/retaining wall failure ($5,000-$25,000), failing well/septic systems ($3,000-$25,000), and flood damage in valley properties ($5,000-$50,000).`,
 
   WI: `WISCONSIN STRATEGIES — BADGER STATE:
 
@@ -2913,21 +2907,15 @@ SETTLEMENT & HEARING STRATEGY:
 - What wins: Comparable sales with the 9.5% ratio clearly calculated, agricultural classification evidence (soil surveys, productivity data), contractor repair bids, photos of condition issues and weather damage.
 - Common mistakes: Not understanding the 9.5%/11.5% ratio, incorrect agricultural use class, missing the filing deadline, failing to distinguish real property from mineral/industrial valuation, not verifying the correct ratio is applied.
 
-NO INCOME TAX: ASSESSMENT RATIOS & MINERAL PROPERTY:
-- Wyoming has NO state income tax and NO corporate income tax — property tax is the primary state/local revenue source. Assessment ratios: residential 9.5% of fair market value, commercial/industrial 11.5% (W.S. §39-13-103). Mineral production property (oil, gas, coal, trona): assessed at 100% of fair market value by the Wyoming Department of Revenue.
-- RATIO MATH: $400,000 residential × 9.5% = $38,000 assessed. $400,000 commercial × 11.5% = $46,000 assessed. The 21% difference in ratios means commercial properties pay significantly more tax on the same market value.
-- MINERAL PROPERTY IMPACT: In mineral-producing counties (Campbell, Sweetwater, Sublette, Park), mineral production decline can reduce county revenue and shift the tax burden to residential/commercial property. Monitor production trends — declining mineral revenue often triggers higher mill levies.
-- Teton County (Jackson Hole): The most expensive real estate market in Wyoming, with median home prices well above $1 million. Assessment challenges require Jackson Hole-specific comparable sales — do not use comparables from other Wyoming markets.
-
 STATE-SPECIFIC REQUIREMENTS:
-- Always verify the correct assessment ratio — residential (9.5%) vs commercial (11.5%) on the same market value.
-- For mineral-producing counties, monitor production trends — declining mineral revenue shifts tax burden to non-mineral property.
-- Always file with the County Board of Equalization within 30 days of the assessment notice (W.S. §39-13-109).
-- For agricultural land, verify assessment at agricultural use value — grazing ($10-$50/acre) vs market ($500-$5,000+/acre).
-- Always appeal to the State Board of Equalization within 30 days of county board decision for state-level review.
-- For Teton County properties, use only Jackson Hole-specific comparable sales — generic Wyoming comps are irrelevant.
-- Always check for applicable exemptions: veteran ($3,000 assessed), improvements for accessibility ($15,000 assessed).
-- For commercial properties, present income capitalization — Cheyenne/Casper (8-10%), Jackson (5-7%), rural (10-13%).`,
+- Always verify the correct assessment ratio — residential (9.5%) vs. commercial/industrial (11.5%) creates a 21% difference in assessed value on the same market value. Misclassification between these categories is the highest-leverage error to identify.
+- Always verify that mineral property (oil, gas, coal, trona) assessed at 100% by the Wyoming DOR is NOT double-counted in the county's real property assessment — surface and mineral estates must be assessed separately, and double-counting is common in production counties.
+- For agricultural land, always verify productivity classification — rangeland at $1-$5/acre assessed vs. irrigated cropland at $50-$150/acre creates huge differences, and incorrect soil/use classification directly inflates the assessment. Challenge with NRCS soil data and actual land use evidence.
+- Always file with the County Board of Equalization by the first Monday in June — this deadline is strict. Present comparable sales, agricultural classification evidence, and property condition documentation within the 15-minute hearing window.
+- In mineral-producing counties (Campbell, Natrona, Converse, Sweetwater, Sublette, Fremont), always monitor production trends — declining mineral revenue shifts tax burden to residential/commercial property through higher mill levies.
+- For Teton County (Jackson Hole) properties, use ONLY Jackson Hole-specific comparable sales — generic Wyoming comps are irrelevant in this $5M-$50M+ market. Teton County agricultural land represents the most extreme assessment differential in the country.
+- Always check for applicable exemptions: veterans' exemption ($3,000 off assessed value, Wyo. Stat. §39-13-105), accessibility improvements exemption ($15,000), and verify agricultural use-value assessment continues after property transfer.
+- Always calculate the implied market value from the assessment (assessed / 0.095 for residential, / 0.115 for commercial) and compare to comparable sales — the low ratios mean even small percentage errors create proportional assessment errors that compound at the mill levy rate.`,
 
   DC: `DISTRICT OF COLUMBIA STRATEGIES — NATION'S CAPITAL:
 
