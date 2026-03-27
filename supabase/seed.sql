@@ -5,66 +5,37 @@
 
 -- ── Create founder auth user ────────────────────────────────────────────────
 -- Password: Resourceful2026!
--- Compatible with Supabase GoTrue v2+ (all required columns included)
+-- Uses only the core columns that exist in ALL GoTrue versions.
+-- Supabase auto-fills any additional columns with defaults.
 INSERT INTO auth.users (
   id,
   instance_id,
   email,
   encrypted_password,
   email_confirmed_at,
+  confirmed_at,
   raw_app_meta_data,
   raw_user_meta_data,
   aud,
   role,
   created_at,
-  updated_at,
-  confirmation_token,
-  recovery_token,
-  email_change_token_new,
-  email_change,
-  phone,
-  phone_confirmed_at,
-  phone_change,
-  phone_change_token,
-  confirmed_at,
-  email_change_token_current,
-  email_change_confirm_status,
-  banned_until,
-  reauthentication_token,
-  is_sso_user,
-  deleted_at,
-  is_anonymous
+  updated_at
 ) VALUES (
   'a0000000-0000-0000-0000-000000000001',
   '00000000-0000-0000-0000-000000000000',
   'mikelaurenzo7@gmail.com',
   '$2b$10$0ZBQOYL508IRA6Spb60A0.pM3.oukC3XPNKnzMRdv3K0vyQsRFdcO',
   now(),
+  now(),
   '{"provider":"email","providers":["email"]}',
   '{"full_name":"Mike Laurenzo"}',
   'authenticated',
   'authenticated',
   now(),
-  now(),
-  '',
-  '',
-  '',
-  '',
-  null,
-  null,
-  '',
-  '',
-  now(),
-  '',
-  0,
-  null,
-  '',
-  false,
-  null,
-  false
+  now()
 ) ON CONFLICT (id) DO NOTHING;
 
--- Identity record (required for email/password login in GoTrue v2+)
+-- Identity record (required for email/password login)
 INSERT INTO auth.identities (
   id,
   user_id,
