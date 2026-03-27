@@ -9,6 +9,8 @@ import { createPaymentIntent } from '@/lib/services/stripe-service';
 import { getPriceCents } from '@/config/pricing';
 import { createReport, updateReport } from '@/lib/repository/reports';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { isFounderEmail } from '@/config/founders';
+import { runPipeline } from '@/lib/pipeline/orchestrator';
 import type { Report } from '@/types/database';
 
 export async function POST(request: NextRequest) {
@@ -51,15 +53,18 @@ export async function POST(request: NextRequest) {
       tax_bill_pin,
     } = parsed.data;
 
+    // ── Check founder access ─────────────────────────────────────────────
+    const founderAccess = isFounderEmail(client_email);
+
     // ── Calculate price (tier-aware, tax bill discount applied) ──────────
-    const priceCents = getPriceCents(service_type, property_type, review_tier, has_tax_bill);
+    const priceCents = founderAccess ? 0 : getPriceCents(service_type, property_type, review_tier, has_tax_bill);
 
     // ── Create report row via repository ─────────────────────────────────
     const report = (await createReport({
       user_id: client_email, // email as user identifier (no auth account)
       client_email,
       client_name: client_name ?? null,
-      status: 'intake',
+      status: founderAccess ? 'paid' : 'intake',
       service_type,
       property_type,
       property_address,
@@ -72,9 +77,9 @@ export async function POST(request: NextRequest) {
       latitude: null,
       longitude: null,
       report_pdf_storage_path: null,
-      admin_notes: null,
+      admin_notes: founderAccess ? 'Founder account — complimentary access' : null,
       stripe_payment_intent_id: null,
-      payment_status: null,
+      payment_status: founderAccess ? 'founder_access' : null,
       amount_paid_cents: priceCents,
       review_tier: review_tier ?? 'auto',
       photos_skipped: photos_skipped ?? false,
@@ -98,6 +103,22 @@ export async function POST(request: NextRequest) {
       appeal_outcome: null,
       savings_amount_cents: null,
     })) as Report;
+
+    // ── Founder bypass: skip Stripe, trigger pipeline directly ───────────
+    if (founderAccess) {
+      console.log(`[api/reports] Founder access for ${client_email}, report ${report.id} — skipping payment`);
+      runPipeline(report.id).catch((err) => {
+        console.error(`[api/reports] Pipeline failed for founder report ${report.id}: ${err}`);
+      });
+      return NextResponse.json(
+        {
+          reportId: report.id,
+          founderAccess: true,
+          priceCents: 0,
+        },
+        { status: 201 }
+      );
+    }
 
     // ── Create Stripe PaymentIntent ────────────────────────────────────────
     const { data: payment, error: paymentError } = await createPaymentIntent({
