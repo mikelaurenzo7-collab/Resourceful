@@ -9,14 +9,14 @@ const faqs = [
       'A property tax appeal is a formal request to your county\'s Board of Review to lower your property\'s assessed value. If your home is assessed higher than its true market value, you\'re paying more in taxes than you should. An appeal presents evidence — comparable sales, condition documentation, and valuation analysis — to demonstrate the correct value. Successful appeals result in lower assessments and reduced annual tax bills, often saving homeowners hundreds to thousands of dollars per year.',
   },
   {
-    question: 'What does "pro se" mean, and do I need an attorney?',
+    question: 'Do I have to file the appeal myself?',
     answer:
-      'Pro se means representing yourself without an attorney. Property tax appeals are one of the most accessible legal processes for self-representation. Our reports are specifically designed to give you everything you need to file and argue your own appeal — the same quality of evidence that attorneys and tax consultants present. You fill out a simple form, attach our report, and attend a brief hearing (often virtual). No legal training required.',
+      'Not necessarily. With our Full Representation package, we file the appeal on your behalf and attend the hearing as your authorized representative — you don\'t have to do anything. With Guided Filing, we walk you through every step on a live call so you feel fully prepared. And even with our standard Professional Report, you get a step-by-step filing guide tailored to your county. Property tax appeals are one of the most accessible processes for self-representation — no legal training required.',
   },
   {
     question: 'What makes your report credible to the Board of Review?',
     answer:
-      'Our reports follow the same methodology used by professional appraisers and tax attorneys: comparable sales analysis with line-item adjustments, assessment ratio calculations, condition documentation with photographs, and clear market value conclusions. The Board of Review evaluates evidence, not credentials. A well-documented report with solid comparable sales is persuasive regardless of who presents it. We use the same data sources (MLS, public records, ATTOM) that assessors rely on.',
+      'Our reports follow the same methodology used by professional appraisers: comparable sales analysis with line-item adjustments, assessment ratio calculations, condition documentation with photographs, and clear market value conclusions. The Board of Review evaluates evidence, not credentials. A well-documented report with solid comparable sales is persuasive regardless of who presents it. We use the same data sources (MLS, public records, ATTOM) that assessors rely on.',
   },
   {
     question: 'How long does it take to receive my report?',
@@ -26,7 +26,7 @@ const faqs = [
   {
     question: 'What if I don\'t win my appeal?',
     answer:
-      'While we can\'t guarantee outcomes — every Board of Review is different — our reports are built on the same evidence standards that professional tax attorneys use. Historically, properties with documented over-assessment and strong comparable sales evidence have a high success rate. Even if the Board doesn\'t adopt your full requested value, partial reductions are common and still result in meaningful tax savings. There is no penalty for filing an appeal that isn\'t granted.',
+      'While we can\'t guarantee outcomes — every Board of Review is different — our reports are built on rigorous appraisal evidence standards. Historically, properties with documented over-assessment and strong comparable sales evidence have a high success rate. Even if the Board doesn\'t adopt your full requested value, partial reductions are common and still result in meaningful tax savings. There is no penalty for filing an appeal that isn\'t granted.',
   },
 ];
 
