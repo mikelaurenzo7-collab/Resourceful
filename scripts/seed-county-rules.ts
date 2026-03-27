@@ -1441,19 +1441,21 @@ SETTLEMENT & HEARING STRATEGY:
 - Common mistakes: missing the Board of Equalization deadline (typically July of odd-numbered years), failing to preserve your appeal rights for STC by not appearing at BOE, presenting comparable sales outside the valuation period.
 
 ODD-YEAR REASSESSMENT & STC APPEALS:
-- Missouri reassesses in ODD-numbered years only. The assessment set in the odd year persists through the next even year. Challenge aggressively in reassessment years — a successful reduction gives you TWO years of savings.
-- STATE TAX COMMISSION (STC): Missouri's STC provides de novo review with professional hearing examiners. The "prevailing party" rule (§138.434) means if you win at the STC, the county may be ordered to pay your costs. This discourages frivolous county defenses and gives taxpayers significant leverage.
-- STC evidence standard: preponderance of the evidence with de novo review. Present 5-7 comparable sales, adjusted for differences, within 12 months of January 1 assessment date.
+- ODD-YEAR REASSESSMENT CYCLE: Missouri reassesses ALL property in ODD-numbered years only (Mo. Rev. Stat. §137.115). The assessment set in the odd year persists through the next even year. This makes every odd-year protest window critical — a successful reduction in the reassessment year provides TWO years of savings. STRATEGY: Begin preparing comparable sales evidence in January-February of odd years. The protest window typically runs June-July. In even years, you can ONLY challenge the assessment if there was a physical change to the property, a clerical error, or a change in the classification — the value from the prior odd year otherwise stands. CRITICAL PLANNING: If your market is declining, prioritize odd-year protests. If the market declined between odd years, your assessment reflects the PRIOR odd year's higher value until the next reassessment.
+- STATE TAX COMMISSION (STC) DE NOVO REVIEW: The Missouri STC provides the most taxpayer-friendly state-level appeal in the Midwest. Professional hearing examiners conduct completely fresh (de novo) reviews with no deference to the county's determination. STC hearings are quasi-judicial proceedings with formal rules of evidence. The STC's track record shows significant taxpayer success rates, especially for well-documented residential and commercial cases. From the STC, further appeal goes to Circuit Court. JURISDICTIONAL REQUIREMENT: You MUST first appear before the county Board of Equalization to preserve STC appeal rights — skipping the county level is a fatal procedural error.
+- "PREVAILING PARTY" COST-SHIFTING RULE (§138.434): Missouri's STC can award costs and attorney fees to the "prevailing party." This is unique among state property tax tribunals and creates powerful leverage. If you win at the STC, the county may be ordered to pay your reasonable appeal costs. This discourages frivolous county defenses and incentivizes settlements. STRATEGIC USE: Explicitly cite §138.434 in your STC petition and in settlement negotiations with the county assessor — the threat of cost-shifting often prompts more reasonable informal settlement offers.
+- CLASSIFICATION SYSTEM AND RATIO MATH (§137.115): Residential property assessed at 19% of true value in money. Agricultural at 12%. Commercial at 32%. IMPACT: A $500,000 property — residential assessed = $95,000, agricultural = $60,000, commercial = $160,000. At 80 mills total levy: residential tax = $7,600, agricultural = $4,800, commercial = $12,800. A mixed-use property misclassified entirely as commercial instead of split residential/commercial overpays by thousands annually. ALWAYS verify classification for mixed-use properties — the residential portion should be assessed at 19%, not 32%.
+- AGRICULTURAL CLASSIFICATION (§137.016): Agricultural land is assessed at its "productive value" rather than market value, at a 12% assessment ratio. This creates dramatic reductions in suburban and exurban areas where market values far exceed productive values. EXAMPLE: 40-acre farm in St. Charles County — market value $400,000 ($10,000/acre), productive value $60,000 ($1,500/acre). At 12%: agricultural assessed = $7,200 vs. residential assessed = $76,000. Annual savings at 80 mills = $5,504. Qualifying uses: row crops, livestock, hay, pasture, timber, orchards, horticulture. Minimum requirements vary by county but generally require bona fide agricultural activity on 5+ acres.
 
 STATE-SPECIFIC REQUIREMENTS:
-- Always protest in odd-numbered reassessment years — reductions persist for 2 years.
-- Always start with the informal appeal — approximately 60% of Missouri disputes resolve here.
-- Always preserve appeal rights for STC by appearing at the Board of Equalization first.
-- Always present evidence in professional format: comparable sales grid, photos, single-page conclusion.
-- Leverage the "prevailing party" rule (§138.434) at STC — this gives significant negotiating power.
-- For commercial properties, present income capitalization with local cap rates (KC/STL 6-8%, suburban 7-9%, rural 9-12%).
-- Always verify classification — commercial (32%) vs residential (19%) misclassification of mixed-use is common and costly.
-- Always file by the Board of Equalization deadline (typically July of odd-numbered years).`,
+- Always protest aggressively in odd-numbered reassessment years — the value set in the odd year persists for two years, making each successful reduction doubly valuable.
+- Always start with the informal appeal at the county assessor's office — approximately 60% of Missouri disputes resolve at this level without formal proceedings.
+- Always appear at the Board of Equalization to preserve STC appeal rights — skipping this step is a fatal jurisdictional error that bars STC review.
+- Always leverage the "prevailing party" cost-shifting rule (§138.434) in settlement negotiations and STC filings — the threat of county cost liability incentivizes reasonable settlements.
+- Always verify property classification — commercial (32%) vs. residential (19%) misclassification on mixed-use properties is the single most common and costly assessment error in Missouri, creating a 68% ratio difference on the same value.
+- For commercial properties, always present income capitalization with Missouri-specific cap rates — Kansas City metro (6-8%), St. Louis metro (6-8%), suburban/secondary (7-9%), rural (9-12%), industrial (7-9%).
+- Always check agricultural classification eligibility for properties with 5+ acres in bona fide agricultural use — the 12% ratio at productive value vs. 19% at market value creates enormous savings in suburban/exurban areas.
+- Always file by the Board of Equalization deadline (typically the second Monday in July of odd-numbered years) — this deadline is strict and varies slightly by county, so confirm with the county clerk.`,
 
   MT: `MONTANA STRATEGIES — THE BIENNIAL PHASED-VALUE STATE:
 
@@ -2371,10 +2373,7 @@ SETTLEMENT & HEARING STRATEGY:
 - What wins: Three comparable sales within 12 months with clear adjustments; photos documenting condition issues (especially storm/climate damage); professional appraisal for properties over $300K; evidence of unequal assessment compared to similar properties. The Board of Equalization is often receptive to well-documented appeals — bring organized evidence and be concise.
 - Common mistakes: Missing the third Monday of March Board of Equalization meeting (this is a hard deadline); presenting unadjusted comparable sales; failing to account for the 85% ratio in calculations; not applying for the senior property tax freeze before appealing value; using sales from outside the local market area; not verifying agricultural soil classifications for ag land appeals.
 
-NO INCOME TAX: REVENUE CAP SYSTEM:
-- South Dakota has NO state income tax — property tax is a critical revenue source. The revenue cap system (SDCL §10-13-35 et seq.) requires taxing jurisdictions to reduce their tax levy if total property tax revenue exceeds the prior year's revenue plus CPI growth plus 3% plus new construction value. This protects taxpayers from assessment-driven tax increases.
-- REVENUE CAP MATH: If prior year revenue was $1,000,000 and CPI+3% = 5.5%, the maximum revenue for the current year is $1,055,000 (plus new construction). If increased assessments would generate $1,100,000, the jurisdiction MUST reduce the levy rate to stay within $1,055,000.
-- Agricultural land classification: South Dakota assesses agricultural land based on soil productivity, not market value. Cropland: $200-$800/acre based on corn suitability rating. Grassland/pasture: $15-$100/acre. Non-cropland: $50-$200/acre. These values are set by the state using USDA soil productivity data.
+STATE-SPECIFIC REQUIREMENTS:
 
 STATE-SPECIFIC REQUIREMENTS:
 - Always verify the revenue cap is being properly applied — if your total tax increased beyond CPI+3% without new levies, investigate.
@@ -2978,14 +2977,14 @@ SETTLEMENT & HEARING STRATEGY:
 - Common mistakes: Not filing homestead deduction (loses both the deduction and the 10% cap), missing the April 1 OTR deadline, presenting informal evidence to the professional RPTAC tribunal, failing to challenge condo assessment methodology when units are valued by blanket allocation.
 
 STATE-SPECIFIC REQUIREMENTS:
-- Always verify the homestead deduction ($87,500) is applied and the property qualifies as owner-occupied — losing it also loses the 10% cap.
-- Always check for Schedule H tax credit (income-based, up to $1,200) and senior/disabled tax freeze programs.
-- Always file with OTR by April 1 for the current tax year — this is a strict deadline.
-- Always verify the assessment class — Class 1 residential ($0.85/$100) vs Class 2 commercial ($1.65/$100).
-- For condos, verify proportionate allocation methodology — D.C.'s condo market has unique assessment challenges.
+- Always verify the homestead deduction ($87,500) is applied and that the property qualifies as owner-occupied.
+- Always check for applicable credits: Schedule H tax credit (income-based, up to $1,200), senior/disabled freeze.
+- Always file with the Real Property Tax Appeals Commission (RPTAC) by April 1 for the current tax year.
+- Always verify the assessment class — Class 1 (residential at $0.85/$100) vs Class 2 (commercial at $1.65/$100).
+- For condos, verify the proportionate allocation methodology — D.C.'s condo market has unique assessment challenges.
 - For commercial properties, present income capitalization — D.C. office (5-7%), retail (6-8%), multifamily (4-6%).
-- Always check for historic preservation tax credits (D.C. Code §47-842) for rehabilitation projects.
-- Always monitor D.C. Council budget actions — tax rates and credit programs change frequently.`,
+- Always check for historic preservation tax credits (D.C. Code §47-842) — they can offset significant rehabilitation costs.
+- Always monitor D.C. Council budget actions — changes to tax rates and credit programs occur frequently.`,
 };
 
 interface StateConfig {
