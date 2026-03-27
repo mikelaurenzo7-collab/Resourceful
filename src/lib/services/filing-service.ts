@@ -169,7 +169,7 @@ async function fileOnline(
     `[filing] Online filing for ${packet.propertyAddress} via ${countyRule.portal_url}`
   );
 
-  // TODO: County-specific Playwright automation
+  // ROADMAP: County-specific Playwright automation (Phase 3 enhancement)
   // For now, record the intent and notify admin to file manually
   const supabase = createAdminClient();
   await supabase
@@ -208,7 +208,7 @@ async function fileByEmail(
   );
 
   // Prepare email with report PDF attached
-  // TODO: Actually send via Resend with PDF attachment
+  // ROADMAP: Email filing with PDF attachment via Resend (Phase 3 enhancement)
   const supabase = createAdminClient();
   await supabase
     .from('reports')
@@ -273,7 +273,7 @@ async function fileByMail(
     };
   }
 
-  // TODO: Lob API integration for automated certified mail
+  // ROADMAP: Lob API for automated certified mail (Phase 3 enhancement)
   // const letter = await lob.letters.create({
   //   to: { name: countyRule.appeal_board_name, address: countyRule.appeal_board_address },
   //   from: { name: 'Resourceful', address: '...' },

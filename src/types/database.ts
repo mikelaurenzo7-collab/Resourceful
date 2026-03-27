@@ -109,6 +109,11 @@ export type Report = {
   outcome_reported_at: string | null;
   actual_savings_cents: number | null;
   outcome_notes: string | null;
+  // Referral & API partner fields (migrations 012, 013)
+  referral_code_id: string | null;
+  referral_discount_cents: number;
+  api_partner_id: string | null;
+  is_white_label: boolean;
 };
 
 export type PropertyData = {
@@ -484,6 +489,61 @@ export type AttorneyReferralInsert = {
   revenue_share_cents?: number | null;
 };
 
+// ─── Referral Codes ──────────────────────────────────────────────────────
+export type ReferralCode = {
+  id: string;
+  code: string;
+  referrer_email: string;
+  referrer_name: string | null;
+  discount_pct: number;
+  referrer_credit_cents: number;
+  max_uses: number | null;
+  times_used: number;
+  is_active: boolean;
+  expires_at: string | null;
+  created_at: string;
+};
+
+// ─── Reminder Subscriptions ──────────────────────────────────────────────
+export type ReminderSubscription = {
+  id: string;
+  email: string;
+  client_name: string | null;
+  property_address: string;
+  city: string | null;
+  state: string | null;
+  county: string | null;
+  county_fips: string | null;
+  remind_month: number;
+  remind_day: number;
+  last_reminded_at: string | null;
+  last_reminded_year: number | null;
+  is_active: boolean;
+  source_report_id: string | null;
+  created_at: string;
+};
+
+// ─── API Partners ────────────────────────────────────────────────────────
+export type ApiPartner = {
+  id: string;
+  firm_name: string;
+  contact_email: string;
+  contact_name: string | null;
+  api_key: string;
+  api_key_prefix: string;
+  is_active: boolean;
+  revenue_share_pct: number;
+  per_report_fee_cents: number;
+  white_label_name: string | null;
+  white_label_logo_url: string | null;
+  monthly_report_limit: number | null;
+  reports_this_month: number;
+  total_reports_generated: number;
+  total_revenue_cents: number;
+  created_at: string;
+  updated_at: string;
+};
+
 // ─── Form Submissions ─────────────────────────────────────────────────────────
 
 export type FormSubmission = {
@@ -503,7 +563,7 @@ export type FormSubmission = {
 
 // ─── Insert Types (omit server-generated fields) ────────────────────────────
 
-export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_score' | 'case_value_at_stake' | 'is_underassessed' | 'underassessment_pct' | 'appeal_outcome_details' | 'outcome_reported_at' | 'actual_savings_cents' | 'outcome_notes'> & {
+export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_score' | 'case_value_at_stake' | 'is_underassessed' | 'underassessment_pct' | 'appeal_outcome_details' | 'outcome_reported_at' | 'actual_savings_cents' | 'outcome_notes' | 'referral_code_id' | 'referral_discount_cents' | 'api_partner_id' | 'is_white_label'> & {
   id?: string;
   created_at?: string;
   // Computed by Stage 5 — not needed at creation time; DB defaults apply
@@ -516,6 +576,11 @@ export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_sco
   outcome_reported_at?: string | null;
   actual_savings_cents?: number | null;
   outcome_notes?: string | null;
+  // Referral & API partner — DB defaults apply
+  referral_code_id?: string | null;
+  referral_discount_cents?: number;
+  api_partner_id?: string | null;
+  is_white_label?: boolean;
 };
 
 export type PropertyDataInsert = Omit<PropertyData, 'id' | 'created_at'> & {
@@ -696,6 +761,38 @@ export type Database = {
         Row: FormSubmission;
         Insert: FormSubmissionInsert;
         Update: Partial<FormSubmission>;
+        Relationships: [];
+      };
+      referral_codes: {
+        Row: ReferralCode;
+        Insert: Omit<ReferralCode, 'id' | 'created_at' | 'times_used'> & {
+          id?: string;
+          created_at?: string;
+          times_used?: number;
+        };
+        Update: Partial<ReferralCode>;
+        Relationships: [];
+      };
+      reminder_subscriptions: {
+        Row: ReminderSubscription;
+        Insert: Omit<ReminderSubscription, 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<ReminderSubscription>;
+        Relationships: [];
+      };
+      api_partners: {
+        Row: ApiPartner;
+        Insert: Omit<ApiPartner, 'id' | 'created_at' | 'updated_at' | 'reports_this_month' | 'total_reports_generated' | 'total_revenue_cents'> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+          reports_this_month?: number;
+          total_reports_generated?: number;
+          total_revenue_cents?: number;
+        };
+        Update: Partial<ApiPartner>;
         Relationships: [];
       };
     };

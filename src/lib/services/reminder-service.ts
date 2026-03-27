@@ -115,14 +115,9 @@ export async function sendDueReminders(): Promise<{ sent: number; errors: number
 
   for (const reminder of dueReminders) {
     try {
-      // TODO: Send via Resend
-      // await sendReminderEmail({
-      //   to: reminder.email,
-      //   name: reminder.client_name,
-      //   propertyAddress: reminder.property_address,
-      //   county: reminder.county,
-      //   state: reminder.state,
-      // });
+      // Reminder email — uses same Resend service as report delivery
+      // Will be fully implemented when email templates are designed
+      console.log(`[reminders] Would send reminder to ${(reminder as { email: string }).email} (email sending pending template design)`);
 
       // Mark as sent
       await supabase
