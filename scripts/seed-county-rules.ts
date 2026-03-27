@@ -1565,7 +1565,8 @@ STATE-SPECIFIC REQUIREMENTS:
 - Agricultural land assessment at 75% of income-capitalized value (not market value) creates enormous savings for farmland owners. Always verify the assessor used parcel-specific NRCS soil data, not county averages.
 - The June 1-30 protest window is absolute — there is no extension, no late filing, no equitable tolling. Calendar this deadline immediately upon receiving your assessment notice.
 - Omaha and Lincoln have professional assessor offices with sophisticated mass appraisal models. Outstate county assessors may use simpler methods — tailor your evidence accordingly.
-- Nebraska's Property Tax Credit is state-funded and varies by appropriation year. Verify the current year's credit percentage and ensure it appears on your tax statement.`,
+- Nebraska's Property Tax Credit is state-funded and varies by appropriation year. Verify the current year's credit percentage and ensure it appears on your tax statement.
+- Always present evidence meeting the "clear and convincing" standard at TERC — this is higher than preponderance. Professional appraisals carry significant weight. TERC decisions are binding precedent and appealable only to the Court of Appeals.`,
 
   NV: `NEVADA STRATEGIES — THE REPLACEMENT COST & TAX CAP STATE:
 
@@ -2734,20 +2735,15 @@ SETTLEMENT & HEARING STRATEGY:
 - What wins: Multiple comparable sales with detailed adjustment grids, DOR ratio study data showing systemic over-assessment, professional appraisals, income data for commercial properties.
 - Common mistakes: Not meeting the higher evidentiary standard (clear, cogent, convincing — NOT preponderance), missing the July 1 deadline, using comps from different market areas, not checking current use or senior exemption eligibility.
 
-NO INCOME TAX: 1% LEVY LID SYSTEM:
-- Washington has NO state income tax — property tax is critical. Washington uses a BUDGET-BASED tax system: the total levy is set first, then the rate is calculated to generate that amount. The 1% levy lid (RCW 84.55.010) limits annual levy growth to 1% (plus new construction). Individual assessments can increase beyond 1% — it's the TOTAL LEVY that's capped.
-- CURRENT USE TAXATION: Agricultural, timber, and open space land can be assessed at use value rather than market value (RCW 84.34). Farmland: $200-$800/acre vs $20,000-$100,000+/acre market (especially in King/Snohomish counties). Timber: $200-$600/acre. Open space: $100-$500/acre. REMOVAL PENALTY: 7 years of tax savings must be repaid upon withdrawal — this is a significant deterrent to conversion.
-- Senior/disabled exemption and deferral (RCW 84.36.381): Sliding scale based on income — household income $40,000 or less: full exemption on excess levies plus partial regular levy reduction. Income $40,001-$75,000: partial exemption. Tax deferral available for qualifying seniors regardless of income.
-
 STATE-SPECIFIC REQUIREMENTS:
-- Always verify Current Use enrollment for agricultural/timber/open space land — savings of 90%+ in metro-adjacent areas.
-- Always apply for senior/disabled exemption if eligible — the income sliding scale provides benefits up to $75,000 household income.
-- Always understand the 1% levy lid — individual assessments can increase but total levy growth is capped at 1%.
-- Always file appeals with the County Board of Equalization by July 1 or within 30 days of change notice (RCW 84.40.038).
-- For Current Use properties, be aware of the 7-year removal penalty before changing land use.
-- For commercial properties, present income capitalization — Seattle/Eastside (4-6%), Tacoma (6-8%), Spokane (7-9%).
-- Always check for applicable exemptions: nonprofit, senior, disabled veteran, historic property.
-- Always verify the assessed value matches county records — King County and other large counties use automated valuation that can miss condition issues.`,
+- Always verify Current Use enrollment eligibility for agricultural/timber/open space land (RCW 84.34) — savings exceed 90% in metro-adjacent areas where market values are $20,000-$100,000+/acre. Calculate the 7-year compensating tax before any change of use — penalties can exceed $100,000 on high-value parcels.
+- Always apply for the senior/disabled exemption (RCW 84.36.381) — the three-tier sliding scale provides benefits for household incomes up to $75,000, and the value FREEZE means savings increase every year as market values rise.
+- Always explain the budget-based 1% levy lid system — individual assessments can increase dramatically even though total district revenue grows by only 1%. Reducing your assessment reduces your SHARE of the capped levy, shifting burden to other properties.
+- Always file appeals with the County Board of Equalization by July 1 or within 30 days of the change of value notice (RCW 84.40.038), whichever is later — this deadline is strict.
+- Always meet Washington's "clear, cogent, and convincing" evidentiary standard — this is HIGHER than the preponderance standard used in most states. Present 3-5 comparable sales with detailed adjustment grids to meet this threshold.
+- For Seattle/Eastside properties, use hyper-local comparable sales — micro-markets in King County differ by 30%+ within the same zip code, and mass appraisal models frequently miss neighborhood-level variation.
+- For commercial properties, present income capitalization with Washington-specific cap rates — Seattle/Eastside (4-6%), Tacoma/Olympia (6-8%), Spokane (7-9%), rural (9-12%). Washington's high tech sector creates unique commercial market dynamics.
+- Always check the senior tax deferral program (RCW 84.38) for qualifying seniors who need cash flow relief — ALL property taxes can be deferred with a state lien recovered on sale or death, regardless of income level.`,
 
   WV: `WEST VIRGINIA STRATEGIES — MOUNTAIN STATE:
 
