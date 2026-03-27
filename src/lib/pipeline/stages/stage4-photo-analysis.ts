@@ -13,6 +13,7 @@ import {
   computePhysicalDepreciation,
   ECONOMIC_LIFE,
 } from '@/config/valuation';
+import { buildPhotoIntelligenceContext } from '@/lib/services/photo-intelligence';
 
 // ─── Photo Analysis System Prompts by Service Type ──────────────────────────
 
@@ -138,12 +139,13 @@ export async function runPhotoAnalysis(
   // ── Fetch report and property_data ───────────────────────────────────
   const { data: reportData } = await supabase
     .from('reports')
-    .select('property_type, service_type')
+    .select('property_type, service_type, county_fips')
     .eq('id', reportId)
     .single();
 
   const propertyType = (reportData?.property_type as string) ?? 'residential';
   const serviceType = (reportData?.service_type as string) ?? 'tax_appeal';
+  const countyFips = (reportData as Record<string, unknown>)?.county_fips as string | null;
 
   const { data: pdData } = await supabase
     .from('property_data')
@@ -151,6 +153,15 @@ export async function runPhotoAnalysis(
     .eq('report_id', reportId)
     .single();
   const propertyDataForAge = pdData as Pick<PropertyData, 'year_built' | 'property_subtype' | 'property_class'> | null;
+
+  // ── Load proprietary photo intelligence for this area ──────────────────
+  // Adds context from our own analyzed photos: "Properties in this county
+  // built in the 1960s average Fair condition with 2.3 defects."
+  const photoIntelContext = await buildPhotoIntelligenceContext(
+    countyFips,
+    propertyType,
+    Number(pdData?.year_built) || null
+  );
 
   // ── Fetch photos for this report ──────────────────────────────────────
   const { data: photosData, error: photoError } = await supabase
@@ -222,7 +233,12 @@ export async function runPhotoAnalysis(
         // the property — the AI should factor it in directly.
         const userContext = photo.caption?.trim() || undefined;
 
-        const result = await analyzePhoto(imageUrl, getPhotoAnalysisPrompt(serviceType), userContext);
+        // Build prompt with proprietary intelligence context if available
+        const basePrompt = getPhotoAnalysisPrompt(serviceType);
+        const fullPrompt = photoIntelContext
+          ? `${basePrompt}\n\n${photoIntelContext}`
+          : basePrompt;
+        const result = await analyzePhoto(imageUrl, fullPrompt, userContext);
 
         if (result.error || !result.data) {
           console.warn(`[stage4] Photo analysis failed for ${photo.id}: ${result.error}`);

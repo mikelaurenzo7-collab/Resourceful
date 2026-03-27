@@ -3,6 +3,8 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { aggregateCountyIntelligence } from '@/lib/services/filing-intelligence';
+import { generateReferralCode } from '@/lib/services/referral-service';
 
 type AppealOutcome =
   | 'won_full'
@@ -88,9 +90,30 @@ export async function recordOutcome(reportId: string, formData: FormData) {
     throw new Error(`Failed to record outcome: ${updateError.message}`);
   }
 
-  // Recalculate county success_rate_pct and avg_savings_pct if county_fips is set
+  // Recalculate county stats + aggregate full filing intelligence
   if (report.county_fips) {
     await recalculateCountyStats(supabase, report.county_fips);
+    // Full intelligence aggregation — updates winning_argument_patterns from our data
+    aggregateCountyIntelligence(report.county_fips).catch(err =>
+      console.error(`[outcomes] Intelligence aggregation failed: ${err}`)
+    );
+  }
+
+  // Generate referral code for winning appellants
+  if (['won_full', 'won_partial', 'settled_informal'].includes(appealOutcome)) {
+    const { data: fullReport } = await supabase
+      .from('reports')
+      .select('client_email, client_name')
+      .eq('id', reportId)
+      .single();
+    if (fullReport) {
+      const r = fullReport as unknown as { client_email: string; client_name: string | null };
+      if (r.client_email) {
+        generateReferralCode(r.client_email, r.client_name).catch(err =>
+          console.error(`[outcomes] Referral code generation failed: ${err}`)
+        );
+      }
+    }
   }
 
   revalidatePath('/admin/outcomes');
