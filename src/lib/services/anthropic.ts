@@ -4,6 +4,18 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODELS, AI_CONFIG } from '@/config/ai';
 import type { PhotoAiAnalysis, PhotoDefect } from '@/types/database';
+import { withRetry, isRetryableError } from '@/lib/utils/retry';
+
+/**
+ * Wrapper for Anthropic API calls with retry logic.
+ * Handles 429 (rate limit), 5xx (server error), and network timeouts.
+ */
+async function createWithRetry(params: Anthropic.MessageCreateParamsNonStreaming): Promise<Anthropic.Message> {
+  return withRetry(
+    () => getClient().messages.create(params),
+    { maxAttempts: 3, baseDelayMs: 2000, maxDelayMs: 30000, retryOn: isRetryableError }
+  );
+}
 
 // ─── Client ──────────────────────────────────────────────────────────────────
 
@@ -272,7 +284,7 @@ export async function generateNarratives(
   const startMs = Date.now();
 
   try {
-    const response = await getClient().messages.create({
+    const response = await createWithRetry({
       model: AI_MODELS.PRIMARY,
       max_tokens: AI_CONFIG.maxTokens.narrative,
       system: systemPrompt,
@@ -392,7 +404,7 @@ Write in plain, encouraging English. Be specific to ${county} County — never g
   const startMs = Date.now();
 
   try {
-    const response = await getClient().messages.create({
+    const response = await createWithRetry({
       model: AI_MODELS.FAST, // Filing guide is formulaic — doesn't need the primary model
       max_tokens: AI_CONFIG.maxTokens.filingGuide,
       system: systemPrompt,
@@ -442,7 +454,7 @@ export async function analyzePhoto(
     : '';
 
   try {
-    const response = await getClient().messages.create({
+    const response = await createWithRetry({
       model: AI_MODELS.FAST,
       max_tokens: AI_CONFIG.maxTokens.photoAnalysis,
       system: systemPrompt,

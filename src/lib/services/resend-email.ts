@@ -2,6 +2,7 @@
 // Transactional emails for report delivery, admin notifications, and alerts.
 
 import { Resend } from 'resend';
+import { withRetry, isRetryableError } from '@/lib/utils/retry';
 
 // ─── Client ──────────────────────────────────────────────────────────────────
 
@@ -16,6 +17,21 @@ function getResend(): Resend {
 
 const FROM_ADDRESS = process.env.RESEND_FROM_ADDRESS ?? 'reports@resourceful.app';
 const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL ?? 'admin@resourceful.app';
+
+/**
+ * Send an email with retry logic (3 attempts, exponential backoff).
+ * Wraps Resend's send() to handle transient failures.
+ */
+async function sendWithRetry(params: Parameters<Resend['emails']['send']>[0]) {
+  return withRetry(
+    async () => {
+      const result = await getResend().emails.send(params);
+      if (result.error) throw new Error(result.error.message);
+      return result;
+    },
+    { maxAttempts: 3, baseDelayMs: 1000, retryOn: isRetryableError }
+  );
+}
 
 // Warn at init time if email config is using defaults — prevents silent misconfiguration
 if (!process.env.RESEND_FROM_ADDRESS) {

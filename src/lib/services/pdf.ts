@@ -6,6 +6,7 @@
 
 import chromium from '@sparticuz/chromium';
 import puppeteer from 'puppeteer-core';
+import { withSemaphore, pdfSemaphore } from '@/lib/utils/semaphore';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -30,6 +31,9 @@ chromium.setGraphicsMode = false;
 export async function generatePdf(
   html: string
 ): Promise<ServiceResult<Buffer>> {
+  // Limit concurrent Chromium instances to prevent memory exhaustion
+  // (each instance uses ~100MB). Max 3 concurrent, others queue.
+  return withSemaphore(pdfSemaphore, async () => {
   let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
 
   try {
@@ -82,4 +86,5 @@ export async function generatePdf(
       }
     }
   }
+  }); // end withSemaphore
 }

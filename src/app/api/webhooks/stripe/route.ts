@@ -102,11 +102,27 @@ async function handlePaymentIntentSucceeded(
   // This is the ONLY place the pipeline should be triggered.
   console.log(`[webhook/stripe] Triggering pipeline for report ${reportId}`);
 
-  // Fire-and-forget: pipeline runs asynchronously. Errors are recorded
-  // in the report's pipeline_error_log field by the orchestrator.
-  runPipeline(reportId).catch((err) => {
-    console.error(
-      `[webhook/stripe] Pipeline failed for report ${reportId}: ${err}`
-    );
+  // Pipeline runs asynchronously. On failure, record error to database
+  // so the report doesn't get stuck in 'paid' status forever.
+  runPipeline(reportId).catch(async (err) => {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[webhook/stripe] Pipeline failed for report ${reportId}: ${message}`);
+
+    // Mark report as failed with error details — prevents stuck reports
+    try {
+      await supabase
+        .from('reports')
+        .update({
+          status: 'failed',
+          pipeline_error_log: [{
+            stage: 'pipeline',
+            error: message,
+            timestamp: new Date().toISOString(),
+          }],
+        } as never)
+        .eq('id', reportId);
+    } catch (updateErr) {
+      console.error(`[webhook/stripe] Failed to record pipeline error: ${updateErr}`);
+    }
   });
 }

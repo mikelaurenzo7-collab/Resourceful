@@ -53,6 +53,22 @@ export async function POST(request: NextRequest) {
       tax_bill_pin,
     } = parsed.data;
 
+    // ── Per-email concurrency check (prevent abuse) ─────────────────────
+    // Max 3 reports in 'intake' or 'processing' state per email
+    const supabaseForCheck = (await import('@/lib/supabase/admin')).createAdminClient();
+    const { count: activeReports } = await supabaseForCheck
+      .from('reports')
+      .select('*', { count: 'exact', head: true })
+      .eq('client_email', client_email)
+      .in('status', ['intake', 'paid', 'data_pull', 'processing']);
+
+    if (activeReports && activeReports >= 3) {
+      return NextResponse.json(
+        { error: 'You have too many reports in progress. Please wait for current reports to complete.' },
+        { status: 429 }
+      );
+    }
+
     // ── Check founder access ─────────────────────────────────────────────
     const founderAccess = isFounderEmail(client_email);
 
@@ -107,8 +123,16 @@ export async function POST(request: NextRequest) {
     // ── Founder bypass: skip Stripe, trigger pipeline directly ───────────
     if (founderAccess) {
       console.log(`[api/reports] Founder access for ${client_email}, report ${report.id} — skipping payment`);
-      runPipeline(report.id).catch((err) => {
-        console.error(`[api/reports] Pipeline failed for founder report ${report.id}: ${err}`);
+      runPipeline(report.id).catch(async (err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`[api/reports] Pipeline failed for founder report ${report.id}: ${message}`);
+        try {
+          const { createAdminClient: getAdmin } = await import('@/lib/supabase/admin');
+          await getAdmin().from('reports').update({
+            status: 'failed',
+            pipeline_error_log: [{ stage: 'pipeline', error: message, timestamp: new Date().toISOString() }],
+          } as never).eq('id', report.id);
+        } catch { /* best effort */ }
       });
       return NextResponse.json(
         {
