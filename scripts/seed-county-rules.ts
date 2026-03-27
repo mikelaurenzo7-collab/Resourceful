@@ -1274,19 +1274,21 @@ SETTLEMENT & HEARING STRATEGY:
 - Common mistakes: Challenging Taxable Value instead of Assessed Value, missing the March Board of Review deadline, failing to apply for PRE (costs 18 mills annually), not understanding the Proposal A uncapping on transfer, filing MTT petition after July 31 deadline, and presenting comparables from different school districts or market areas.
 
 PROPOSAL A & ASSESSED VS TAXABLE VALUE:
-- Michigan has TWO critical values: Assessed Value (AV = 50% of true cash value) and Taxable Value (TV, capped by Proposal A at lesser of 5% or CPI growth per year). They are DIFFERENT values serving different purposes. You pay taxes on TAXABLE VALUE, not assessed value — but you appeal ASSESSED VALUE.
-- UNCAPPING ON TRANSFER: When property transfers, Taxable Value RESETS to equal Assessed Value (MCL 211.27b). For long-held properties, this can mean a 30-100%+ tax increase. EXAMPLE: home held 20 years with TV of $80,000 and AV of $150,000. Upon sale, new owner's TV = $150,000. At 40 mills, annual tax jumps from $3,200 to $6,000.
-- PRE (Principal Residence Exemption): Exempts 18 mills of school operating tax (MCL 211.7cc). On a $200,000 TV, PRE saves $3,600/year. ALWAYS verify PRE is applied — improper denial is one of the most common and costly assessment errors in Michigan.
+- DUAL VALUE SYSTEM (Michigan Constitution Art. IX, §3 as amended by Proposal A, 1994): Michigan has TWO critical values: State Equalized Value (SEV, also called Assessed Value = 50% of True Cash Value per MCL 211.27a) and Taxable Value (TV, capped by Proposal A). Taxes are calculated on TAXABLE VALUE, but you APPEAL State Equalized Value. MATH: True Cash Value (market) = $400,000. SEV = $400,000 x 0.50 = $200,000. If TV is capped at $150,000, you pay taxes on $150,000 — but you can still appeal SEV if $200,000 exceeds 50% of actual market value. To challenge: if comparable sales show market value of $350,000, correct SEV = $175,000. If TV is already below $175,000, the appeal still benefits you because it lowers the SEV ceiling that TV will converge toward.
+- UNCAPPING ON TRANSFER (MCL 211.27a(3)): When property ownership transfers, Taxable Value RESETS to equal Assessed Value (SEV). This is the single most important tax event in Michigan real estate. For long-held properties, TV may be 30-60% below SEV — upon transfer, the buyer faces a massive tax increase. MATH EXAMPLE: Seller owned 20 years. Current SEV = $200,000, current TV = $120,000 (capped). At 50 total mills, seller pays $120,000 x 0.050 = $6,000/year. Buyer's TV resets to $200,000. Buyer pays $200,000 x 0.050 = $10,000/year. Tax increase = $4,000/year (67%). EXCEPTIONS TO UNCAPPING (MCL 211.27a(7)): Transfers between spouses, transfers creating or dissolving a joint tenancy between spouses, transfers to a trust where the grantor is the sole beneficiary, and certain transfers between closely related LLCs. Always verify whether an uncapping event actually occurred — assessors sometimes uncap when they should not.
+- PRE (PRINCIPAL RESIDENCE EXEMPTION, MCL 211.7cc): Michigan imposes 18 mills of school operating tax on ALL property. The PRE EXEMPTS owner-occupied primary residences from this 18-mill levy. DOLLAR IMPACT: On $200,000 TV, PRE saves $200,000 x 0.018 = $3,600/year. On $300,000 TV, savings = $5,400/year. The PRE is the single most valuable property tax exemption in Michigan. CRITICAL ERRORS: (1) Failure to file Form 2368 (PRE Affidavit) within 30 days of occupancy — many new homeowners miss this. (2) Improper denial of PRE for properties used partially as rental (up to 50% of square footage can be rented while maintaining PRE on the owner-occupied portion). (3) PRE not removed from a prior residence — you can only have PRE on ONE property at a time. (4) Snowbirds who spend winters elsewhere — PRE requires the property be your primary residence as of May 1 (tax day). Rescission occurs if the property is no longer the principal residence.
+- PROPOSAL A CAP VERIFICATION (MCL 211.27a): Taxable Value cannot increase by more than the LESSER of 5% or the CPI (Inflation Rate Multiplier, IRM) from the prior year, plus any additions (new construction, physical improvements). CALCULATION: Prior_year_TV x (1 + lesser_of(5%, IRM)) + additions = maximum_current_TV. VERIFICATION STEPS: (1) Obtain prior year TV from the tax bill. (2) Check the current year's IRM (published by the State Tax Commission). (3) Calculate the maximum. (4) If current TV exceeds maximum, the cap was violated. CRITICAL: The cap does NOT apply in the year of an uncapping event (transfer). The cap restarts from the uncapped TV. Also verify: additions are assessed at 50% of their true cash value — if the assessor included existing improvements in the "additions" category, the TV was inflated beyond the cap.
+- AGRICULTURAL CLASSIFICATION (MCL 211.34c): Michigan classifies property as Agricultural (rather than Residential or Commercial) based on use and USDA standards. Agricultural classification provides lower millage rates in many jurisdictions and qualifies for Farmland Preservation Program benefits. Properties classified as Agricultural are assessed at 50% of true cash value (same ratio) but may receive significantly lower millage rates due to the Headlee Amendment's impact on agricultural levies. Reclassification from Agricultural to Residential can increase millage exposure by 5-15 mills.
 
 STATE-SPECIFIC REQUIREMENTS:
-- CRITICAL: Always challenge ASSESSED VALUE, not Taxable Value — the Proposal A cap protects TV automatically.
-- Always verify the PRE (Principal Residence Exemption) is applied — it saves 18 mills ($1,800+ per $100K of TV).
-- Always calculate the uncapping impact for buyers — (AV - current TV) × millage = annual tax increase upon transfer.
-- Always verify the Proposal A cap was correctly applied — TV cannot increase more than lesser of 5% or CPI.
-- Always file with the March Board of Review by the Tuesday after the first Monday in March.
-- For properties under $100,000 SEV, use MTT Small Claims Division — streamlined, no attorney required.
-- Always check for poverty/hardship exemption eligibility (MCL 211.7u) based on income and assets.
-- Always verify property classification — residential vs agricultural vs commercial affects millage rates significantly.`,
+- CRITICAL: Always challenge State Equalized Value (SEV/Assessed Value), not Taxable Value — Proposal A caps protect TV automatically, but an inflated SEV creates a higher ceiling that TV will converge toward over time.
+- Always verify the PRE (Principal Residence Exemption) is filed and applied — it exempts 18 mills of school operating tax, saving $1,800+ per $100,000 of TV. File Form 2368 within 30 days of occupancy.
+- Always calculate the uncapping impact for pre-purchase clients — (SEV - current TV) x total millage = annual tax increase upon transfer. This is the single most important tax projection in Michigan real estate.
+- Always verify the Proposal A cap was correctly applied — TV cannot increase by more than the lesser of 5% or CPI (IRM). Check for improper inclusion of existing improvements in the "additions" category.
+- Always file with the March Board of Review by the deadline (typically the Tuesday after the first Monday in March) — this deadline is strict and missing it limits your options to the July or December Board of Review (which can only correct clerical errors and mutual mistakes of fact).
+- For properties with SEV under $100,000, always consider the Michigan Tax Tribunal Small Claims Division — simplified procedures, no attorney required, and faster resolution than the Entire Tribunal.
+- Always check poverty/hardship exemption eligibility (MCL 211.7u) for homeowners whose income and assets fall below specified thresholds — this can provide a complete property tax exemption.
+- Always verify property classification (Residential, Agricultural, Commercial, Industrial, Timber-Cutover, Developmental) — classification affects which millage levies apply and can create differences of 5-15 mills.`,
 
   MN: `MINNESOTA STRATEGIES — NORTH STAR STATE:
 
@@ -2333,7 +2335,12 @@ ASSESSMENT FUNDAMENTALS:
 - Classification: Non-agricultural real property at 85%. Agricultural land assessed using soil productivity (SDCL 10-6-31.3) — based on soil type, capability class, and agricultural income capitalization. Owner-occupied vs rental does not affect the assessment ratio.
 - Burden of proof: The taxpayer bears the burden of proving the assessed value exceeds full and true value (85% of market). Present comparable sales, appraisals, or income data. The assessment is presumed correct unless rebutted by clear evidence.
 - Key statutes: SDCL 10-6-33 (85% assessment ratio), SDCL 10-6-31.3 (agricultural productivity valuation), SDCL 10-11-1 through 10-11-52 (Board of Equalization), SDCL 10-6-15.2 (assessment freeze), SDCL 10-11-25 (appeal to circuit court).
-- Common errors: Incorrect square footage or lot size, failure to account for property condition, inaccurate agricultural soil classifications yielding wrong productivity values, failure to apply property tax freeze for eligible seniors, not reflecting market conditions in annual assessment updates.
+- Common errors: Incorrect square footage or lot size, failure to account for property condition, inaccurate agricultural soil classifications yielding wrong productivity values, failure to apply property tax freeze for eligible seniors, not reflecting market conditions in annual assessment updates, not understanding the revenue cap mechanism.
+
+NO INCOME TAX: REVENUE CAP & AGRICULTURAL PRODUCTIVITY:
+- SOUTH DAKOTA HAS NO STATE INCOME TAX — property tax is the primary revenue source. The no-income-tax status attracts migration (especially retirees), supporting appreciation but increasing assessment pressure.
+- REVENUE CAP: When a taxing district's property tax revenue would increase by more than CPI + 3% due to assessment increases, the mill levy must be REDUCED (SDCL 10-13-35 through 10-13-38). This cap applies to TOTAL district revenue, not individual taxes. If your assessment increases 15% while the average increases 5%, you absorb a disproportionate share. Individual challenges remain valuable — reducing your assessment shifts your share to other properties.
+- AGRICULTURAL PRODUCTIVITY (SDCL 10-6-31.3): CROPLAND: $200-$800/acre assessed depending on soil and irrigation, vs market $3,000-$10,000/acre in eastern SD. GRASSLAND: $15-$100/acre assessed, vs market $500-$3,000/acre. EXAMPLE: 640-acre farm — 400 acres cropland at $500/acre ($200,000) + 240 acres grassland at $40/acre ($9,600) = $209,600 ag assessed. Market = $4M+. At 85% and 20 mills: ag tax = $3,563/year, market tax = $68,000/year, savings = $64,437/year. Challenge soil classifications with NRCS data.
 
 FOR TAX APPEALS — PROVE LOWER VALUE:
 - Primary winning tactic: Calculate implied market value (assessed / 0.85) and compare to 3-5 comparable sales within 1 mile, sold within 12 months. If implied value exceeds comps by 10%+, present the comp grid with time, condition, and size adjustments. South Dakota's smaller markets often have limited sales data — expand search radius if necessary but adjust for location differences.
@@ -2790,15 +2797,21 @@ SETTLEMENT & HEARING STRATEGY:
 - What wins: Comparable sales with the 60% ratio calculation clearly shown, classification verification evidence, contractor repair bids, photos of property defects and condition issues.
 - Common mistakes: Missing the February 1-20 filing window (most common error in West Virginia — this 20-day window is the shortest in the nation), not understanding the 60% ratio when presenting evidence, incorrect classification on the appeal form, not verifying mineral rights inclusion in the assessment.
 
+60% RATIO & FOUR-CLASS SYSTEM:
+- West Virginia assesses at 60% of market value (WV Code §11-3-1). The state has FOUR property classes with different CLASS RATES applied to the 60% assessed value: Class I (tangible personal property on intangible investments): 1%. Class II (owner-occupied residential): 2%. Class III (all other real/personal property including rental, commercial): 3%. Class IV (any not in other classes): 4%.
+- CLASSIFICATION IMPACT: A $200,000 property at 60% = $120,000 assessed. Class II (owner-occupied): $120,000 × 2% = $2,400 taxable. Class III (rental): $120,000 × 3% = $3,600 taxable. That's a 50% HIGHER tax burden just from classification. ALWAYS verify correct classification.
+- Farm use valuation: Agricultural land may be assessed at use value rather than market value. Minimum 5 contiguous acres in agricultural production. The property must demonstrate active farming — not merely rural location.
+- Coal mine subsidence: Properties in coal-producing regions face unique valuation challenges from mine subsidence risk. Document subsidence damage ($10,000-$50,000+) and reduced marketability.
+
 STATE-SPECIFIC REQUIREMENTS:
-- Always verify the 60% ratio math: assessed_value / 0.60 = implied market value. If implied market value exceeds comparable sales evidence, the assessment is excessive. Present this calculation explicitly in every appeal.
-- Always verify the four-class classification as the FIRST check — the difference between Class II ($2/$100) and Class IV ($4/$100) doubles the tax on the same assessed value. Misclassification between owner-occupied (Class II) and rental/non-owner-occupied (Class IV) is the highest-impact error in West Virginia.
-- Always check for coal mine subsidence risk in properties located above current or historical mine works. Document subsidence damage with structural engineer reports and repair estimates. Check WV Mine Subsidence Insurance Fund eligibility.
-- Always verify whether mineral rights have been severed from the surface estate — if minerals were sold or reserved by a prior owner, the surface assessment should be reduced by 10-30% to reflect the diminished property rights. This is especially critical in coal counties (McDowell, Mingo, Logan, Boone, Raleigh, Fayette, Wyoming).
-- Always check farm use valuation eligibility for properties with agricultural use — cropland/pasture values of $50-$500/acre vs market values of $2,000-$10,000/acre yield 80-95% reductions in land assessment.
-- Always check managed timberland classification (W. Va. Code § 11-1C) for properties with forested acreage — timber productivity values of $25-$200/acre vs market values yield substantial savings.
-- Always verify the homestead exemption ($20,000 of assessed value for seniors 65+ and permanently disabled) is applied. At Class II rates, this saves $400/year; at Class IV rates, $800/year.
-- The February 1-20 appeal window is the shortest in the nation — only 20 days. Calendar it immediately. Missing this window forfeits the right to appeal for the entire year with no exceptions.`,
+- Always verify property classification — Class II (2%) vs Class III (3%) = 50% tax difference. Owner-occupancy determines classification.
+- Always verify the 60% ratio is correctly applied — assessed value should equal exactly 60% of appraised market value.
+- For agricultural land, verify use-value assessment is applied for qualifying properties (minimum 5 contiguous acres).
+- Always file with the County Commission sitting as Board of Equalization and Review (February session, WV Code §11-3-24).
+- For properties in coal regions, document mine subsidence risk and damage as value-reducing factors.
+- Always check for applicable exemptions: homestead ($20,000 assessed value for 65+ or disabled), veteran.
+- For commercial properties, present income capitalization — Charleston (8-10%), Eastern Panhandle (7-9%), rural (10-13%).
+- Always appeal to the State Tax Commissioner within 60 days of county board decision for state-level review.`,
 
   WI: `WISCONSIN STRATEGIES — BADGER STATE:
 
@@ -2905,15 +2918,21 @@ SETTLEMENT & HEARING STRATEGY:
 - What wins: Comparable sales with the 9.5% ratio clearly calculated, agricultural classification evidence (soil surveys, productivity data), contractor repair bids, photos of condition issues and weather damage.
 - Common mistakes: Not understanding the 9.5%/11.5% ratio, incorrect agricultural use class, missing the filing deadline, failing to distinguish real property from mineral/industrial valuation, not verifying the correct ratio is applied.
 
+NO INCOME TAX: ASSESSMENT RATIOS & MINERAL PROPERTY:
+- Wyoming has NO state income tax and NO corporate income tax — property tax is the primary state/local revenue source. Assessment ratios: residential 9.5% of fair market value, commercial/industrial 11.5% (W.S. §39-13-103). Mineral production property (oil, gas, coal, trona): assessed at 100% of fair market value by the Wyoming Department of Revenue.
+- RATIO MATH: $400,000 residential × 9.5% = $38,000 assessed. $400,000 commercial × 11.5% = $46,000 assessed. The 21% difference in ratios means commercial properties pay significantly more tax on the same market value.
+- MINERAL PROPERTY IMPACT: In mineral-producing counties (Campbell, Sweetwater, Sublette, Park), mineral production decline can reduce county revenue and shift the tax burden to residential/commercial property. Monitor production trends — declining mineral revenue often triggers higher mill levies.
+- Teton County (Jackson Hole): The most expensive real estate market in Wyoming, with median home prices well above $1 million. Assessment challenges require Jackson Hole-specific comparable sales — do not use comparables from other Wyoming markets.
+
 STATE-SPECIFIC REQUIREMENTS:
-- Always verify the correct assessment ratio — 9.5% for residential, 11.5% for commercial/industrial. Calculate: assessed_value / ratio = implied market value. Misclassification costs $750+/year on a $500,000 property.
-- Always verify mineral property is NOT included in real property assessment. Minerals are assessed separately at 100% by the DOR. Double-counting is common in oil/gas counties (Campbell, Natrona, Converse, Sweetwater, Sublette, Fremont).
-- Always verify agricultural use classification using the correct productivity class — irrigated cropland ($50-$150/acre assessed) vs rangeland ($1-$5/acre) represents enormous differences. Request soil survey data.
-- Always calculate the agricultural vs market assessment differential — savings of 90-99% make ag classification the most valuable tax benefit in Wyoming. In Teton County, the differential can be $50,000-$200,000/acre.
-- Always check for energy market impacts on values in resource-dependent communities — oil/gas price declines reduce values in producing counties. Use current-year sales data.
-- Always document Wyoming-specific defects: extreme wind damage ($5K-$20K), frost heave foundation damage ($8K-$25K), hail damage ($5K-$15K), well/septic failures ($5K-$25K), heating system inadequacy ($5K-$15K).
-- Always check the veterans' exemption ($3,000 off assessed value per Wyo. Stat. § 39-13-105) for qualifying veterans and surviving spouses.
-- File with the County Board of Equalization by the first Monday in June (verify with county). State Board appeal within 30 days of county decision. Both deadlines strictly enforced.`,
+- Always verify the correct assessment ratio — residential (9.5%) vs commercial (11.5%) on the same market value.
+- For mineral-producing counties, monitor production trends — declining mineral revenue shifts tax burden to non-mineral property.
+- Always file with the County Board of Equalization within 30 days of the assessment notice (W.S. §39-13-109).
+- For agricultural land, verify assessment at agricultural use value — grazing ($10-$50/acre) vs market ($500-$5,000+/acre).
+- Always appeal to the State Board of Equalization within 30 days of county board decision for state-level review.
+- For Teton County properties, use only Jackson Hole-specific comparable sales — generic Wyoming comps are irrelevant.
+- Always check for applicable exemptions: veteran ($3,000 assessed), improvements for accessibility ($15,000 assessed).
+- For commercial properties, present income capitalization — Cheyenne/Casper (8-10%), Jackson (5-7%), rural (10-13%).`,
 
   DC: `DISTRICT OF COLUMBIA STRATEGIES — NATION'S CAPITAL:
 
