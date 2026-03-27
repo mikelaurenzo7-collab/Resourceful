@@ -392,6 +392,41 @@ export default function CountyEditForm({ county, isNew }: CountyEditFormProps) {
         </div>
       </fieldset>
 
+      {/* Board Intelligence & Strategy */}
+      <fieldset className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <legend className="px-2 text-sm font-semibold text-gray-900">Board Intelligence &amp; Strategy</legend>
+        <div className="grid grid-cols-1 gap-6 mt-4">
+          <div>
+            <label htmlFor="board_personality_notes" className="block text-sm font-medium text-gray-700">Board Personality Notes</label>
+            <textarea id="board_personality_notes" name="board_personality_notes" rows={3} defaultValue={county?.board_personality_notes ?? ''} placeholder="Board meets Tuesdays. Professional dress expected. They respect data over emotion. Lead with strongest comparable." className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+          <div>
+            <label htmlFor="winning_argument_patterns" className="block text-sm font-medium text-gray-700">Winning Argument Patterns</label>
+            <textarea id="winning_argument_patterns" name="winning_argument_patterns" rows={3} defaultValue={county?.winning_argument_patterns ?? ''} placeholder="Assessment ratio mismatch, condition superior to comps, declining market trend" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+          <div>
+            <label htmlFor="common_assessor_errors" className="block text-sm font-medium text-gray-700">Common Assessor Errors</label>
+            <textarea id="common_assessor_errors" name="common_assessor_errors" rows={2} defaultValue={county?.common_assessor_errors ?? ''} placeholder="Frequently uses outdated comp data, misclassifies property type, ignores condition" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label htmlFor="success_rate_pct" className="block text-sm font-medium text-gray-700">Historical Success Rate %</label>
+              <input id="success_rate_pct" name="success_rate_pct" type="number" min={0} max={100} step={0.1} defaultValue={county?.success_rate_pct ?? ''} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+            </div>
+            <div>
+              <label htmlFor="success_rate_source" className="block text-sm font-medium text-gray-700">Success Rate Source</label>
+              <input id="success_rate_source" name="success_rate_source" type="text" defaultValue={county?.success_rate_source ?? ''} placeholder="Board of Review annual report 2025" className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <label htmlFor="avg_savings_pct" className="block text-sm font-medium text-gray-700">Average Savings %</label>
+              <input id="avg_savings_pct" name="avg_savings_pct" type="number" min={0} max={100} step={0.1} defaultValue={county?.avg_savings_pct ?? ''} className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]" />
+            </div>
+          </div>
+        </div>
+      </fieldset>
+
       {/* Data Freshness */}
       <fieldset className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
         <legend className="px-2 text-sm font-semibold text-gray-900">Data Freshness</legend>

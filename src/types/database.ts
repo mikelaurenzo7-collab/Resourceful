@@ -104,6 +104,11 @@ export type Report = {
   case_value_at_stake: number | null;
   is_underassessed: boolean;
   underassessment_pct: number | null;
+  // Appeal outcome tracking
+  appeal_outcome_details: Record<string, unknown> | null;
+  outcome_reported_at: string | null;
+  actual_savings_cents: number | null;
+  outcome_notes: string | null;
 };
 
 export type PropertyData = {
@@ -392,6 +397,13 @@ export type CountyRule = {
   further_appeal_deadline_rule: string | null;
   further_appeal_url: string | null;
   further_appeal_fee_cents: number;
+  // Board intelligence & strategy
+  board_personality_notes: string | null;
+  winning_argument_patterns: string | null;
+  common_assessor_errors: string | null;
+  success_rate_pct: number | null;
+  success_rate_source: string | null;
+  avg_savings_pct: number | null;
   // Standard fields
   is_active: boolean;
   last_verified_date: string | null;
@@ -491,7 +503,7 @@ export type FormSubmission = {
 
 // ─── Insert Types (omit server-generated fields) ────────────────────────────
 
-export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_score' | 'case_value_at_stake' | 'is_underassessed' | 'underassessment_pct'> & {
+export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_score' | 'case_value_at_stake' | 'is_underassessed' | 'underassessment_pct' | 'appeal_outcome_details' | 'outcome_reported_at' | 'actual_savings_cents' | 'outcome_notes'> & {
   id?: string;
   created_at?: string;
   // Computed by Stage 5 — not needed at creation time; DB defaults apply
@@ -499,6 +511,11 @@ export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_sco
   case_value_at_stake?: number | null;
   is_underassessed?: boolean;
   underassessment_pct?: number | null;
+  // Appeal outcome tracking — populated after appeal resolution
+  appeal_outcome_details?: Record<string, unknown> | null;
+  outcome_reported_at?: string | null;
+  actual_savings_cents?: number | null;
+  outcome_notes?: string | null;
 };
 
 export type PropertyDataInsert = Omit<PropertyData, 'id' | 'created_at'> & {

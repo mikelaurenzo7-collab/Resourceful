@@ -80,6 +80,10 @@ export interface NarrativePayload {
     hearingFormat?: string | null;
     informalReviewAvailable?: boolean | null;
     proSeTips?: string | null;
+    boardPersonalityNotes?: string | null;
+    winningArgumentPatterns?: string | null;
+    commonAssessorErrors?: string | null;
+    successRatePct?: number | null;
   };
   concludedValue: number;
   photoAnalyses?: Array<{
@@ -190,6 +194,10 @@ export interface FilingGuidePayload {
   furtherAppealBody?: string | null;
   furtherAppealDeadlineRule?: string | null;
   furtherAppealUrl?: string | null;
+  // Board intelligence
+  boardPersonalityNotes?: string | null;
+  winningArgumentPatterns?: string | null;
+  successRatePct?: number | null;
 }
 
 // ─── Section Names ──────────────────────────────────────────────────────────
@@ -347,6 +355,9 @@ REQUIRED SECTIONS (use these exact Markdown headings):
 - COACH THEM on what to say. Give them an opening statement template: "Good morning. My name is [name], and I'm here to appeal the assessment on [address]. My property is currently assessed at $X, but market evidence shows it's worth $Y — an overassessment of $Z. I have [number] pieces of evidence to present."
 - Tell them what NOT to do: don't get emotional, don't argue with the board, don't bring up neighbor's assessments unless it supports equity arguments, don't apologize for taking their time.
 - Specific tips for ${county} County based on the hearing format and any pro_se_tips provided.
+${payload.boardPersonalityNotes ? `\nBOARD INSIDER NOTES: ${payload.boardPersonalityNotes}\nUse this intelligence to coach the homeowner on exactly how this specific board operates.` : ''}
+${payload.winningArgumentPatterns ? `\nWINNING ARGUMENTS: ${payload.winningArgumentPatterns}\nEmphasize these argument patterns — they have the highest success rate in this county.` : ''}
+${payload.successRatePct ? `\nHISTORICAL SUCCESS RATE: ${payload.successRatePct}% of appeals in this county succeed. Frame this to set appropriate expectations.` : ''}
 
 ## Your Five Strongest Arguments
 - Based on the appeal_argument_summary, distill the 5 most persuasive points to make at the hearing.
@@ -599,6 +610,18 @@ function buildNarrativeSystemPrompt(payload: NarrativePayload): string {
   }
   if (payload.countyRules.proSeTips) {
     countyExpertise.push(`County-specific pro se tips: ${payload.countyRules.proSeTips}`);
+  }
+  if (payload.countyRules.boardPersonalityNotes) {
+    countyExpertise.push(`Board personality & hearing tips: ${payload.countyRules.boardPersonalityNotes}`);
+  }
+  if (payload.countyRules.winningArgumentPatterns) {
+    countyExpertise.push(`Winning argument patterns in this county: ${payload.countyRules.winningArgumentPatterns}`);
+  }
+  if (payload.countyRules.commonAssessorErrors) {
+    countyExpertise.push(`Common assessor errors to exploit: ${payload.countyRules.commonAssessorErrors}`);
+  }
+  if (payload.countyRules.successRatePct) {
+    countyExpertise.push(`Historical appeal success rate: ${payload.countyRules.successRatePct}%`);
   }
 
   const hasPhotos = payload.photoAnalyses && payload.photoAnalyses.length > 0;

@@ -115,6 +115,13 @@ export async function saveCounty(existingFips: string | null, formData: FormData
     virtual_hearing_available: parseCheckbox(formData, 'virtual_hearing_available'),
     virtual_hearing_platform: parseOptionalString(formData.get('virtual_hearing_platform')),
     hearing_scheduling_notes: parseOptionalString(formData.get('hearing_scheduling_notes')),
+    // Board intelligence & strategy
+    board_personality_notes: parseOptionalString(formData.get('board_personality_notes')),
+    winning_argument_patterns: parseOptionalString(formData.get('winning_argument_patterns')),
+    common_assessor_errors: parseOptionalString(formData.get('common_assessor_errors')),
+    success_rate_pct: parseOptionalFloat(formData.get('success_rate_pct')),
+    success_rate_source: parseOptionalString(formData.get('success_rate_source')),
+    avg_savings_pct: parseOptionalFloat(formData.get('avg_savings_pct')),
     // Data freshness
     last_verified_date: parseOptionalString(formData.get('last_verified_date')),
     verified_by: parseOptionalString(formData.get('verified_by')),
