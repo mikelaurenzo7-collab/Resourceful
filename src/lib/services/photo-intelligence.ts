@@ -72,7 +72,7 @@ export async function getConditionPatternsForCounty(
   const ratings: Record<string, number> = {};
   const defectTypes: Record<string, number> = {};
   let totalDefects = 0;
-  let totalAdjustment = 0;
+  const totalAdjustment = 0;
   let count = 0;
 
   for (const photo of photos) {
