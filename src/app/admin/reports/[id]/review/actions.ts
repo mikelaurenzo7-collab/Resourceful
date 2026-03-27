@@ -6,6 +6,8 @@ import { revalidatePath } from 'next/cache';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
 import { runDelivery } from '@/lib/pipeline/stages/stage8-delivery';
 import { sendReportRejectionAlert } from '@/lib/services/resend-email';
+import { fileAppeal, isFilingEligible } from '@/lib/services/filing-service';
+import { subscribeToReminders } from '@/lib/services/reminder-service';
 import type {
   ApprovalAction,
   ReportStatus,
@@ -61,6 +63,28 @@ export async function approveReport(reportId: string) {
 
   if (!result.success) {
     throw new Error(`Delivery failed: ${result.error}`);
+  }
+
+  // After delivery: auto-file if full_representation, subscribe to reminders
+  try {
+    // Fetch report to check tier and filing eligibility
+    const { data: reportData } = await supabase.from('reports').select('*').eq('id', reportId).single();
+    const report = reportData as any;
+
+    if (report && isFilingEligible(report)) {
+      console.log(`[approve] Auto-filing for report ${reportId} (tier: ${report.review_tier})`);
+      fileAppeal(reportId).catch(err =>
+        console.error(`[approve] Filing failed for ${reportId}: ${err}`)
+      );
+    }
+
+    // Subscribe to annual reminders (all delivered reports)
+    subscribeToReminders(reportId).catch(err =>
+      console.error(`[approve] Reminder subscription failed for ${reportId}: ${err}`)
+    );
+  } catch (err) {
+    // Non-fatal — delivery already succeeded
+    console.warn(`[approve] Post-delivery tasks failed (non-fatal): ${err}`);
   }
 
   revalidatePath('/admin/reports');
