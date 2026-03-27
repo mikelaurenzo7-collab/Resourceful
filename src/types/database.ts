@@ -420,41 +420,6 @@ export type ApprovalEvent = {
   created_at: string;
 };
 
-export type CalibrationEntry = {
-  id: string;
-  property_address: string;
-  city: string | null;
-  state: string | null;
-  county: string | null;
-  county_fips: string | null;
-  property_type: PropertyType;
-  building_sqft: number | null;
-  lot_size_sqft: number | null;
-  year_built: number | null;
-  system_concluded_value: number;
-  comp_count: number | null;
-  median_adjusted_psf: number | null;
-  actual_appraised_value: number | null;
-  variance_dollars: number | null;
-  variance_pct: number | null;
-  avg_adj_size: number | null;
-  avg_adj_condition: number | null;
-  avg_adj_market_trends: number | null;
-  avg_adj_land_ratio: number | null;
-  avg_net_adjustment: number | null;
-  actual_building_sqft: number | null;
-  actual_lot_sqft: number | null;
-  attom_building_sqft: number | null;
-  attom_lot_sqft: number | null;
-  sqft_variance_pct: number | null;
-  source_report_id: string | null;
-  status: string;
-  notes: string | null;
-  submitted_by: string | null;
-  created_at: string;
-  completed_at: string | null;
-};
-
 // ─── Attorney Network ─────────────────────────────────────────────────────────
 
 export type Attorney = {
@@ -524,24 +489,6 @@ export type FormSubmission = {
   updated_at: string;
 };
 
-export type CalibrationParams = {
-  id: string;
-  property_type: PropertyType;
-  county_fips: string | null;
-  size_multiplier: number;
-  condition_multiplier: number;
-  market_trend_multiplier: number;
-  land_ratio_multiplier: number;
-  value_bias_pct: number;
-  sqft_correction_factor: number;
-  sqft_sample_size: number;
-  sample_size: number;
-  mean_absolute_error_pct: number | null;
-  median_error_pct: number | null;
-  last_computed_at: string;
-  created_at: string;
-};
-
 // ─── Insert Types (omit server-generated fields) ────────────────────────────
 
 export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_score' | 'case_value_at_stake' | 'is_underassessed' | 'underassessment_pct'> & {
@@ -602,18 +549,6 @@ export type AdminUserInsert = Omit<AdminUser, 'id' | 'created_at'> & {
 };
 
 export type ApprovalEventInsert = Omit<ApprovalEvent, 'id' | 'created_at'> & {
-  id?: string;
-  created_at?: string;
-};
-
-export type CalibrationEntryInsert = Omit<CalibrationEntry, 'id' | 'created_at'> & {
-  id?: string;
-  created_at?: string;
-};
-
-export type CalibrationEntryUpdate = Partial<CalibrationEntry>;
-
-export type CalibrationParamsInsert = Omit<CalibrationParams, 'id' | 'created_at'> & {
   id?: string;
   created_at?: string;
 };
@@ -726,18 +661,6 @@ export type Database = {
         Row: ApprovalEvent;
         Insert: ApprovalEventInsert;
         Update: Partial<ApprovalEvent>;
-        Relationships: [];
-      };
-      calibration_entries: {
-        Row: CalibrationEntry;
-        Insert: CalibrationEntryInsert;
-        Update: CalibrationEntryUpdate;
-        Relationships: [];
-      };
-      calibration_params: {
-        Row: CalibrationParams;
-        Insert: CalibrationParamsInsert;
-        Update: Partial<CalibrationParams>;
         Relationships: [];
       };
       attorneys: {

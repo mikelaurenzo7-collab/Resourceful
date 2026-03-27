@@ -4,14 +4,13 @@
 // section in report_narratives with model/token/duration metadata.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Report, PropertyData, ComparableSale, ComparableRental, IncomeAnalysis, Photo, CountyRule, PhotoAiAnalysis, PropertyType } from '@/types/database';
+import type { Database, Report, PropertyData, ComparableSale, ComparableRental, IncomeAnalysis, Photo, CountyRule, PhotoAiAnalysis } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import {
   generateNarratives,
   type NarrativePayload,
 } from '@/lib/services/anthropic';
 import { AI_MODELS } from '@/config/ai';
-import { getCalibrationParams } from '@/lib/calibration/recalculate';
 import {
   ECONOMIC_LIFE,
   CASE_STRENGTH,
@@ -328,23 +327,6 @@ export async function runNarratives(
     ) * 1000;
   }
 
-  // Apply calibration value bias correction (learned from real appraisal feedback)
-  const calibration = await getCalibrationParams(
-    report.property_type as PropertyType,
-    report.county_fips ?? null,
-    supabase
-  );
-  if (calibration && calibration.value_bias_pct !== 0 && concludedValue > 0) {
-    const biasFactor = 1 - calibration.value_bias_pct / 100;
-    const preBias = concludedValue;
-    // Positive bias = system overvalues, so subtract; negative = undervalues, so add
-    concludedValue = Math.round((concludedValue * biasFactor) / 1000) * 1000;
-    concludedValueWithoutPhotos = Math.round((concludedValueWithoutPhotos * biasFactor) / 1000) * 1000;
-    console.log(
-      `[stage5] Applied value bias correction: ${preBias} → ${concludedValue} (bias: ${calibration.value_bias_pct}%, n=${calibration.sample_size})`
-    );
-  }
-
   // ── Photo value attribution ────────────────────────────────────────────
   const photoImpactDollars = concludedValueWithoutPhotos - concludedValue;
   const photoImpactPct = concludedValueWithoutPhotos > 0
@@ -392,7 +374,7 @@ export async function runNarratives(
   const isUnderassessed = underassessmentPct > 5; // meaningful underassessment threshold
 
   // ── Case strength score (0-100) ────────────────────────────────────────
-  // Weights: overassessment magnitude, comp count, photo evidence, calibration confidence.
+  // Weights: overassessment magnitude, comp count, photo evidence.
   let strengthScore = 0;
 
   // Overassessment magnitude (0-40 pts): 2 pts per % overassessed, capped at 40
@@ -420,12 +402,6 @@ export async function runNarratives(
     totalDefects * CASE_STRENGTH.defect_pts_each,
     CASE_STRENGTH.defect_max_pts
   );
-
-  // Calibration confidence (0-15 pts)
-  const calibSampleSize = calibration?.sample_size ?? 0;
-  if (calibSampleSize >= 50)      strengthScore += CASE_STRENGTH.calibration_pts_50plus;
-  else if (calibSampleSize >= 10) strengthScore += CASE_STRENGTH.calibration_pts_10to49;
-  else if (calibSampleSize >= 5)  strengthScore += CASE_STRENGTH.calibration_pts_5to9;
 
   strengthScore = Math.min(Math.round(strengthScore), 100);
 
@@ -851,13 +827,6 @@ export async function runNarratives(
       : null,
     floodZone: propertyData.flood_zone_designation,
     overvaluationAnalysis,
-    calibrationContext: calibration && calibration.sample_size > 0
-      ? {
-          sampleSize: calibration.sample_size,
-          meanAbsoluteErrorPct: calibration.mean_absolute_error_pct,
-          valueBiasPct: calibration.value_bias_pct,
-        }
-      : undefined,
   };
 
   // ── Call Anthropic to generate narratives ──────────────────────────────

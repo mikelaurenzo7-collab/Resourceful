@@ -71,7 +71,9 @@ describe('data-router types', () => {
 
   it('CollectPropertyDataParams accepts minimal input', () => {
     const params: CollectPropertyDataParams = {
-      address: '123 Main St, Springfield, IL',
+      address: '123 Main St',
+      city: 'Springfield',
+      state: 'IL',
       countyFips: null,
       countyRules: null,
     };

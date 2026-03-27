@@ -180,13 +180,6 @@ export const CASE_STRENGTH = {
   defect_pts_each: 1,
   defect_max_pts: 10,
 
-  // Points for calibration confidence (0–15 pts)
-  // Based on number of real appraisal outcomes used to train the model
-  calibration_pts_50plus: 15,
-  calibration_pts_10to49: 8,
-  calibration_pts_5to9:   4,
-  calibration_pts_lt5:    0,
-
 } as const;
 
 // ─── Replacement Cost New (RCN) Per Square Foot ───────────────────────────────

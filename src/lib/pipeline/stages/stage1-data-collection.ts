@@ -19,7 +19,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Report, PropertyData, CountyRule } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { geocodeAddress } from '@/lib/services/google-maps';
-import { getPropertyDetail } from '@/lib/services/attom';
+import { collectPropertyData } from '@/lib/services/data-router';
 import {
   resolvePropertySubtype,
   computeEffectiveAge,
@@ -141,46 +141,90 @@ export async function runDataCollection(
     .filter(Boolean)
     .join(', ');
 
-  // ── Geocode (always needed) + ATTOM (skip assessment lookup if tax bill) ─
-  // When the user uploaded a tax bill, we already have their assessed value
-  // and tax amount — no need to call ATTOM for that data. We still call ATTOM
-  // for building details, comps, and location info unless we can skip it.
+  // ── Geocode + Property Data Collection ──────────────────────────────────
+  // Data router tries free public records first, then ATTOM as fallback.
+  // When the user uploaded a tax bill, we already have their assessed value.
   const hasTaxBill = !!report.has_tax_bill && !!report.tax_bill_assessed_value;
 
-  const [geocodeResult, attomResult] = await Promise.all([
+  // Look up county rules early so data router can use them
+  const earlyCountyRule = report.county && report.state
+    ? await findCountyRule(supabase, report.county_fips ?? null, report.county, report.state)
+    : null;
+
+  const [geocodeResult, dataResult] = await Promise.all([
     geocodeAddress(fullAddress),
-    getPropertyDetail(fullAddress),
+    collectPropertyData({
+      address: report.property_address,
+      city: report.city ?? '',
+      state: report.state ?? '',
+      county: report.county ?? null,
+      pin: report.pin,
+      countyFips: report.county_fips ?? null,
+      countyRules: earlyCountyRule,
+    }),
   ]);
 
   if (geocodeResult.error || !geocodeResult.data) {
     return { success: false, error: `Geocoding failed: ${geocodeResult.error}` };
   }
 
-  // ATTOM is still needed for building details and comps even with a tax bill,
-  // but if it fails and we have tax bill data, we can continue with partial data.
-  if (attomResult.error || !attomResult.data) {
+  // Data collection may return partial data — that's OK if we have tax bill
+  if (dataResult.error || !dataResult.data) {
     if (!hasTaxBill) {
-      return { success: false, error: `ATTOM property lookup failed: ${attomResult.error}` };
+      return { success: false, error: `Property data collection failed: ${dataResult.error}` };
     }
     console.warn(
-      `[stage1] ATTOM lookup failed but tax bill data available — continuing with partial data`
+      `[stage1] Data collection failed but tax bill data available — continuing with partial data`
     );
   }
 
   const geo = geocodeResult.data;
-  const attom = attomResult.data;
+  // Build an attom-compatible object from the collected data for downstream compatibility
+  const collected = dataResult.data;
+  const attom = collected ? {
+    location: {
+      countyFips: collected.countyFips ?? '',
+      countyName: collected.countyName ?? '',
+      latitude: collected.latitude ?? 0,
+      longitude: collected.longitude ?? 0,
+    },
+    summary: {
+      propertyType: collected.property_class_description ?? '',
+      propertyClass: collected.property_class ?? null,
+      propertyClassDescription: collected.property_class_description ?? null,
+      yearBuilt: collected.year_built ?? 0,
+      buildingSquareFeet: collected.building_sqft_gross ?? 0,
+      livingSquareFeet: collected.building_sqft_living_area ?? null,
+      lotSquareFeet: collected.lot_size_sqft ?? 0,
+      bedrooms: 0,
+      bathrooms: 0,
+      stories: 0,
+    },
+    assessment: {
+      assessedValue: collected.assessed_value ?? 0,
+      marketValue: 0,
+      landValue: 0,
+      improvementValue: 0,
+      assessmentYear: collected.tax_year_in_appeal ?? 0,
+      taxAmount: 0,
+    },
+    lot: {
+      lotSquareFeet: collected.lot_size_sqft ?? 0,
+      zoning: collected.zoning_designation ?? null,
+      legalDescription: null,
+    },
+  } : null;
 
   // ── Determine county FIPS (the authoritative county identifier) ────────
-  // Priority: ATTOM location > user-provided FIPS > geocode county name
-  // ATTOM FIPS is most reliable because it comes from verified property records.
-  const attomFips = attom?.location.countyFips || null;
-  const resolvedFips = attomFips || report.county_fips || null;
-  const resolvedCountyName = attom?.location.countyName || geo.county || report.county;
+  // Priority: collected data > user-provided FIPS > geocode county name
+  const collectedFips = collected?.countyFips || null;
+  const resolvedFips = collectedFips || report.county_fips || null;
+  const resolvedCountyName = collected?.countyName || geo.county || report.county;
   const resolvedState = geo.state || report.state;
 
   console.log(
     `[stage1] County resolution: fips=${resolvedFips}, county="${resolvedCountyName}", state=${resolvedState} ` +
-    `(sources: attom_fips=${attomFips}, user_fips=${report.county_fips}, geocode_county=${geo.county})`
+    `(sources: collected_fips=${collectedFips}, user_fips=${report.county_fips}, geocode_county=${geo.county})`
   );
 
   // ── Look up county_rules ───────────────────────────────────────────────

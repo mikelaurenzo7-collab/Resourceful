@@ -1,14 +1,14 @@
 // ─── Property Data Collection Router ─────────────────────────────────────────
-// Nationwide data source strategy powered by ATTOM:
-//   1. ATTOM covers every county in every state — this is the universal source.
-//   2. If a county has a dedicated assessor API (county_rules.assessor_api_url),
-//      a future adapter can try it first for authoritative assessed values.
-//   3. County API results take precedence for assessed values when available.
+// Multi-source data strategy — free public records first, ATTOM as fallback:
+//   1. Public Records (FREE): Web search + AI extraction from county assessor
+//      pages. Works for any county, costs only Anthropic API usage.
+//   2. ATTOM (PAID, optional): Universal coverage if API key is configured.
+//      Falls back to this if public records don't return enough data.
+//   3. County API adapters (future): Direct API calls for counties that
+//      expose structured assessor data.
 //
-// No county-specific adapters are hardcoded. When a county_rules row has an
-// assessor_api_url, the collectFromCountyApi() function can route to the
-// appropriate adapter. Adding a new adapter means adding a case to that switch.
-// Every county works via ATTOM regardless of whether an adapter exists.
+// The router tries sources in order and merges results. Public records are
+// authoritative because they come directly from the county assessor.
 
 import type {
   PropertyData,
@@ -20,10 +20,17 @@ import {
   type AttomPropertyDetail,
 } from './attom';
 
+import {
+  getPropertyDetailFromPublicRecords,
+} from './public-records';
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface CollectPropertyDataParams {
   address: string;
+  city: string;
+  state: string;
+  county?: string | null;
   pin?: string | null;
   countyFips: string | null;
   countyRules: Pick<
@@ -69,7 +76,7 @@ export interface CollectedPropertyData {
   county_assessor_raw_response: Record<string, unknown> | null;
   data_collection_notes: string | null;
 
-  // Location info from ATTOM (written to the Report, not PropertyData)
+  // Location info (written to the Report, not PropertyData)
   latitude: number | null;
   longitude: number | null;
   countyFips: string | null;
@@ -81,77 +88,26 @@ export interface ServiceResult<T> {
   error: string | null;
 }
 
-// ─── County API Adapters ─────────────────────────────────────────────────────
-// Future county-specific API adapters go here. Each adapter is keyed by
-// county_fips from the county_rules table (not by hardcoded county names).
+// ─── Normalizers ─────────────────────────────────────────────────────────────
 
-interface CountyApiResult {
-  source: 'county_api';
-  assessment: {
-    assessed_value: number | null;
-    tax_year: number | null;
-    building_sqft_gross: number | null;
-    lot_size_sqft: number | null;
-    year_built: number | null;
-    property_class: string | null;
-  };
-  raw: Record<string, unknown>;
-}
-
-/**
- * Attempt to collect data from a county-specific assessor API.
- * Checks county_rules.assessor_api_url to determine if a direct adapter exists.
- * Returns null gracefully when no adapter is available — ATTOM covers everything.
- *
- * To add a new county adapter:
- *   1. Set assessor_api_url in the county_rules row for that county
- *   2. Add a case below keyed by county_fips
- *   3. Implement the adapter function that returns CountyApiResult
- */
-async function collectFromCountyApi(
-  _params: CollectPropertyDataParams
-): Promise<ServiceResult<CountyApiResult>> {
-  // Only attempt if the county has a configured assessor API URL
-  if (!_params.countyRules?.assessor_api_url) {
-    return { data: null, error: null };
-  }
-
-  // Route by county FIPS code (not hardcoded county names)
-  const _fips = _params.countyRules.county_fips;
-
-  // No adapters currently active — ATTOM handles all counties.
-  // When a county adapter is needed, add a case here:
-  //
-  // switch (fips) {
-  //   case '06037': // Los Angeles County, CA
-  //     return collectFromLACounty(params);
-  //   default:
-  //     break;
-  // }
-
-  return { data: null, error: null };
-}
-
-// ─── ATTOM Adapter ───────────────────────────────────────────────────────────
-
-function attomToCollected(detail: AttomPropertyDetail): CollectedPropertyData {
+function attomToCollected(detail: AttomPropertyDetail, source: string): CollectedPropertyData {
   return {
     assessed_value: detail.assessment.assessedValue || null,
-    assessed_value_source: 'attom',
+    assessed_value_source: source,
     market_value_estimate_low: null,
     market_value_estimate_high: null,
     assessment_ratio: null,
     assessment_methodology: null,
     lot_size_sqft: detail.lot.lotSquareFeet || null,
     building_sqft_gross: detail.summary.buildingSquareFeet || null,
-    building_sqft_living_area: null, // ATTOM does not separate living area
+    building_sqft_living_area: detail.summary.livingSquareFeet || null,
     year_built: detail.summary.yearBuilt || null,
-    property_class: null,
+    property_class: detail.summary.propertyClass || null,
     property_class_description: detail.summary.propertyType || null,
     zoning_designation: detail.lot.zoning,
     zoning_ordinance_citation: null,
     zoning_conformance: null,
-    flood_zone_designation: null, // Populated separately by FEMA service
+    flood_zone_designation: null,
     flood_map_panel_number: null,
     flood_map_panel_date: null,
     tax_year_in_appeal: detail.assessment.assessmentYear || null,
@@ -168,79 +124,125 @@ function attomToCollected(detail: AttomPropertyDetail): CollectedPropertyData {
   };
 }
 
-// ─── Merge Logic ─────────────────────────────────────────────────────────────
-
 /**
- * Merge county API results into the base ATTOM data.
- * County-sourced assessed values take precedence since they come directly
- * from the authority of record.
+ * Merge supplemental data into a base result.
+ * Supplemental values only fill in gaps — they don't override existing data.
  */
-function mergeCountyData(
+function mergeSupplemental(
   base: CollectedPropertyData,
-  county: CountyApiResult
+  supplement: CollectedPropertyData,
+  supplementSource: string
 ): CollectedPropertyData {
-  const ca = county.assessment;
+  const notes = [base.data_collection_notes, `Supplemented with ${supplementSource}`]
+    .filter(Boolean)
+    .join('; ');
 
   return {
     ...base,
-
-    // County assessed values take precedence
-    assessed_value: ca.assessed_value ?? base.assessed_value,
-    assessed_value_source: 'county_api',
-    tax_year_in_appeal: ca.tax_year ?? base.tax_year_in_appeal,
-
-    // Supplement physical attributes if ATTOM was missing them
-    building_sqft_gross: base.building_sqft_gross ?? ca.building_sqft_gross,
-    lot_size_sqft: base.lot_size_sqft ?? ca.lot_size_sqft,
-    year_built: base.year_built ?? ca.year_built,
-    property_class: ca.property_class ?? base.property_class,
-
-    // Store county raw response
-    county_assessor_raw_response: county.raw,
+    assessed_value: base.assessed_value ?? supplement.assessed_value,
+    assessed_value_source: base.assessed_value
+      ? base.assessed_value_source
+      : supplement.assessed_value_source,
+    lot_size_sqft: base.lot_size_sqft ?? supplement.lot_size_sqft,
+    building_sqft_gross: base.building_sqft_gross ?? supplement.building_sqft_gross,
+    building_sqft_living_area: base.building_sqft_living_area ?? supplement.building_sqft_living_area,
+    year_built: base.year_built ?? supplement.year_built,
+    property_class: base.property_class ?? supplement.property_class,
+    property_class_description: base.property_class_description ?? supplement.property_class_description,
+    zoning_designation: base.zoning_designation ?? supplement.zoning_designation,
+    tax_year_in_appeal: base.tax_year_in_appeal ?? supplement.tax_year_in_appeal,
+    latitude: base.latitude ?? supplement.latitude,
+    longitude: base.longitude ?? supplement.longitude,
+    countyFips: base.countyFips ?? supplement.countyFips,
+    countyName: base.countyName ?? supplement.countyName,
+    data_collection_notes: notes,
   };
+}
+
+// ─── Data Quality Check ──────────────────────────────────────────────────────
+
+function hasMinimumData(data: CollectedPropertyData): boolean {
+  // We need at least assessed value + building sqft to run a useful analysis
+  return !!(data.assessed_value && data.building_sqft_gross);
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
- * Collect property data from ATTOM (universal) and optionally from a
- * county-specific assessor API if one is configured in county_rules.
+ * Collect property data using a multi-source strategy:
+ *   1. Try free public records first (web search + AI extraction)
+ *   2. Fall back to ATTOM if configured and public records were insufficient
+ *   3. Merge results from all sources
  *
- * Sets assessed_value_source to 'county_api' or 'attom'.
+ * The caller should still work if only partial data is returned.
  */
 export async function collectPropertyData(
   params: CollectPropertyDataParams
 ): Promise<ServiceResult<CollectedPropertyData>> {
-  // Step 1: Always fetch from ATTOM (our universal data source)
-  const attomResult = await attomGetPropertyDetail(params.address);
+  const notes: string[] = [];
+  let collected: CollectedPropertyData | null = null;
 
-  if (attomResult.error || !attomResult.data) {
-    console.error(
-      `[data-router] ATTOM failed for "${params.address}": ${attomResult.error}`
-    );
+  // ── Source 1: Public Records (FREE) ─────────────────────────────────────
+  console.log(`[data-router] Trying public records for "${params.address}"...`);
+
+  const publicResult = await getPropertyDetailFromPublicRecords({
+    address: params.address,
+    city: params.city,
+    state: params.state,
+    county: params.county ?? params.countyRules?.county_name ?? null,
+  });
+
+  if (publicResult.data) {
+    collected = attomToCollected(publicResult.data, 'public_records');
+    notes.push('Public records: property data extracted');
+    console.log(`[data-router] Public records returned data for "${params.address}"`);
+
+    if (hasMinimumData(collected)) {
+      console.log(`[data-router] Public records sufficient — skipping ATTOM`);
+      collected.data_collection_notes = notes.join('; ');
+      return { data: collected, error: null };
+    }
+
+    notes.push('Public records: partial data — trying ATTOM for supplement');
+  } else {
+    notes.push(`Public records: ${publicResult.error ?? 'no data found'}`);
+    console.log(`[data-router] Public records returned no data, trying ATTOM...`);
+  }
+
+  // ── Source 2: ATTOM (PAID, optional) ────────────────────────────────────
+  const attomKey = process.env.ATTOM_API_KEY;
+
+  if (attomKey) {
+    const attomResult = await attomGetPropertyDetail(params.address);
+
+    if (attomResult.data) {
+      const attomData = attomToCollected(attomResult.data, 'attom');
+      notes.push('ATTOM: property data retrieved');
+
+      if (collected) {
+        // Public records had partial data — merge ATTOM as supplement
+        collected = mergeSupplemental(collected, attomData, 'attom');
+      } else {
+        // Public records failed entirely — use ATTOM as primary
+        collected = attomData;
+      }
+    } else {
+      notes.push(`ATTOM: ${attomResult.error ?? 'failed'}`);
+      console.warn(`[data-router] ATTOM also failed for "${params.address}"`);
+    }
+  } else {
+    notes.push('ATTOM: not configured (no API key)');
+    console.log(`[data-router] ATTOM not configured — using public records only`);
+  }
+
+  // ── Result ──────────────────────────────────────────────────────────────
+  if (!collected) {
     return {
       data: null,
-      error: `Property data collection failed: ${attomResult.error}`,
+      error: 'No property data found from any source. Check the address and try again.',
     };
   }
 
-  let collected = attomToCollected(attomResult.data);
-
-  // Step 2: Try county-specific API if rules indicate one exists
-  if (params.countyRules?.assessor_api_url) {
-    const countyResult = await collectFromCountyApi(params);
-
-    if (countyResult.data) {
-      collected = mergeCountyData(collected, countyResult.data);
-      console.log(
-        `[data-router] Merged county data for "${params.address}" — assessed_value_source: county_api`
-      );
-    } else if (countyResult.error) {
-      console.warn(
-        `[data-router] County API failed, using ATTOM only: ${countyResult.error}`
-      );
-    }
-  }
-
+  collected.data_collection_notes = notes.join('; ');
   return { data: collected, error: null };
 }

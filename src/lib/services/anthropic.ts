@@ -132,11 +132,6 @@ export interface NarrativePayload {
     // Conditions of sale
     distressedCompCount?: number;          // # comps with conditions-of-sale adjustment applied
   };
-  calibrationContext?: {
-    sampleSize: number;
-    meanAbsoluteErrorPct: number | null;
-    valueBiasPct: number;
-  };
 }
 
 export interface FilingGuidePayload {
@@ -690,9 +685,6 @@ ${(payload.overvaluationAnalysis.distressedCompCount ?? 0) > 0 ? `- CONDITIONS O
 ${payload.overvaluationAnalysis.dataAnomalies.length > 0 ? `- ASSESSOR DATA ERRORS:\n${payload.overvaluationAnalysis.dataAnomalies.map(a => `  → ${a}`).join('\n')}` : ''}
 ` : ''}
 ${hasPhotos ? buildPhotoEvidenceBrief(payload.photoAnalyses!, payload.photoAttribution) : ''}
-${payload.calibrationContext && payload.calibrationContext.sampleSize > 0
-  ? `\nCALIBRATION CREDIBILITY: This valuation methodology has been validated against ${payload.calibrationContext.sampleSize} independent professional appraisals${payload.calibrationContext.meanAbsoluteErrorPct != null ? ` with a mean absolute error of only ${payload.calibrationContext.meanAbsoluteErrorPct.toFixed(1)}%` : ''}. Mention this in the executive summary — it demonstrates our analysis is professionally calibrated, not speculative.`
-  : ''}
 
 TONE: Write with the confidence of an expert witness who has testified before ${payload.countyRules.appealBoardName || 'boards of review'} hundreds of times. Be specific, cite numbers, and make every paragraph advance the homeowner's case. Professional but assertive — never timid, never hedging. The homeowner is paying for advocacy, not neutrality.`;
 }
