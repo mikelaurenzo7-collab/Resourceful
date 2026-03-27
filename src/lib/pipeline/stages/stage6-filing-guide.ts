@@ -9,6 +9,7 @@ import type { Database, Report, CountyRule, ReportNarrative, PropertyData, Incom
 import type { StageResult } from '../orchestrator';
 import { generateFilingGuide, type FilingGuidePayload } from '@/lib/services/anthropic';
 import { AI_MODELS } from '@/config/ai';
+import { calculateDeadline } from '@/lib/utils/deadline-calculator';
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
 
@@ -125,9 +126,17 @@ export async function runFilingGuide(
     return { success: false, error: 'No concluded value available for filing guide' };
   }
 
-  // ── Build appeal deadline string ──────────────────────────────────────
+  // ── Build appeal deadline string (auto-calculated when possible) ─────
+  const deadlineInfo = calculateDeadline(countyRule);
   let appealDeadline: string | null = null;
-  if (countyRule?.appeal_deadline_rule) {
+  if (deadlineInfo.source === 'exact' || deadlineInfo.source === 'calculated') {
+    // Use the auto-calculated deadline with urgency context
+    appealDeadline = deadlineInfo.displayText;
+    if (countyRule?.appeal_deadline_rule) {
+      appealDeadline += ` — Rule: ${countyRule.appeal_deadline_rule}`;
+    }
+    console.log(`[stage6] Auto-calculated deadline: ${deadlineInfo.displayText} (${deadlineInfo.urgencyLevel})`);
+  } else if (countyRule?.appeal_deadline_rule) {
     appealDeadline = countyRule.appeal_deadline_rule;
   }
   if (countyRule?.tax_year_appeal_window) {
@@ -192,6 +201,10 @@ export async function runFilingGuide(
     furtherAppealBody: countyRule?.further_appeal_body ?? null,
     furtherAppealDeadlineRule: countyRule?.further_appeal_deadline_rule ?? null,
     furtherAppealUrl: countyRule?.further_appeal_url ?? null,
+    // Board intelligence
+    boardPersonalityNotes: countyRule?.board_personality_notes ?? null,
+    winningArgumentPatterns: countyRule?.winning_argument_patterns ?? null,
+    successRatePct: countyRule?.success_rate_pct ?? null,
   };
 
   // ── Generate filing guide via AI ──────────────────────────────────────
