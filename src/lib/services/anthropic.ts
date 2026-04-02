@@ -149,6 +149,14 @@ export interface NarrativePayload {
     // Conditions of sale
     distressedCompCount?: number;          // # comps with conditions-of-sale adjustment applied
   };
+  // Live research intelligence — per-report web research from research agent
+  researchIntelligence?: {
+    strategyInsights: string;
+    deadlineInfo: string | null;
+    boardIntelligence: string | null;
+    recentChanges: string | null;
+    sources: string[];
+  } | null;
 }
 
 export interface FilingGuidePayload {
@@ -658,6 +666,13 @@ You are NOT a neutral party. You are your client's expert witness. Every number 
 
 YOUR EXPERTISE IN ${county.toUpperCase()} COUNTY, ${state.toUpperCase()}:
 ${countyExpertise.map(e => `- ${e}`).join('\n')}
+${payload.researchIntelligence?.strategyInsights ? `
+LIVE RESEARCH INTELLIGENCE (researched for this specific report):
+${payload.researchIntelligence.strategyInsights}
+${payload.researchIntelligence.deadlineInfo ? `\nCURRENT DEADLINE INFO: ${payload.researchIntelligence.deadlineInfo}` : ''}
+${payload.researchIntelligence.boardIntelligence ? `\nBOARD INTELLIGENCE: ${payload.researchIntelligence.boardIntelligence}` : ''}
+${payload.researchIntelligence.recentChanges ? `\nRECENT CHANGES: ${payload.researchIntelligence.recentChanges}` : ''}
+Use this research to make your analysis current and county-specific. Reference specific procedures, deadlines, or strategies where relevant.` : ''}
 
 You must return valid JSON — an array of objects with these keys:
 - "section_name": one of the exact values listed below

@@ -242,6 +242,22 @@ export async function runDataCollection(
       countyRule = await findCountyRule(supabase, resolvedFips, resolvedCountyName, resolvedState);
       console.log(`[stage1] County enriched: ${enrichResult.fieldsUpdated.join(', ')}`);
     }
+  } else if (countyRule?.last_verified_date) {
+    // ── 180-day stale data check — re-enrich if data is older than 6 months ──
+    const lastVerified = new Date(countyRule.last_verified_date);
+    const daysSinceVerified = Math.floor((Date.now() - lastVerified.getTime()) / (1000 * 60 * 60 * 24));
+    if (daysSinceVerified > 180) {
+      console.log(`[stage1] County ${countyRule.county_name} data is ${daysSinceVerified} days old — re-enriching...`);
+      // Force re-enrichment by temporarily clearing pro_se_tips (triggers needsEnrichment)
+      const enrichResult = await enrichCounty(
+        { ...countyRule, pro_se_tips: null } as typeof countyRule,
+        supabase as never
+      );
+      if (enrichResult.enriched) {
+        countyRule = await findCountyRule(supabase, resolvedFips, resolvedCountyName, resolvedState);
+        console.log(`[stage1] County re-enriched after ${daysSinceVerified} days: ${enrichResult.fieldsUpdated.join(', ')}`);
+      }
+    }
   }
 
   // ── Build data collection notes ────────────────────────────────────────

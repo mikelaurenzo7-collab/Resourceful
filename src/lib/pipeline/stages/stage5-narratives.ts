@@ -833,6 +833,37 @@ export async function runNarratives(
     overvaluationAnalysis,
   };
 
+  // ── Per-report research — adaptive web search for current strategies ──
+  let researchIntelligence: typeof payload.researchIntelligence = null;
+  try {
+    const { researchAppealStrategy } = await import('@/lib/services/research-agent');
+    const research = await researchAppealStrategy({
+      countyName: countyRule?.county_name ?? report.county ?? '',
+      stateName: countyRule?.state_name ?? report.state ?? '',
+      propertyType: report.property_type ?? 'residential',
+      serviceType: report.service_type ?? 'tax_appeal',
+      desiredOutcome: report.desired_outcome,
+      assessedValue: propertyData.assessed_value,
+      concludedValue,
+      propertyIssues: report.property_issues ?? [],
+    });
+    if (research.strategyInsights) {
+      researchIntelligence = {
+        strategyInsights: research.strategyInsights,
+        deadlineInfo: research.deadlineInfo,
+        boardIntelligence: research.boardIntelligence,
+        recentChanges: research.recentChanges,
+        sources: research.sources,
+      };
+      console.log(`[stage5] Research complete: ${research.searchesPerformed} searches, ${research.sources.length} sources`);
+    }
+  } catch (err) {
+    // Research is non-fatal — narratives can generate without it
+    console.warn(`[stage5] Research agent failed (non-fatal): ${err instanceof Error ? err.message : err}`);
+  }
+
+  payload.researchIntelligence = researchIntelligence;
+
   // ── Call Anthropic to generate narratives ──────────────────────────────
   console.log(`[stage5] Generating narratives for report ${reportId}...`);
   const narrativeResult = await generateNarratives(payload);
