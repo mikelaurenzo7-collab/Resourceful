@@ -70,11 +70,15 @@ export function getPriceForReport(
 ): number {
   // Guided filing and full representation are only available for tax appeals.
   // Fall back to expert_reviewed if an invalid tier/service combo is requested.
-  const effectiveTier =
+  const needsDowngrade =
     (reviewTier === 'guided_filing' || reviewTier === 'full_representation') &&
-    serviceType !== 'tax_appeal'
-      ? 'expert_reviewed'
-      : reviewTier;
+    serviceType !== 'tax_appeal';
+
+  if (needsDowngrade) {
+    console.warn(`[pricing] Review tier '${reviewTier}' is not available for '${serviceType}'. Downgrading to 'expert_reviewed'.`);
+  }
+
+  const effectiveTier = needsDowngrade ? 'expert_reviewed' : reviewTier;
 
   const table = effectiveTier === 'full_representation'
     ? PRICING_FULL_REPRESENTATION

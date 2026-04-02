@@ -192,7 +192,13 @@ export async function runPdfAssembly(
         hearing_format: parsed.hearing_format ?? countyRule.hearing_format,
       };
     } catch (err) {
-      console.warn(`[stage7] Failed to parse filing guide JSON, skipping addendum:`, err);
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[stage7] Failed to parse filing guide JSON for report ${reportId}: ${message}`);
+      // Filing guide is critical for tax appeal reports — fail the stage so admin is alerted
+      if (report.service_type === 'tax_appeal') {
+        return { success: false, error: `Filing guide JSON parse failed: ${message}` };
+      }
+      // For non-tax-appeal reports, filing guide is optional — continue without it
     }
   }
 

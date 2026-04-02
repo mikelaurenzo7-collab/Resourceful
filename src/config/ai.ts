@@ -3,9 +3,17 @@
 // Everything else imports from here.
 // To upgrade models, change the environment variables — not this file.
 
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(`${name} environment variable is not set. AI features will not work.`);
+  }
+  return value;
+}
+
 export const AI_MODELS = {
-  PRIMARY: process.env.AI_MODEL_PRIMARY!, // report narratives, vision analysis
-  FAST: process.env.AI_MODEL_FAST!, // quick classification tasks
+  get PRIMARY() { return requireEnv('AI_MODEL_PRIMARY'); }, // report narratives, vision analysis
+  get FAST() { return requireEnv('AI_MODEL_FAST'); }, // quick classification tasks
 } as const;
 
 // Token limits cap API costs and prevent runaway bills.

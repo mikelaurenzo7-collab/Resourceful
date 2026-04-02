@@ -133,14 +133,15 @@ function computeConditionMode(values: string[]): string {
     }
   }
 
-  // If single winner, return it. On tie, pick the middle value (conservative).
-  // This avoids bias toward worst condition which would be indefensible.
+  // If single winner, return it. On tie, pick the worse condition (lower index).
+  // For tax appeals, conservative = lower value = stronger appeal case.
+  // Choosing the better condition would inflate value and weaken the appeal.
   if (candidates.length === 1) return candidates[0];
   const sorted = candidates.sort((a, b) =>
     CONDITION_ORDER.indexOf(a as (typeof CONDITION_ORDER)[number]) -
     CONDITION_ORDER.indexOf(b as (typeof CONDITION_ORDER)[number])
   );
-  return sorted[Math.floor(sorted.length / 2)];
+  return sorted[0];
 }
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────

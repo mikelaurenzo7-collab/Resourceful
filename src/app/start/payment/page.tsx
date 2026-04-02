@@ -188,8 +188,9 @@ function CheckoutForm() {
         </div>
 
         {error && (
-          <div className="rounded-lg bg-red-900/20 border border-red-500/20 p-4 text-sm text-red-400">
-            {error}
+          <div className="rounded-lg bg-red-900/20 border border-red-500/20 p-4">
+            <p className="text-sm text-red-400">{error}</p>
+            <p className="text-xs text-red-400/60 mt-1">Please check your card details and try again. Your report data is saved.</p>
           </div>
         )}
 
