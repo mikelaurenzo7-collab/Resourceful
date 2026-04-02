@@ -179,9 +179,9 @@ export async function POST(request: NextRequest) {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[api/reports] Unhandled error:', message);
+    console.error('[api/reports] Unhandled error:', message, err instanceof Error ? err.stack : '');
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: message },
       { status: 500 }
     );
   }
