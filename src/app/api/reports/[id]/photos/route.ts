@@ -113,7 +113,7 @@ export async function POST(
     }
 
     // ── Upload to Supabase Storage ─────────────────────────────────────────
-    const admin = createAdminClient();
+    // Reuses admin client created above for photo count check
     // Clean filename: {reportId}/{type}_{order}_{timestamp}.{ext}
     const fileExt = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
     const uploadType = parsed.data.photo_type ?? 'other';
