@@ -14,7 +14,7 @@ export default function HomePage() {
       <ServiceJsonLd />
       <FAQJsonLd />
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-gold/5 bg-navy-deep/80 backdrop-blur-lg">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-navy-deep/80 backdrop-blur-lg">
         <div className="mx-auto max-w-6xl px-6 flex items-center justify-between h-16">
           <Link href="/" className="font-display text-xl text-gold">
             Resourceful

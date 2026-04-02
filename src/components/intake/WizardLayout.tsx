@@ -286,7 +286,7 @@ export default function WizardLayout({ children }: { children: React.ReactNode }
     <WizardContext.Provider value={{ state, updateState, currentStep, setCurrentStep, totalSteps }}>
       <div className="min-h-screen bg-pattern">
         {/* Header */}
-        <header className="border-b border-gold/10 bg-navy-deep/80 backdrop-blur-sm sticky top-0 z-50">
+        <header className="bg-navy-deep/80 backdrop-blur-sm sticky top-0 z-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
             <button
               onClick={() => router.push('/')}
