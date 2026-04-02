@@ -86,6 +86,16 @@ const TABLE_ALT = '#f4f6f9';
 const TABLE_BORDER = '#d0d5dd';
 const MUTED = '#6b7280';
 
+function toRoman(n: number): string {
+  const vals = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
+  const syms = ['M', 'CM', 'D', 'CD', 'C', 'XC', 'L', 'XL', 'X', 'IX', 'V', 'IV', 'I'];
+  let result = '';
+  for (let i = 0; i < vals.length; i++) {
+    while (n >= vals[i]) { result += syms[i]; n -= vals[i]; }
+  }
+  return result;
+}
+
 // ─── Main Export ─────────────────────────────────────────────────────────────
 
 export function generateReportHtml(data: ReportTemplateData): string {
@@ -122,7 +132,11 @@ export function generateReportHtml(data: ReportTemplateData): string {
 
   const clientName = report.client_name ?? 'Property Owner';
 
+  const hasCostApproach = data.property.cost_approach_value != null && data.property.cost_approach_value > 0;
+  const hasPhotoDefects = photos.some(p => (p.ai_analysis?.defects?.length ?? 0) > 0);
+
   // Build section list for TOC
+  let sectionCounter = 8; // after VII-B
   const tocSections: { num: string; title: string }[] = [
     { num: 'I', title: 'Summary of Findings' },
     { num: 'II', title: 'Property Description' },
@@ -136,13 +150,21 @@ export function generateReportHtml(data: ReportTemplateData): string {
     { num: 'VII-B', title: 'Highest & Best Use — As Improved' },
     { num: 'VIII', title: 'Sales Comparison Approach' },
   ];
+  sectionCounter = 9;
+  if (hasCostApproach) {
+    tocSections.push({ num: toRoman(sectionCounter++), title: 'Cost Approach' });
+  }
   if (hasIncome) {
-    tocSections.push({ num: 'IX', title: 'Income Approach' });
+    tocSections.push({ num: toRoman(sectionCounter++), title: 'Income Approach' });
   }
-  tocSections.push({ num: hasIncome ? 'X' : 'IX', title: 'Reconciliation & Final Value' });
+  if (hasPhotoDefects) {
+    tocSections.push({ num: toRoman(sectionCounter++), title: 'Property Condition & Cost-to-Cure Analysis' });
+  }
+  tocSections.push({ num: toRoman(sectionCounter++), title: 'Reconciliation & Final Value' });
   if (filingGuide) {
-    tocSections.push({ num: 'Addendum', title: 'Pro Se Filing Guide' });
+    tocSections.push({ num: 'Addendum A', title: 'Pro Se Filing Guide' });
   }
+  tocSections.push({ num: 'Addendum', title: 'Certification & Limiting Conditions' });
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -158,7 +180,23 @@ export function generateReportHtml(data: ReportTemplateData): string {
     size: Letter;
     margin: 0.85in 0.9in 1in 0.9in;
     @bottom-center {
-      content: none;
+      content: counter(page);
+      font-family: 'Inter', Arial, sans-serif;
+      font-size: 8pt;
+      color: ${MUTED};
+    }
+    @bottom-right {
+      content: 'Resourceful';
+      font-family: 'Inter', Arial, sans-serif;
+      font-size: 7pt;
+      color: #ccc;
+      letter-spacing: 0.5px;
+    }
+    @top-right {
+      content: '${escapeHtml(addr).replace(/'/g, "\\'")}';
+      font-family: 'Inter', Arial, sans-serif;
+      font-size: 7pt;
+      color: #ccc;
     }
   }
 
@@ -863,7 +901,11 @@ ${renderNarrativeSection('hbu_as_improved', 'VII-B', 'Highest & Best Use — As 
 
 ${renderSalesComparisonSection(data, comparableSales, narrativeMap)}
 
+${hasCostApproach ? renderCostApproachSection(data) : ''}
+
 ${hasIncome ? renderIncomeSection(data, incomeAnalysis!, comparableRentals, narrativeMap) : ''}
+
+${hasPhotoDefects ? renderPhotoConditionSection(data, photos) : ''}
 
 ${renderReconciliationSection(data, narrativeMap, clientName)}
 
@@ -1508,6 +1550,232 @@ function renderIncomeSection(
     ${rentalGridHtml}
 
     <div class="page-footer"></div>
+  </div>`;
+}
+
+// ─── Cost Approach Section ───────────────────────────────────────────────────
+
+function renderCostApproachSection(data: ReportTemplateData): string {
+  const { property } = data;
+  const rcn = property.cost_approach_rcn ?? 0;
+  const landValue = (property as unknown as Record<string, unknown>).land_value as number | null ?? 0;
+  const physicalDepr = property.physical_depreciation_pct ?? 0;
+  const functionalObs = property.functional_obsolescence_pct ?? 0;
+  const totalDepr = Math.min(physicalDepr + functionalObs, 95);
+  const depreciatedValue = Math.round(rcn * (1 - totalDepr / 100));
+  const costValue = property.cost_approach_value ?? 0;
+  const effectiveAge = property.effective_age ?? 0;
+  const remainingLife = property.remaining_economic_life ?? 0;
+  const sqft = property.building_sqft_gross ?? 0;
+  const costPerSqft = sqft > 0 ? Math.round(rcn / sqft) : 0;
+  const qualityGrade = (property as unknown as Record<string, unknown>).quality_grade as string ?? 'average';
+
+  return `
+  <div class="page-break">
+    <div class="section-header">
+      <h2>Cost Approach</h2>
+    </div>
+
+    <p>The Cost Approach develops an estimate of market value by calculating the cost to construct a replacement structure of equivalent utility, deducting accrued depreciation, and adding the estimated land value. This approach provides an independent check on the Sales Comparison Approach and is particularly relevant when the property's assessed value implies a higher-than-market replacement cost.</p>
+
+    <div style="margin:1.5em 0;">
+      <h3 style="margin-bottom:0.8em;">Replacement Cost New (RCN)</h3>
+      <table style="width:100%; border-collapse:collapse; font-size:9.5pt; border:1px solid ${TABLE_BORDER};">
+        <thead>
+          <tr style="background:${NAVY}; color:white;">
+            <th style="padding:8px 12px; text-align:left;">Component</th>
+            <th style="padding:8px 12px; text-align:right;">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:8px 12px;">Building Area</td>
+            <td style="padding:8px 12px; text-align:right;" class="num">${formatSqFt(sqft)}</td>
+          </tr>
+          <tr style="background:${TABLE_ALT};">
+            <td style="padding:8px 12px;">Quality Grade</td>
+            <td style="padding:8px 12px; text-align:right; text-transform:capitalize;">${escapeHtml(qualityGrade)}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 12px;">Cost per SF</td>
+            <td style="padding:8px 12px; text-align:right;" class="num">${formatCurrency(costPerSqft)}/SF</td>
+          </tr>
+          <tr style="background:${TABLE_ALT}; border-top:2px solid ${GOLD};">
+            <td style="padding:8px 12px; font-weight:600;">Replacement Cost New (RCN)</td>
+            <td style="padding:8px 12px; text-align:right; font-weight:600;" class="num">${formatCurrency(rcn)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin:1.5em 0;">
+      <h3 style="margin-bottom:0.8em;">Accrued Depreciation</h3>
+      <table style="width:100%; border-collapse:collapse; font-size:9.5pt; border:1px solid ${TABLE_BORDER};">
+        <thead>
+          <tr style="background:${NAVY}; color:white;">
+            <th style="padding:8px 12px; text-align:left;">Depreciation Type</th>
+            <th style="padding:8px 12px; text-align:center;">Rate</th>
+            <th style="padding:8px 12px; text-align:right;">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="padding:8px 12px;">Physical Deterioration (Effective Age: ${effectiveAge} yrs, Remaining Life: ${remainingLife} yrs)</td>
+            <td style="padding:8px 12px; text-align:center;" class="num">${physicalDepr.toFixed(1)}%</td>
+            <td style="padding:8px 12px; text-align:right; color:#b91c1c;" class="num">-${formatCurrency(Math.round(rcn * physicalDepr / 100))}</td>
+          </tr>
+          ${functionalObs > 0 ? `<tr style="background:${TABLE_ALT};">
+            <td style="padding:8px 12px;">Functional Obsolescence${property.functional_obsolescence_notes ? ` (${escapeHtml(property.functional_obsolescence_notes)})` : ''}</td>
+            <td style="padding:8px 12px; text-align:center;" class="num">${functionalObs.toFixed(1)}%</td>
+            <td style="padding:8px 12px; text-align:right; color:#b91c1c;" class="num">-${formatCurrency(Math.round(rcn * functionalObs / 100))}</td>
+          </tr>` : ''}
+          <tr style="border-top:2px solid ${GOLD}; background:${TABLE_ALT};">
+            <td style="padding:8px 12px; font-weight:600;">Total Accrued Depreciation</td>
+            <td style="padding:8px 12px; text-align:center; font-weight:600;" class="num">${totalDepr.toFixed(1)}%</td>
+            <td style="padding:8px 12px; text-align:right; font-weight:600; color:#b91c1c;" class="num">-${formatCurrency(Math.round(rcn * totalDepr / 100))}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin:1.5em 0;">
+      <h3 style="margin-bottom:0.8em;">Cost Approach Summary</h3>
+      <table style="width:100%; border-collapse:collapse; font-size:9.5pt; border:1px solid ${TABLE_BORDER};">
+        <tbody>
+          <tr>
+            <td style="padding:8px 12px;">Replacement Cost New (RCN)</td>
+            <td style="padding:8px 12px; text-align:right;" class="num">${formatCurrency(rcn)}</td>
+          </tr>
+          <tr style="background:${TABLE_ALT};">
+            <td style="padding:8px 12px;">Less: Accrued Depreciation (${totalDepr.toFixed(1)}%)</td>
+            <td style="padding:8px 12px; text-align:right; color:#b91c1c;" class="num">-${formatCurrency(Math.round(rcn * totalDepr / 100))}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 12px;">Depreciated Improvement Value</td>
+            <td style="padding:8px 12px; text-align:right;" class="num">${formatCurrency(depreciatedValue)}</td>
+          </tr>
+          <tr style="background:${TABLE_ALT};">
+            <td style="padding:8px 12px;">Plus: Land Value</td>
+            <td style="padding:8px 12px; text-align:right;" class="num">${formatCurrency(landValue ?? 0)}</td>
+          </tr>
+          <tr style="border-top:2px solid ${GOLD};">
+            <td style="padding:10px 12px; font-weight:700; color:${NAVY};">Indicated Value by Cost Approach</td>
+            <td style="padding:10px 12px; text-align:right; font-weight:700; color:${NAVY};" class="num">${formatCurrency(costValue)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    ${costValue < (property.assessed_value ?? 0) ? `
+    <div style="background:#f0fdf4; border-left:4px solid #22c55e; padding:14px 18px; margin:1em 0;">
+      <p style="font-size:9.5pt; color:#166534; margin:0;">
+        <strong>The Cost Approach supports the conclusion that the property is over-assessed.</strong>
+        Even using full replacement cost methodology, the indicated value of ${formatCurrency(costValue)} falls
+        ${formatCurrency((property.assessed_value ?? 0) - costValue)} below the current assessed value of
+        ${formatCurrency(property.assessed_value ?? 0)}.
+      </p>
+    </div>` : ''}
+  </div>`;
+}
+
+// ─── Property Condition & Cost-to-Cure Analysis ─────────────────────────────
+
+function renderPhotoConditionSection(data: ReportTemplateData, photos: Photo[]): string {
+  const defectPhotos = photos.filter(p => (p.ai_analysis?.defects?.length ?? 0) > 0);
+  if (defectPhotos.length === 0) return '';
+
+  // Collect all defects with their photo source
+  const allDefects: { photo: Photo; defect: import('@/types/database').PhotoDefect }[] = [];
+  for (const photo of defectPhotos) {
+    for (const defect of photo.ai_analysis!.defects) {
+      allDefects.push({ photo, defect });
+    }
+  }
+
+  // Estimate cost-to-cure ranges per severity/impact
+  const costEstimates: { description: string; severity: string; impact: string; lowEstimate: number; highEstimate: number }[] = [];
+  const buildingSqft = data.property.building_sqft_gross ?? 1500;
+
+  for (const { defect } of allDefects) {
+    let low = 0, high = 0;
+    if (defect.value_impact === 'high') {
+      low = Math.round(buildingSqft * 8); high = Math.round(buildingSqft * 20);
+    } else if (defect.value_impact === 'medium') {
+      low = Math.round(buildingSqft * 3); high = Math.round(buildingSqft * 8);
+    } else {
+      low = 500; high = Math.round(buildingSqft * 3);
+    }
+    costEstimates.push({
+      description: defect.description,
+      severity: defect.severity,
+      impact: defect.value_impact,
+      lowEstimate: low,
+      highEstimate: high,
+    });
+  }
+
+  const totalLow = costEstimates.reduce((s, e) => s + e.lowEstimate, 0);
+  const totalHigh = costEstimates.reduce((s, e) => s + e.highEstimate, 0);
+
+  const severityColors: Record<string, string> = {
+    significant: '#b91c1c',
+    moderate: '#d97706',
+    minor: '#6b7280',
+  };
+
+  return `
+  <div class="page-break">
+    <div class="section-header">
+      <h2>Property Condition &amp; Cost-to-Cure Analysis</h2>
+    </div>
+
+    <p>Physical inspection via owner-submitted photographs revealed the following conditions affecting the subject property's market value. Each identified deficiency is catalogued with its estimated cost-to-cure, which directly supports a downward adjustment to the property's assessed value. These conditions represent deferred maintenance and physical deterioration not reflected in the county's assessment records.</p>
+
+    <table style="width:100%; border-collapse:collapse; font-size:9pt; border:1px solid ${TABLE_BORDER}; margin:1.5em 0;">
+      <thead>
+        <tr style="background:${NAVY}; color:white;">
+          <th style="padding:8px 10px; text-align:left; width:40%;">Deficiency</th>
+          <th style="padding:8px 10px; text-align:center; width:15%;">Severity</th>
+          <th style="padding:8px 10px; text-align:center; width:15%;">Value Impact</th>
+          <th style="padding:8px 10px; text-align:right; width:30%;">Est. Cost-to-Cure</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${costEstimates.map((item, i) => `
+        <tr${i % 2 === 1 ? ` style="background:${TABLE_ALT};"` : ''}>
+          <td style="padding:8px 10px;">${escapeHtml(item.description)}</td>
+          <td style="padding:8px 10px; text-align:center;">
+            <span style="display:inline-block; padding:2px 8px; border-radius:10px; font-size:8pt; font-weight:600; color:white; background:${severityColors[item.severity] ?? MUTED}; text-transform:capitalize;">${escapeHtml(item.severity)}</span>
+          </td>
+          <td style="padding:8px 10px; text-align:center; text-transform:capitalize;">${escapeHtml(item.impact)}</td>
+          <td style="padding:8px 10px; text-align:right; color:#b91c1c;" class="num">${formatCurrency(item.lowEstimate)} – ${formatCurrency(item.highEstimate)}</td>
+        </tr>`).join('')}
+        <tr style="border-top:2px solid ${GOLD}; background:#fef2f2;">
+          <td style="padding:10px 10px; font-weight:700;" colspan="3">Total Estimated Cost-to-Cure</td>
+          <td style="padding:10px 10px; text-align:right; font-weight:700; color:#b91c1c;" class="num">${formatCurrency(totalLow)} – ${formatCurrency(totalHigh)}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="background:#fef2f2; border-left:4px solid #b91c1c; padding:14px 18px; margin:1em 0;">
+      <p style="font-size:9.5pt; color:#7f1d1d; margin:0;">
+        <strong>These deferred maintenance items total an estimated ${formatCurrency(totalLow)} to ${formatCurrency(totalHigh)} in cost-to-cure.</strong>
+        A reasonable buyer would discount the purchase price by at least this amount to account for necessary repairs.
+        The current assessment does not reflect these conditions, resulting in over-assessment.
+      </p>
+    </div>
+
+    ${defectPhotos.length > 0 ? `
+    <h3 style="margin-top:1.5em; margin-bottom:0.8em;">Photographic Evidence</h3>
+    <div class="photo-grid">
+      ${defectPhotos.slice(0, 6).map(p => `
+      <div class="photo-cell">
+        <div class="img-container">
+          <img src="${imageOrPlaceholder(p.storage_path ?? '')}" alt="${escapeHtml(String(p.ai_analysis?.professional_caption ?? p.photo_type ?? ''))}" />
+        </div>
+        <div class="img-caption">${escapeHtml(String(p.ai_analysis?.professional_caption ?? p.photo_type?.replace(/_/g, ' ') ?? ''))} — ${(p.ai_analysis?.defects ?? []).map(d => d.severity).filter((v, i, a) => a.indexOf(v) === i).join(', ')} defect(s)</div>
+      </div>`).join('')}
+    </div>` : ''}
   </div>`;
 }
 
