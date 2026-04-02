@@ -68,11 +68,19 @@ export function getPriceForReport(
   reviewTier: ReviewTier = 'auto',
   hasTaxBill: boolean = false
 ): number {
-  const table = reviewTier === 'full_representation'
+  // Guided filing and full representation are only available for tax appeals.
+  // Fall back to expert_reviewed if an invalid tier/service combo is requested.
+  const effectiveTier =
+    (reviewTier === 'guided_filing' || reviewTier === 'full_representation') &&
+    serviceType !== 'tax_appeal'
+      ? 'expert_reviewed'
+      : reviewTier;
+
+  const table = effectiveTier === 'full_representation'
     ? PRICING_FULL_REPRESENTATION
-    : reviewTier === 'guided_filing'
+    : effectiveTier === 'guided_filing'
       ? PRICING_GUIDED
-      : reviewTier === 'expert_reviewed'
+      : effectiveTier === 'expert_reviewed'
         ? PRICING_EXPERT
         : PRICING;
   let base: number;

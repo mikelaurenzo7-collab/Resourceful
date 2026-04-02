@@ -22,8 +22,8 @@ export interface AttomPropertyDetail {
     postal2: string;
   };
   location: {
-    latitude: number;
-    longitude: number;
+    latitude: number | null;
+    longitude: number | null;
     countyFips: string;
     countyName: string;
   };
@@ -211,8 +211,8 @@ function normalizePropertyDetail(raw: Record<string, unknown>): AttomPropertyDet
       postal2: addr.postal2 ?? '',
     },
     location: {
-      latitude: parseFloat(loc.latitude) || 0,
-      longitude: parseFloat(loc.longitude) || 0,
+      latitude: parseFloat(loc.latitude) || null,
+      longitude: parseFloat(loc.longitude) || null,
       countyFips: loc.countyFips ?? '',
       countyName: loc.countyName ?? '',
     },

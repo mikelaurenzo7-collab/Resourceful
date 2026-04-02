@@ -136,92 +136,94 @@ export async function runPipeline(
     `[pipeline] Starting pipeline for report ${reportId} from stage ${startFromStage}`
   );
 
-  // ── Run stages sequentially ─────────────────────────────────────────────
-  for (const stage of STAGES) {
-    // Skip stages before our resume point
-    if (stage.number < startFromStage) {
-      console.log(`[pipeline] Skipping stage ${stage.number} (${stage.name}) — already completed`);
-      continue;
-    }
-
-    // Skip stages that don't apply to this property/service type
-    if (stage.skipWhen?.(report.property_type as PropertyType, report.service_type ?? 'tax_appeal')) {
-      console.log(
-        `[pipeline] Skipping stage ${stage.number} (${stage.name}) — not applicable for ${report.property_type}`
-      );
-      continue;
-    }
-
-    console.log(`[pipeline] Running stage ${stage.number}: ${stage.name}`);
-    const stageStart = Date.now();
-
-    try {
-      const result = await stage.run(reportId, supabase);
-
-      if (!result.success) {
-        await handleStageFailure(supabase, reportId, stage, result.error ?? 'Unknown error');
-        await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
-        return { success: false, error: `Stage ${stage.number} (${stage.name}) failed: ${result.error}` };
+  // Wrap all stage execution in try-finally to GUARANTEE lock release.
+  // Without this, an uncaught exception could leave the lock held forever.
+  try {
+    // ── Run stages sequentially ───────────────────────────────────────────
+    for (const stage of STAGES) {
+      // Skip stages before our resume point
+      if (stage.number < startFromStage) {
+        console.log(`[pipeline] Skipping stage ${stage.number} (${stage.name}) — already completed`);
+        continue;
       }
 
-      const durationMs = Date.now() - stageStart;
-      console.log(
-        `[pipeline] Stage ${stage.number} (${stage.name}) completed in ${durationMs}ms`
-      );
+      // Skip stages that don't apply to this property/service type
+      if (stage.skipWhen?.(report.property_type as PropertyType, report.service_type ?? 'tax_appeal')) {
+        console.log(
+          `[pipeline] Skipping stage ${stage.number} (${stage.name}) — not applicable for ${report.property_type}`
+        );
+        continue;
+      }
 
-      // Record stage completion
-      await supabase
-        .from('reports')
-        .update({
-          pipeline_last_completed_stage: stage.name,
-        })
-        .eq('id', reportId);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      await handleStageFailure(supabase, reportId, stage, message);
-      await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
-      return { success: false, error: `Stage ${stage.number} (${stage.name}) threw: ${message}` };
+      console.log(`[pipeline] Running stage ${stage.number}: ${stage.name}`);
+      const stageStart = Date.now();
+
+      try {
+        const result = await stage.run(reportId, supabase);
+
+        if (!result.success) {
+          await handleStageFailure(supabase, reportId, stage, result.error ?? 'Unknown error');
+          return { success: false, error: `Stage ${stage.number} (${stage.name}) failed: ${result.error}` };
+        }
+
+        const durationMs = Date.now() - stageStart;
+        console.log(
+          `[pipeline] Stage ${stage.number} (${stage.name}) completed in ${durationMs}ms`
+        );
+
+        // Record stage completion
+        await supabase
+          .from('reports')
+          .update({
+            pipeline_last_completed_stage: stage.name,
+          })
+          .eq('id', reportId);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        await handleStageFailure(supabase, reportId, stage, message);
+        return { success: false, error: `Stage ${stage.number} (${stage.name}) threw: ${message}` };
+      }
     }
+
+    // ── Pipeline stages 1-7 complete ──────────────────────────────────────
+    await supabase
+      .from('reports')
+      .update({
+        pipeline_completed_at: new Date().toISOString(),
+      })
+      .eq('id', reportId);
+
+    // ALL reports route to admin for approval after Stage 7.
+    // This is intentional during the quality-control training phase: the admin
+    // reviews the AI's photo analysis and report narrative before the client
+    // receives anything. Once real-appraisal training data is established,
+    // high-confidence reports can be auto-delivered. Until then, every report
+    // lands in the admin dashboard for a final human check.
+    console.log(`[pipeline] Stages 1-7 complete for report ${reportId}. Routing to admin for approval.`);
+    await supabase
+      .from('reports')
+      .update({ status: 'pending_approval' as const })
+      .eq('id', reportId);
+
+    // ── Notify admin (non-blocking, for monitoring) ─────────────────────
+    try {
+      const adminReviewUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/admin/reports/${reportId}/review`;
+      await sendAdminNotification({
+        reportId,
+        propertyAddress: report.property_address,
+        propertyType: report.property_type ?? 'residential',
+        reviewUrl: adminReviewUrl,
+      });
+    } catch (emailErr) {
+      console.error(`[pipeline] Failed to send admin notification email:`, emailErr);
+    }
+
+    console.log(`[pipeline] Pipeline complete and delivered for report ${reportId}`);
+    return { success: true };
+  } finally {
+    // ALWAYS release the pipeline lock, even on unexpected errors
+    await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
   }
-
-  // ── Pipeline stages 1-7 complete ────────────────────────────────────────
-  await supabase
-    .from('reports')
-    .update({
-      pipeline_completed_at: new Date().toISOString(),
-    })
-    .eq('id', reportId);
-
-  // ALL reports route to admin for approval after Stage 7.
-  // This is intentional during the quality-control training phase: the admin
-  // reviews the AI's photo analysis and report narrative before the client
-  // receives anything. Once real-appraisal training data is established,
-  // high-confidence reports can be auto-delivered. Until then, every report
-  // lands in the admin dashboard for a final human check.
-  console.log(`[pipeline] Stages 1-7 complete for report ${reportId}. Routing to admin for approval.`);
-  await supabase
-    .from('reports')
-    .update({ status: 'pending_approval' as const })
-    .eq('id', reportId);
-
-  // ── Notify admin (non-blocking, for monitoring) ───────────────────────
-  try {
-    const adminReviewUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/admin/reports/${reportId}/review`;
-    await sendAdminNotification({
-      reportId,
-      propertyAddress: report.property_address,
-      propertyType: report.property_type ?? 'residential',
-      reviewUrl: adminReviewUrl,
-    });
-  } catch (emailErr) {
-    console.error(`[pipeline] Failed to send admin notification email:`, emailErr);
-  }
-
-  // ── Release pipeline lock ───────────────────────────────────────────────
-  await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
-
-  console.log(`[pipeline] Pipeline complete and delivered for report ${reportId}`);
-  return { success: true };
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

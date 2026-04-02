@@ -155,8 +155,9 @@ export default function PropertyPage() {
                 <div className="space-y-4 animate-fade-in pt-2">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-cream/60 mb-1.5">Assessed Value *</label>
+                      <label htmlFor="assessed-value" className="block text-sm text-cream/60 mb-1.5">Assessed Value *</label>
                       <input
+                        id="assessed-value"
                         type="text"
                         inputMode="numeric"
                         value={assessedValue}
@@ -166,10 +167,11 @@ export default function PropertyPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm text-cream/60 mb-1.5">
+                      <label htmlFor="annual-tax" className="block text-sm text-cream/60 mb-1.5">
                         Annual Tax Amount <span className="text-cream/30">(optional)</span>
                       </label>
                       <input
+                        id="annual-tax"
                         type="text"
                         inputMode="numeric"
                         value={taxAmount}

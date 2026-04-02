@@ -81,5 +81,5 @@ export function isRetryableError(error: unknown): boolean {
     // Network errors
     if (msg.includes('econnreset') || msg.includes('econnrefused') || msg.includes('etimedout') || msg.includes('timeout') || msg.includes('fetch failed')) return true;
   }
-  return true; // Default: retry all errors
+  return false; // Don't retry client errors (400, 401, 403, etc.)
 }
