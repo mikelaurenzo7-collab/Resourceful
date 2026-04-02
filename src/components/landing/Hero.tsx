@@ -37,7 +37,7 @@ export default function Hero() {
         </div>
 
         {/* Headline — stagger-animated words */}
-        <h1 className="font-display text-5xl md:text-6xl lg:text-7xl leading-tight text-cream max-w-4xl">
+        <h1 className="font-display text-4xl md:text-6xl lg:text-7xl leading-tight text-cream max-w-4xl">
           <span className="inline-block animate-fade-in" style={{ animationDelay: '0.1s' }}>
             Stop{' '}
           </span>
@@ -62,9 +62,9 @@ export default function Hero() {
           className="mt-6 max-w-2xl text-lg text-cream/60 leading-relaxed animate-fade-in"
           style={{ animationDelay: '0.6s' }}
         >
-          Comparable sales analysis, line-item adjustments, and condition documentation — the
-          same methodology licensed appraisers use. Delivered in hours, not weeks. County-specific
-          filing instructions included.
+          We compare your home to 5&ndash;10 similar recent sales and adjust for every difference &mdash;
+          the same method licensed appraisers use. Your full report with filing instructions
+          is delivered in hours, not weeks.
         </p>
 
         {/* Dollar example — animated gradient border */}
@@ -108,7 +108,7 @@ export default function Hero() {
             href="/start"
             className="btn-glow animate-glow inline-flex items-center gap-3 rounded-lg bg-gradient-to-r from-gold-light via-gold to-gold-dark px-8 py-4 text-lg font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.02]"
           >
-            Check My Property
+            Get My Property Report
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>

@@ -10,9 +10,9 @@ export default function Footer() {
             <Link href="/" className="font-display text-2xl text-gold">
               Resourceful
             </Link>
-            <p className="mt-4 text-sm text-cream/40 leading-relaxed max-w-sm">
-              Professional property tax appeal reports for homeowners
-              who refuse to overpay. Built on real data, powered by professional analysis.
+            <p className="mt-4 text-sm text-cream/50 leading-relaxed max-w-sm">
+              Professional property tax appeal reports built on real comparable sales data
+              and IAAO appraisal standards. Serving homeowners in all 50 states.
             </p>
           </div>
 
@@ -23,17 +23,17 @@ export default function Footer() {
             </h4>
             <ul className="space-y-3">
               <li>
-                <Link href="/start" className="text-sm text-cream/40 hover:text-gold transition-colors">
+                <Link href="/start" className="text-sm text-cream/60 hover:text-gold transition-colors focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
                   Tax Appeal Report
                 </Link>
               </li>
               <li>
-                <Link href="/start" className="text-sm text-cream/40 hover:text-gold transition-colors">
+                <Link href="/start" className="text-sm text-cream/60 hover:text-gold transition-colors focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
                   Pre-Purchase Analysis
                 </Link>
               </li>
               <li>
-                <Link href="/start" className="text-sm text-cream/40 hover:text-gold transition-colors">
+                <Link href="/start" className="text-sm text-cream/60 hover:text-gold transition-colors focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
                   Pre-Listing Report
                 </Link>
               </li>
@@ -47,17 +47,17 @@ export default function Footer() {
             </h4>
             <ul className="space-y-3">
               <li>
-                <Link href="/terms" className="text-sm text-cream/40 hover:text-gold transition-colors">
+                <Link href="/terms" className="text-sm text-cream/60 hover:text-gold transition-colors focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="/privacy" className="text-sm text-cream/40 hover:text-gold transition-colors">
+                <Link href="/privacy" className="text-sm text-cream/60 hover:text-gold transition-colors focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/disclaimer" className="text-sm text-cream/40 hover:text-gold transition-colors">
+                <Link href="/disclaimer" className="text-sm text-cream/60 hover:text-gold transition-colors focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
                   Disclaimer
                 </Link>
               </li>

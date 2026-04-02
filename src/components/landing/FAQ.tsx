@@ -16,7 +16,7 @@ const faqs = [
   {
     question: 'What makes your report credible to the Board of Review?',
     answer:
-      'Our reports follow the same methodology used by professional appraisers: comparable sales analysis with line-item adjustments, assessment ratio calculations, condition documentation with photographs, and clear market value conclusions. The Board of Review evaluates evidence, not credentials. A well-documented report with solid comparable sales is persuasive regardless of who presents it. We use the same data sources (MLS, public records, ATTOM) that assessors rely on.',
+      'Our reports are built on the same evidence standards professional appraisers use: comparable sales analysis with line-item adjustments, assessment ratio calculations, and condition documentation with photographs. We use the same data sources that assessors rely on — ATTOM (which powers Zillow and Redfin), MLS records, and county public records. The Board of Review evaluates the quality of evidence presented, and a well-documented report with strong comparable sales data is consistently persuasive.',
   },
   {
     question: 'How long does it take to receive my report?',
@@ -26,7 +26,7 @@ const faqs = [
   {
     question: 'What if I don\'t win my appeal?',
     answer:
-      'While we can\'t guarantee outcomes — every Board of Review is different — our reports are built on rigorous appraisal evidence standards. Historically, properties with documented over-assessment and strong comparable sales evidence have a high success rate. Even if the Board doesn\'t adopt your full requested value, partial reductions are common and still result in meaningful tax savings. There is no penalty for filing an appeal that isn\'t granted.',
+      'There is no penalty for filing an appeal — your taxes will never go up as a result. While every Board of Review is different, properties with documented over-assessment and strong comparable sales evidence succeed the majority of the time. Even partial reductions are common and result in meaningful savings. If the Board doesn\'t adopt your full requested value, you can refile next year with updated data. Our reports include a satisfaction guarantee — see our Terms of Service for details.',
   },
   {
     question: 'How accurate is your analysis?',
@@ -74,7 +74,7 @@ export default function FAQ() {
               aria-expanded={openIndex === i}
               aria-controls={`faq-answer-${i}`}
               id={`faq-question-${i}`}
-              className="w-full flex items-center justify-between px-6 py-5 text-left"
+              className="w-full flex items-center justify-between px-6 py-5 text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-gold/50 rounded-xl"
             >
               <span className="font-medium text-cream pr-4">{faq.question}</span>
               <svg

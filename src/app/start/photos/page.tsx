@@ -210,9 +210,9 @@ export default function PhotosPage() {
 
             <button
               onClick={handleSkip}
-              className="w-full text-center py-3 text-sm text-cream/40 hover:text-cream/60 transition-colors"
+              className="w-full text-center py-3 text-sm text-cream/40 hover:text-cream/60 transition-colors focus:outline-none focus:ring-2 focus:ring-gold/50 rounded-lg"
             >
-              Skip for now — continue with data-only analysis
+              Continue without photos (your report will use market data only)
             </button>
 
             {/* Why photos strengthen your report */}

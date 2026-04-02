@@ -47,6 +47,7 @@ export default function Button({
       className={`
         inline-flex items-center justify-center font-sans
         transition-all duration-300 ease-out
+        focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-navy-deep
         disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
         ${variantClasses[variant]}
         ${sizeClasses[size]}

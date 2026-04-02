@@ -22,13 +22,13 @@ export default function HomePage() {
           <div className="flex items-center gap-6">
             <Link
               href="/login"
-              className="text-sm text-cream/50 hover:text-cream transition-colors"
+              className="text-sm text-cream/70 hover:text-cream transition-colors focus:outline-none focus:ring-2 focus:ring-gold/50 focus:ring-offset-2 focus:ring-offset-navy-deep rounded-md px-2 py-1"
             >
               Sign In
             </Link>
             <Link
               href="/start"
-              className="text-sm font-medium text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark px-5 py-2 rounded-lg hover:shadow-gold transition-all duration-200"
+              className="text-sm font-medium text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark px-5 py-2 rounded-lg hover:shadow-gold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-navy-deep"
             >
               Get Started
             </Link>
@@ -50,7 +50,7 @@ export default function HomePage() {
             </div>
             <div>
               <p className="font-display text-2xl text-cream">Over 50%</p>
-              <p className="text-xs text-cream/40">of properties are over-assessed (IAAO studies)</p>
+              <p className="text-xs text-cream/40">of properties are over-assessed nationwide</p>
             </div>
           </div>
           <div className="hidden md:block h-8 w-px bg-gold/10" />
@@ -74,7 +74,7 @@ export default function HomePage() {
             </div>
             <div>
               <p className="font-display text-2xl text-cream">Same Day</p>
-              <p className="text-xs text-cream/40">report delivery for standard analysis</p>
+              <p className="text-xs text-cream/40">report delivery for most properties</p>
             </div>
           </div>
         </div>
@@ -109,14 +109,14 @@ export default function HomePage() {
             Ready to Stop Overpaying?
           </h2>
           <p className="relative mt-4 text-cream/50 max-w-lg mx-auto text-lg">
-            Enter your address and we&apos;ll pull comparable sales, calculate your assessment ratio, and
-            show you exactly how much you could save. Upload your tax bill for 15% off.
+            Takes 5 minutes. We pull comparable sales, analyze your property, and build
+            your full evidence package. Upload your tax bill to save 15%.
           </p>
           <Link
             href="/start"
             className="relative mt-8 inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-10 py-5 text-lg font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.03] btn-glow animate-glow"
           >
-            Check My Property
+            Get My Property Report
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
