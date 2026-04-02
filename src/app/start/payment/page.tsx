@@ -298,6 +298,14 @@ export default function PaymentPage() {
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
+        // Surface specific field errors from validation
+        if (body.details?.fieldErrors) {
+          const fields = body.details.fieldErrors;
+          const messages = Object.entries(fields)
+            .map(([field, errs]) => `${field}: ${(errs as string[]).join(', ')}`)
+            .join('; ');
+          throw new Error(messages || body.error || `Server error (${response.status})`);
+        }
         throw new Error(body.error || `Server error (${response.status})`);
       }
 
