@@ -121,37 +121,17 @@ export async function trackApiUsage(
 ): Promise<void> {
   const supabase = createAdminClient();
 
-  // Update partner counters
+  // Atomic counter increment via DB function (migration 016).
+  // No fallback — if the RPC fails, we log and throw rather than
+  // risk a non-atomic read-modify-write race condition.
   const { error: partnerError } = await supabase.rpc('increment_partner_usage' as never, {
     partner_id: partnerId,
     fee_cents: feeCents,
   } as never);
 
-  // If the RPC doesn't exist, fall back to manual update
   if (partnerError) {
-    // Get current values
-    const { data: partner } = await supabase
-      .from('api_partners' as never)
-      .select('reports_this_month, total_reports_generated, total_revenue_cents')
-      .eq('id', partnerId)
-      .single();
-
-    if (partner) {
-      const p = partner as unknown as {
-        reports_this_month: number;
-        total_reports_generated: number;
-        total_revenue_cents: number;
-      };
-      await supabase
-        .from('api_partners' as never)
-        .update({
-          reports_this_month: p.reports_this_month + 1,  
-          total_reports_generated: p.total_reports_generated + 1,
-          total_revenue_cents: p.total_revenue_cents + feeCents,
-          updated_at: new Date().toISOString(),
-        } as never)
-        .eq('id', partnerId);
-    }
+    console.error(`[partner-api] Failed to track usage for partner ${partnerId}: ${partnerError.message}`);
+    throw new Error(`Partner usage tracking failed: ${partnerError.message}`);
   }
 
   // Tag the report with partner info (new columns from migration 013)

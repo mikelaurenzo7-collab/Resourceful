@@ -16,6 +16,7 @@ import {
   CASE_STRENGTH,
   REPLACEMENT_COST_PER_SQFT,
   OVER_IMPROVEMENT_THRESHOLD_PCT,
+  CONDITION_DEFECT_ADJUSTMENTS,
   OVER_IMPROVEMENT_ADJ_PCT,
   OVER_IMPROVEMENT_ADJ_MAX_PCT,
   type QualityGrade,
@@ -251,15 +252,9 @@ export async function runNarratives(
       }
     }
 
-    const DEFECT_ADJ: Record<string, Record<string, number>> = {
-      minor:       { low: -0.5, medium: -1.0, high: -1.5 },
-      moderate:    { low: -1.0, medium: -2.0, high: -3.0 },
-      significant: { low: -2.0, medium: -3.5, high: -5.0 },
-    };
-
     let defectAdj = 0;
     for (const defect of allPhotoDefects) {
-      const severityMap = DEFECT_ADJ[defect.severity] ?? DEFECT_ADJ.minor;
+      const severityMap = CONDITION_DEFECT_ADJUSTMENTS[defect.severity] ?? CONDITION_DEFECT_ADJUSTMENTS.minor;
       defectAdj += severityMap[defect.value_impact] ?? severityMap.low;
     }
 

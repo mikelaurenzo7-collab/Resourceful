@@ -183,10 +183,11 @@ export default function PropertyPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm text-cream/60 mb-1.5">
+                      <label htmlFor="tax-year" className="block text-sm text-cream/60 mb-1.5">
                         Tax Year <span className="text-cream/30">(optional)</span>
                       </label>
                       <input
+                        id="tax-year"
                         type="text"
                         value={taxYear}
                         onChange={(e) => setTaxYear(e.target.value)}
@@ -195,10 +196,11 @@ export default function PropertyPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm text-cream/60 mb-1.5">
+                      <label htmlFor="parcel-pin" className="block text-sm text-cream/60 mb-1.5">
                         Parcel ID / PIN <span className="text-cream/30">(optional)</span>
                       </label>
                       <input
+                        id="parcel-pin"
                         type="text"
                         value={pin}
                         onChange={(e) => setPin(e.target.value)}
