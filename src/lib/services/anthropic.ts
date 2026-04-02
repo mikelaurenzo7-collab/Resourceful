@@ -691,6 +691,13 @@ ${payload.overvaluationAnalysis?.costApproachValue != null ? `${hasPhotos ? '15'
 ${hasPhotos ? '16' : '15'}. "reconciliation_narrative" — final value reconciliation: state the concluded value with conviction, quantify the exact overassessment in dollars and percentage, and recommend the assessment be reduced. When cost approach data is present, state which approaches were used and how they were weighted. ${hasPhotos ? 'Explicitly state that the concluded value reflects documented property condition from firsthand photographic evidence — evidence the assessor did not have when setting the assessed value.' : ''}
 ${payload.serviceType === 'tax_appeal' ? `${hasPhotos ? '17' : '16'}. "appeal_argument_summary" — the homeowner's battle plan: 5-7 numbered arguments, each a specific, quotable statement they can read to ${payload.countyRules.appealBoardName || 'the board'}. Lead with the strongest argument. Include exact dollar figures. End with a clear ask: "I respectfully request the assessed value be reduced from $X to $Y."${hasPhotos ? ' At least 2 of the arguments MUST reference the photographic evidence directly — these are your most persuasive points because the board can see the evidence with their own eyes.' : ''}` : ''}
 
+COUNTER-ARGUMENT PREPARATION — ANTICIPATE AND DEFEAT THE ASSESSOR'S RESPONSE:
+In the reconciliation_narrative, include a "Preemptive Rebuttals" subsection that addresses the 2-3 most likely assessor counter-arguments:
+- If you cite comparable sales below assessed value: address why the assessor might argue your comps are dissimilar, and preemptively explain why your adjustments account for those differences.
+- If you cite condition issues: address the assessor's likely claim that photos are selective or don't represent the full property. Counter with the breadth and specificity of your documentation.
+- If you cite assessment ratio violations: address whether the assessor might argue a different effective date or methodology. Counter with the statutory requirement.
+This transforms the report from one-sided advocacy into a document that has already anticipated and defeated the opposing position — exactly what board members want to see.
+
 INVESTIGATIVE MANDATE — LEAVE NO STONE UNTURNED:
 You are an investigator, not a reporter. Do not merely describe the data — interrogate it. For every data point, ask: "Does this help the homeowner's case?" If yes, amplify it with context. If no, explain why it's irrelevant or misleading.
 

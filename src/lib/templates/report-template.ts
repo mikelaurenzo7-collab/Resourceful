@@ -1661,6 +1661,20 @@ function renderCertificationAndLimitingConditions(
     </div>
 
     <div style="margin-bottom:24px;">
+      <h3 style="font-family:'Playfair Display',Georgia,serif; font-size:12pt; color:${NAVY}; margin-bottom:12px;">Scope of Work</h3>
+      <div style="font-size:9pt; line-height:1.7; color:${BODY_TEXT};">
+        <p>This desktop market value analysis was prepared for the purpose of property tax assessment review. The scope of work includes:</p>
+        <ul style="margin:10px 0 10px 20px; list-style-type:disc;">
+          <li><strong>Data sources:</strong> Comparable sales data from ATTOM (aggregated MLS, county recorder, and public records), county assessor records, and property owner-submitted photographs.</li>
+          <li><strong>Valuation approaches applied:</strong> Sales Comparison Approach (primary), Cost Approach (when building data is available), and Income Approach (for commercial/industrial properties with rental comparable data).</li>
+          <li><strong>Inspection type:</strong> Desktop analysis with owner-provided interior/exterior photographs. No physical on-site inspection was conducted.</li>
+          <li><strong>Comparable selection:</strong> 5\u201310 recent arm\u2019s-length sales within the subject\u2019s market area, adjusted for property rights, financing, conditions of sale, market trends, location, size, and condition.</li>
+          <li><strong>Not included:</strong> Phase I environmental assessment, structural engineering inspection, title search, survey, or any analysis requiring licensed on-site inspection.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="margin-bottom:24px;">
       <h3 style="font-family:'Playfair Display',Georgia,serif; font-size:12pt; color:${NAVY}; margin-bottom:12px;">Certification Statement</h3>
       <div style="font-size:9pt; line-height:1.7; color:${BODY_TEXT};">
         <p>I certify that, to the best of my knowledge and belief:</p>
@@ -1671,7 +1685,7 @@ function renderCertificationAndLimitingConditions(
           <li>I have no bias with respect to the property that is the subject of this report or to the parties involved with this assignment.</li>
           <li>My engagement in this assignment was not contingent upon developing or reporting predetermined results.</li>
           <li>My compensation for completing this assignment is not contingent upon the development or reporting of a predetermined value or direction in value that favors the cause of the client, the amount of the value opinion, the attainment of a stipulated result, or the occurrence of a subsequent event directly related to the intended use of this report.</li>
-          <li>The analyses, opinions, and conclusions were developed, and this report has been prepared, in conformity with the Uniform Standards of Professional Appraisal Practice (USPAP) and the International Association of Assessing Officers (IAAO) Standard on Mass Appraisal of Real Property.</li>
+          <li>This report is a desktop market value analysis prepared using appraisal methodology consistent with IAAO (International Association of Assessing Officers) standards for property assessment review. It is not a certified appraisal under USPAP and does not replace a licensed appraisal for mortgage, insurance, or legal purposes.</li>
         </ul>
         <p style="margin-top:10px;">
           <strong>Property:</strong> ${escapeHtml(addr)}<br>
