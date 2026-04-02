@@ -69,6 +69,7 @@ export default function ReportViewerPage() {
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [pollExhausted, setPollExhausted] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'filing' | 'guide'>('overview');
 
   useEffect(() => {
@@ -98,7 +99,11 @@ export default function ReportViewerPage() {
     let cancelled = false;
 
     const poll = async () => {
-      if (cancelled || pollCount >= maxPolls) return;
+      if (cancelled) return;
+      if (pollCount >= maxPolls) {
+        setPollExhausted(true);
+        return;
+      }
       pollCount++;
       const delay = Math.min(10000 * Math.pow(1.5, Math.min(pollCount - 1, 3)), 30000);
       pollTimer = setTimeout(async () => {
@@ -156,12 +161,37 @@ export default function ReportViewerPage() {
     return (
       <main className="min-h-screen bg-pattern flex items-center justify-center px-6">
         <div className="text-center max-w-lg animate-fade-in">
-          <div className="w-20 h-20 rounded-full bg-gold/10 flex items-center justify-center mx-auto mb-8">
-            <div className="w-10 h-10 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-          </div>
-          <h1 className="font-display text-3xl text-cream mb-4">Report in Progress</h1>
-          <p className="text-cream/50 mb-2">{data.message || 'Your report is being generated.'}</p>
-          <p className="text-cream/30 text-sm">This page will automatically update when your report is ready.</p>
+          {pollExhausted ? (
+            <>
+              <div className="w-20 h-20 rounded-full bg-gold/10 flex items-center justify-center mx-auto mb-8">
+                <svg className="w-10 h-10 text-gold/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h1 className="font-display text-3xl text-cream mb-4">Still Working</h1>
+              <p className="text-cream/50 mb-2">
+                Your report is taking longer than usual. This can happen with complex properties.
+              </p>
+              <p className="text-cream/30 text-sm mb-6">
+                You can safely close this page — we&apos;ll email your report when it&apos;s ready.
+              </p>
+              <button
+                onClick={() => { setPollExhausted(false); window.location.reload(); }}
+                className="text-sm font-medium text-gold border border-gold/20 px-5 py-2.5 rounded-lg hover:bg-gold/10 transition-all"
+              >
+                Refresh Page
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="w-20 h-20 rounded-full bg-gold/10 flex items-center justify-center mx-auto mb-8">
+                <div className="w-10 h-10 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+              </div>
+              <h1 className="font-display text-3xl text-cream mb-4">Report in Progress</h1>
+              <p className="text-cream/50 mb-2">{data.message || 'Your report is being generated.'}</p>
+              <p className="text-cream/30 text-sm">This page will automatically update when your report is ready.</p>
+            </>
+          )}
           <p className="text-xs text-cream/20 mt-8">Report ID: {reportId}</p>
         </div>
       </main>
@@ -538,19 +568,29 @@ export default function ReportViewerPage() {
           <div className="animate-fade-in">
             {data.filingGuide ? (
               <div className="card-premium rounded-xl p-6 md:p-8">
-                <div className="prose-legal text-sm text-cream/60 leading-relaxed whitespace-pre-wrap"
-                     style={{ maxWidth: 'none' }}
-                     dangerouslySetInnerHTML={{
-                       __html: data.filingGuide
-                         .replace(/&/g, '&amp;')
-                         .replace(/</g, '&lt;')
-                         .replace(/>/g, '&gt;')
-                         .replace(/^## (.+)$/gm, '<h2 class="text-lg font-semibold text-cream mt-8 mb-3">$1</h2>')
-                         .replace(/^### (.+)$/gm, '<h3 class="text-base font-medium text-cream/80 mt-6 mb-2">$1</h3>')
-                         .replace(/\*\*(.+?)\*\*/g, '<strong class="text-cream/80">$1</strong>')
-                         .replace(/^\d+\.\s/gm, (match) => `<span class="text-gold font-medium">${match}</span>`)
-                     }}
-                />
+                <div className="prose-legal text-sm text-cream/60 leading-relaxed" style={{ maxWidth: 'none' }}>
+                  {data.filingGuide.split('\n').map((line, i) => {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith('## ')) {
+                      return <h2 key={i} className="text-lg font-semibold text-cream mt-8 mb-3">{trimmed.slice(3)}</h2>;
+                    }
+                    if (trimmed.startsWith('### ')) {
+                      return <h3 key={i} className="text-base font-medium text-cream/80 mt-6 mb-2">{trimmed.slice(4)}</h3>;
+                    }
+                    if (!trimmed) return <br key={i} />;
+                    // Render bold (**text**) safely via React
+                    const parts = trimmed.split(/\*\*(.+?)\*\*/g);
+                    return (
+                      <p key={i} className="mb-2">
+                        {parts.map((part, j) =>
+                          j % 2 === 1
+                            ? <strong key={j} className="text-cream/80">{part}</strong>
+                            : <span key={j}>{part}</span>
+                        )}
+                      </p>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
               <div className="card-premium rounded-xl p-8 text-center">

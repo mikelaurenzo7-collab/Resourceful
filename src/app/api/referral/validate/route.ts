@@ -4,11 +4,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { validateReferralCode } from '@/lib/services/referral-service';
+import { applyRateLimit } from '@/lib/rate-limit';
 
 export async function GET(request: NextRequest) {
+  // Rate limit: 20 validations per 5 minutes per IP (prevents enumeration)
+  const rateLimited = await applyRateLimit(request, { prefix: 'referral-validate', limit: 20, windowSeconds: 300 });
+  if (rateLimited) return rateLimited;
+
   const code = request.nextUrl.searchParams.get('code');
 
-  if (!code) {
+  if (!code || code.length > 50) {
     return NextResponse.json({ error: 'Code parameter required' }, { status: 400 });
   }
 

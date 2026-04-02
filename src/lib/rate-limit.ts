@@ -24,9 +24,39 @@ export interface RateLimitResult {
   resetAt: number;
 }
 
+// ─── In-Memory Fallback ──────────────────────────────────────────────────────
+// When the DB is down, we fall back to per-instance in-memory rate limiting.
+// Less accurate than distributed (each serverless instance tracks separately),
+// but prevents wide-open abuse during outages.
+const memoryStore = new Map<string, { count: number; expiresAt: number }>();
+let dbFailureCount = 0;
+const DB_FAILURE_THRESHOLD = 3; // Switch to memory after 3 consecutive DB failures
+
+function checkMemoryRateLimit(
+  key: string,
+  config: RateLimitConfig
+): RateLimitResult {
+  const now = Date.now();
+  const windowMs = config.windowSeconds * 1000;
+  const resetAt = Math.floor(now / windowMs) * windowMs + windowMs;
+
+  const entry = memoryStore.get(key);
+  if (!entry || now >= entry.expiresAt) {
+    memoryStore.set(key, { count: 1, expiresAt: resetAt });
+    return { success: true, limit: config.limit, remaining: config.limit - 1, resetAt };
+  }
+
+  entry.count++;
+  if (entry.count > config.limit) {
+    return { success: false, limit: config.limit, remaining: 0, resetAt };
+  }
+  return { success: true, limit: config.limit, remaining: config.limit - entry.count, resetAt };
+}
+
 /**
  * Check and consume a rate limit token for the given identifier (typically IP).
  * Uses Supabase RPC for atomic check-and-increment across all serverless instances.
+ * Falls back to in-memory rate limiting if the database is unavailable.
  */
 export async function checkRateLimit(
   identifier: string,
@@ -39,6 +69,11 @@ export async function checkRateLimit(
   const resetAt = windowStart + windowMs;
   const windowKey = `${key}:${windowStart}`;
 
+  // If DB has failed repeatedly, use in-memory to avoid latency + abuse
+  if (dbFailureCount >= DB_FAILURE_THRESHOLD) {
+    return checkMemoryRateLimit(key, config);
+  }
+
   try {
     const supabase = createAdminClient();
 
@@ -50,10 +85,13 @@ export async function checkRateLimit(
     });
 
     if (error) {
-      // On DB errors, fail open (allow the request) to avoid blocking users
-      console.error('[rate-limit] DB error, failing open:', error.message);
-      return { success: true, limit: config.limit, remaining: config.limit, resetAt };
+      dbFailureCount++;
+      console.error(`[rate-limit] DB error (${dbFailureCount}/${DB_FAILURE_THRESHOLD}), falling back to memory:`, error.message);
+      return checkMemoryRateLimit(key, config);
     }
+
+    // DB succeeded — reset failure counter
+    dbFailureCount = 0;
 
     const count = (data as number) ?? 1;
 
@@ -68,9 +106,9 @@ export async function checkRateLimit(
       resetAt,
     };
   } catch {
-    // Fail open on unexpected errors
-    console.error('[rate-limit] Unexpected error, failing open');
-    return { success: true, limit: config.limit, remaining: config.limit, resetAt: now + windowMs };
+    dbFailureCount++;
+    console.error(`[rate-limit] Unexpected error (${dbFailureCount}/${DB_FAILURE_THRESHOLD}), falling back to memory`);
+    return checkMemoryRateLimit(key, config);
   }
 }
 

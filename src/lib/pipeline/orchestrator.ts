@@ -157,9 +157,15 @@ export async function runPipeline(
 
       console.log(`[pipeline] Running stage ${stage.number}: ${stage.name}`);
       const stageStart = Date.now();
+      const STAGE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes per stage
 
       try {
-        const result = await stage.run(reportId, supabase);
+        const result = await Promise.race([
+          stage.run(reportId, supabase),
+          new Promise<StageResult>((_, reject) =>
+            setTimeout(() => reject(new Error(`Stage ${stage.number} (${stage.name}) timed out after ${STAGE_TIMEOUT_MS / 1000}s`)), STAGE_TIMEOUT_MS)
+          ),
+        ]);
 
         if (!result.success) {
           await handleStageFailure(supabase, reportId, stage, result.error ?? 'Unknown error');
@@ -180,7 +186,8 @@ export async function runPipeline(
           .eq('id', reportId);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        await handleStageFailure(supabase, reportId, stage, message);
+        const stack = err instanceof Error ? err.stack : undefined;
+        await handleStageFailure(supabase, reportId, stage, message, stack);
         return { success: false, error: `Stage ${stage.number} (${stage.name}) threw: ${message}` };
       }
     }
@@ -232,7 +239,8 @@ async function handleStageFailure(
   supabase: SupabaseAdmin,
   reportId: string,
   stage: StageDefinition,
-  errorMessage: string
+  errorMessage: string,
+  errorStack?: string
 ) {
   console.error(
     `[pipeline] Stage ${stage.number} (${stage.name}) failed: ${errorMessage}`
@@ -242,7 +250,7 @@ async function handleStageFailure(
     stage: stage.name,
     error: errorMessage,
     timestamp: new Date().toISOString(),
-    stack: errorMessage,
+    stack: errorStack ?? errorMessage,
   };
 
   await supabase

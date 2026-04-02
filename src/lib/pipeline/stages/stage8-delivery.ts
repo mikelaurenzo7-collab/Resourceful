@@ -88,32 +88,9 @@ export async function runDelivery(
     .single();
   const filingGuide = filingGuideData as Pick<ReportNarrative, 'content'> | null;
 
-  // ── Calculate values ──────────────────────────────────────────────────
+  // ── Use Stage 5's concluded value (single source of truth) ────────────
   const assessedValue = propertyData?.assessed_value ?? 0;
-
-  // Derive concluded value from comps
-  const { data: compsData } = await supabase
-    .from('comparable_sales')
-    .select('adjusted_price_per_sqft, sale_price')
-    .eq('report_id', reportId);
-  const comps = (compsData ?? []) as Pick<import('@/types/database').ComparableSale, 'adjusted_price_per_sqft' | 'sale_price'>[];
-
-  let concludedValue = 0;
-  if (comps.length > 0 && propertyData?.building_sqft_gross) {
-    const adjustedPrices = comps
-      .map((c) => c.adjusted_price_per_sqft)
-      .filter((p): p is number => p != null && p > 0)
-      .sort((a, b) => a - b);
-
-    if (adjustedPrices.length > 0) {
-      const mid = Math.floor(adjustedPrices.length / 2);
-      const median = adjustedPrices.length % 2 === 0
-        ? (adjustedPrices[mid - 1] + adjustedPrices[mid]) / 2
-        : adjustedPrices[mid];
-      concludedValue = Math.round((median * propertyData.building_sqft_gross) / 1000) * 1000;
-    }
-  }
-
+  const concludedValue = propertyData?.concluded_value ?? 0;
   const potentialSavings = Math.max(0, assessedValue - concludedValue);
 
   const propertyAddress = [
@@ -121,6 +98,41 @@ export async function runDelivery(
     report.city,
     report.state,
   ].filter(Boolean).join(', ');
+
+  // ── Record approval and update status BEFORE sending email ────────────
+  // This prevents duplicate emails: if the email sends but status update fails,
+  // the report stays 'pending_approval' and admin sends again. By updating
+  // status first, we guarantee idempotent delivery.
+  const now = new Date().toISOString();
+
+  const { error: statusUpdateError } = await supabase
+    .from('reports')
+    .update({
+      status: 'delivered',
+      delivered_at: now,
+      approved_at: now,
+      approved_by: adminUserId,
+    })
+    .eq('id', reportId);
+
+  if (statusUpdateError) {
+    return { success: false, error: `Failed to update report status: ${statusUpdateError.message}` };
+  }
+
+  // Record approval event
+  const { error: approvalInsertError } = await supabase
+    .from('approval_events')
+    .insert({
+      report_id: reportId,
+      admin_user_id: adminUserId,
+      action: 'approved',
+      section_name: null,
+      notes: 'Report approved and delivered to client',
+    });
+
+  if (approvalInsertError) {
+    console.warn(`[stage8] Failed to record approval event: ${approvalInsertError.message}`);
+  }
 
   // ── Send client email ─────────────────────────────────────────────────
   console.log(`[stage8] Sending report delivery email to ${clientEmail}`);
@@ -136,42 +148,13 @@ export async function runDelivery(
   });
 
   if (emailResult.error) {
+    // Status is already 'delivered' — rollback to pending so admin can retry
+    console.error(`[stage8] Email failed after status update. Rolling back status for report ${reportId}`);
+    await supabase
+      .from('reports')
+      .update({ status: 'pending_approval', delivered_at: null })
+      .eq('id', reportId);
     return { success: false, error: `Email delivery failed: ${emailResult.error}` };
-  }
-
-  // ── Record approval and delivery ──────────────────────────────────────
-  const now = new Date().toISOString();
-
-  // Update report status
-  const { error: statusUpdateError } = await supabase
-    .from('reports')
-    .update({
-      status: 'delivered',
-      delivered_at: now,
-      approved_at: now,
-      approved_by: adminUserId,
-    })
-    .eq('id', reportId);
-
-  if (statusUpdateError) {
-    // Email was already sent — log but report as failure so admin can investigate
-    console.error(`[stage8] CRITICAL: Email sent but report status update failed: ${statusUpdateError.message}`);
-    return { success: false, error: `Report status update failed after email delivery: ${statusUpdateError.message}` };
-  }
-
-  // Record approval event (non-fatal — audit trail entry)
-  const { error: approvalInsertError } = await supabase
-    .from('approval_events')
-    .insert({
-      report_id: reportId,
-      admin_user_id: adminUserId,
-      action: 'approved',
-      section_name: null,
-      notes: 'Report approved and delivered to client',
-    });
-
-  if (approvalInsertError) {
-    console.warn(`[stage8] Failed to record approval event: ${approvalInsertError.message}`);
   }
 
   console.log(

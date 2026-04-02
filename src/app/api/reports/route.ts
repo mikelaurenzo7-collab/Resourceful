@@ -11,6 +11,7 @@ import { createReport, updateReport } from '@/lib/repository/reports';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { isFounderEmail } from '@/config/founders';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
+import { createAdminClient } from '@/lib/supabase/admin';
 import type { Report } from '@/types/database';
 
 export async function POST(request: NextRequest) {
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     // ── Per-email concurrency check (prevent abuse) ─────────────────────
     // Max 3 reports in 'intake' or 'processing' state per email
-    const supabaseForCheck = (await import('@/lib/supabase/admin')).createAdminClient();
+    const supabaseForCheck = createAdminClient();
     const { count: activeReports } = await supabaseForCheck
       .from('reports')
       .select('*', { count: 'exact', head: true })
@@ -127,8 +128,7 @@ export async function POST(request: NextRequest) {
         const message = err instanceof Error ? err.message : String(err);
         console.error(`[api/reports] Pipeline failed for founder report ${report.id}: ${message}`);
         try {
-          const { createAdminClient: getAdmin } = await import('@/lib/supabase/admin');
-          await getAdmin().from('reports').update({
+          await createAdminClient().from('reports').update({
             status: 'failed',
             pipeline_error_log: [{ stage: 'pipeline', error: message, timestamp: new Date().toISOString() }],
           } as never).eq('id', report.id);

@@ -56,15 +56,18 @@ export async function createPaymentIntent(
   params: CreatePaymentIntentParams
 ): Promise<ServiceResult<PaymentIntentResult>> {
   try {
-    const intent = await getStripeClient().paymentIntents.create({
-      amount: params.amountCents,
-      currency: 'usd',
-      receipt_email: params.customerEmail,
-      metadata: {
-        report_id: params.reportId,
-        ...params.metadata,
+    const intent = await getStripeClient().paymentIntents.create(
+      {
+        amount: params.amountCents,
+        currency: 'usd',
+        receipt_email: params.customerEmail,
+        metadata: {
+          report_id: params.reportId,
+          ...params.metadata,
+        },
       },
-    });
+      { idempotencyKey: `pi_report_${params.reportId}` }
+    );
 
     if (!intent.client_secret) {
       return { data: null, error: 'Stripe did not return a client secret' };

@@ -25,29 +25,32 @@ const hearingFormatEnum = z.enum(['in_person', 'virtual', 'both', 'written_only'
 // ─── Report Creation ────────────────────────────────────────────────────────
 
 export const reportCreateSchema = z.object({
-  client_email: z.string().email('Valid email is required'),
-  client_name: z.string().min(1, 'Name is required').optional(),
-  property_address: z.string().min(1, 'Property address is required'),
-  city: z.string().min(1, 'City is required'),
-  state: z.string().length(2, 'State must be a 2-letter code'),
-  county: z.string().min(1, 'County is required'),
-  county_fips: z.string().nullable().optional(),
-  pin: z.string().optional().nullable(),
+  client_email: z.string().email('Valid email is required').max(254),
+  client_name: z.string().min(1, 'Name is required').max(200).optional(),
+  property_address: z.string().min(1, 'Property address is required').max(500),
+  city: z.string().min(1, 'City is required').max(100),
+  state: z.string().length(2, 'State must be a 2-letter code').toUpperCase(),
+  county: z.string().min(1, 'County is required').max(100),
+  county_fips: z.string().regex(/^\d{5}$/, 'FIPS must be 5 digits').nullable().optional(),
+  pin: z.string().max(50).optional().nullable(),
   property_type: propertyTypeEnum,
   service_type: serviceTypeEnum,
   review_tier: reviewTierEnum.optional().default('auto'),
   // Onboarding wizard fields
   photos_skipped: z.boolean().optional().default(false),
-  property_issues: z.array(z.string()).optional().default([]),
-  additional_notes: z.string().optional().default(''),
-  desired_outcome: z.string().optional().default(''),
+  property_issues: z.array(z.string().max(200)).max(20).optional().default([]),
+  additional_notes: z.string().max(5000).optional().default(''),
+  desired_outcome: z.string().max(2000).optional().default(''),
   // Tax bill upload — 15% discount when provided
   has_tax_bill: z.boolean().optional().default(false),
   tax_bill_assessed_value: z.number().positive().nullable().optional(),
   tax_bill_tax_amount: z.number().positive().nullable().optional(),
-  tax_bill_tax_year: z.string().nullable().optional(),
-  tax_bill_pin: z.string().nullable().optional(),
-});
+  tax_bill_tax_year: z.string().regex(/^\d{4}$/, 'Tax year must be 4 digits').nullable().optional(),
+  tax_bill_pin: z.string().max(50).nullable().optional(),
+}).refine(
+  (data) => !data.has_tax_bill || (data.tax_bill_assessed_value != null),
+  { message: 'Tax bill assessed value is required when has_tax_bill is true', path: ['tax_bill_assessed_value'] }
+);
 
 export type ReportCreateInput = z.infer<typeof reportCreateSchema>;
 

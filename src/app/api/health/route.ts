@@ -10,7 +10,12 @@ interface ServiceStatus {
   latencyMs?: number;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Detailed health check requires CRON_SECRET auth; public gets minimal status
+  const authHeader = request.headers.get('authorization');
+  const cronSecret = process.env.CRON_SECRET;
+  const isAuthorized = cronSecret && authHeader === `Bearer ${cronSecret}`;
+
   const results: Record<string, ServiceStatus> = {};
 
   // ── Supabase ──────────────────────────────────────────────────────────
@@ -32,24 +37,23 @@ export async function GET() {
       if (error) {
         results.supabase = { status: 'error', message: `DB query failed: ${error.message}`, latencyMs: latency };
       } else {
-        results.supabase = { status: 'ok', message: `Connected. ${data?.length ?? 0} county_rules rows accessible.`, latencyMs: latency };
+        results.supabase = { status: 'ok', message: 'Connected', latencyMs: latency };
       }
 
-      // Test Storage
-      const { data: buckets, error: storageError } = await supabase.storage.listBuckets();
+      // Test Storage (connectivity only, don't leak bucket names)
+      const { error: storageError } = await supabase.storage.listBuckets();
       if (storageError) {
         results.supabase_storage = { status: 'error', message: `Storage error: ${storageError.message}` };
       } else {
-        const bucketNames = buckets?.map(b => b.name) ?? [];
-        results.supabase_storage = { status: 'ok', message: `Buckets: ${bucketNames.join(', ') || 'none'}` };
+        results.supabase_storage = { status: 'ok', message: 'Storage accessible' };
       }
 
-      // Test Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.listUsers({ perPage: 1 });
+      // Test Auth (connectivity only, don't leak user count)
+      const { error: authError } = await supabase.auth.admin.listUsers({ perPage: 1 });
       if (authError) {
         results.supabase_auth = { status: 'error', message: `Auth error: ${authError.message}` };
       } else {
-        results.supabase_auth = { status: 'ok', message: `Auth working. ${authData?.users?.length ?? 0} users found.` };
+        results.supabase_auth = { status: 'ok', message: 'Auth working' };
       }
     } catch (err) {
       results.supabase = { status: 'error', message: `Connection failed: ${err instanceof Error ? err.message : String(err)}` };
@@ -78,8 +82,8 @@ export async function GET() {
   }
 
   // ── Google Maps ───────────────────────────────────────────────────────
-  if (!process.env.GOOGLE_MAPS_SERVER_KEY) {
-    results.google_maps = { status: 'not_configured', message: 'GOOGLE_MAPS_SERVER_KEY missing (geocoding will fail)' };
+  if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
+    results.google_maps = { status: 'not_configured', message: 'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY missing (geocoding will fail)' };
   } else {
     results.google_maps = { status: 'ok', message: 'Configured' };
   }
@@ -100,6 +104,14 @@ export async function GET() {
 
   // ── Overall ───────────────────────────────────────────────────────────
   const allOk = Object.values(results).every(r => r.status === 'ok' || r.status === 'not_configured');
+
+  // Public: minimal status only. Authenticated: full service details.
+  if (!isAuthorized) {
+    return NextResponse.json({
+      healthy: allOk,
+      timestamp: new Date().toISOString(),
+    });
+  }
 
   return NextResponse.json({
     healthy: allOk,

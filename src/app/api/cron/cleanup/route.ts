@@ -29,38 +29,41 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ cleaned: 0, message: 'No stale failed reports found' });
     }
 
+    const reportIds = failedReports.map((r: { id: string; report_pdf_storage_path: string | null }) => r.id);
+
+    // ── Batch delete photos from storage ──────────────────────────────────
+    const { data: allPhotos } = await supabase
+      .from('photos')
+      .select('storage_path')
+      .in('report_id', reportIds);
+
     let photosDeleted = 0;
-    let pdfsDeleted = 0;
-
-    for (const report of failedReports) {
-      // Delete photos for this report
-      const { data: photos } = await supabase
-        .from('photos')
-        .select('storage_path')
-        .eq('report_id', report.id);
-
-      if (photos && photos.length > 0) {
-        const paths = photos.map(p => p.storage_path).filter(Boolean);
-        if (paths.length > 0) {
-          await supabase.storage.from('photos').remove(paths);
-          photosDeleted += paths.length;
-        }
-        // Delete photo DB rows
-        await supabase.from('photos').delete().eq('report_id', report.id);
+    if (allPhotos && allPhotos.length > 0) {
+      const paths = allPhotos.map((p: { storage_path: string }) => p.storage_path).filter(Boolean);
+      if (paths.length > 0) {
+        await supabase.storage.from('photos').remove(paths);
+        photosDeleted = paths.length;
       }
-
-      // Delete PDF if it exists
-      if (report.report_pdf_storage_path) {
-        await supabase.storage.from('reports').remove([report.report_pdf_storage_path]);
-        pdfsDeleted++;
-      }
-
-      // Clean up related data
-      await supabase.from('property_data').delete().eq('report_id', report.id);
-      await supabase.from('comparable_sales').delete().eq('report_id', report.id);
-      await supabase.from('report_narratives').delete().eq('report_id', report.id);
-      await supabase.from('measurements').delete().eq('report_id', report.id);
     }
+
+    // ── Batch delete PDFs from storage ────────────────────────────────────
+    const pdfPaths = failedReports
+      .map((r: { id: string; report_pdf_storage_path: string | null }) => r.report_pdf_storage_path)
+      .filter(Boolean) as string[];
+    let pdfsDeleted = 0;
+    if (pdfPaths.length > 0) {
+      await supabase.storage.from('reports').remove(pdfPaths);
+      pdfsDeleted = pdfPaths.length;
+    }
+
+    // ── Batch delete all related DB rows ──────────────────────────────────
+    await Promise.all([
+      supabase.from('photos').delete().in('report_id', reportIds),
+      supabase.from('property_data').delete().in('report_id', reportIds),
+      supabase.from('comparable_sales').delete().in('report_id', reportIds),
+      supabase.from('report_narratives').delete().in('report_id', reportIds),
+      supabase.from('measurements').delete().in('report_id', reportIds),
+    ]);
 
     console.log(
       `[cron/cleanup] Cleaned ${failedReports.length} failed reports: ${photosDeleted} photos, ${pdfsDeleted} PDFs`

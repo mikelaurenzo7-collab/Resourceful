@@ -128,23 +128,35 @@ async function handlePaymentIntentSucceeded(
   // so the report doesn't get stuck in 'paid' status forever.
   runPipeline(reportId).catch(async (err) => {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[webhook/stripe] Pipeline failed for report ${reportId}: ${message}`);
+    const stack = err instanceof Error ? err.stack : undefined;
+    console.error(`[webhook/stripe] Pipeline failed for report ${reportId}: ${message}`, stack);
 
     // Mark report as failed with error details — prevents stuck reports
     try {
-      await supabase
+      const { error: updateErr } = await supabase
         .from('reports')
         .update({
           status: 'failed',
           pipeline_error_log: [{
             stage: 'pipeline',
             error: message,
+            stack: stack ?? message,
             timestamp: new Date().toISOString(),
           }],
         } as never)
         .eq('id', reportId);
-    } catch (updateErr) {
-      console.error(`[webhook/stripe] Failed to record pipeline error: ${updateErr}`);
+
+      if (updateErr) {
+        console.error(
+          `[webhook/stripe] CRITICAL: Pipeline failed AND error recording failed for report ${reportId}. ` +
+          `Report may be stuck in 'paid' status. DB error: ${updateErr.message}. Pipeline error: ${message}`
+        );
+      }
+    } catch (dbErr) {
+      console.error(
+        `[webhook/stripe] CRITICAL: Pipeline failed AND error recording threw for report ${reportId}. ` +
+        `Report may be stuck in 'paid' status. Exception: ${dbErr}. Pipeline error: ${message}`
+      );
     }
   });
 }

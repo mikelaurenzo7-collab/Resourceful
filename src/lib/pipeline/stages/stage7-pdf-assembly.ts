@@ -80,8 +80,8 @@ export async function runPdfAssembly(
       .from('county_rules')
       .select('*')
       .eq('county_fips', report.county_fips)
-      .single();
-    countyRule = cr as CountyRule | null;
+      .limit(1);
+    countyRule = (cr?.[0] as CountyRule) ?? null;
   }
 
   // ── Extract coordinates from report ─────────────────────────────────
@@ -173,22 +173,8 @@ export async function runPdfAssembly(
     }
   }
 
-  // ── Derive concluded value from comps ─────────────────────────────────
-  let concludedValue = 0;
-  if (comps.length > 0 && propertyData.building_sqft_gross) {
-    const adjustedPrices = comps
-      .map((c) => c.adjusted_price_per_sqft)
-      .filter((p): p is number => p != null && p > 0)
-      .sort((a, b) => a - b);
-
-    if (adjustedPrices.length > 0) {
-      const mid = Math.floor(adjustedPrices.length / 2);
-      const median = adjustedPrices.length % 2 === 0
-        ? (adjustedPrices[mid - 1] + adjustedPrices[mid]) / 2
-        : adjustedPrices[mid];
-      concludedValue = Math.round((median * propertyData.building_sqft_gross) / 1000) * 1000;
-    }
-  }
+  // ── Use Stage 5's concluded value (single source of truth) ────────────
+  const concludedValue = propertyData.concluded_value ?? 0;
 
   // ── Parse filing guide from narrative ─────────────────────────────────
   let filingGuide: FilingGuide | null = null;
