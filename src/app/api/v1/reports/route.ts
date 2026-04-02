@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { validateApiKey, trackApiUsage } from '@/lib/services/partner-api-service';
 import { createReport } from '@/lib/repository/reports';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
+import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report } from '@/types/database';
 
 // ─── Request Schema ─────────────────────────────────────────────────────────
@@ -39,6 +40,10 @@ function extractBearerToken(request: NextRequest): string | null {
 
 export async function POST(request: NextRequest) {
   try {
+    // ── Rate limit: 30 reports per 15 minutes per IP ─────────────────────
+    const rateLimited = await applyRateLimit(request, { prefix: 'v1-reports', limit: 30, windowSeconds: 900 });
+    if (rateLimited) return rateLimited;
+
     // ── Authenticate via API key ──────────────────────────────────────────
     const token = extractBearerToken(request);
     if (!token) {

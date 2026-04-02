@@ -157,9 +157,15 @@ export async function runPipeline(
 
       console.log(`[pipeline] Running stage ${stage.number}: ${stage.name}`);
       const stageStart = Date.now();
+      const STAGE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes per stage
 
       try {
-        const result = await stage.run(reportId, supabase);
+        const result = await Promise.race([
+          stage.run(reportId, supabase),
+          new Promise<StageResult>((_, reject) =>
+            setTimeout(() => reject(new Error(`Stage ${stage.number} (${stage.name}) timed out after ${STAGE_TIMEOUT_MS / 1000}s`)), STAGE_TIMEOUT_MS)
+          ),
+        ]);
 
         if (!result.success) {
           await handleStageFailure(supabase, reportId, stage, result.error ?? 'Unknown error');

@@ -52,6 +52,20 @@ export async function POST(
       );
     }
 
+    // ── Enforce per-report photo limit (max 30 photos) ────────────────────
+    const admin = createAdminClient();
+    const { count: existingPhotos } = await admin
+      .from('photos')
+      .select('*', { count: 'exact', head: true })
+      .eq('report_id', reportId);
+
+    if (existingPhotos != null && existingPhotos >= 30) {
+      return NextResponse.json(
+        { error: 'Maximum of 30 photos per report reached' },
+        { status: 400 }
+      );
+    }
+
     // ── Parse multipart form data ──────────────────────────────────────────
     const formData = await request.formData();
     const file = formData.get('file') as File | null;

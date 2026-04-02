@@ -568,19 +568,29 @@ export default function ReportViewerPage() {
           <div className="animate-fade-in">
             {data.filingGuide ? (
               <div className="card-premium rounded-xl p-6 md:p-8">
-                <div className="prose-legal text-sm text-cream/60 leading-relaxed whitespace-pre-wrap"
-                     style={{ maxWidth: 'none' }}
-                     dangerouslySetInnerHTML={{
-                       __html: data.filingGuide
-                         .replace(/&/g, '&amp;')
-                         .replace(/</g, '&lt;')
-                         .replace(/>/g, '&gt;')
-                         .replace(/^## (.+)$/gm, '<h2 class="text-lg font-semibold text-cream mt-8 mb-3">$1</h2>')
-                         .replace(/^### (.+)$/gm, '<h3 class="text-base font-medium text-cream/80 mt-6 mb-2">$1</h3>')
-                         .replace(/\*\*(.+?)\*\*/g, '<strong class="text-cream/80">$1</strong>')
-                         .replace(/^\d+\.\s/gm, (match) => `<span class="text-gold font-medium">${match}</span>`)
-                     }}
-                />
+                <div className="prose-legal text-sm text-cream/60 leading-relaxed" style={{ maxWidth: 'none' }}>
+                  {data.filingGuide.split('\n').map((line, i) => {
+                    const trimmed = line.trim();
+                    if (trimmed.startsWith('## ')) {
+                      return <h2 key={i} className="text-lg font-semibold text-cream mt-8 mb-3">{trimmed.slice(3)}</h2>;
+                    }
+                    if (trimmed.startsWith('### ')) {
+                      return <h3 key={i} className="text-base font-medium text-cream/80 mt-6 mb-2">{trimmed.slice(4)}</h3>;
+                    }
+                    if (!trimmed) return <br key={i} />;
+                    // Render bold (**text**) safely via React
+                    const parts = trimmed.split(/\*\*(.+?)\*\*/g);
+                    return (
+                      <p key={i} className="mb-2">
+                        {parts.map((part, j) =>
+                          j % 2 === 1
+                            ? <strong key={j} className="text-cream/80">{part}</strong>
+                            : <span key={j}>{part}</span>
+                        )}
+                      </p>
+                    );
+                  })}
+                </div>
               </div>
             ) : (
               <div className="card-premium rounded-xl p-8 text-center">

@@ -84,8 +84,8 @@ async function findCountyRule(
       .from('county_rules')
       .select('*')
       .eq('county_fips', fips)
-      .single();
-    if (data) return data as CountyRule;
+      .limit(1);
+    if (data?.[0]) return data[0] as CountyRule;
   }
 
   // Strategy 2: County name + state (fallback — case-insensitive)
@@ -96,8 +96,8 @@ async function findCountyRule(
       .select('*')
       .eq('state_abbreviation', state.toUpperCase())
       .ilike('county_name', countyName)
-      .single();
-    if (exact) return exact as CountyRule;
+      .limit(1);
+    if (exact?.[0]) return exact[0] as CountyRule;
 
     // Try partial match (handles "X County" matching "X", etc.)
     const stripped = countyName.replace(/\s*(county|parish|borough)\s*/i, '').trim();
@@ -107,9 +107,8 @@ async function findCountyRule(
         .select('*')
         .eq('state_abbreviation', state.toUpperCase())
         .ilike('county_name', `%${stripped}%`)
-        .limit(1)
-        .single();
-      if (partial) return partial as CountyRule;
+        .limit(1);
+      if (partial?.[0]) return partial[0] as CountyRule;
     }
   }
 
@@ -321,7 +320,7 @@ export async function runDataCollection(
     property_class_description: attom?.summary.propertyClassDescription || null,
     zoning_designation: attom?.lot.zoning || null,
     tax_year_in_appeal: (hasTaxBill && taxBillTaxYear)
-      ? parseInt(taxBillTaxYear, 10) || null
+      ? ((/^\d{4}$/.test(taxBillTaxYear)) ? parseInt(taxBillTaxYear, 10) : null)
       : (attom?.assessment.assessmentYear || null),
     assessment_ratio: assessmentRatio,
     assessment_methodology: countyRule?.assessment_methodology ?? null,
@@ -349,6 +348,11 @@ export async function runDataCollection(
   // ── Update report with geocode coordinates + resolved county FIPS ──────
   // IMPORTANT: Only write county_fips if we actually resolved one.
   // Never overwrite a valid user-provided FIPS with null.
+  // Guard against null island (0,0) — if geocode returned invalid coords, fail fast
+  if (geo.latitude === 0 && geo.longitude === 0) {
+    return { success: false, error: 'Geocoding returned invalid coordinates (0,0). Check the property address.' };
+  }
+
   const reportUpdate: Record<string, unknown> = {
     latitude: geo.latitude,
     longitude: geo.longitude,
