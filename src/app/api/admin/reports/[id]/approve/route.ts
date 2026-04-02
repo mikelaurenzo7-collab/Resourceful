@@ -40,29 +40,37 @@ export async function POST(
       );
     }
 
-    // ── Verify report exists ───────────────────────────────────────────────
-    const report = await getReportById(reportId);
-    if (!report) {
-      return NextResponse.json(
-        { error: 'Report not found' },
-        { status: 404 }
-      );
-    }
+    // ── Atomically claim report for approval (prevents two admins approving simultaneously) ──
+    const admin = createAdminClient();
+    const { data: claimed, error: claimError } = await admin
+      .from('reports')
+      .update({ status: 'delivering' as never })
+      .eq('id', reportId)
+      .eq('status', 'pending_approval')
+      .select('id')
+      .single();
 
-    if (report.status !== 'pending_approval') {
+    if (claimError || !claimed) {
+      // Either report doesn't exist or another admin already claimed it
+      const report = await getReportById(reportId);
+      if (!report) {
+        return NextResponse.json({ error: 'Report not found' }, { status: 404 });
+      }
       return NextResponse.json(
-        {
-          error: `Report status is '${report.status}' — must be 'pending_approval' to approve`,
-        },
-        { status: 400 }
+        { error: `Report is '${report.status}' — it may have already been approved by another admin` },
+        { status: 409 }
       );
     }
 
     // ── Run delivery (stage 8) ─────────────────────────────────────────────
-    const admin = createAdminClient();
     const deliveryResult = await runDelivery(reportId, user.id, admin);
 
     if (!deliveryResult.success) {
+      // Rollback: return to pending_approval so another admin can retry
+      await admin
+        .from('reports')
+        .update({ status: 'pending_approval' as never })
+        .eq('id', reportId);
       return NextResponse.json(
         { error: `Delivery failed: ${deliveryResult.error}` },
         { status: 500 }

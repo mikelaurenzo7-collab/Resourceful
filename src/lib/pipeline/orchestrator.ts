@@ -180,7 +180,8 @@ export async function runPipeline(
           .eq('id', reportId);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        await handleStageFailure(supabase, reportId, stage, message);
+        const stack = err instanceof Error ? err.stack : undefined;
+        await handleStageFailure(supabase, reportId, stage, message, stack);
         return { success: false, error: `Stage ${stage.number} (${stage.name}) threw: ${message}` };
       }
     }
@@ -232,7 +233,8 @@ async function handleStageFailure(
   supabase: SupabaseAdmin,
   reportId: string,
   stage: StageDefinition,
-  errorMessage: string
+  errorMessage: string,
+  errorStack?: string
 ) {
   console.error(
     `[pipeline] Stage ${stage.number} (${stage.name}) failed: ${errorMessage}`
@@ -242,7 +244,7 @@ async function handleStageFailure(
     stage: stage.name,
     error: errorMessage,
     timestamp: new Date().toISOString(),
-    stack: errorMessage,
+    stack: errorStack ?? errorMessage,
   };
 
   await supabase
