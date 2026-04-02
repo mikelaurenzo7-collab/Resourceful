@@ -215,6 +215,7 @@ export interface FilingGuidePayload {
 // ─── Section Names ──────────────────────────────────────────────────────────
 // These must match the section_name values stored in the report_narratives table.
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const NARRATIVE_SECTION_NAMES = [
   'executive_summary',
   'property_description',
@@ -689,6 +690,13 @@ ${payload.comparableRentals?.length ? `${hasPhotos ? '14' : '13'}. "income_appro
 ${payload.overvaluationAnalysis?.costApproachValue != null ? `${hasPhotos ? '15' : '14'}. "cost_approach_narrative" — USPAP Cost Approach: present the replacement cost new (RCN), physical depreciation, ${payload.overvaluationAnalysis.functionalObsolescencePct ? 'functional obsolescence, ' : ''}and land value. Show the math step by step: "RCN of $[X] × (1 − [Y]% total depreciation) + land value of $[Z] = cost approach indicator of $[W]." If the cost approach value is BELOW the assessed value, this is a powerful third line of evidence converging with the sales comparison${payload.comparableRentals?.length ? ' and income approaches' : ''}. State explicitly: "Three independent valuation approaches all indicate a market value below the assessor's figure." If it exceeds the assessed value, address it honestly — explain why the cost approach may be less reliable here (e.g., land value uncertainty, market obsolescence) — do not suppress it.` : ''}
 ${hasPhotos ? '16' : '15'}. "reconciliation_narrative" — final value reconciliation: state the concluded value with conviction, quantify the exact overassessment in dollars and percentage, and recommend the assessment be reduced. When cost approach data is present, state which approaches were used and how they were weighted. ${hasPhotos ? 'Explicitly state that the concluded value reflects documented property condition from firsthand photographic evidence — evidence the assessor did not have when setting the assessed value.' : ''}
 ${payload.serviceType === 'tax_appeal' ? `${hasPhotos ? '17' : '16'}. "appeal_argument_summary" — the homeowner's battle plan: 5-7 numbered arguments, each a specific, quotable statement they can read to ${payload.countyRules.appealBoardName || 'the board'}. Lead with the strongest argument. Include exact dollar figures. End with a clear ask: "I respectfully request the assessed value be reduced from $X to $Y."${hasPhotos ? ' At least 2 of the arguments MUST reference the photographic evidence directly — these are your most persuasive points because the board can see the evidence with their own eyes.' : ''}` : ''}
+
+COUNTER-ARGUMENT PREPARATION — ANTICIPATE AND DEFEAT THE ASSESSOR'S RESPONSE:
+In the reconciliation_narrative, include a "Preemptive Rebuttals" subsection that addresses the 2-3 most likely assessor counter-arguments:
+- If you cite comparable sales below assessed value: address why the assessor might argue your comps are dissimilar, and preemptively explain why your adjustments account for those differences.
+- If you cite condition issues: address the assessor's likely claim that photos are selective or don't represent the full property. Counter with the breadth and specificity of your documentation.
+- If you cite assessment ratio violations: address whether the assessor might argue a different effective date or methodology. Counter with the statutory requirement.
+This transforms the report from one-sided advocacy into a document that has already anticipated and defeated the opposing position — exactly what board members want to see.
 
 INVESTIGATIVE MANDATE — LEAVE NO STONE UNTURNED:
 You are an investigator, not a reporter. Do not merely describe the data — interrogate it. For every data point, ask: "Does this help the homeowner's case?" If yes, amplify it with context. If no, explain why it's irrelevant or misleading.

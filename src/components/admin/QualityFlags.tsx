@@ -15,7 +15,7 @@ interface Flag {
 }
 
 function computeFlags({
-  report,
+  report: _report,
   comps,
   propertyData,
   measurements,

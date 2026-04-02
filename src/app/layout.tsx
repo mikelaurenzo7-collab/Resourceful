@@ -80,7 +80,15 @@ export default function RootLayout({
         <WebSiteJsonLd />
       </head>
       <body className="font-sans antialiased bg-[#0f1419] text-[#f5f0e8] min-h-screen">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-gold focus:text-navy-deep focus:rounded-lg focus:font-medium focus:text-sm"
+        >
+          Skip to main content
+        </a>
+        <main id="main-content">
         {children}
+        </main>
         {googleMapsKey && (
           <Script
             src={`https://maps.googleapis.com/maps/api/js?key=${googleMapsKey}&libraries=places,drawing,geometry`}

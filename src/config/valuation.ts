@@ -220,6 +220,40 @@ export const REPLACEMENT_COST_PER_SQFT: Record<string, Record<QualityGrade, numb
 
 export const DISTRESSED_SALE_ADJ_PCT = 12;
 
+// ─── Market Trends Adjustment ───────────────────────────────────────────────
+// Applied to comps older than 6 months. Conservative monthly appreciation rate.
+
+export const MARKET_TRENDS_ADJ_PER_MONTH = 0.3;   // % per month appreciation
+export const MARKET_TRENDS_ADJ_MAX_PCT   = 10;    // maximum time adjustment cap
+
+// ─── Size Adjustment ────────────────────────────────────────────────────────
+// Per 10% size differential. Asymmetric: smaller comps get larger upward adj
+// because smaller properties typically sell at higher $/SF.
+
+export const SIZE_ADJ_LARGER_PER_10PCT  = -3;     // subject larger than comp
+export const SIZE_ADJ_SMALLER_PER_10PCT = 5;      // subject smaller than comp
+export const SIZE_ADJ_MAX_PCT           = 15;     // maximum size adjustment cap
+
+// ─── Land-to-Building Ratio ─────────────────────────────────────────────────
+
+export const LAND_RATIO_THRESHOLD_PCT = 20;       // % difference to trigger adjustment
+
+// ─── Photo Condition Adjustments ────────────────────────────────────────────
+// Defect impact by severity × value_impact level. Used in stage4 and stage5.
+
+export const CONDITION_DEFECT_ADJUSTMENTS: Record<string, Record<string, number>> = {
+  minor:       { low: -0.5, medium: -1.0, high: -1.5 },
+  moderate:    { low: -1.0, medium: -2.0, high: -3.0 },
+  significant: { low: -2.0, medium: -3.5, high: -5.0 },
+};
+
+export const CONDITION_BASE_OFFSET: Record<string, number> = {
+  poor: -4, fair: -2, average: 0, good: 0, excellent: 0,
+};
+
+export const CONDITION_ADJ_MAX_PCT           = 30;  // maximum total condition adjustment
+export const CONDITION_COMPLETENESS_MULTIPLIER = 1.10; // 10% uplift for complete photo set
+
 // ─── Functional Obsolescence Thresholds ──────────────────────────────────────
 // Over-improvement (super-adequacy): subject is materially larger than the
 // neighborhood median comparable sale, indicating the market will not pay

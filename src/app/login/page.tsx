@@ -37,7 +37,8 @@ function LoginForm() {
       if (authError) {
         // Translate common Supabase errors to user-friendly messages
         if (authError.message.includes('schema') || authError.message.includes('relation')) {
-          throw new Error('Database not initialized. Run: npx supabase db reset');
+          console.error('[login] Database schema error:', authError.message);
+          throw new Error('A temporary system error occurred. Please try again in a few minutes.');
         }
         throw authError;
       }

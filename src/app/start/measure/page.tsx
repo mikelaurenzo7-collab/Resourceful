@@ -13,8 +13,9 @@ export default function MeasurePage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen bg-pattern flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+    <div className="min-h-screen bg-pattern flex items-center justify-center" aria-live="polite">
+      <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+      <span className="sr-only">Redirecting to payment...</span>
     </div>
   );
 }

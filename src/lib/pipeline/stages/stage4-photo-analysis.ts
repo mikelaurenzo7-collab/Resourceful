@@ -12,6 +12,10 @@ import {
   computeEffectiveAge,
   computePhysicalDepreciation,
   ECONOMIC_LIFE,
+  CONDITION_DEFECT_ADJUSTMENTS,
+  CONDITION_BASE_OFFSET,
+  CONDITION_ADJ_MAX_PCT,
+  CONDITION_COMPLETENESS_MULTIPLIER,
 } from '@/config/valuation';
 import { buildPhotoIntelligenceContext } from '@/lib/services/photo-intelligence';
 
@@ -116,18 +120,27 @@ function computeConditionMode(values: string[]): string {
     freq[v] = (freq[v] ?? 0) + 1;
   }
 
+  // Find the most frequent condition rating(s)
   let maxCount = 0;
-  let mode = values[0];
+  const candidates: string[] = [];
   for (const [val, count] of Object.entries(freq)) {
-    const valIdx = CONDITION_ORDER.indexOf(val as any);
-    const modeIdx = CONDITION_ORDER.indexOf(mode as any);
-    if (count > maxCount || (count === maxCount && valIdx < modeIdx)) {
+    if (count > maxCount) {
       maxCount = count;
-      mode = val;
+      candidates.length = 0;
+      candidates.push(val);
+    } else if (count === maxCount) {
+      candidates.push(val);
     }
   }
 
-  return mode;
+  // If single winner, return it. On tie, pick the middle value (conservative).
+  // This avoids bias toward worst condition which would be indefensible.
+  if (candidates.length === 1) return candidates[0];
+  const sorted = candidates.sort((a, b) =>
+    CONDITION_ORDER.indexOf(a as (typeof CONDITION_ORDER)[number]) -
+    CONDITION_ORDER.indexOf(b as (typeof CONDITION_ORDER)[number])
+  );
+  return sorted[Math.floor(sorted.length / 2)];
 }
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
@@ -343,39 +356,21 @@ export async function runPhotoAnalysis(
   // Map each defect to an adjustment percentage based on severity + value_impact.
   // Ranges reflect market evidence: appraisers typically apply 5-25% condition
   // adjustments in comparable sales grids.
-  const DEFECT_ADJUSTMENT: Record<string, Record<string, number>> = {
-    // severity → value_impact → adjustment %
-    minor:       { low: -0.5, medium: -1.0, high: -1.5 },
-    moderate:    { low: -1.0, medium: -2.0, high: -3.0 },
-    significant: { low: -2.5, medium: -4.0, high: -6.0 },
-  };
-
+  // Use centralized defect adjustment scales from valuation.ts
   let defectBasedAdjustment = 0;
   for (const defect of allDefects) {
-    const severityMap = DEFECT_ADJUSTMENT[defect.severity] ?? DEFECT_ADJUSTMENT.minor;
+    const severityMap = CONDITION_DEFECT_ADJUSTMENTS[defect.severity] ?? CONDITION_DEFECT_ADJUSTMENTS.minor;
     defectBasedAdjustment += severityMap[defect.value_impact] ?? severityMap.low;
   }
 
-  // Base condition offset for overall poor/fair ratings.
-  // These reflect the assessor's "average" assumption baseline — a fair/poor
-  // property needs a meaningful additional deduction to overcome that baseline.
-  const baseConditionOffset =
-    overallCondition === 'poor' ? -4 :
-    overallCondition === 'fair' ? -2 : 0;
-
-  // Benefit-of-the-doubt multiplier when the owner submitted a complete
-  // package (all required types + descriptions on half or more photos).
-  // We apply a modest uplift — 10% more — to reflect confidence that
-  // the owner's firsthand knowledge supports the documented defects.
-  const completenessMultiplier = hasCompletePackage ? 1.10 : 1.0;
+  const baseConditionOffset = CONDITION_BASE_OFFSET[overallCondition] ?? 0;
+  const completenessMultiplier = hasCompletePackage ? CONDITION_COMPLETENESS_MULTIPLIER : 1.0;
 
   const totalConditionAdjustment = Math.round(
     ((defectBasedAdjustment * completenessMultiplier) + baseConditionOffset) * 100
   ) / 100;
 
-  // Cap the total adjustment at -30% — severe deferred maintenance cases
-  // can legitimately reach this range (vs the old -25% which was too conservative).
-  const cappedAdjustment = Math.max(totalConditionAdjustment, -30);
+  const cappedAdjustment = Math.max(totalConditionAdjustment, -CONDITION_ADJ_MAX_PCT);
 
   console.log(
     `[stage4] Condition adjustment: ${cappedAdjustment}% ` +

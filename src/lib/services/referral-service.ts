@@ -81,20 +81,11 @@ export async function applyReferralCode(
     } as never)
     .eq('id', reportId);
 
-  // Increment usage count via raw query
-  // Supabase doesn't support atomic increment, so we fetch-then-update
-  const { data: codeData } = await supabase
-    .from('referral_codes' as never)
-    .select('times_used')
-    .eq('id' as never, referralCodeId)
-    .single();
-  if (codeData) {
-    const current = (codeData as { times_used: number }).times_used ?? 0;
-    await supabase
-      .from('referral_codes' as never)
-      .update({ times_used: current + 1 } as never)
-      .eq('id' as never, referralCodeId);
-  }
+  // Atomic increment via DB function to prevent race conditions
+  // See: supabase/migrations/015_atomic_referral_increment.sql
+  await supabase.rpc('increment_referral_usage' as never, {
+    code_id: referralCodeId,
+  } as never);
 }
 
 /**

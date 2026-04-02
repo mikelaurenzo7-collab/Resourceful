@@ -28,6 +28,21 @@ const faqs = [
     answer:
       'While we can\'t guarantee outcomes — every Board of Review is different — our reports are built on rigorous appraisal evidence standards. Historically, properties with documented over-assessment and strong comparable sales evidence have a high success rate. Even if the Board doesn\'t adopt your full requested value, partial reductions are common and still result in meaningful tax savings. There is no penalty for filing an appeal that isn\'t granted.',
   },
+  {
+    question: 'How accurate is your analysis?',
+    answer:
+      'Our analysis follows IAAO (International Association of Assessing Officers) standards for mass appraisal. We use 5\u201310 comparable sales with line-item adjustments for size, age, condition, and location — the same methodology licensed appraisers use. Comparable sales data comes from ATTOM, which aggregates MLS, county recorder, and public records data nationwide. Our calibration system continuously improves accuracy by comparing our concluded values against actual outcomes.',
+  },
+  {
+    question: 'Can real estate agents use this instead of a CMA?',
+    answer:
+      'Yes. Our Pre-Listing and Pre-Purchase reports go deeper than a traditional CMA: they include assessment ratio analysis, tax appeal feasibility, condition-based adjustments from photos, and a formal adjustment grid. Agents use these to strengthen listings, substantiate pricing, and address buyer concerns about property taxes. For volume orders or white-label options, reach out to our team.',
+  },
+  {
+    question: 'What happens after I file my appeal?',
+    answer:
+      'Timelines vary by county. Most counties schedule a hearing within 30\u201390 days of filing. Some offer an informal review first (we\'ll tell you if yours does). At the hearing, you or your representative present the evidence from your report. The board issues a decision, usually within 2\u20134 weeks. If you\'re unsatisfied, most states allow a further appeal to a state-level board. Your report includes all of this detail for your specific county.',
+  },
 ];
 
 export default function FAQ() {
@@ -56,6 +71,9 @@ export default function FAQ() {
           >
             <button
               onClick={() => setOpenIndex(openIndex === i ? null : i)}
+              aria-expanded={openIndex === i}
+              aria-controls={`faq-answer-${i}`}
+              id={`faq-question-${i}`}
               className="w-full flex items-center justify-between px-6 py-5 text-left"
             >
               <span className="font-medium text-cream pr-4">{faq.question}</span>
@@ -66,12 +84,16 @@ export default function FAQ() {
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
+                aria-hidden="true"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
 
             <div
+              id={`faq-answer-${i}`}
+              role="region"
+              aria-labelledby={`faq-question-${i}`}
               className="accordion-content"
               style={{
                 maxHeight: openIndex === i ? '500px' : '0',

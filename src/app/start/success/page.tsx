@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 function SuccessContent() {
   const searchParams = useSearchParams();
   const reportId = searchParams.get('reportId');
+  const serviceType = searchParams.get('serviceType') ?? 'tax_appeal';
 
   const [deletingTaxBill, setDeletingTaxBill] = useState(false);
   const [taxBillDeleted, setTaxBillDeleted] = useState(false);
@@ -36,9 +37,12 @@ function SuccessContent() {
           Your report is now being built by our team.
         </p>
         <p className="text-cream/40 text-sm mb-8 max-w-md mx-auto leading-relaxed">
-          We&apos;re pulling comparable sales, analyzing your photos and property data,
-          and building your full evidence package. Every report is reviewed for accuracy
-          before it reaches you.
+          {serviceType === 'pre_purchase'
+            ? 'We\u2019re analyzing comparable sales and market data to give you a clear picture of this property\u2019s true value before you buy.'
+            : serviceType === 'pre_listing'
+              ? 'We\u2019re building a data-driven market analysis to strengthen your listing price and give buyers confidence.'
+              : 'We\u2019re pulling comparable sales, analyzing your photos, and building your full evidence package for the appeal.'}
+          {' '}Every report is reviewed for accuracy before it reaches you.
         </p>
 
         {/* What happens next */}

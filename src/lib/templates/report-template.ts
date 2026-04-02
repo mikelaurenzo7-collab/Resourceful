@@ -869,6 +869,8 @@ ${renderReconciliationSection(data, narrativeMap, clientName)}
 
 ${filingGuide ? renderFilingGuideAddendum(filingGuide) : ''}
 
+${renderCertificationAndLimitingConditions(data, addr, clientName)}
+
 </body>
 </html>`;
 }
@@ -963,7 +965,7 @@ function renderSummarySection(
   addr: string,
   subjectPhoto: Photo | undefined,
   photos: Photo[],
-  narrativeMap: Map<string, ReportNarrative>
+  _narrativeMap: Map<string, ReportNarrative>
 ): string {
   const { report, property, concludedValue, valuationDate, maps } = data;
 
@@ -1125,6 +1127,18 @@ function renderSalesComparisonSection(
 
     ${narrative ? `<div style="font-size:10.5pt; line-height:1.65; margin-bottom:1.5em;">${narrative.content}</div>` : ''}
 
+    <div style="margin-bottom:1.5em; padding:14px 18px; background:${LIGHT_BG}; border:1px solid ${TABLE_BORDER}; border-radius:2px;">
+      <p style="font-size:9pt; font-weight:600; color:${NAVY}; margin:0 0 6px 0;">Comparable Selection Criteria</p>
+      <p style="font-size:8.5pt; color:${MUTED}; line-height:1.6; margin:0;">
+        ${comparableSales.length} comparable sales selected from recent arm&rsquo;s-length transactions within the subject&rsquo;s market area.
+        Selection criteria: similar property type, building size within &plusmn;30%, sold within the past 12&ndash;24 months,
+        and located within a ${Math.max(...comparableSales.map(c => c.distance_miles ?? 0)).toFixed(1)}-mile radius.
+        Adjustments applied using paired-sales analysis and IAAO-standard methodology for property rights,
+        financing, conditions of sale, market trends, location, size, and condition.
+        ${comparableSales.some(c => c.is_distressed_sale) ? `Distressed sales (foreclosure, REO) are included but flagged with a conditions-of-sale adjustment.` : ''}
+      </p>
+    </div>
+
     <h3 style="margin-bottom:0.8em;">Comparable Sales</h3>
     ${cardsHtml}
 
@@ -1276,8 +1290,10 @@ function renderAdjustmentGrid(
 
   const labelWidth = Math.max(22, Math.round(100 / (colCount + 0.5)));
   const dataWidth = Math.round((100 - labelWidth) / colCount);
+  // Scale font down for wide grids to prevent text overflow
+  const gridFontSize = colCount > 5 ? '7.5pt' : colCount > 4 ? '8pt' : '8.5pt';
 
-  let html = `<table class="adj-grid">`;
+  let html = `<table class="adj-grid" style="font-size:${gridFontSize};">`;
 
   html += `<thead><tr>
     <th style="width:${labelWidth}%; text-align:left;">Element</th>
@@ -1495,6 +1511,76 @@ function renderIncomeSection(
   </div>`;
 }
 
+// ─── Reconciliation Approach Weighting Table ────────────────────────────────
+
+function renderReconciliationTable(data: ReportTemplateData): string {
+  const { property, incomeAnalysis, concludedValue } = data;
+  const hasCost = property.cost_approach_value != null && property.cost_approach_value > 0;
+  const hasIncome = incomeAnalysis?.concluded_value_income_approach != null && incomeAnalysis.concluded_value_income_approach > 0;
+
+  // Determine weights based on available approaches
+  let salesWeight: number, costWeight: number, incomeWeight: number;
+  if (hasIncome && hasCost) {
+    salesWeight = 60; costWeight = 15; incomeWeight = 25;
+  } else if (hasIncome) {
+    salesWeight = 70; incomeWeight = 30; costWeight = 0;
+  } else if (hasCost) {
+    salesWeight = 80; costWeight = 20; incomeWeight = 0;
+  } else {
+    // Sales comparison only — no table needed
+    return '';
+  }
+
+  const rows: string[] = [];
+
+  rows.push(`
+    <tr>
+      <td style="padding:8px 12px; font-weight:500;">Sales Comparison Approach</td>
+      <td style="padding:8px 12px; text-align:right;">${formatCurrency(concludedValue)}</td>
+      <td style="padding:8px 12px; text-align:center;">${salesWeight}%</td>
+    </tr>`);
+
+  if (hasCost) {
+    rows.push(`
+    <tr style="background:${TABLE_ALT};">
+      <td style="padding:8px 12px; font-weight:500;">Cost Approach</td>
+      <td style="padding:8px 12px; text-align:right;">${formatCurrency(property.cost_approach_value!)}</td>
+      <td style="padding:8px 12px; text-align:center;">${costWeight}%</td>
+    </tr>`);
+  }
+
+  if (hasIncome) {
+    rows.push(`
+    <tr${hasCost ? '' : ` style="background:${TABLE_ALT};"`}>
+      <td style="padding:8px 12px; font-weight:500;">Income Approach</td>
+      <td style="padding:8px 12px; text-align:right;">${formatCurrency(incomeAnalysis!.concluded_value_income_approach!)}</td>
+      <td style="padding:8px 12px; text-align:center;">${incomeWeight}%</td>
+    </tr>`);
+  }
+
+  return `
+    <div style="margin-bottom:1.5em;">
+      <h3 style="font-family:'Playfair Display',Georgia,serif; font-size:11pt; color:${NAVY}; margin-bottom:8px;">Approach Reconciliation</h3>
+      <table style="width:100%; border-collapse:collapse; font-size:9.5pt; border:1px solid ${TABLE_BORDER}; border-radius:2px;">
+        <thead>
+          <tr style="background:${NAVY}; color:white;">
+            <th style="padding:8px 12px; text-align:left; font-weight:500;">Valuation Approach</th>
+            <th style="padding:8px 12px; text-align:right; font-weight:500;">Indicated Value</th>
+            <th style="padding:8px 12px; text-align:center; font-weight:500;">Weight</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.join('')}
+          <tr style="background:${GOLD}10; border-top:2px solid ${GOLD};">
+            <td style="padding:10px 12px; font-weight:700; color:${NAVY};">Final Concluded Value</td>
+            <td style="padding:10px 12px; text-align:right; font-weight:700; color:${NAVY};">${formatCurrency(concludedValue)}</td>
+            <td style="padding:10px 12px; text-align:center; font-weight:700; color:${NAVY};">100%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+
 // ─── Reconciliation Section ──────────────────────────────────────────────────
 
 function renderReconciliationSection(
@@ -1503,7 +1589,7 @@ function renderReconciliationSection(
   clientName: string
 ): string {
   const narrative = narrativeMap.get('reconciliation_narrative');
-  const { concludedValue, valuationDate } = data;
+  const { concludedValue, valuationDate, comparableSales } = data;
 
   return `
   <div class="page-break">
@@ -1513,12 +1599,15 @@ function renderReconciliationSection(
 
     ${narrative ? `<div style="font-size:10.5pt; line-height:1.65; margin-bottom:1.5em;">${narrative.content}</div>` : ''}
 
+    ${renderReconciliationTable(data)}
+
     <div class="value-box">
       <div class="value-label">Final Concluded Market Value</div>
       <div class="value-amount">${formatCurrency(concludedValue)}</div>
       <div class="value-words">(${escapeHtml(formatCurrencyWords(concludedValue))})</div>
       <div style="font-family:'Inter',Arial,sans-serif; font-size:8pt; color:${MUTED}; margin-top:8px; letter-spacing:0.3px;">
-        Effective Date of Valuation: ${escapeHtml(formatDate(valuationDate))}
+        Effective Date of Valuation: ${escapeHtml(formatDate(valuationDate))}<br>
+        As-Is Condition &bull; Based on ${comparableSales.length} Comparable Sales
       </div>
     </div>
 
@@ -1641,4 +1730,74 @@ function formatPhotoType(type: string): string {
     other: 'Other',
   };
   return labels[type] ?? type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// ─── Certification & Limiting Conditions ────────────────────────────────────
+
+function renderCertificationAndLimitingConditions(
+  data: ReportTemplateData,
+  addr: string,
+  clientName: string
+): string {
+  const { valuationDate } = data;
+  return `
+  <div class="section-page" style="page-break-before:always;">
+    <div class="section-header">
+      <span class="section-number">Addendum</span>
+      <h2>Certification & Limiting Conditions</h2>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <h3 style="font-family:'Playfair Display',Georgia,serif; font-size:12pt; color:${NAVY}; margin-bottom:12px;">Scope of Work</h3>
+      <div style="font-size:9pt; line-height:1.7; color:${BODY_TEXT};">
+        <p>This desktop market value analysis was prepared for the purpose of property tax assessment review. The scope of work includes:</p>
+        <ul style="margin:10px 0 10px 20px; list-style-type:disc;">
+          <li><strong>Data sources:</strong> Comparable sales data from ATTOM (aggregated MLS, county recorder, and public records), county assessor records, and property owner-submitted photographs.</li>
+          <li><strong>Valuation approaches applied:</strong> Sales Comparison Approach (primary), Cost Approach (when building data is available), and Income Approach (for commercial/industrial properties with rental comparable data).</li>
+          <li><strong>Inspection type:</strong> Desktop analysis with owner-provided interior/exterior photographs. No physical on-site inspection was conducted.</li>
+          <li><strong>Comparable selection:</strong> 5\u201310 recent arm\u2019s-length sales within the subject\u2019s market area, adjusted for property rights, financing, conditions of sale, market trends, location, size, and condition.</li>
+          <li><strong>Not included:</strong> Phase I environmental assessment, structural engineering inspection, title search, survey, or any analysis requiring licensed on-site inspection.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <h3 style="font-family:'Playfair Display',Georgia,serif; font-size:12pt; color:${NAVY}; margin-bottom:12px;">Certification Statement</h3>
+      <div style="font-size:9pt; line-height:1.7; color:${BODY_TEXT};">
+        <p>I certify that, to the best of my knowledge and belief:</p>
+        <ul style="margin:10px 0 10px 20px; list-style-type:disc;">
+          <li>The statements of fact contained in this report are true and correct.</li>
+          <li>The reported analyses, opinions, and conclusions are limited only by the reported assumptions and limiting conditions and are my personal, impartial, and unbiased professional analyses, opinions, and conclusions.</li>
+          <li>I have no present or prospective interest in the property that is the subject of this report and no personal interest with respect to the parties involved.</li>
+          <li>I have no bias with respect to the property that is the subject of this report or to the parties involved with this assignment.</li>
+          <li>My engagement in this assignment was not contingent upon developing or reporting predetermined results.</li>
+          <li>My compensation for completing this assignment is not contingent upon the development or reporting of a predetermined value or direction in value that favors the cause of the client, the amount of the value opinion, the attainment of a stipulated result, or the occurrence of a subsequent event directly related to the intended use of this report.</li>
+          <li>This report is a desktop market value analysis prepared using appraisal methodology consistent with IAAO (International Association of Assessing Officers) standards for property assessment review. It is not a certified appraisal under USPAP and does not replace a licensed appraisal for mortgage, insurance, or legal purposes.</li>
+        </ul>
+        <p style="margin-top:10px;">
+          <strong>Property:</strong> ${escapeHtml(addr)}<br>
+          <strong>Prepared For:</strong> ${escapeHtml(clientName)}<br>
+          <strong>Effective Date of Value:</strong> ${escapeHtml(formatDate(valuationDate))}
+        </p>
+      </div>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <h3 style="font-family:'Playfair Display',Georgia,serif; font-size:12pt; color:${NAVY}; margin-bottom:12px;">Assumptions & Limiting Conditions</h3>
+      <div style="font-size:9pt; line-height:1.7; color:${BODY_TEXT};">
+        <ol style="margin:10px 0 10px 20px;">
+          <li style="margin-bottom:6px;">This report is prepared solely for property tax assessment purposes and is not intended as a certified appraisal for mortgage lending, insurance, or any other purpose.</li>
+          <li style="margin-bottom:6px;">The property is assumed to be free and clear of any or all liens or encumbrances unless otherwise stated.</li>
+          <li style="margin-bottom:6px;">The information furnished by others is believed to be reliable, but no warranty is given for its accuracy. Public records, MLS data, and third-party data sources were relied upon for factual information.</li>
+          <li style="margin-bottom:6px;">The physical condition of improvements was assessed based on photographs provided by the property owner and publicly available imagery. No physical interior inspection was conducted.</li>
+          <li style="margin-bottom:6px;">It is assumed that there are no hidden or unapparent conditions of the property, subsoil, or structures that render it more or less valuable.</li>
+          <li style="margin-bottom:6px;">It is assumed that the property is in full compliance with all applicable federal, state, and local environmental regulations and laws unless otherwise stated.</li>
+          <li style="margin-bottom:6px;">The market value conclusion expressed herein represents the analyst's best estimate as of the effective date of the analysis and is subject to change with market conditions.</li>
+          <li style="margin-bottom:6px;">This analysis should not be construed as legal advice. The property owner is responsible for verifying all data, meeting filing deadlines, and complying with local appeal procedures.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="page-footer"></div>
+  </div>`;
 }

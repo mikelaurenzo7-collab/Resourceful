@@ -15,6 +15,12 @@ import {
   LOCATION_ADJ_BY_DISTANCE,
   LOCATION_ADJ_MAX_PCT,
   DISTRESSED_SALE_ADJ_PCT,
+  MARKET_TRENDS_ADJ_PER_MONTH,
+  MARKET_TRENDS_ADJ_MAX_PCT,
+  SIZE_ADJ_LARGER_PER_10PCT,
+  SIZE_ADJ_SMALLER_PER_10PCT,
+  SIZE_ADJ_MAX_PCT,
+  LAND_RATIO_THRESHOLD_PCT,
 } from '@/config/valuation';
 
 // ─── Search Tiers by Property Type ──────────────────────────────────────────
@@ -125,21 +131,20 @@ function calculateAdjustments(
     const now = new Date();
     const monthsSinceSale = (now.getFullYear() - saleDate.getFullYear()) * 12 +
       (now.getMonth() - saleDate.getMonth());
-    // Conservative 0.3% per month appreciation — the AI narrative will
-    // analyze actual trend direction from the comp data set
     if (monthsSinceSale > 6) {
-      adjustment_pct_market_trends = Math.round(Math.min(monthsSinceSale * 0.3, 10) * 100) / 100;
+      adjustment_pct_market_trends = Math.round(
+        Math.min(monthsSinceSale * MARKET_TRENDS_ADJ_PER_MONTH, MARKET_TRENDS_ADJ_MAX_PCT) * 100
+      ) / 100;
     }
   }
 
-  // Size adjustment: -3% per 10% larger, +5% per 10% smaller
   if (subject.buildingSqFt > 0 && comp.buildingSquareFeet && comp.buildingSquareFeet > 0) {
     const sizeDiffPct = ((comp.buildingSquareFeet - subject.buildingSqFt) / subject.buildingSqFt) * 100;
     const sizeBuckets = sizeDiffPct / 10;
     if (sizeDiffPct > 0) {
-      adjustment_pct_size = Math.round(sizeBuckets * -3 * 100) / 100;
+      adjustment_pct_size = Math.round(Math.max(sizeBuckets * SIZE_ADJ_LARGER_PER_10PCT, -SIZE_ADJ_MAX_PCT) * 100) / 100;
     } else {
-      adjustment_pct_size = Math.round(Math.abs(sizeBuckets) * 5 * 100) / 100;
+      adjustment_pct_size = Math.round(Math.min(Math.abs(sizeBuckets) * SIZE_ADJ_SMALLER_PER_10PCT, SIZE_ADJ_MAX_PCT) * 100) / 100;
     }
   }
 
@@ -183,8 +188,8 @@ function calculateAdjustments(
     const subjectRatio = subject.lotSqFt / subject.buildingSqFt;
     const compRatio = comp.lotSquareFeet / comp.buildingSquareFeet;
     const ratioDiffPct = ((compRatio - subjectRatio) / subjectRatio) * 100;
-    if (Math.abs(ratioDiffPct) > 20) {
-      adjustment_pct_land_to_building = Math.round((ratioDiffPct / 20) * -1 * 100) / 100;
+    if (Math.abs(ratioDiffPct) > LAND_RATIO_THRESHOLD_PCT) {
+      adjustment_pct_land_to_building = Math.round((ratioDiffPct / LAND_RATIO_THRESHOLD_PCT) * -1 * 100) / 100;
     }
   }
 
@@ -342,14 +347,11 @@ export async function runComparables(
         ? Math.round((comp.lotSquareFeet / comp.buildingSquareFeet) * 100) / 100
         : null;
 
-    // Build Street View URL for this comp
-    const comparablePhotoStoragePath = comp.distanceMiles != null
-      ? getStreetViewUrl({
-          lat: latitude + (Math.random() - 0.5) * 0.01,
-          lng: longitude + (Math.random() - 0.5) * 0.01,
-          width: 640,
-          height: 480,
-        })
+    // Build Street View URL for this comp using comp's address for accuracy.
+    // We use address-based Street View (not lat/lng) to get the actual comp's facade.
+    const compAddress = `${comp.address}, ${comp.city}, ${comp.state} ${comp.zip}`;
+    const comparablePhotoStoragePath = comp.address
+      ? `https://maps.googleapis.com/maps/api/streetview?size=640x480&location=${encodeURIComponent(compAddress)}&key=${process.env.GOOGLE_MAPS_SERVER_KEY ?? ''}`
       : null;
 
     const { isDistressed, notes: saleNotes } = classifySaleCondition(comp);

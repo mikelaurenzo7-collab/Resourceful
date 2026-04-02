@@ -146,8 +146,8 @@ function extractDateFromRuleText(rule: string, today: Date): Date | null {
     july: 6, august: 7, september: 8, october: 9, november: 10, december: 11,
   };
 
-  // Match "Month Day" pattern (e.g., "May 15", "March 31")
-  const match = rule.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})\b/i);
+  // Match "Month Day" pattern (e.g., "May 15", "March 31", "May 15th", "January 1st")
+  const match = rule.match(/\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})(?:st|nd|rd|th)?\b/i);
   if (!match) return null;
 
   const month = months[match[1].toLowerCase()];
