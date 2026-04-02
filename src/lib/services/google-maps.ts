@@ -55,12 +55,104 @@ export interface ServiceResult<T> {
   error: string | null;
 }
 
+// ─── US Census Bureau Geocoder (Free Fallback) ──────────────────────────────
+// No API key required. Covers all US addresses. Used when Google Maps is
+// unavailable or not configured.
+
+const CENSUS_GEOCODE_URL = 'https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress';
+
+async function geocodeWithCensus(
+  address: string
+): Promise<ServiceResult<GeocodeResult>> {
+  try {
+    const url = new URL(CENSUS_GEOCODE_URL);
+    url.searchParams.set('address', address);
+    url.searchParams.set('benchmark', 'Public_AR_Current');
+    url.searchParams.set('vintage', 'Current_Current');
+    url.searchParams.set('format', 'json');
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    const response = await fetch(url.toString(), { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      return { data: null, error: `Census geocoder returned ${response.status}` };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const json = (await response.json()) as any;
+    const matches = json?.result?.addressMatches;
+
+    if (!matches || matches.length === 0) {
+      return { data: null, error: 'Census geocoder returned no matches' };
+    }
+
+    const match = matches[0];
+    const coords = match.coordinates ?? {};
+    const geo = match.geographies ?? {};
+    const counties = geo['Counties'] ?? [];
+    const countyGeo = counties[0];
+    const stateCode = countyGeo?.STATE ?? null;
+    const countyCode = countyGeo?.COUNTY ?? null;
+    const countyFips = stateCode && countyCode ? `${stateCode}${countyCode}` : null;
+    const countyName = countyGeo?.BASENAME ?? countyGeo?.NAME ?? null;
+
+    // Parse address components from matched address
+    const addressComponents = match.addressComponents ?? {};
+
+    console.log(`[geocode] Census fallback succeeded for: ${address}`);
+
+    return {
+      data: {
+        formattedAddress: match.matchedAddress ?? address,
+        latitude: coords.y ?? 0,
+        longitude: coords.x ?? 0,
+        placeId: '', // Census doesn't provide place IDs
+        county: countyName,
+        countyFips,
+        streetNumber: addressComponents.fromAddress ?? null,
+        route: addressComponents.streetName ?? null,
+        city: addressComponents.city ?? null,
+        state: addressComponents.state ?? null,
+        zip: addressComponents.zip ?? null,
+      },
+      error: null,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[geocode] Census fallback error: ${message}`);
+    return { data: null, error: `Census geocoding failed: ${message}` };
+  }
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
- * Geocode a street address and extract county info.
+ * Geocode a street address. Uses Google Maps as primary, falls back to
+ * US Census Bureau geocoder if Google is unavailable or not configured.
+ * The Census geocoder is free, requires no API key, and returns FIPS codes.
  */
 export async function geocodeAddress(
+  address: string
+): Promise<ServiceResult<GeocodeResult>> {
+  // Try Google Maps first (if API key is configured)
+  if (API_KEY) {
+    const googleResult = await geocodeWithGoogle(address);
+    if (googleResult.data) return googleResult;
+    console.warn(`[geocode] Google Maps failed, falling back to Census: ${googleResult.error}`);
+  } else {
+    console.log('[geocode] Google Maps API key not configured, using Census geocoder');
+  }
+
+  // Fallback: US Census Bureau geocoder (free, no API key)
+  return geocodeWithCensus(address);
+}
+
+/**
+ * Geocode using Google Maps API.
+ */
+async function geocodeWithGoogle(
   address: string
 ): Promise<ServiceResult<GeocodeResult>> {
   const url = new URL(GEOCODE_URL);
@@ -69,7 +161,7 @@ export async function geocodeAddress(
 
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10_000); // 10s timeout
+    const timeout = setTimeout(() => controller.abort(), 10_000);
     const response = await fetch(url.toString(), { signal: controller.signal });
     clearTimeout(timeout);
     if (!response.ok) {
@@ -79,6 +171,7 @@ export async function geocodeAddress(
       };
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const json = (await response.json()) as any;
 
     if (json.status !== 'OK' || !json.results?.length) {
@@ -89,12 +182,15 @@ export async function geocodeAddress(
     }
 
     const result = json.results[0];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const components: any[] = result.address_components ?? [];
     const geo = result.geometry?.location ?? {};
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const find = (type: string): string | null =>
       components.find((c: any) => c.types?.includes(type))?.long_name ?? null;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const findShort = (type: string): string | null =>
       components.find((c: any) => c.types?.includes(type))?.short_name ?? null;
 
@@ -105,7 +201,7 @@ export async function geocodeAddress(
         longitude: geo.lng ?? 0,
         placeId: result.place_id ?? '',
         county: find('administrative_area_level_2'),
-        countyFips: null, // Google does not return FIPS; use separate lookup if needed
+        countyFips: null, // Google does not return FIPS; Census fallback does
         streetNumber: find('street_number'),
         route: find('route'),
         city: find('locality'),
