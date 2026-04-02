@@ -1497,6 +1497,76 @@ function renderIncomeSection(
   </div>`;
 }
 
+// ─── Reconciliation Approach Weighting Table ────────────────────────────────
+
+function renderReconciliationTable(data: ReportTemplateData): string {
+  const { property, incomeAnalysis, concludedValue } = data;
+  const hasCost = property.cost_approach_value != null && property.cost_approach_value > 0;
+  const hasIncome = incomeAnalysis?.concluded_value_income_approach != null && incomeAnalysis.concluded_value_income_approach > 0;
+
+  // Determine weights based on available approaches
+  let salesWeight: number, costWeight: number, incomeWeight: number;
+  if (hasIncome && hasCost) {
+    salesWeight = 60; costWeight = 15; incomeWeight = 25;
+  } else if (hasIncome) {
+    salesWeight = 70; incomeWeight = 30; costWeight = 0;
+  } else if (hasCost) {
+    salesWeight = 80; costWeight = 20; incomeWeight = 0;
+  } else {
+    // Sales comparison only — no table needed
+    return '';
+  }
+
+  const rows: string[] = [];
+
+  rows.push(`
+    <tr>
+      <td style="padding:8px 12px; font-weight:500;">Sales Comparison Approach</td>
+      <td style="padding:8px 12px; text-align:right;">${formatCurrency(concludedValue)}</td>
+      <td style="padding:8px 12px; text-align:center;">${salesWeight}%</td>
+    </tr>`);
+
+  if (hasCost) {
+    rows.push(`
+    <tr style="background:${TABLE_ALT};">
+      <td style="padding:8px 12px; font-weight:500;">Cost Approach</td>
+      <td style="padding:8px 12px; text-align:right;">${formatCurrency(property.cost_approach_value!)}</td>
+      <td style="padding:8px 12px; text-align:center;">${costWeight}%</td>
+    </tr>`);
+  }
+
+  if (hasIncome) {
+    rows.push(`
+    <tr${hasCost ? '' : ` style="background:${TABLE_ALT};"`}>
+      <td style="padding:8px 12px; font-weight:500;">Income Approach</td>
+      <td style="padding:8px 12px; text-align:right;">${formatCurrency(incomeAnalysis!.concluded_value_income_approach!)}</td>
+      <td style="padding:8px 12px; text-align:center;">${incomeWeight}%</td>
+    </tr>`);
+  }
+
+  return `
+    <div style="margin-bottom:1.5em;">
+      <h3 style="font-family:'Playfair Display',Georgia,serif; font-size:11pt; color:${NAVY}; margin-bottom:8px;">Approach Reconciliation</h3>
+      <table style="width:100%; border-collapse:collapse; font-size:9.5pt; border:1px solid ${TABLE_BORDER}; border-radius:2px;">
+        <thead>
+          <tr style="background:${NAVY}; color:white;">
+            <th style="padding:8px 12px; text-align:left; font-weight:500;">Valuation Approach</th>
+            <th style="padding:8px 12px; text-align:right; font-weight:500;">Indicated Value</th>
+            <th style="padding:8px 12px; text-align:center; font-weight:500;">Weight</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.join('')}
+          <tr style="background:${GOLD}10; border-top:2px solid ${GOLD};">
+            <td style="padding:10px 12px; font-weight:700; color:${NAVY};">Final Concluded Value</td>
+            <td style="padding:10px 12px; text-align:right; font-weight:700; color:${NAVY};">${formatCurrency(concludedValue)}</td>
+            <td style="padding:10px 12px; text-align:center; font-weight:700; color:${NAVY};">100%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+
 // ─── Reconciliation Section ──────────────────────────────────────────────────
 
 function renderReconciliationSection(
@@ -1514,6 +1584,8 @@ function renderReconciliationSection(
     </div>
 
     ${narrative ? `<div style="font-size:10.5pt; line-height:1.65; margin-bottom:1.5em;">${narrative.content}</div>` : ''}
+
+    ${renderReconciliationTable(data)}
 
     <div class="value-box">
       <div class="value-label">Final Concluded Market Value</div>
