@@ -99,6 +99,21 @@ export async function runDelivery(
     report.state,
   ].filter(Boolean).join(', ');
 
+  // ── Fetch county rule for filing deadline ────────────────────────────
+  let filingDeadline: string | null = null;
+  let countyName: string | null = report.county ?? null;
+  if (report.county_fips) {
+    const { data: cr } = await supabase
+      .from('county_rules')
+      .select('appeal_deadline_rule, county_name')
+      .eq('county_fips', report.county_fips)
+      .limit(1);
+    if (cr?.[0]) {
+      filingDeadline = cr[0].appeal_deadline_rule ?? null;
+      countyName = cr[0].county_name ?? countyName;
+    }
+  }
+
   // ── Record approval and update status BEFORE sending email ────────────
   // This prevents duplicate emails: if the email sends but status update fails,
   // the report stays 'pending_approval' and admin sends again. By updating
@@ -145,6 +160,8 @@ export async function runDelivery(
     potentialSavings,
     pdfUrl: signedUrlData.signedUrl,
     filingGuide: filingGuide?.content ?? '',
+    filingDeadline,
+    countyName,
   });
 
   if (emailResult.error) {

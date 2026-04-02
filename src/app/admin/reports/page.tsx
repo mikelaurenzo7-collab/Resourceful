@@ -40,14 +40,20 @@ function formatDate(iso: string | null): string {
 export default async function ReportsQueuePage({
   searchParams,
 }: {
-  searchParams: { tab?: string };
+  searchParams: Promise<{ tab?: string; q?: string; page?: string }>;
 }) {
-  const activeTab = (searchParams.tab as ReportStatus | 'all') || 'pending_approval';
+  const params = await searchParams;
+  const activeTab = (params.tab as ReportStatus | 'all') || 'pending_approval';
+  const searchQuery = params.q?.trim() ?? '';
+  const currentPage = Math.max(1, parseInt(params.page ?? '1', 10) || 1);
+  const pageSize = 50;
+  const offset = (currentPage - 1) * pageSize;
+
   const supabase = await createClient();
 
   let query = supabase
     .from('reports')
-    .select('*')
+    .select('*', { count: 'exact' })
     .order(
       activeTab === 'pending_approval' ? 'pipeline_completed_at' : 'created_at',
       { ascending: activeTab === 'pending_approval' }
@@ -57,7 +63,15 @@ export default async function ReportsQueuePage({
     query = query.eq('status', activeTab);
   }
 
-  const { data: rawReports, error } = await query.limit(200);
+  // Text search across address, client email, county
+  if (searchQuery) {
+    query = query.or(
+      `property_address.ilike.%${searchQuery}%,client_email.ilike.%${searchQuery}%,county.ilike.%${searchQuery}%,city.ilike.%${searchQuery}%`
+    );
+  }
+
+  const { data: rawReports, error, count: totalCount } = await query.range(offset, offset + pageSize - 1);
+  const totalPages = totalCount ? Math.ceil(totalCount / pageSize) : 1;
   const reports = rawReports as unknown as Report[] | null;
 
   if (error) {
@@ -77,6 +91,34 @@ export default async function ReportsQueuePage({
         <p className="mt-1 text-sm text-gray-500">
           Review and manage property reports through the approval pipeline.
         </p>
+      </div>
+
+      {/* Search */}
+      <div className="mb-4">
+        <form method="GET" className="flex gap-2">
+          <input type="hidden" name="tab" value={activeTab} />
+          <input
+            type="text"
+            name="q"
+            defaultValue={searchQuery}
+            placeholder="Search by address, email, city, or county..."
+            className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-[#1a2744] focus:ring-1 focus:ring-[#1a2744] focus:outline-none"
+          />
+          <button
+            type="submit"
+            className="rounded-lg bg-[#1a2744] px-4 py-2 text-sm font-medium text-white hover:bg-[#243656] transition-colors"
+          >
+            Search
+          </button>
+          {searchQuery && (
+            <Link
+              href={`/admin/reports?tab=${activeTab}`}
+              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+            >
+              Clear
+            </Link>
+          )}
+        </form>
       </div>
 
       {/* Tabs */}
@@ -103,7 +145,7 @@ export default async function ReportsQueuePage({
 
       {/* Table */}
       {reports && reports.length > 0 ? (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <><div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -193,9 +235,40 @@ export default async function ReportsQueuePage({
             </tbody>
           </table>
         </div>
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 bg-white rounded-xl mt-2">
+            <p className="text-sm text-gray-500">
+              Showing {offset + 1}–{Math.min(offset + pageSize, totalCount ?? 0)} of {totalCount ?? 0}
+            </p>
+            <div className="flex gap-1">
+              {currentPage > 1 && (
+                <Link
+                  href={`/admin/reports?tab=${activeTab}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ''}&page=${currentPage - 1}`}
+                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                >
+                  Previous
+                </Link>
+              )}
+              {currentPage < totalPages && (
+                <Link
+                  href={`/admin/reports?tab=${activeTab}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ''}&page=${currentPage + 1}`}
+                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                >
+                  Next
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+        </>
       ) : (
         <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
-          <p className="text-sm text-gray-500">No reports found for this filter.</p>
+          <p className="text-sm text-gray-500">
+            {searchQuery
+              ? `No reports matching "${searchQuery}" found.`
+              : 'No reports found for this filter.'}
+          </p>
         </div>
       )}
     </div>

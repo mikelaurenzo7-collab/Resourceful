@@ -215,11 +215,27 @@ export async function runPipeline(
     // ── Notify admin (non-blocking, for monitoring) ─────────────────────
     try {
       const adminReviewUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/admin/reports/${reportId}/review`;
+      // Fetch concluded value for admin context
+      const { data: pdForAdmin } = await supabase
+        .from('property_data')
+        .select('assessed_value, concluded_value')
+        .eq('report_id', reportId)
+        .limit(1);
+      const adminPd = pdForAdmin?.[0] as { assessed_value: number | null; concluded_value: number | null } | undefined;
+      const adminSavings = (adminPd?.assessed_value && adminPd?.concluded_value)
+        ? Math.max(0, adminPd.assessed_value - adminPd.concluded_value)
+        : undefined;
+
       await sendAdminNotification({
         reportId,
         propertyAddress: report.property_address,
         propertyType: report.property_type ?? 'residential',
         reviewUrl: adminReviewUrl,
+        clientEmail: report.client_email ?? undefined,
+        concludedValue: adminPd?.concluded_value ?? undefined,
+        assessedValue: adminPd?.assessed_value ?? undefined,
+        potentialSavings: adminSavings,
+        county: report.county ?? undefined,
       });
     } catch (emailErr) {
       console.error(`[pipeline] Failed to send admin notification email:`, emailErr);

@@ -245,6 +245,40 @@ export default async function ReviewPage({
             </div>
           </section>
 
+          {/* Pipeline Error Details (for failed/processing reports) */}
+          {report.pipeline_error_log && (
+            <section>
+              <h2 className="text-lg font-bold text-red-700 mb-4">Pipeline Error</h2>
+              <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4 space-y-3">
+                {(Array.isArray(report.pipeline_error_log) ? report.pipeline_error_log : [report.pipeline_error_log]).map((rawErr: unknown, i: number) => {
+                  const err = rawErr as Record<string, string | undefined>;
+                  return (
+                    <div key={i}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-bold uppercase tracking-wider text-red-800 bg-red-200 px-2 py-0.5 rounded">
+                          {err.stage ?? 'unknown'}
+                        </span>
+                        {err.timestamp && (
+                          <span className="text-xs text-red-600">{formatDate(err.timestamp)}</span>
+                        )}
+                      </div>
+                      <p className="text-sm text-red-800 font-medium">{err.error ?? 'Unknown error'}</p>
+                      {err.stack && err.stack !== err.error && (
+                        <details className="mt-1">
+                          <summary className="text-xs text-red-600 cursor-pointer hover:text-red-800">Stack trace</summary>
+                          <pre className="mt-1 text-xs text-red-700 bg-red-100 rounded p-2 overflow-x-auto whitespace-pre-wrap break-words">{err.stack}</pre>
+                        </details>
+                      )}
+                    </div>
+                  );
+                })}
+                <p className="text-xs text-red-600 mt-2">
+                  Last completed stage: <strong>{report.pipeline_last_completed_stage ?? 'none'}</strong>
+                </p>
+              </div>
+            </section>
+          )}
+
           {/* Quality Flags */}
           <section>
             <h2 className="text-lg font-bold text-gray-900 mb-4">Quality Flags</h2>

@@ -52,6 +52,8 @@ export interface ReportDeliveryParams {
   potentialSavings: number;
   pdfUrl: string;
   filingGuide: string;
+  filingDeadline?: string | null;
+  countyName?: string | null;
 }
 
 export interface AdminNotificationParams {
@@ -59,6 +61,11 @@ export interface AdminNotificationParams {
   propertyAddress: string;
   propertyType: string;
   reviewUrl: string;
+  clientEmail?: string;
+  concludedValue?: number;
+  assessedValue?: number;
+  potentialSavings?: number;
+  county?: string;
 }
 
 export interface ReportRejectionAlertParams {
@@ -105,7 +112,9 @@ export async function sendReportDeliveryEmail(
     const result = await sendWithRetry({
       from: FROM_ADDRESS,
       to: params.to,
-      subject: `Your Property Assessment Report — ${params.propertyAddress}`,
+      subject: params.potentialSavings > 0
+        ? `You could save ${escapeHtml(formatDollarValue(params.potentialSavings))} — Your Report is Ready`
+        : `Your Property Assessment Report — ${escapeHtml(params.propertyAddress)}`,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #1a1a1a; font-size: 24px;">Your Report is Ready</h1>
@@ -115,25 +124,33 @@ export async function sendReportDeliveryEmail(
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
                 <td style="padding: 8px 0; color: #666;">Concluded Market Value</td>
-                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${formatDollarValue(params.concludedValue)}</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${escapeHtml(formatDollarValue(params.concludedValue))}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #666;">Current Assessed Value</td>
-                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${formatDollarValue(params.assessedValue)}</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${escapeHtml(formatDollarValue(params.assessedValue))}</td>
               </tr>
               <tr style="border-top: 1px solid #ddd;">
-                <td style="padding: 8px 0; color: #1a8a1a; font-weight: 600;">Potential Tax Savings</td>
-                <td style="padding: 8px 0; text-align: right; color: #1a8a1a; font-weight: 600;">${formatDollarValue(params.potentialSavings)}</td>
+                <td style="padding: 8px 0; color: #1a8a1a; font-weight: 600;">Potential Over-Assessment</td>
+                <td style="padding: 8px 0; text-align: right; color: #1a8a1a; font-weight: 600;">${escapeHtml(formatDollarValue(params.potentialSavings))}</td>
               </tr>
             </table>
           </div>
 
+          ${params.filingDeadline ? `
+          <div style="background: #fff7ed; border-left: 4px solid #f97316; padding: 16px; margin: 0 0 24px 0;">
+            <strong style="color: #9a3412;">Filing Deadline${params.countyName ? ` (${escapeHtml(params.countyName)})` : ''}:</strong>
+            <span style="color: #9a3412;"> ${escapeHtml(params.filingDeadline)}</span>
+            <p style="margin: 4px 0 0 0; font-size: 13px; color: #c2410c;">Don't miss your window — late filings are not accepted.</p>
+          </div>
+          ` : ''}
+
           <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app'}/report/${params.reportId}" style="display: inline-block; background: #2563eb; color: #fff; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px;">
-            View Your Report &amp; Filing Instructions
+            View Report &amp; Start Your Appeal
           </a>
 
           <p style="margin-top: 16px; font-size: 13px; color: #666;">
-            Your report page includes your full PDF, county-specific filing instructions, deadlines, required forms, and step-by-step guidance.
+            Your report page includes your full PDF, county-specific filing instructions, required forms, and step-by-step guidance.
           </p>
 
           <p style="margin-top: 12px;">
@@ -168,7 +185,9 @@ export async function sendAdminNotification(
     const result = await sendWithRetry({
       from: FROM_ADDRESS,
       to: ADMIN_EMAIL,
-      subject: `[Review Needed] Report ${params.reportId.slice(0, 8)} — ${params.propertyAddress}`,
+      subject: params.potentialSavings && params.potentialSavings > 0
+        ? `[Review] ${escapeHtml(formatDollarValue(params.potentialSavings))} savings — ${escapeHtml(params.propertyAddress)}`
+        : `[Review Needed] Report ${params.reportId.slice(0, 8)} — ${escapeHtml(params.propertyAddress)}`,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #1a1a1a; font-size: 24px;">Report Ready for Review</h1>
@@ -177,23 +196,32 @@ export async function sendAdminNotification(
           <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
             <table style="width: 100%; border-collapse: collapse;">
               <tr>
-                <td style="padding: 8px 0; color: #666;">Report ID</td>
-                <td style="padding: 8px 0; text-align: right; font-family: monospace;">${params.reportId}</td>
-              </tr>
-              <tr>
                 <td style="padding: 8px 0; color: #666;">Property</td>
-                <td style="padding: 8px 0; text-align: right;">${escapeHtml(params.propertyAddress)}</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${escapeHtml(params.propertyAddress)}</td>
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #666;">Type</td>
-                <td style="padding: 8px 0; text-align: right;">${params.propertyType}</td>
+                <td style="padding: 8px 0; text-align: right;">${escapeHtml(params.propertyType)}</td>
               </tr>
+              ${params.county ? `<tr>
+                <td style="padding: 8px 0; color: #666;">County</td>
+                <td style="padding: 8px 0; text-align: right;">${escapeHtml(params.county)}</td>
+              </tr>` : ''}
+              ${params.clientEmail ? `<tr>
+                <td style="padding: 8px 0; color: #666;">Client</td>
+                <td style="padding: 8px 0; text-align: right;">${escapeHtml(params.clientEmail)}</td>
+              </tr>` : ''}
+              ${params.potentialSavings != null && params.potentialSavings > 0 ? `<tr style="border-top: 1px solid #ddd;">
+                <td style="padding: 8px 0; color: #1a8a1a; font-weight: 600;">Potential Savings</td>
+                <td style="padding: 8px 0; text-align: right; color: #1a8a1a; font-weight: 600;">${escapeHtml(formatDollarValue(params.potentialSavings))}</td>
+              </tr>` : ''}
             </table>
           </div>
 
           <a href="${params.reviewUrl}" style="display: inline-block; background: #2563eb; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
             Review Report
           </a>
+          <p style="margin-top: 12px; font-size: 12px; color: #999;">Report ID: ${params.reportId}</p>
         </div>
       `,
     });
