@@ -47,33 +47,33 @@ export default function HowItWorks() {
         </h2>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-12">
+      <div className="grid md:grid-cols-3 gap-12 md:gap-8 lg:gap-12">
         {steps.map((step, i) => (
           <div
             key={step.number}
-            className="relative"
+            className="relative group"
             data-animate={i % 2 === 0 ? 'slide-left' : 'slide-right'}
             data-delay={String((i + 1) * 200)}
           >
             {/* Connector line */}
             {i < steps.length - 1 && (
-              <div className="hidden md:block absolute top-10 left-full w-full h-px bg-gradient-to-r from-gold/30 to-transparent -translate-x-6 animate-draw-line" />
+              <div className="hidden md:block absolute top-10 left-full w-full h-px bg-gradient-to-r from-gold/25 via-gold/15 to-transparent -translate-x-6 animate-draw-line" />
             )}
 
-            <div className="flex items-center gap-4 mb-5">
+            <div className="flex items-center gap-4 mb-6">
               <div
-                className="flex items-center justify-center w-16 h-16 rounded-full border border-gold/30 bg-gold/5 text-gold"
-                style={{ boxShadow: '0 0 20px rgba(212, 168, 71, 0.15), 0 0 40px rgba(212, 168, 71, 0.05)' }}
+                className="flex items-center justify-center w-16 h-16 rounded-2xl border border-gold/25 bg-gold/[0.06] text-gold transition-all duration-300 group-hover:border-gold/40 group-hover:bg-gold/10"
+                style={{ boxShadow: '0 0 20px rgba(212, 168, 71, 0.1), 0 0 40px rgba(212, 168, 71, 0.04)' }}
               >
                 <div className={i === 0 ? 'animate-float' : ''}>
                   {step.icon}
                 </div>
               </div>
-              <span className="font-display text-4xl text-gold/20">{step.number}</span>
+              <span className="font-display text-5xl text-gold/[0.12] select-none">{step.number}</span>
             </div>
 
             <h3 className="font-display text-xl text-cream mb-3">{step.title}</h3>
-            <p className="text-sm text-cream/50 leading-relaxed">{step.description}</p>
+            <p className="text-sm text-cream/45 leading-relaxed">{step.description}</p>
           </div>
         ))}
       </div>

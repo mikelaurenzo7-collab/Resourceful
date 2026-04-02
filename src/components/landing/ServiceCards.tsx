@@ -47,10 +47,13 @@ export default function ServiceCards() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-24">
       <div className="text-center mb-16">
-        <h2 className="font-display text-3xl md:text-4xl text-cream">
+        <span className="text-sm font-medium tracking-widest text-gold uppercase">
+          Our Reports
+        </span>
+        <h2 className="font-display text-3xl md:text-4xl text-cream mt-3">
           Choose Your Report
         </h2>
-        <p className="mt-4 text-cream/50 max-w-xl mx-auto">
+        <p className="mt-4 text-cream/45 max-w-xl mx-auto leading-relaxed">
           Each report is built from real market data, professionally analyzed, and reviewed
           before delivery.
         </p>
@@ -58,14 +61,15 @@ export default function ServiceCards() {
 
       <div className="grid md:grid-cols-3 gap-6">
         {services.map((svc, i) => (
-          <div
+          <Link
             key={svc.service}
+            href="/start"
             data-animate
             data-delay={String((i + 1) * 100)}
             className={`
-              relative rounded-xl p-8 flex flex-col
-              transition-all duration-300 hover:border-gold/40 hover:shadow-gold-lg hover:scale-[1.03]
-              ${svc.popular ? 'card-elevated ring-2 ring-gold/30 animate-glow' : 'card-premium'}
+              group relative rounded-xl p-8 flex flex-col no-underline
+              transition-all duration-300 hover:-translate-y-1 hover:shadow-gold-lg
+              ${svc.popular ? 'card-elevated ring-2 ring-gold/30 animate-glow' : 'card-premium hover:border-gold/30'}
             `}
           >
             {svc.popular && (
@@ -77,17 +81,17 @@ export default function ServiceCards() {
               </div>
             )}
 
-            <div className="text-gold mb-4">{svc.icon}</div>
+            <div className="text-gold mb-5 transition-transform duration-300 group-hover:scale-110">{svc.icon}</div>
 
             <h3 className="font-display text-xl text-cream mb-3">{svc.title}</h3>
-            <p className="text-sm text-cream/50 leading-relaxed mb-6 flex-grow">
+            <p className="text-sm text-cream/45 leading-relaxed mb-6 flex-grow">
               {svc.description}
             </p>
 
-            <ul className="space-y-2 mb-8">
+            <ul className="space-y-2.5 mb-8">
               {svc.features.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm text-cream/70">
-                  <svg className="w-4 h-4 text-gold mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <li key={f} className="flex items-start gap-2.5 text-sm text-cream/65">
+                  <svg className="w-4 h-4 text-gold/70 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   {f}
@@ -95,21 +99,21 @@ export default function ServiceCards() {
               ))}
             </ul>
 
-            <div className="flex items-end justify-between mt-auto">
+            <div className="flex items-end justify-between mt-auto pt-6" style={{ borderTop: '1px solid rgba(212, 168, 71, 0.08)' }}>
               <div>
-                <span className="text-xs text-cream/40 uppercase tracking-wider">From</span>
+                <span className="text-[10px] text-cream/35 uppercase tracking-wider">From</span>
                 <p className="font-display text-3xl text-gold animate-count">
                   {formatPrice(getPriceCents(svc.service, 'residential'))}
                 </p>
               </div>
-              <Link
-                href="/start"
-                className="text-sm text-gold hover:text-gold-light transition-colors font-medium"
-              >
-                Get Started &rarr;
-              </Link>
+              <span className="text-sm text-gold/70 group-hover:text-gold transition-colors font-medium flex items-center gap-1">
+                Get Started
+                <svg className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </section>

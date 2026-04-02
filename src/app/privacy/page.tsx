@@ -16,7 +16,7 @@ export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-pattern">
       {/* Nav */}
-      <nav className="bg-navy-deep/80 backdrop-blur-lg">
+      <nav className="bg-navy-deep/80 backdrop-blur-xl nav-shadow">
         <div className="mx-auto max-w-4xl px-6 flex items-center justify-between h-16">
           <Link href="/" className="font-display text-xl text-gold">
             Resourceful

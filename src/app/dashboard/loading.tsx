@@ -1,7 +1,7 @@
 export default function DashboardLoading() {
   return (
     <div className="min-h-screen bg-pattern">
-      <header className="bg-navy-deep/80 backdrop-blur-sm sticky top-0 z-50">
+      <header className="bg-navy-deep/80 backdrop-blur-xl nav-shadow sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center">
