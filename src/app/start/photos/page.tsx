@@ -78,10 +78,13 @@ export default function PhotosPage() {
       <div className="text-center mb-10 animate-fade-in">
         <h1 className="font-display text-3xl text-cream mb-3">Your Property, Your Evidence</h1>
         <p className="text-cream/50 max-w-lg mx-auto leading-relaxed">
-          You know your property better than anyone — and you&apos;re the only one with access inside.
-          County assessors assume average condition from a desk. They&apos;ve never walked your basement,
-          seen your roof up close, or noticed the water damage behind the furnace.
-          <span className="text-gold/70"> Your photos change that.</span>
+          County assessors assume average condition from a desk. They&apos;ve never walked your
+          basement, seen your roof, or noticed deferred maintenance.
+          <span className="text-gold/70"> Your photos are evidence they don&apos;t have.</span>
+        </p>
+        <p className="text-xs text-cream/30 mt-3 max-w-md mx-auto">
+          Our AI analyzes each photo for condition defects and calculates the depreciation
+          impact on your property&apos;s value. More photos = stronger case.
         </p>
       </div>
 

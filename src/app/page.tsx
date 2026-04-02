@@ -50,7 +50,7 @@ export default function HomePage() {
             </div>
             <div>
               <p className="font-display text-2xl text-cream">Over 50%</p>
-              <p className="text-xs text-cream/40">of properties nationwide are over-assessed</p>
+              <p className="text-xs text-cream/40">of properties are over-assessed (IAAO studies)</p>
             </div>
           </div>
           <div className="hidden md:block h-8 w-px bg-gold/10" />
@@ -73,8 +73,8 @@ export default function HomePage() {
               </svg>
             </div>
             <div>
-              <p className="font-display text-2xl text-cream">Minutes</p>
-              <p className="text-xs text-cream/40">auto-report delivery time</p>
+              <p className="font-display text-2xl text-cream">Same Day</p>
+              <p className="text-xs text-cream/40">report delivery for standard analysis</p>
             </div>
           </div>
         </div>
@@ -109,7 +109,8 @@ export default function HomePage() {
             Ready to Stop Overpaying?
           </h2>
           <p className="relative mt-4 text-cream/50 max-w-lg mx-auto text-lg">
-            Enter your address and let us run the numbers. Upload your tax bill to save 15% on your report.
+            Enter your address and we&apos;ll pull comparable sales, calculate your assessment ratio, and
+            show you exactly how much you could save. Upload your tax bill for 15% off.
           </p>
           <Link
             href="/start"

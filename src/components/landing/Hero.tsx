@@ -62,8 +62,9 @@ export default function Hero() {
           className="mt-6 max-w-2xl text-lg text-cream/60 leading-relaxed animate-fade-in"
           style={{ animationDelay: '0.6s' }}
         >
-          Professional-grade property tax appeal reports that arm you with the evidence
-          assessors respect. We handle the analysis, filing guidance, and even full representation.
+          Comparable sales analysis, line-item adjustments, and condition documentation — the
+          same methodology licensed appraisers use. Delivered in hours, not weeks. County-specific
+          filing instructions included.
         </p>
 
         {/* Dollar example — animated gradient border */}

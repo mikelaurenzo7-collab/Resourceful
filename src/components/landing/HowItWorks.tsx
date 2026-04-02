@@ -15,7 +15,7 @@ const steps = [
     number: '02',
     title: 'We Run the Numbers',
     description:
-      'After you order, we immediately analyze your assessment against market data and comparable sales. You\'ll see an initial finding right away.',
+      'We pull 5\u201310 comparable sales from public records, calculate line-item adjustments for size, age, and condition, and compare your assessment ratio against county standards. Initial findings arrive within hours.',
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -26,7 +26,7 @@ const steps = [
     number: '03',
     title: 'Receive Your Full Report',
     description:
-      'We conduct a final review for accuracy, then deliver your professional report — comparable sales, evidence package, and step-by-step filing instructions.',
+      'Your report includes a comparable sales grid with adjustments, assessment ratio analysis, condition documentation from your photos, and county-specific filing instructions with deadlines, forms, and hearing prep.',
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

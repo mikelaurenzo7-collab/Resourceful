@@ -64,6 +64,13 @@ export default function SituationPage() {
                 </button>
               ))}
             </div>
+            {state.ownerOccupied !== undefined && (
+              <p className="text-xs text-cream/30 mt-2">
+                {state.ownerOccupied
+                  ? 'Owner-occupied homes often qualify for homestead exemptions that strengthen appeal arguments.'
+                  : 'Investment properties are evaluated on market value and income potential — we tailor the analysis accordingly.'}
+              </p>
+            )}
           </div>
 
           {/* Years owned */}

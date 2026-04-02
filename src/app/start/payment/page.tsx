@@ -351,6 +351,21 @@ export default function PaymentPage() {
           </p>
         </div>
 
+        {/* Trust bar */}
+        {state.serviceType === 'tax_appeal' && (
+          <div className="mb-8 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-5 py-4 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <svg className="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <div>
+                <p className="text-sm font-medium text-emerald-300">Money-Back Guarantee</p>
+                <p className="text-xs text-cream/40 mt-0.5">Photo-backed tax appeal reports: if your assessed value isn&apos;t reduced, we refund the full report cost. <a href="/disclaimer" target="_blank" className="underline hover:text-cream/50">Details</a></p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-6 animate-slide-up">
           {/* Tier Selection */}
           <div className={`grid grid-cols-1 ${isTaxAppeal ? 'sm:grid-cols-2' : 'sm:grid-cols-2'} gap-4`}>
@@ -380,20 +395,20 @@ export default function PaymentPage() {
               </div>
               <h3 className="font-display text-lg text-cream mb-1">Professional Report</h3>
               <p className="text-sm text-cream/40 mb-3">
-                Our advanced, professionally trained valuation system analyzes your property against real market data, comparable sales, and county records.
+                Same methodology licensed appraisers use: comparable sales with line-item adjustments, assessment ratio analysis, and condition documentation from your photos.
               </p>
               <ul className="text-xs text-cream/50 space-y-1.5 mb-4">
                 <li className="flex items-start gap-2">
                   <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  Analysis trained on real appraisal standards
+                  5-10 comparable sales with adjustment grid
                 </li>
                 <li className="flex items-start gap-2">
                   <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  Full comparable sales analysis with adjustments
+                  Photo-based condition analysis and depreciation
                 </li>
                 <li className="flex items-start gap-2">
                   <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  {isTaxAppeal ? 'Step-by-step pro se filing guide included' : 'Delivered to your inbox in minutes'}
+                  {isTaxAppeal ? 'County-specific filing guide with deadlines and forms' : 'Same-day delivery to your inbox'}
                 </li>
               </ul>
               <p className="font-display text-2xl text-gold">{formatPrice(autoPrice)}</p>
