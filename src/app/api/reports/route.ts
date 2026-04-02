@@ -31,28 +31,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const {
-      client_email,
-      client_name,
-      property_address,
-      city,
-      state,
-      county,
-      county_fips,
-      pin,
-      property_type,
-      service_type,
-      review_tier,
-      photos_skipped,
-      property_issues,
-      additional_notes,
-      desired_outcome,
-      has_tax_bill,
-      tax_bill_assessed_value,
-      tax_bill_tax_amount,
-      tax_bill_tax_year,
-      tax_bill_pin,
-    } = parsed.data;
+    const d = parsed.data;
+    // Normalize empty strings to null for DB columns that expect null over ''
+    const client_email = d.client_email;
+    const client_name = d.client_name;
+    const property_address = d.property_address;
+    const city = d.city || null;
+    const state = d.state || null;
+    const county = d.county || null;
+    const county_fips = d.county_fips || null;
+    const pin = d.pin || null;
+    const property_type = d.property_type;
+    const service_type = d.service_type;
+    const review_tier = d.review_tier;
+    const photos_skipped = d.photos_skipped;
+    const property_issues = d.property_issues;
+    const additional_notes = d.additional_notes || null;
+    const desired_outcome = d.desired_outcome || null;
+    const has_tax_bill = d.has_tax_bill;
+    const tax_bill_assessed_value = d.tax_bill_assessed_value ?? null;
+    const tax_bill_tax_amount = d.tax_bill_tax_amount ?? null;
+    const tax_bill_tax_year = d.tax_bill_tax_year || null;
+    const tax_bill_pin = d.tax_bill_pin || null;
 
     // ── Per-email concurrency check (prevent abuse) ─────────────────────
     // Max 3 reports in 'intake' or 'processing' state per email
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     const report = (await createReport({
       user_id: null, // no auth account — email-only identification
       client_email,
-      client_name: client_name ?? null,
+      client_name: client_name || null,
       status: founderAccess ? 'paid' : 'intake',
       service_type,
       property_type,
@@ -89,8 +89,8 @@ export async function POST(request: NextRequest) {
       state,
       state_abbreviation: state,
       county,
-      county_fips: county_fips ?? null,
-      pin: pin ?? tax_bill_pin ?? null,
+      county_fips,
+      pin: pin ?? tax_bill_pin,
       latitude: null,
       longitude: null,
       report_pdf_storage_path: null,
