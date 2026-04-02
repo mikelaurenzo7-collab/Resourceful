@@ -91,23 +91,36 @@ export default function ReportViewerPage() {
     };
 
     fetchReport();
-    // Poll every 30s if not ready
-    const interval = setInterval(async () => {
-      if (data?.ready) {
-        clearInterval(interval);
-        return;
-      }
-      try {
-        const res = await fetch(`/api/reports/${reportId}/viewer`);
-        if (res.ok) {
-          const json = await res.json();
-          setData(json);
-          if (json.ready) clearInterval(interval);
-        }
-      } catch { /* ignore polling errors */ }
-    }, 30000);
+    // Poll with backoff: 10s → 20s → 30s → 30s (max), up to 60 attempts (~25 min)
+    let pollCount = 0;
+    const maxPolls = 60;
+    let pollTimer: ReturnType<typeof setTimeout>;
+    let cancelled = false;
 
-    return () => clearInterval(interval);
+    const poll = async () => {
+      if (cancelled || pollCount >= maxPolls) return;
+      pollCount++;
+      const delay = Math.min(10000 * Math.pow(1.5, Math.min(pollCount - 1, 3)), 30000);
+      pollTimer = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/reports/${reportId}/viewer`);
+          if (res.ok) {
+            const json = await res.json();
+            setData(json);
+            if (json.ready) return; // Stop polling
+          }
+        } catch { /* ignore transient polling errors */ }
+        if (!cancelled) poll();
+      }, delay);
+    };
+
+    // Only start polling if initial fetch didn't return ready data
+    if (!data?.ready) poll();
+
+    return () => {
+      cancelled = true;
+      clearTimeout(pollTimer);
+    };
   }, [reportId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {

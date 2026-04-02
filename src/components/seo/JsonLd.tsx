@@ -66,40 +66,44 @@ export function ServiceJsonLd() {
     },
     description:
       'Property tax appeal reports with comparable sales analysis, assessment review, and county-specific pro se filing instructions. Money-back guarantee with photo documentation.',
-    offers: [
-      {
-        '@type': 'Offer',
-        name: 'Residential Tax Appeal Report',
-        price: '69.00',
-        priceCurrency: 'USD',
-        description:
-          'Professional property tax appeal report for residential properties including comparable sales analysis, assessment review, and filing guide.',
-      },
-      {
-        '@type': 'Offer',
-        name: 'Commercial Tax Appeal Report',
-        price: '129.00',
-        priceCurrency: 'USD',
-        description:
-          'Commercial property tax appeal report with income analysis, comparable sales, and filing guide.',
-      },
-      {
-        '@type': 'Offer',
-        name: 'Pre-Purchase Property Analysis',
-        price: '49.00',
-        priceCurrency: 'USD',
-        description:
-          'Property analysis report for prospective buyers with valuation data and market comparables.',
-      },
-      {
-        '@type': 'Offer',
-        name: 'Pre-Listing Property Report',
-        price: '49.00',
-        priceCurrency: 'USD',
-        description:
-          'Property analysis report for sellers with market valuation and comparable sales data.',
-      },
-    ],
+    hasOfferCatalog: {
+      '@type': 'OfferCatalog',
+      name: 'Property Analysis Reports',
+      itemListElement: [
+        {
+          '@type': 'Offer',
+          name: 'Residential Tax Appeal Report',
+          price: '49.00',
+          priceCurrency: 'USD',
+          description:
+            'Professional property tax appeal report for residential properties including comparable sales analysis, assessment review, and filing guide.',
+        },
+        {
+          '@type': 'Offer',
+          name: 'Commercial Tax Appeal Report',
+          price: '99.00',
+          priceCurrency: 'USD',
+          description:
+            'Commercial property tax appeal report with income analysis, comparable sales, and filing guide.',
+        },
+        {
+          '@type': 'Offer',
+          name: 'Pre-Purchase Property Analysis',
+          price: '59.00',
+          priceCurrency: 'USD',
+          description:
+            'Property analysis report for prospective buyers with valuation data and market comparables.',
+        },
+        {
+          '@type': 'Offer',
+          name: 'Pre-Listing Property Report',
+          price: '59.00',
+          priceCurrency: 'USD',
+          description:
+            'Property analysis report for sellers with market valuation and comparable sales data.',
+        },
+      ],
+    },
   };
 
   return (

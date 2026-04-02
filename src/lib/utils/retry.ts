@@ -49,7 +49,7 @@ export async function withRetry<T>(
       // Add jitter (±25%) to prevent thundering herd
       if (jitter) {
         const jitterRange = delay * 0.25;
-        delay += (Math.random() - 0.5) * 2 * jitterRange;
+        delay += (Math.random() - 0.5) * jitterRange;
       }
 
       console.warn(
@@ -76,8 +76,10 @@ export function isRetryableError(error: unknown): boolean {
     if (msg.includes('429') || msg.includes('rate limit') || msg.includes('too many requests')) return true;
     // Server errors
     if (msg.includes('500') || msg.includes('502') || msg.includes('503') || msg.includes('504')) return true;
+    // Request timeout
+    if (msg.includes('408') || msg.includes('request timeout')) return true;
     // Network errors
-    if (msg.includes('econnreset') || msg.includes('timeout') || msg.includes('fetch failed')) return true;
+    if (msg.includes('econnreset') || msg.includes('econnrefused') || msg.includes('etimedout') || msg.includes('timeout') || msg.includes('fetch failed')) return true;
   }
   return true; // Default: retry all errors
 }

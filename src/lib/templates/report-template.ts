@@ -869,6 +869,8 @@ ${renderReconciliationSection(data, narrativeMap, clientName)}
 
 ${filingGuide ? renderFilingGuideAddendum(filingGuide) : ''}
 
+${renderCertificationAndLimitingConditions(data, addr, clientName)}
+
 </body>
 </html>`;
 }
@@ -1641,4 +1643,60 @@ function formatPhotoType(type: string): string {
     other: 'Other',
   };
   return labels[type] ?? type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+// ─── Certification & Limiting Conditions ────────────────────────────────────
+
+function renderCertificationAndLimitingConditions(
+  data: ReportTemplateData,
+  addr: string,
+  clientName: string
+): string {
+  const { valuationDate } = data;
+  return `
+  <div class="section-page" style="page-break-before:always;">
+    <div class="section-header">
+      <span class="section-number">Addendum</span>
+      <h2>Certification & Limiting Conditions</h2>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <h3 style="font-family:'Playfair Display',Georgia,serif; font-size:12pt; color:${NAVY}; margin-bottom:12px;">Certification Statement</h3>
+      <div style="font-size:9pt; line-height:1.7; color:${BODY_TEXT};">
+        <p>I certify that, to the best of my knowledge and belief:</p>
+        <ul style="margin:10px 0 10px 20px; list-style-type:disc;">
+          <li>The statements of fact contained in this report are true and correct.</li>
+          <li>The reported analyses, opinions, and conclusions are limited only by the reported assumptions and limiting conditions and are my personal, impartial, and unbiased professional analyses, opinions, and conclusions.</li>
+          <li>I have no present or prospective interest in the property that is the subject of this report and no personal interest with respect to the parties involved.</li>
+          <li>I have no bias with respect to the property that is the subject of this report or to the parties involved with this assignment.</li>
+          <li>My engagement in this assignment was not contingent upon developing or reporting predetermined results.</li>
+          <li>My compensation for completing this assignment is not contingent upon the development or reporting of a predetermined value or direction in value that favors the cause of the client, the amount of the value opinion, the attainment of a stipulated result, or the occurrence of a subsequent event directly related to the intended use of this report.</li>
+          <li>The analyses, opinions, and conclusions were developed, and this report has been prepared, in conformity with the Uniform Standards of Professional Appraisal Practice (USPAP) and the International Association of Assessing Officers (IAAO) Standard on Mass Appraisal of Real Property.</li>
+        </ul>
+        <p style="margin-top:10px;">
+          <strong>Property:</strong> ${escapeHtml(addr)}<br>
+          <strong>Prepared For:</strong> ${escapeHtml(clientName)}<br>
+          <strong>Effective Date of Value:</strong> ${escapeHtml(formatDate(valuationDate))}
+        </p>
+      </div>
+    </div>
+
+    <div style="margin-bottom:24px;">
+      <h3 style="font-family:'Playfair Display',Georgia,serif; font-size:12pt; color:${NAVY}; margin-bottom:12px;">Assumptions & Limiting Conditions</h3>
+      <div style="font-size:9pt; line-height:1.7; color:${BODY_TEXT};">
+        <ol style="margin:10px 0 10px 20px;">
+          <li style="margin-bottom:6px;">This report is prepared solely for property tax assessment purposes and is not intended as a certified appraisal for mortgage lending, insurance, or any other purpose.</li>
+          <li style="margin-bottom:6px;">The property is assumed to be free and clear of any or all liens or encumbrances unless otherwise stated.</li>
+          <li style="margin-bottom:6px;">The information furnished by others is believed to be reliable, but no warranty is given for its accuracy. Public records, MLS data, and third-party data sources were relied upon for factual information.</li>
+          <li style="margin-bottom:6px;">The physical condition of improvements was assessed based on photographs provided by the property owner and publicly available imagery. No physical interior inspection was conducted.</li>
+          <li style="margin-bottom:6px;">It is assumed that there are no hidden or unapparent conditions of the property, subsoil, or structures that render it more or less valuable.</li>
+          <li style="margin-bottom:6px;">It is assumed that the property is in full compliance with all applicable federal, state, and local environmental regulations and laws unless otherwise stated.</li>
+          <li style="margin-bottom:6px;">The market value conclusion expressed herein represents the analyst's best estimate as of the effective date of the analysis and is subject to change with market conditions.</li>
+          <li style="margin-bottom:6px;">This analysis should not be construed as legal advice. The property owner is responsible for verifying all data, meeting filing deadlines, and complying with local appeal procedures.</li>
+        </ol>
+      </div>
+    </div>
+
+    <div class="page-footer"></div>
+  </div>`;
 }

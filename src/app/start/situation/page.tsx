@@ -42,15 +42,17 @@ export default function SituationPage() {
       {isTaxAppeal && (
         <div className="space-y-6 mb-10 animate-slide-up">
           {/* Owner occupied */}
-          <div className="card-premium rounded-xl p-5">
-            <p className="text-sm text-cream mb-3">Do you live in this property?</p>
-            <div className="flex gap-3">
+          <div className="card-premium rounded-xl p-5" role="radiogroup" aria-label="Do you live in this property?">
+            <p className="text-sm text-cream mb-3" id="owner-occupied-label">Do you live in this property?</p>
+            <div className="flex gap-3" aria-labelledby="owner-occupied-label">
               {[
                 { value: true, label: 'Yes, owner-occupied' },
                 { value: false, label: 'No, investment / rental' },
               ].map((opt) => (
                 <button
                   key={String(opt.value)}
+                  role="radio"
+                  aria-checked={state.ownerOccupied === opt.value}
                   onClick={() => updateState({ ownerOccupied: opt.value })}
                   className={`flex-1 rounded-lg px-4 py-2.5 text-sm border transition-all ${
                     state.ownerOccupied === opt.value
@@ -65,12 +67,14 @@ export default function SituationPage() {
           </div>
 
           {/* Years owned */}
-          <div className="card-premium rounded-xl p-5">
-            <p className="text-sm text-cream mb-3">How long have you owned the property?</p>
-            <div className="flex gap-3 flex-wrap">
+          <div className="card-premium rounded-xl p-5" role="radiogroup" aria-label="How long have you owned the property?">
+            <p className="text-sm text-cream mb-3" id="years-owned-label">How long have you owned the property?</p>
+            <div className="flex gap-3 flex-wrap" aria-labelledby="years-owned-label">
               {['Less than 1 year', '1-3 years', '3-5 years', '5-10 years', '10+ years'].map((period) => (
                 <button
                   key={period}
+                  role="radio"
+                  aria-checked={state.yearsOwned === period}
                   onClick={() => updateState({ yearsOwned: period })}
                   className={`rounded-lg px-4 py-2.5 text-sm border transition-all ${
                     state.yearsOwned === period
@@ -85,15 +89,17 @@ export default function SituationPage() {
           </div>
 
           {/* Previous appeal */}
-          <div className="card-premium rounded-xl p-5">
-            <p className="text-sm text-cream mb-3">Have you appealed your property taxes before?</p>
-            <div className="flex gap-3">
+          <div className="card-premium rounded-xl p-5" role="radiogroup" aria-label="Have you appealed your property taxes before?">
+            <p className="text-sm text-cream mb-3" id="previous-appeal-label">Have you appealed your property taxes before?</p>
+            <div className="flex gap-3" aria-labelledby="previous-appeal-label">
               {[
                 { value: true, label: 'Yes' },
                 { value: false, label: 'No, this is my first time' },
               ].map((opt) => (
                 <button
                   key={String(opt.value)}
+                  role="radio"
+                  aria-checked={state.previousAppeal === opt.value}
                   onClick={() => updateState({ previousAppeal: opt.value })}
                   className={`flex-1 rounded-lg px-4 py-2.5 text-sm border transition-all ${
                     state.previousAppeal === opt.value

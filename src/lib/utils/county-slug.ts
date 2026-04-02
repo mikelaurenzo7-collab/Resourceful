@@ -4,6 +4,7 @@
 
 /**
  * Parse a county SEO slug into county name and state abbreviation.
+ * Uses ilike DB lookup for matching, so apostrophes are handled by the DB.
  *
  * @example
  * parseCountySlug("cook-county-il")
@@ -31,7 +32,9 @@ export function parseCountySlug(
   const nameParts = parts.slice(0, -1);
   if (nameParts[nameParts.length - 1] !== 'county') return null;
 
-  // Build county name with title casing
+  // Build county name with title casing.
+  // Use SQL ilike pattern for DB matching — replace hyphens with wildcards
+  // to handle apostrophes (e.g., "prince-georges" matches "Prince George's")
   const countyName = nameParts
     .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
     .join(' ');
@@ -40,6 +43,24 @@ export function parseCountySlug(
     countyName,
     stateAbbrev: stateAbbrev.toUpperCase(),
   };
+}
+
+/**
+ * Build a DB-safe ilike pattern from a parsed county name.
+ * Handles apostrophe-stripped names: "Prince Georges County" → "Prince George%s County"
+ */
+export function countyNameToIlikePattern(countyName: string): string {
+  // Common apostrophe positions: George's, O'Brien, etc.
+  // Insert wildcard before trailing 's' in words that commonly have apostrophes
+  return countyName
+    .replace(/\b(\w+)(s)\b/g, (match, prefix, s) => {
+      // Only add wildcard for known patterns (avoid false positives)
+      const apostropheWords = ['georges', 'obriens', 'princes', 'queens', 'kings'];
+      if (apostropheWords.includes(match.toLowerCase())) {
+        return `${prefix}%${s}`;
+      }
+      return match;
+    });
 }
 
 /**

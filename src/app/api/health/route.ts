@@ -60,7 +60,7 @@ export async function GET() {
   if (!process.env.ANTHROPIC_API_KEY) {
     results.anthropic = { status: 'not_configured', message: 'ANTHROPIC_API_KEY missing' };
   } else {
-    results.anthropic = { status: 'ok', message: `Key configured (${process.env.ANTHROPIC_API_KEY.slice(0, 12)}...)` };
+    results.anthropic = { status: 'ok', message: 'Key configured' };
   }
 
   // ── Stripe ────────────────────────────────────────────────────────────
