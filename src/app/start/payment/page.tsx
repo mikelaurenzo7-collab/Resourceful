@@ -24,7 +24,7 @@ function CheckoutForm() {
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
-  const { state, updateState } = useWizard();
+  const { state } = useWizard();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 

@@ -69,6 +69,14 @@ export async function POST(
       );
     }
 
+    await createApprovalEvent({
+      report_id: reportId,
+      admin_user_id: user.id,
+      action: 'approved',
+      section_name: null,
+      notes: 'Report approved and delivered',
+    });
+
     return NextResponse.json(
       {
         message: 'Report approved and delivered',

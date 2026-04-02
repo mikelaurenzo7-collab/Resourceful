@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { ApiPartner } from '@/lib/services/partner-api-service';
 
+export const dynamic = 'force-dynamic';
+
 function formatCurrency(cents: number): string {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',

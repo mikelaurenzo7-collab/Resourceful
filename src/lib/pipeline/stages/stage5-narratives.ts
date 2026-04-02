@@ -24,7 +24,7 @@ import {
 
 // ─── Section Mapping ────────────────────────────────────────────────────────
 
-const SECTION_SORT_ORDER: Record<string, { title: string; order: number }> = {
+const _SECTION_SORT_ORDER: Record<string, { title: string; order: number }> = {
   executive_summary: { title: 'Executive Summary', order: 1 },
   property_description: { title: 'Property Description', order: 2 },
   site_description_narrative: { title: 'Site Description', order: 3 },

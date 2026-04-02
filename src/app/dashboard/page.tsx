@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import type { Report, ReportStatus } from '@/types/database';
+
+export const dynamic = 'force-dynamic';
 import PipelineProgress from '@/components/dashboard/PipelineProgress';
 import ReportDownload from '@/components/dashboard/ReportDownload';
 

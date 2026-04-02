@@ -215,6 +215,7 @@ export interface FilingGuidePayload {
 // ─── Section Names ──────────────────────────────────────────────────────────
 // These must match the section_name values stored in the report_narratives table.
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const NARRATIVE_SECTION_NAMES = [
   'executive_summary',
   'property_description',

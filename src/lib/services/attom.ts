@@ -1,8 +1,6 @@
 // ─── ATTOM Data API Service ──────────────────────────────────────────────────
 // Property data, sales comps, rental comps, and deed history from ATTOM.
 
-import type { PropertyType } from '@/types/database';
-
 // ─── Configuration ───────────────────────────────────────────────────────────
 
 const BASE_URL =

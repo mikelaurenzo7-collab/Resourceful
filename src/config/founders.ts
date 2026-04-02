@@ -1,10 +1,13 @@
 // ─── Founders Configuration ──────────────────────────────────────────────────
 // Founder accounts get full access to all services at no cost.
-// Add emails here to grant founder-level access.
+// Set FOUNDER_EMAILS env var as a comma-separated list of emails.
 
-export const FOUNDER_EMAILS: ReadonlySet<string> = new Set([
-  'mikelaurenzo7@gmail.com',
-]);
+const founderList = (process.env.FOUNDER_EMAILS ?? '')
+  .split(',')
+  .map(e => e.toLowerCase().trim())
+  .filter(Boolean);
+
+export const FOUNDER_EMAILS: ReadonlySet<string> = new Set(founderList);
 
 /**
  * Check if an email belongs to a founder account.

@@ -78,10 +78,6 @@ export interface ServiceResult<T> {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function formatCurrency(cents: number): string {
-  return `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 0 })}`;
-}
-
 function formatDollarValue(value: number): string {
   return `$${value.toLocaleString('en-US', { minimumFractionDigits: 0 })}`;
 }
@@ -106,7 +102,7 @@ export async function sendReportDeliveryEmail(
   params: ReportDeliveryParams
 ): Promise<ServiceResult<EmailResult>> {
   try {
-    const { data, error } = await getResend().emails.send({
+    const result = await sendWithRetry({
       from: FROM_ADDRESS,
       to: params.to,
       subject: `Your Property Assessment Report — ${params.propertyAddress}`,
@@ -154,12 +150,7 @@ export async function sendReportDeliveryEmail(
       `,
     });
 
-    if (error) {
-      console.error(`[resend] sendReportDeliveryEmail error:`, error);
-      return { data: null, error: `Email send failed: ${error.message}` };
-    }
-
-    return { data: { id: data?.id ?? '' }, error: null };
+    return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[resend] sendReportDeliveryEmail error: ${message}`);
@@ -174,7 +165,7 @@ export async function sendAdminNotification(
   params: AdminNotificationParams
 ): Promise<ServiceResult<EmailResult>> {
   try {
-    const { data, error } = await getResend().emails.send({
+    const result = await sendWithRetry({
       from: FROM_ADDRESS,
       to: ADMIN_EMAIL,
       subject: `[Review Needed] Report ${params.reportId.slice(0, 8)} — ${params.propertyAddress}`,
@@ -207,12 +198,7 @@ export async function sendAdminNotification(
       `,
     });
 
-    if (error) {
-      console.error(`[resend] sendAdminNotification error:`, error);
-      return { data: null, error: `Admin notification failed: ${error.message}` };
-    }
-
-    return { data: { id: data?.id ?? '' }, error: null };
+    return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[resend] sendAdminNotification error: ${message}`);
@@ -227,7 +213,7 @@ export async function sendReportRejectionAlert(
   params: ReportRejectionAlertParams
 ): Promise<ServiceResult<EmailResult>> {
   try {
-    const { data, error } = await getResend().emails.send({
+    const result = await sendWithRetry({
       from: FROM_ADDRESS,
       to: ADMIN_EMAIL,
       subject: `[Rejected] Report ${params.reportId.slice(0, 8)} — ${params.propertyAddress}`,
@@ -257,12 +243,7 @@ export async function sendReportRejectionAlert(
       `,
     });
 
-    if (error) {
-      console.error(`[resend] sendReportRejectionAlert error:`, error);
-      return { data: null, error: `Rejection alert failed: ${error.message}` };
-    }
-
-    return { data: { id: data?.id ?? '' }, error: null };
+    return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[resend] sendReportRejectionAlert error: ${message}`);
