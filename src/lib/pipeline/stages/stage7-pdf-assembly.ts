@@ -104,12 +104,19 @@ export async function runPdfAssembly(
     markers: [{ lat: latitude, lng: longitude, color: 'red', label: 'S' }],
   });
 
-  const compMarkers = comps.slice(0, 6).map((c, i) => ({
-    lat: latitude + (Math.random() - 0.5) * 0.02,
-    lng: longitude + (Math.random() - 0.5) * 0.02,
-    color: 'blue',
-    label: String(i + 1),
-  }));
+  // Place comp markers at approximate positions based on distance.
+  // Use deterministic angles (evenly spaced) to avoid misleading randomization.
+  // 1 mile ≈ 0.0145 degrees latitude.
+  const compMarkers = comps.slice(0, 6).map((c, i) => {
+    const distDeg = (c.distance_miles ?? 1) * 0.0145;
+    const angle = (i / Math.min(comps.length, 6)) * 2 * Math.PI;
+    return {
+      lat: latitude + distDeg * Math.cos(angle),
+      lng: longitude + distDeg * Math.sin(angle),
+      color: 'blue',
+      label: String(i + 1),
+    };
+  });
 
   const compsMapUrl = getStaticMapUrl({
     lat: latitude,

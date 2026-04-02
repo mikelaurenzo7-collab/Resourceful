@@ -116,18 +116,27 @@ function computeConditionMode(values: string[]): string {
     freq[v] = (freq[v] ?? 0) + 1;
   }
 
+  // Find the most frequent condition rating(s)
   let maxCount = 0;
-  let mode = values[0];
+  const candidates: string[] = [];
   for (const [val, count] of Object.entries(freq)) {
-    const valIdx = CONDITION_ORDER.indexOf(val as any);
-    const modeIdx = CONDITION_ORDER.indexOf(mode as any);
-    if (count > maxCount || (count === maxCount && valIdx < modeIdx)) {
+    if (count > maxCount) {
       maxCount = count;
-      mode = val;
+      candidates.length = 0;
+      candidates.push(val);
+    } else if (count === maxCount) {
+      candidates.push(val);
     }
   }
 
-  return mode;
+  // If single winner, return it. On tie, pick the middle value (conservative).
+  // This avoids bias toward worst condition which would be indefensible.
+  if (candidates.length === 1) return candidates[0];
+  const sorted = candidates.sort((a, b) =>
+    CONDITION_ORDER.indexOf(a as (typeof CONDITION_ORDER)[number]) -
+    CONDITION_ORDER.indexOf(b as (typeof CONDITION_ORDER)[number])
+  );
+  return sorted[Math.floor(sorted.length / 2)];
 }
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
@@ -347,7 +356,7 @@ export async function runPhotoAnalysis(
     // severity → value_impact → adjustment %
     minor:       { low: -0.5, medium: -1.0, high: -1.5 },
     moderate:    { low: -1.0, medium: -2.0, high: -3.0 },
-    significant: { low: -2.5, medium: -4.0, high: -6.0 },
+    significant: { low: -2.0, medium: -3.5, high: -5.0 },
   };
 
   let defectBasedAdjustment = 0;
