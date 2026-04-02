@@ -78,8 +78,8 @@ export async function GET() {
   }
 
   // ── Google Maps ───────────────────────────────────────────────────────
-  if (!process.env.GOOGLE_MAPS_SERVER_KEY) {
-    results.google_maps = { status: 'not_configured', message: 'GOOGLE_MAPS_SERVER_KEY missing (geocoding will fail)' };
+  if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
+    results.google_maps = { status: 'not_configured', message: 'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY missing (geocoding will fail)' };
   } else {
     results.google_maps = { status: 'ok', message: 'Configured' };
   }

@@ -351,7 +351,7 @@ export async function runComparables(
     // We use address-based Street View (not lat/lng) to get the actual comp's facade.
     const compAddress = `${comp.address}, ${comp.city}, ${comp.state} ${comp.zip}`;
     const comparablePhotoStoragePath = comp.address
-      ? `https://maps.googleapis.com/maps/api/streetview?size=640x480&location=${encodeURIComponent(compAddress)}&key=${process.env.GOOGLE_MAPS_SERVER_KEY ?? ''}`
+      ? `https://maps.googleapis.com/maps/api/streetview?size=640x480&location=${encodeURIComponent(compAddress)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''}`
       : null;
 
     const { isDistressed, notes: saleNotes } = classifySaleCondition(comp);
