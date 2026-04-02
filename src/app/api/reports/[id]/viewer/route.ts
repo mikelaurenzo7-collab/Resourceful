@@ -36,10 +36,16 @@ export async function GET(
 
   // Only show reports that have been delivered
   if (!['delivered', 'approved', 'pending_approval'].includes(report.status)) {
+    const statusMessages: Record<string, string> = {
+      intake: 'Your report is being prepared. We\'ll email you when it\'s ready.',
+      paid: 'Payment confirmed. Your report is being generated now.',
+      processing: 'Our team is building your report with comparable sales and market analysis.',
+      failed: 'We ran into an issue generating your report. Our team has been notified and will reach out shortly.',
+    };
     return NextResponse.json({
       status: report.status,
       ready: false,
-      message: 'Your report is still being generated. Check back shortly.',
+      message: statusMessages[report.status] ?? 'Your report is being generated and reviewed by our team.',
     });
   }
 

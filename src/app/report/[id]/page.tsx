@@ -188,8 +188,11 @@ export default function ReportViewerPage() {
                 <div className="w-10 h-10 border-2 border-gold border-t-transparent rounded-full animate-spin" />
               </div>
               <h1 className="font-display text-3xl text-cream mb-4">Report in Progress</h1>
-              <p className="text-cream/50 mb-2">{data.message || 'Your report is being generated.'}</p>
-              <p className="text-cream/30 text-sm">This page will automatically update when your report is ready.</p>
+              <p className="text-cream/50 mb-2">{data.message || 'Your report is being generated and reviewed by our team.'}</p>
+              <p className="text-cream/30 text-sm mb-6">
+                You don&apos;t need to wait here. We&apos;ll email your completed report with the PDF, filing instructions, and everything you need.
+              </p>
+              <p className="text-cream/25 text-xs">This page updates automatically if you want to stay.</p>
             </>
           )}
           <p className="text-xs text-cream/20 mt-8">Report ID: {reportId}</p>
