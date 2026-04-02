@@ -132,7 +132,9 @@ export async function POST(request: NextRequest) {
             status: 'failed',
             pipeline_error_log: [{ stage: 'pipeline', error: message, timestamp: new Date().toISOString() }],
           } as never).eq('id', report.id);
-        } catch { /* best effort */ }
+        } catch (dbErr) {
+          console.error(`[api/reports] CRITICAL: Pipeline failed AND error recording failed for founder report ${report.id}. Exception: ${dbErr}. Pipeline error: ${message}`);
+        }
       });
       return NextResponse.json(
         {

@@ -209,7 +209,7 @@ export default function ReportViewerPage() {
   return (
     <main className="min-h-screen bg-pattern">
       {/* Nav */}
-      <nav className="border-b border-gold/5 bg-navy-deep/80 backdrop-blur-lg sticky top-0 z-50">
+      <nav className="bg-navy-deep/80 backdrop-blur-lg sticky top-0 z-50">
         <div className="mx-auto max-w-5xl px-6 flex items-center justify-between h-16">
           <Link href="/" className="font-display text-xl text-gold">
             Resourceful
