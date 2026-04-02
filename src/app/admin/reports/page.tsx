@@ -216,7 +216,7 @@ export default async function ReportsQueuePage({
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
                     {report.pipeline_last_completed_stage != null
-                      ? `Stage ${report.pipeline_last_completed_stage}`
+                      ? `Stage ${report.pipeline_last_completed_stage.match(/stage-(\d+)/)?.[1] ?? report.pipeline_last_completed_stage}`
                       : '--'}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">

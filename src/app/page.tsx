@@ -112,7 +112,7 @@ export default function HomePage() {
           </h2>
           <p className="relative mt-5 text-cream/50 max-w-lg mx-auto text-lg leading-relaxed">
             Takes 5 minutes. We pull comparable sales, analyze your property, and build
-            your full evidence package. Upload your tax bill to save 15%.
+            your full evidence package. Upload your tax bill for 15% off.
           </p>
           <Link
             href="/start"
