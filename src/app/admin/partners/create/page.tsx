@@ -4,14 +4,27 @@
 // Form to onboard a new white-label API partner. Displays the API key ONCE
 // after creation.
 
-import { useActionState } from 'react';
+import { useFormState, useFormStatus } from 'react-dom';
 import Link from 'next/link';
 import { createPartnerAction, type CreatePartnerState } from './actions';
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="rounded-lg bg-[#1a2744] px-6 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#243356] disabled:opacity-50"
+    >
+      {pending ? 'Creating...' : 'Create Partner & Generate API Key'}
+    </button>
+  );
+}
 
 const initialState: CreatePartnerState = { success: false };
 
 export default function CreatePartnerPage() {
-  const [state, formAction, isPending] = useActionState(createPartnerAction, initialState);
+  const [state, formAction] = useFormState(createPartnerAction, initialState);
 
   // ── Success: show the API key (one-time display) ────────────────────────
   if (state.success && state.plaintextKey) {
@@ -211,13 +224,7 @@ export default function CreatePartnerPage() {
           >
             Cancel
           </Link>
-          <button
-            type="submit"
-            disabled={isPending}
-            className="rounded-lg bg-[#1a2744] px-6 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#243356] disabled:opacity-50"
-          >
-            {isPending ? 'Creating...' : 'Create Partner & Generate API Key'}
-          </button>
+          <SubmitButton />
         </div>
       </form>
     </div>

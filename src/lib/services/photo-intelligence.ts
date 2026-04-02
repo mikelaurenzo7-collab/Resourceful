@@ -72,7 +72,7 @@ export async function getConditionPatternsForCounty(
   const ratings: Record<string, number> = {};
   const defectTypes: Record<string, number> = {};
   let totalDefects = 0;
-  const totalAdjustment = 0;
+  let totalAdjustment = 0;
   let count = 0;
 
   for (const photo of photos) {
@@ -89,6 +89,10 @@ export async function getConditionPatternsForCounty(
       totalDefects += defects.length;
       for (const defect of defects) {
         defectTypes[defect.type] = (defectTypes[defect.type] ?? 0) + 1;
+        const impact = parseFloat(defect.value_impact);
+        if (!isNaN(impact)) {
+          totalAdjustment += impact;
+        }
       }
     }
 

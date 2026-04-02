@@ -2,6 +2,8 @@
 // Founder accounts get full access to all services at no cost.
 // Set FOUNDER_EMAILS env var as a comma-separated list of emails.
 
+let warnedEmpty = false;
+
 /**
  * Build the founder set from env var.
  * Re-read on every call so changes to .env.local are picked up after
@@ -22,7 +24,8 @@ function getFounderEmails(): ReadonlySet<string> {
  */
 export function isFounderEmail(email: string): boolean {
   const founders = getFounderEmails();
-  if (founders.size === 0) {
+  if (founders.size === 0 && !warnedEmpty) {
+    warnedEmpty = true;
     console.warn('[founders] FOUNDER_EMAILS env var is empty — no founder bypass is active');
   }
   return founders.has(email.toLowerCase().trim());
