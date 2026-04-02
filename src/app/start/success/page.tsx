@@ -15,22 +15,24 @@ function SuccessContent() {
   return (
     <div className="min-h-screen bg-pattern relative overflow-hidden flex items-center justify-center px-6">
       {/* Decorative glow orbs */}
-      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-gold/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-emerald-500/[0.04] rounded-full blur-[150px] pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gold/[0.04] rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-emerald-500/[0.03] rounded-full blur-[100px] pointer-events-none" />
 
       <div className="relative max-w-lg text-center animate-fade-in">
         {/* Success icon with glow ring */}
-        <div className="relative w-24 h-24 mx-auto mb-8">
+        <div className="relative w-28 h-28 mx-auto mb-10">
+          <div className="absolute -inset-4 rounded-full bg-emerald-500/[0.06] blur-xl animate-glow" />
           <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-glow" />
-          <div className="relative w-24 h-24 rounded-full bg-emerald-500/15 border border-emerald-500/20 flex items-center justify-center animate-scale-in">
-            <svg className="w-12 h-12 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <div className="relative w-28 h-28 rounded-full bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center animate-scale-in">
+            <svg className="w-14 h-14 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
         </div>
 
         <h1 className="font-display text-3xl md:text-4xl text-cream mb-4">
-          Payment Confirmed
+          You&apos;re All Set
         </h1>
 
         <p className="text-cream/50 text-lg mb-2">

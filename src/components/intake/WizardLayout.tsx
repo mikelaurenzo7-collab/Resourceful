@@ -286,7 +286,7 @@ export default function WizardLayout({ children }: { children: React.ReactNode }
     <WizardContext.Provider value={{ state, updateState, currentStep, setCurrentStep, totalSteps }}>
       <div className="min-h-screen bg-pattern">
         {/* Header */}
-        <header className="bg-navy-deep/80 backdrop-blur-sm sticky top-0 z-50">
+        <header className="bg-navy-deep/80 backdrop-blur-xl nav-shadow sticky top-0 z-50">
           <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
             <button
               onClick={() => router.push('/')}
@@ -341,11 +341,13 @@ export default function WizardLayout({ children }: { children: React.ReactNode }
         </header>
 
         {/* Progress bar */}
-        <div className="h-1 bg-navy-light">
+        <div className="h-0.5 bg-navy-light/60">
           <div
-            className="h-full bg-gradient-to-r from-gold-light via-gold to-gold-dark transition-all duration-500"
+            className="h-full bg-gradient-to-r from-gold-light via-gold to-gold-dark transition-all duration-700 ease-out relative"
             style={{ width: `${progressPercent}%` }}
-          />
+          >
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-gold shadow-[0_0_8px_rgba(212,168,71,0.6)]" />
+          </div>
         </div>
 
         {/* Step content */}
