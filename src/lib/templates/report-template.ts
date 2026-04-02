@@ -1127,6 +1127,18 @@ function renderSalesComparisonSection(
 
     ${narrative ? `<div style="font-size:10.5pt; line-height:1.65; margin-bottom:1.5em;">${narrative.content}</div>` : ''}
 
+    <div style="margin-bottom:1.5em; padding:14px 18px; background:${LIGHT_BG}; border:1px solid ${TABLE_BORDER}; border-radius:2px;">
+      <p style="font-size:9pt; font-weight:600; color:${NAVY}; margin:0 0 6px 0;">Comparable Selection Criteria</p>
+      <p style="font-size:8.5pt; color:${MUTED}; line-height:1.6; margin:0;">
+        ${comparableSales.length} comparable sales selected from recent arm&rsquo;s-length transactions within the subject&rsquo;s market area.
+        Selection criteria: similar property type, building size within &plusmn;30%, sold within the past 12&ndash;24 months,
+        and located within a ${Math.max(...comparableSales.map(c => c.distance_miles ?? 0)).toFixed(1)}-mile radius.
+        Adjustments applied using paired-sales analysis and IAAO-standard methodology for property rights,
+        financing, conditions of sale, market trends, location, size, and condition.
+        ${comparableSales.some(c => c.is_distressed_sale) ? `Distressed sales (foreclosure, REO) are included but flagged with a conditions-of-sale adjustment.` : ''}
+      </p>
+    </div>
+
     <h3 style="margin-bottom:0.8em;">Comparable Sales</h3>
     ${cardsHtml}
 
@@ -1278,8 +1290,10 @@ function renderAdjustmentGrid(
 
   const labelWidth = Math.max(22, Math.round(100 / (colCount + 0.5)));
   const dataWidth = Math.round((100 - labelWidth) / colCount);
+  // Scale font down for wide grids to prevent text overflow
+  const gridFontSize = colCount > 5 ? '7.5pt' : colCount > 4 ? '8pt' : '8.5pt';
 
-  let html = `<table class="adj-grid">`;
+  let html = `<table class="adj-grid" style="font-size:${gridFontSize};">`;
 
   html += `<thead><tr>
     <th style="width:${labelWidth}%; text-align:left;">Element</th>
@@ -1575,7 +1589,7 @@ function renderReconciliationSection(
   clientName: string
 ): string {
   const narrative = narrativeMap.get('reconciliation_narrative');
-  const { concludedValue, valuationDate } = data;
+  const { concludedValue, valuationDate, comparableSales } = data;
 
   return `
   <div class="page-break">
@@ -1592,7 +1606,8 @@ function renderReconciliationSection(
       <div class="value-amount">${formatCurrency(concludedValue)}</div>
       <div class="value-words">(${escapeHtml(formatCurrencyWords(concludedValue))})</div>
       <div style="font-family:'Inter',Arial,sans-serif; font-size:8pt; color:${MUTED}; margin-top:8px; letter-spacing:0.3px;">
-        Effective Date of Valuation: ${escapeHtml(formatDate(valuationDate))}
+        Effective Date of Valuation: ${escapeHtml(formatDate(valuationDate))}<br>
+        As-Is Condition &bull; Based on ${comparableSales.length} Comparable Sales
       </div>
     </div>
 
