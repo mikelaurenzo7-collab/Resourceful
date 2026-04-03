@@ -1,23 +1,29 @@
 // ─── Stage 8: Client Delivery (Admin-Triggered) ─────────────────────────────
-// NOT part of the automated pipeline. Called when admin clicks "Approve and
-// Send." Generates a signed 7-day Supabase Storage URL, sends client email
-// via Resend, records approval/delivery timestamps, and sets status to
-// 'delivered'.
+// Dashboard-first delivery model:
+// - Report is ALWAYS accessible from the user's dashboard and /report/[id] page
+// - PDF downloads generate fresh signed URLs on-demand (no expiry concerns)
+// - Email is an optional NOTIFICATION (not the delivery mechanism)
+// - User can opt out of email via email_delivery_preference flag
+//
+// This approach eliminates 7-day expiring links, creates dashboard stickiness,
+// and enables outcome collection for the calibration feedback loop.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Report, PropertyData, ReportNarrative } from '@/types/database';
+import type { Database, Report, PropertyData } from '@/types/database';
 import type { StageResult } from '../orchestrator';
-import { sendReportDeliveryEmail } from '@/lib/services/resend-email';
-
-// ─── Constants ──────────────────────────────────────────────────────────────
-
-const SIGNED_URL_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
+import { sendReportReadyNotification } from '@/lib/services/resend-email';
+import { subscribeToReminders } from '@/lib/services/reminder-service';
 
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 /**
  * Deliver the approved report to the client. This is admin-triggered,
  * not part of the automated pipeline stages 1-7.
+ *
+ * With dashboard-first delivery:
+ * 1. Always marks report as 'delivered' (accessible on dashboard)
+ * 2. Sends email notification only if user opted in (default: yes)
+ * 3. Subscribes user to annual assessment reminders
  *
  * @param reportId - UUID of the report to deliver
  * @param adminUserId - UUID of the admin approving/sending
@@ -58,63 +64,8 @@ export async function runDelivery(
     return { success: false, error: 'No client email found on report' };
   }
 
-  // ── Generate signed URL (7-day expiry) ────────────────────────────────
-  const { data: signedUrlData, error: signedUrlError } = await supabase
-    .storage
-    .from('reports')
-    .createSignedUrl(report.report_pdf_storage_path, SIGNED_URL_EXPIRY_SECONDS);
-
-  if (signedUrlError || !signedUrlData?.signedUrl) {
-    return {
-      success: false,
-      error: `Failed to create signed URL: ${signedUrlError?.message ?? 'unknown'}`,
-    };
-  }
-
-  // ── Fetch property data for values ────────────────────────────────────
-  const { data: pdData } = await supabase
-    .from('property_data')
-    .select('*')
-    .eq('report_id', reportId)
-    .single();
-  const propertyData = pdData as PropertyData | null;
-
-  // ── Fetch filing guide for email ──────────────────────────────────────
-  const { data: filingGuideData } = await supabase
-    .from('report_narratives')
-    .select('content')
-    .eq('report_id', reportId)
-    .eq('section_name', 'pro_se_filing_guide')
-    .single();
-  const filingGuide = filingGuideData as Pick<ReportNarrative, 'content'> | null;
-
-  // ── Use Stage 5's concluded value (single source of truth) ────────────
-  const assessedValue = propertyData?.assessed_value ?? 0;
-  const concludedValue = propertyData?.concluded_value ?? 0;
-  const potentialSavings = Math.max(0, assessedValue - concludedValue);
-
-  const propertyAddress = [
-    report.property_address,
-    report.city,
-    report.state,
-  ].filter(Boolean).join(', ');
-
-  // ── Fetch county rule for filing deadline ────────────────────────────
-  let filingDeadline: string | null = null;
-  let countyName: string | null = report.county ?? null;
-  if (report.county_fips) {
-    const { data: cr } = await supabase
-      .from('county_rules')
-      .select('appeal_deadline_rule, county_name')
-      .eq('county_fips', report.county_fips)
-      .limit(1);
-    if (cr?.[0]) {
-      filingDeadline = cr[0].appeal_deadline_rule ?? null;
-      countyName = cr[0].county_name ?? countyName;
-    }
-  }
-
   // ── Record approval and update status BEFORE sending email ────────────
+  // Dashboard-first: the report is now accessible regardless of email success.
   // This prevents duplicate emails: if the email sends but status update fails,
   // the report stays 'pending_approval' and admin sends again. By updating
   // status first, we guarantee idempotent delivery.
@@ -149,34 +100,73 @@ export async function runDelivery(
     console.warn(`[stage8] Failed to record approval event: ${approvalInsertError.message}`);
   }
 
-  // ── Send client email ─────────────────────────────────────────────────
-  console.log(`[stage8] Sending report delivery email to ${clientEmail}`);
-  const emailResult = await sendReportDeliveryEmail({
-    to: clientEmail,
-    reportId,
-    propertyAddress,
-    concludedValue,
-    assessedValue,
-    potentialSavings,
-    pdfUrl: signedUrlData.signedUrl,
-    filingGuide: filingGuide?.content ?? '',
-    filingDeadline,
-    countyName,
-  });
-
-  if (emailResult.error) {
-    // Status is already 'delivered' — rollback to pending so admin can retry
-    console.error(`[stage8] Email failed after status update. Rolling back status for report ${reportId}`);
-    await supabase
-      .from('reports')
-      .update({ status: 'pending_approval', delivered_at: null })
-      .eq('id', reportId);
-    return { success: false, error: `Email delivery failed: ${emailResult.error}` };
+  // ── Subscribe to annual assessment reminders (non-blocking) ──────────
+  try {
+    await subscribeToReminders(reportId);
+  } catch (err) {
+    console.warn(`[stage8] Failed to subscribe to reminders:`, err);
   }
 
-  console.log(
-    `[stage8] Report ${reportId} delivered to ${clientEmail}. Email ID: ${emailResult.data?.id}`
-  );
+  // ── Send email notification (if user opted in) ────────────────────────
+  // Dashboard-first: the report is already accessible on dashboard.
+  // Email is a convenience notification, not the delivery mechanism.
+  if (report.email_delivery_preference !== false) {
+    // Fetch property data for email context
+    const { data: pdData } = await supabase
+      .from('property_data')
+      .select('assessed_value, concluded_value')
+      .eq('report_id', reportId)
+      .single();
+    const propertyData = pdData as Pick<PropertyData, 'assessed_value' | 'concluded_value'> | null;
+
+    const assessedValue = propertyData?.assessed_value ?? 0;
+    const concludedValue = propertyData?.concluded_value ?? 0;
+    const potentialSavings = Math.max(0, assessedValue - concludedValue);
+
+    const propertyAddress = [
+      report.property_address,
+      report.city,
+      report.state,
+    ].filter(Boolean).join(', ');
+
+    // Fetch county name for email context
+    let countyName: string | null = report.county ?? null;
+    if (report.county_fips) {
+      const { data: cr } = await supabase
+        .from('county_rules')
+        .select('county_name')
+        .eq('county_fips', report.county_fips)
+        .limit(1);
+      if (cr?.[0]) {
+        countyName = (cr[0] as { county_name: string }).county_name ?? countyName;
+      }
+    }
+
+    console.log(`[stage8] Sending report-ready notification to ${clientEmail}`);
+    const emailResult = await sendReportReadyNotification({
+      to: clientEmail,
+      reportId,
+      propertyAddress,
+      concludedValue,
+      assessedValue,
+      potentialSavings,
+      countyName,
+    });
+
+    if (emailResult.error) {
+      // Dashboard-first: report is already delivered and accessible.
+      // Email failure is non-fatal — log it but don't roll back.
+      console.error(
+        `[stage8] Notification email failed for report ${reportId} (report still delivered via dashboard): ${emailResult.error}`
+      );
+    } else {
+      console.log(
+        `[stage8] Report ${reportId} delivered. Notification sent to ${clientEmail}. Email ID: ${emailResult.data?.id}`
+      );
+    }
+  } else {
+    console.log(`[stage8] Report ${reportId} delivered (email notification opted out by user)`);
+  }
 
   return { success: true };
 }

@@ -56,6 +56,25 @@ export interface ReportDeliveryParams {
   countyName?: string | null;
 }
 
+export interface ReportReadyNotificationParams {
+  to: string;
+  reportId: string;
+  propertyAddress: string;
+  concludedValue: number;
+  assessedValue: number;
+  potentialSavings: number;
+  countyName?: string | null;
+}
+
+export interface OutcomeFollowupParams {
+  to: string;
+  clientName: string | null;
+  reportId: string;
+  propertyAddress: string;
+  potentialSavings: number;
+  outcomeToken: string;
+}
+
 export interface AdminNotificationParams {
   reportId: string;
   propertyAddress: string;
@@ -276,5 +295,125 @@ export async function sendReportRejectionAlert(
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[resend] sendReportRejectionAlert error: ${message}`);
     return { data: null, error: `Rejection alert failed: ${message}` };
+  }
+}
+
+/**
+ * Dashboard-first notification: let the customer know their report is ready
+ * to view on their dashboard. No PDF attachment or signed URL — they access
+ * everything from the report page, which never expires.
+ */
+export async function sendReportReadyNotification(
+  params: ReportReadyNotificationParams
+): Promise<ServiceResult<EmailResult>> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app';
+  try {
+    const result = await sendWithRetry({
+      from: FROM_ADDRESS,
+      to: params.to,
+      subject: params.potentialSavings > 0
+        ? `You could save ${escapeHtml(formatDollarValue(params.potentialSavings))} — Your Report is Ready`
+        : `Your Property Assessment Report is Ready`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #1a1a1a; font-size: 24px;">Your Report is Ready</h1>
+          <p>Your property assessment report for <strong>${escapeHtml(params.propertyAddress)}</strong> has been reviewed and approved by our team.</p>
+
+          <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Concluded Market Value</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${escapeHtml(formatDollarValue(params.concludedValue))}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Current Assessed Value</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${escapeHtml(formatDollarValue(params.assessedValue))}</td>
+              </tr>
+              ${params.potentialSavings > 0 ? `<tr style="border-top: 1px solid #ddd;">
+                <td style="padding: 8px 0; color: #1a8a1a; font-weight: 600;">Potential Over-Assessment</td>
+                <td style="padding: 8px 0; text-align: right; color: #1a8a1a; font-weight: 600;">${escapeHtml(formatDollarValue(params.potentialSavings))}</td>
+              </tr>` : ''}
+            </table>
+          </div>
+
+          <p style="margin-bottom: 8px;">Your full report includes comparable sales analysis, adjustment grids, narratives, and county-specific filing instructions.</p>
+
+          <a href="${appUrl}/report/${params.reportId}" style="display: inline-block; background: #2563eb; color: #fff; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px;">
+            View Your Report
+          </a>
+
+          <p style="margin-top: 16px;">
+            <a href="${appUrl}/api/reports/${params.reportId}/download" style="color: #2563eb; text-decoration: underline; font-size: 13px;">
+              Download PDF
+            </a>
+          </p>
+
+          <p style="margin-top: 24px; font-size: 13px; color: #666;">
+            Your report is always available on your dashboard — no expiring links.${params.countyName ? ` Check your report page for ${escapeHtml(params.countyName)} filing deadlines and step-by-step instructions.` : ''}
+          </p>
+
+          <p style="margin-top: 32px; font-size: 12px; color: #999;">
+            This market value analysis was prepared for property tax assessment purposes. It is not a certified appraisal or legal advice.
+          </p>
+        </div>
+      `,
+    });
+
+    return { data: { id: result.data?.id ?? '' }, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[resend] sendReportReadyNotification error: ${message}`);
+    return { data: null, error: `Notification email failed: ${message}` };
+  }
+}
+
+/**
+ * Follow-up email sent ~60 days after delivery asking the customer
+ * how their appeal went. Includes a unique token for unauthenticated
+ * outcome submission — they can report their result in one click.
+ */
+export async function sendOutcomeFollowupEmail(
+  params: OutcomeFollowupParams
+): Promise<ServiceResult<EmailResult>> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app';
+  const greeting = params.clientName ? `Hi ${escapeHtml(params.clientName)}` : 'Hi there';
+  const outcomeUrl = `${appUrl}/report/${params.reportId}?token=${params.outcomeToken}`;
+
+  try {
+    const result = await sendWithRetry({
+      from: FROM_ADDRESS,
+      to: params.to,
+      subject: 'How Did Your Property Tax Appeal Go?',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #1a1a1a; font-size: 24px;">How Did Your Appeal Go?</h1>
+          <p>${greeting},</p>
+          <p>A couple of months ago, we prepared your property tax assessment report for <strong>${escapeHtml(params.propertyAddress)}</strong>${params.potentialSavings > 0 ? ` showing a potential over-assessment of <strong>${escapeHtml(formatDollarValue(params.potentialSavings))}</strong>` : ''}.</p>
+
+          <p>We'd love to hear how it went — your feedback helps us improve our analysis for future homeowners in your area.</p>
+
+          <a href="${outcomeUrl}" style="display: inline-block; background: #2563eb; color: #fff; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; margin: 16px 0;">
+            Share Your Result
+          </a>
+
+          <p style="font-size: 13px; color: #666;">It takes less than 30 seconds. Just tell us if you won, lost, or are still waiting — and if you won, what your new assessed value is.</p>
+
+          <p style="font-size: 13px; color: #666; margin-top: 24px;">
+            <strong>Won your appeal?</strong> Share your result and we'll generate a referral code for 20% off your next report or to share with friends.
+          </p>
+
+          <p style="margin-top: 32px; font-size: 12px; color: #999;">
+            You received this email because you purchased a property tax assessment report from Resourceful.
+            <br>Your report is always available at <a href="${appUrl}/report/${params.reportId}" style="color: #2563eb;">${appUrl}/report/${params.reportId}</a>.
+          </p>
+        </div>
+      `,
+    });
+
+    return { data: { id: result.data?.id ?? '' }, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[resend] sendOutcomeFollowupEmail error: ${message}`);
+    return { data: null, error: `Outcome follow-up email failed: ${message}` };
   }
 }

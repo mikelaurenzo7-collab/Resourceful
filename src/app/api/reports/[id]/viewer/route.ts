@@ -105,6 +105,8 @@ export async function GET(
     filingGuide,
     deliveredAt: report.delivered_at,
     // County filing info
+    outcomeReportedAt: report.outcome_reported_at ?? null,
+    appealOutcome: report.appeal_outcome ?? null,
     county: countyRule ? {
       name: countyRule.county_name,
       state: countyRule.state_name,

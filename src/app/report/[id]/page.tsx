@@ -52,6 +52,8 @@ interface ReportData {
   filingGuide: string | null;
   deliveredAt: string | null;
   county: CountyInfo | null;
+  outcomeReportedAt: string | null;
+  appealOutcome: string | null;
 }
 
 function formatDollar(value: number): string {
@@ -71,6 +73,15 @@ export default function ReportViewerPage() {
   const [error, setError] = useState('');
   const [pollExhausted, setPollExhausted] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'filing' | 'guide'>('overview');
+
+  // Outcome form state
+  const [showOutcomeForm, setShowOutcomeForm] = useState(false);
+  const [outcomeValue, setOutcomeValue] = useState('');
+  const [newAssessedValue, setNewAssessedValue] = useState('');
+  const [outcomeNotes, setOutcomeNotes] = useState('');
+  const [outcomeSubmitting, setOutcomeSubmitting] = useState(false);
+  const [outcomeSubmitted, setOutcomeSubmitted] = useState(false);
+  const [outcomeError, setOutcomeError] = useState('');
 
   useEffect(() => {
     if (!reportId) return;
@@ -214,19 +225,15 @@ export default function ReportViewerPage() {
           <Link href="/" className="font-display text-xl text-gold">
             Resourceful
           </Link>
-          {data.pdfUrl && (
-            <a
-              href={data.pdfUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm font-medium text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark px-4 py-2 rounded-lg hover:shadow-gold transition-all"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Download PDF
-            </a>
-          )}
+          <a
+            href={`/api/reports/${reportId}/download`}
+            className="flex items-center gap-2 text-sm font-medium text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark px-4 py-2 rounded-lg hover:shadow-gold transition-all"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Download PDF
+          </a>
         </div>
       </nav>
 
@@ -282,28 +289,23 @@ export default function ReportViewerPage() {
             </div>
 
             {/* Download CTA */}
-            {data.pdfUrl && (
-              <div className="card-premium rounded-xl p-6 flex items-center justify-between">
-                <div>
-                  <p className="text-cream font-medium">Your Full Report (PDF)</p>
-                  <p className="text-xs text-cream/40 mt-0.5">
-                    Includes comparable sales, adjustment grid, narratives, and filing instructions.
-                    Download link valid for 7 days.
-                  </p>
-                </div>
-                <a
-                  href={data.pdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm font-medium bg-gold/10 text-gold border border-gold/20 px-4 py-2.5 rounded-lg hover:bg-gold/20 transition-all flex-shrink-0"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Download PDF
-                </a>
+            <div className="card-premium rounded-xl p-6 flex items-center justify-between">
+              <div>
+                <p className="text-cream font-medium">Your Full Report (PDF)</p>
+                <p className="text-xs text-cream/40 mt-0.5">
+                  Includes comparable sales, adjustment grid, narratives, and filing instructions.
+                </p>
               </div>
-            )}
+              <a
+                href={`/api/reports/${reportId}/download`}
+                className="flex items-center gap-2 text-sm font-medium bg-gold/10 text-gold border border-gold/20 px-4 py-2.5 rounded-lg hover:bg-gold/20 transition-all flex-shrink-0"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Download PDF
+              </a>
+            </div>
 
             {/* Quick filing summary for tax appeals */}
             {isTaxAppeal && county && (
@@ -600,6 +602,186 @@ export default function ReportViewerPage() {
                 <p className="text-cream/40">Filing guide is being generated. Check back shortly.</p>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ─── OUTCOME COLLECTION ────────────────────────────────── */}
+        {isTaxAppeal && data.deliveredAt && !data.outcomeReportedAt && !outcomeSubmitted && (() => {
+          const deliveredDate = new Date(data.deliveredAt!);
+          const daysSinceDelivery = Math.floor((Date.now() - deliveredDate.getTime()) / (1000 * 60 * 60 * 24));
+          return daysSinceDelivery >= 30;
+        })() && (
+          <div className="mt-10 animate-fade-in">
+            {!showOutcomeForm ? (
+              <div className="card-premium rounded-xl p-6 border border-gold/10">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-cream font-medium">How Did Your Appeal Go?</h3>
+                    <p className="text-sm text-cream/40 mt-1">
+                      Your feedback helps us improve our analysis for future homeowners in your area. It takes less than 30 seconds.
+                    </p>
+                    <button
+                      onClick={() => setShowOutcomeForm(true)}
+                      className="mt-3 text-sm font-medium text-gold border border-gold/20 px-4 py-2 rounded-lg hover:bg-gold/10 transition-all"
+                    >
+                      Share Your Result
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="card-premium rounded-xl overflow-hidden border border-gold/10">
+                <div className="border-b border-gold/10 px-6 py-4 bg-gold/5">
+                  <p className="text-xs uppercase tracking-widest text-gold/70">Appeal Outcome</p>
+                </div>
+                <div className="p-6 space-y-5">
+                  {outcomeError && (
+                    <div className="rounded-lg bg-red-500/10 border border-red-500/20 p-3">
+                      <p className="text-sm text-red-400">{outcomeError}</p>
+                    </div>
+                  )}
+
+                  {/* Outcome selection */}
+                  <div className="space-y-2">
+                    <p className="text-sm text-cream/60">What happened with your appeal?</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {[
+                        { value: 'won', label: 'Won', icon: '&#10003;', color: 'emerald' },
+                        { value: 'lost', label: 'Lost', icon: '&#10007;', color: 'red' },
+                        { value: 'pending', label: 'Still Pending', icon: '&#8987;', color: 'amber' },
+                        { value: 'withdrew', label: 'Withdrew', icon: '&#8592;', color: 'gray' },
+                        { value: 'didnt_file', label: "Didn\u0027t File", icon: '&#8212;', color: 'gray' },
+                      ].map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => setOutcomeValue(opt.value)}
+                          className={`px-3 py-2.5 rounded-lg text-sm font-medium border transition-all ${
+                            outcomeValue === opt.value
+                              ? opt.color === 'emerald' ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+                              : opt.color === 'red' ? 'bg-red-500/15 border-red-500/30 text-red-400'
+                              : opt.color === 'amber' ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                              : 'bg-cream/10 border-cream/20 text-cream/70'
+                              : 'border-cream/10 text-cream/40 hover:border-cream/20 hover:text-cream/60'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* New assessed value (only if won) */}
+                  {outcomeValue === 'won' && (
+                    <div>
+                      <label className="block text-sm text-cream/60 mb-1">New Assessed Value (if known)</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-cream/30">$</span>
+                        <input
+                          type="text"
+                          value={newAssessedValue}
+                          onChange={(e) => setNewAssessedValue(e.target.value.replace(/[^0-9]/g, ''))}
+                          placeholder="e.g. 265000"
+                          className="w-full bg-navy-light/50 border border-cream/10 rounded-lg px-3 pl-7 py-2.5 text-sm text-cream placeholder:text-cream/20 focus:border-gold/30 focus:outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Notes */}
+                  <div>
+                    <label className="block text-sm text-cream/60 mb-1">Anything else you want to share? (optional)</label>
+                    <textarea
+                      value={outcomeNotes}
+                      onChange={(e) => setOutcomeNotes(e.target.value)}
+                      rows={2}
+                      placeholder="e.g. The board reduced it by more than we asked for..."
+                      className="w-full bg-navy-light/50 border border-cream/10 rounded-lg px-3 py-2.5 text-sm text-cream placeholder:text-cream/20 focus:border-gold/30 focus:outline-none transition-colors resize-none"
+                    />
+                  </div>
+
+                  {/* Submit */}
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={async () => {
+                        if (!outcomeValue) {
+                          setOutcomeError('Please select an outcome.');
+                          return;
+                        }
+                        setOutcomeSubmitting(true);
+                        setOutcomeError('');
+                        try {
+                          // Check for token in URL params
+                          const urlParams = new URLSearchParams(window.location.search);
+                          const token = urlParams.get('token');
+
+                          const res = await fetch(`/api/reports/${reportId}/outcome`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              outcome: outcomeValue,
+                              new_assessed_value: newAssessedValue ? Number(newAssessedValue) : undefined,
+                              notes: outcomeNotes || undefined,
+                              token: token || undefined,
+                            }),
+                          });
+                          if (!res.ok) {
+                            const errData = await res.json();
+                            throw new Error(errData.error || 'Failed to submit');
+                          }
+                          setOutcomeSubmitted(true);
+                        } catch (err) {
+                          setOutcomeError(err instanceof Error ? err.message : 'Failed to submit outcome.');
+                        } finally {
+                          setOutcomeSubmitting(false);
+                        }
+                      }}
+                      disabled={outcomeSubmitting || !outcomeValue}
+                      className="flex items-center gap-2 text-sm font-medium bg-gold/10 text-gold border border-gold/20 px-5 py-2.5 rounded-lg hover:bg-gold/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {outcomeSubmitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        'Submit'
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setShowOutcomeForm(false)}
+                      className="text-sm text-cream/30 hover:text-cream/50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Outcome submitted thank-you */}
+        {outcomeSubmitted && (
+          <div className="mt-10 card-premium rounded-xl p-6 border border-emerald-500/20 animate-fade-in">
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-cream font-medium">Thank You for Sharing!</h3>
+                <p className="text-sm text-cream/40 mt-1">
+                  Your feedback helps us build more accurate reports for homeowners across the country.
+                  {outcomeValue === 'won' && ' Congratulations on your successful appeal!'}
+                </p>
+              </div>
+            </div>
           </div>
         )}
 

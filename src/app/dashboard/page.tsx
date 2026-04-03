@@ -174,14 +174,33 @@ export default async function DashboardPage() {
               />
             </div>
 
-            {/* Download section for delivered reports */}
+            {/* Download & view section for delivered reports */}
             {activeReport.status === 'delivered' && (
-              <ReportDownload
-                pdfUrl={activeReport.report_pdf_storage_path}
-                reportType={activeReport.service_type}
-                propertyAddress={activeReport.property_address}
-                countyName={activeReport.county ?? undefined}
-              />
+              <>
+                <div className="card-premium rounded-xl p-6 flex items-center justify-between">
+                  <div>
+                    <p className="text-cream font-medium">View Your Full Report</p>
+                    <p className="text-xs text-cream/40 mt-0.5">
+                      Includes comparable sales, filing instructions, and everything you need.
+                    </p>
+                  </div>
+                  <a
+                    href={`/report/${activeReport.id}`}
+                    className="flex items-center gap-2 text-sm font-medium bg-gradient-to-r from-gold-light via-gold to-gold-dark text-navy-deep px-5 py-2.5 rounded-lg shadow-gold hover:shadow-gold-lg transition-all flex-shrink-0"
+                  >
+                    View Report
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                  </a>
+                </div>
+                <ReportDownload
+                  pdfUrl={`/api/reports/${activeReport.id}/download`}
+                  reportType={activeReport.service_type}
+                  propertyAddress={activeReport.property_address}
+                  countyName={activeReport.county ?? undefined}
+                />
+              </>
             )}
           </div>
         )}
@@ -238,16 +257,26 @@ export default async function DashboardPage() {
                       >
                         {report.status.replace('_', ' ').replace(/^\w/, (c) => c.toUpperCase())}
                       </span>
-                      {isDelivered && report.report_pdf_storage_path && (
-                        <a
-                          href={report.report_pdf_storage_path}
-                          className="text-sm text-gold hover:text-gold-light transition-colors flex items-center gap-1.5"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          Download
-                        </a>
+                      {isDelivered && (
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={`/report/${report.id}`}
+                            className="text-sm text-gold hover:text-gold-light transition-colors"
+                          >
+                            View
+                          </a>
+                          {report.report_pdf_storage_path && (
+                            <a
+                              href={`/api/reports/${report.id}/download`}
+                              className="text-sm text-cream/40 hover:text-cream/60 transition-colors flex items-center gap-1.5"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              PDF
+                            </a>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
