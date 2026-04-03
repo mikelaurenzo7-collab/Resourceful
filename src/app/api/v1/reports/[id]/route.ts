@@ -80,21 +80,22 @@ export async function GET(
       // Fetch property_data for valuation numbers
       const { data: rawPropData } = await supabase
         .from('property_data')
-        .select('assessed_value, market_value_estimate_low, market_value_estimate_high')
+        .select('assessed_value, concluded_value, market_value_estimate_low, market_value_estimate_high')
         .eq('report_id', reportId)
         .single();
 
       if (rawPropData) {
         const propData = rawPropData as unknown as {
           assessed_value: number | null;
+          concluded_value: number | null;
           market_value_estimate_low: number | null;
           market_value_estimate_high: number | null;
         };
         response.assessedValue = propData.assessed_value;
-        response.concludedValue = propData.market_value_estimate_low;
+        response.concludedValue = propData.concluded_value ?? propData.market_value_estimate_low;
 
-        if (propData.assessed_value && propData.market_value_estimate_low) {
-          const savings = propData.assessed_value - propData.market_value_estimate_low;
+        if (propData.assessed_value && propData.concluded_value) {
+          const savings = propData.assessed_value - propData.concluded_value;
           response.potentialSavings = savings > 0 ? savings : 0;
         }
       }

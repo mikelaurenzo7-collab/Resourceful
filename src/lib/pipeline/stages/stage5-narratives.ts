@@ -473,14 +473,18 @@ export async function runNarratives(
     : null;
   const assessmentRatioExpected = assessmentRatio;
   const assessmentRatioMismatch = assessmentRatioImplied != null && assessmentRatioExpected != null
-    ? assessmentRatioImplied > assessmentRatioExpected * 1.05 // 5% tolerance
+    ? (assessmentRatioImplied > assessmentRatioExpected * 1.05 ||  // overassessment
+       assessmentRatioImplied < assessmentRatioExpected * 0.95)    // underassessment
     : false;
 
-  // ATTOM market value range check
+  // ATTOM market value range — kept for data quality flags only, NOT for valuation.
+  // Per CLAUDE.md: never use ATTOM marketValue as ground truth — it inherits county errors.
   const attomLow = propertyData.market_value_estimate_low;
   const attomHigh = propertyData.market_value_estimate_high;
-  const assessedExceedsAttomRange = assessedValue != null && attomHigh != null
-    ? assessedValue > attomHigh
+
+  // Concluded value range check (uses OUR independent market analysis, not ATTOM)
+  const assessedExceedsMarket = assessedValue != null && concludedValue > 0
+    ? assessedValue > concludedValue
     : false;
 
   // Market trend analysis from comp sale dates
@@ -609,7 +613,7 @@ export async function runNarratives(
     assessmentRatioMismatch,
     attomMarketRangeLow: attomLow,
     attomMarketRangeHigh: attomHigh,
-    assessedExceedsAttomRange,
+    assessedExceedsMarket,
     marketTrendPct,
     effectiveAge: propertyData.effective_age,
     physicalDepreciationPct: propertyData.physical_depreciation_pct,
@@ -635,7 +639,7 @@ export async function runNarratives(
 
   console.log(
     `[stage5] Overvaluation analysis: ${overvaluationPct != null ? `${overvaluationPct > 0 ? '+' : ''}${overvaluationPct}% vs comps` : 'N/A'}, ` +
-    `ratio mismatch: ${assessmentRatioMismatch}, exceeds ATTOM: ${assessedExceedsAttomRange}, ` +
+    `ratio mismatch: ${assessmentRatioMismatch}, exceeds market: ${assessedExceedsMarket}, ` +
     `market trend: ${marketTrendPct != null ? `${marketTrendPct}%` : 'N/A'}, anomalies: ${dataAnomalies.length}`
   );
 

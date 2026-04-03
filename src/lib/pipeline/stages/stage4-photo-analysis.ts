@@ -365,18 +365,19 @@ export async function runPhotoAnalysis(
   }
 
   const baseConditionOffset = CONDITION_BASE_OFFSET[overallCondition] ?? 0;
-  const completenessMultiplier = hasCompletePackage ? CONDITION_COMPLETENESS_MULTIPLIER : 1.0;
+  // Completeness multiplier increases confidence scoring (case strength), NOT adjustment magnitude.
+  // A complete photo package means better evidence quality, not bigger discounts.
 
   const totalConditionAdjustment = Math.round(
-    ((defectBasedAdjustment * completenessMultiplier) + baseConditionOffset) * 100
+    (defectBasedAdjustment + baseConditionOffset) * 100
   ) / 100;
 
   const cappedAdjustment = Math.max(totalConditionAdjustment, -CONDITION_ADJ_MAX_PCT);
 
   console.log(
     `[stage4] Condition adjustment: ${cappedAdjustment}% ` +
-    `(${allDefects.length} defects: ${defectBasedAdjustment}% × ${completenessMultiplier} completeness, ` +
-    `base offset for "${overallCondition}": ${baseConditionOffset}%)`
+    `(${allDefects.length} defects: ${defectBasedAdjustment}%, ` +
+    `base offset for "${overallCondition}": ${baseConditionOffset}%, complete package: ${hasCompletePackage})`
   );
 
   // ── Apply condition adjustment to comparable sales ──────────────────
