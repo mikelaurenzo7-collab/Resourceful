@@ -70,6 +70,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ── Duplicate property check (same email + same address) ────────────
+    const { count: duplicateCount } = await supabaseForCheck
+      .from('reports')
+      .select('*', { count: 'exact', head: true })
+      .eq('client_email', client_email)
+      .eq('property_address', property_address)
+      .not('status', 'in', '(failed,rejected)');
+
+    if (duplicateCount && duplicateCount > 0) {
+      return NextResponse.json(
+        { error: 'A report for this property already exists. Check your dashboard for the existing report.' },
+        { status: 409 }
+      );
+    }
+
     // ── Check founder access ─────────────────────────────────────────────
     const founderAccess = isFounderEmail(client_email);
 

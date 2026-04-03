@@ -88,7 +88,7 @@ export default async function TaxBillDataPage() {
     .eq('has_tax_bill', true)
     .not('tax_bill_assessed_value', 'is', null)
     .order('created_at', { ascending: false })
-    .limit(5000);
+    .limit(500);
 
   const reports = (rawReports as unknown as TaxBillReport[] | null) ?? [];
 

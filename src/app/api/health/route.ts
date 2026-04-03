@@ -91,8 +91,10 @@ export async function GET(request: Request) {
   // ── Resend Email ──────────────────────────────────────────────────────
   if (!process.env.RESEND_API_KEY) {
     results.resend = { status: 'not_configured', message: 'RESEND_API_KEY missing (email delivery disabled)' };
+  } else if (!process.env.RESEND_FROM_ADDRESS) {
+    results.resend = { status: 'error', message: 'RESEND_API_KEY set but RESEND_FROM_ADDRESS missing — emails will fail with unverified default domain' };
   } else {
-    results.resend = { status: 'ok', message: `Configured. From: ${process.env.RESEND_FROM_ADDRESS ?? 'not set'}` };
+    results.resend = { status: 'ok', message: `Configured. From: ${process.env.RESEND_FROM_ADDRESS}` };
   }
 
   // ── ATTOM (optional) ─────────────────────────────────────────────────

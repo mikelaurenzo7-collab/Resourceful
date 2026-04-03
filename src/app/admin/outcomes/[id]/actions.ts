@@ -50,8 +50,8 @@ export async function recordOutcome(reportId: string, formData: FormData) {
   let actualSavingsCents: number | null = null;
   if (savingsDollarsRaw !== '') {
     const dollars = parseFloat(savingsDollarsRaw);
-    if (isNaN(dollars) || dollars < 0) {
-      throw new Error('Savings must be a valid non-negative number.');
+    if (isNaN(dollars) || dollars < 0 || dollars > 999_999_999) {
+      throw new Error('Savings must be a valid number between $0 and $999,999,999.');
     }
     actualSavingsCents = Math.round(dollars * 100);
   }

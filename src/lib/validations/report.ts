@@ -88,7 +88,7 @@ export type PhotoUploadInput = z.infer<typeof photoUploadSchema>;
 // ─── Admin Reject ───────────────────────────────────────────────────────────
 
 export const adminRejectSchema = z.object({
-  notes: z.string().min(10, 'Rejection notes must be at least 10 characters'),
+  notes: z.string().min(10, 'Rejection notes must be at least 10 characters').max(2000, 'Rejection notes must be under 2000 characters'),
 });
 
 export type AdminRejectInput = z.infer<typeof adminRejectSchema>;

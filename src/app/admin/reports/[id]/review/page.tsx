@@ -78,6 +78,16 @@ export default async function ReviewPage({
 
   if (!report) notFound();
 
+  // Generate signed URL for PDF preview (1-hour expiry)
+  let pdfPreviewUrl: string | null = null;
+  if (report.report_pdf_storage_path) {
+    const { data: signedUrlData } = await supabase
+      .storage
+      .from('reports')
+      .createSignedUrl(report.report_pdf_storage_path, 3600);
+    pdfPreviewUrl = signedUrlData?.signedUrl ?? null;
+  }
+
   // Compute concluded value from income analysis or comps
   const concludedValue = incomeAnalysis?.concluded_value_income_approach ?? null;
   const assessedValue = propertyData?.assessed_value ?? null;
@@ -96,9 +106,9 @@ export default async function ReviewPage({
           <h2 className="text-sm font-semibold text-gray-700">PDF Preview</h2>
           <ReportStatusBadge status={report.status} />
         </div>
-        {report.report_pdf_storage_path ? (
+        {pdfPreviewUrl ? (
           <embed
-            src={report.report_pdf_storage_path}
+            src={pdfPreviewUrl}
             type="application/pdf"
             className="h-[calc(100vh-8rem)] w-full rounded-lg border border-gray-300 shadow-sm"
           />
