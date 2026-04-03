@@ -142,6 +142,8 @@ export default function SituationPage() {
             <button
               key={issue.id}
               onClick={() => toggleIssue(issue.id)}
+              role="checkbox"
+              aria-checked={isSelected}
               className={`text-left rounded-xl p-4 border transition-all duration-200 ${
                 isSelected
                   ? 'border-gold/50 bg-gold/10'

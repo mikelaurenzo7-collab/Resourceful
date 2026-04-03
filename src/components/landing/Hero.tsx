@@ -114,7 +114,7 @@ export default function Hero() {
             </svg>
           </Link>
           <p className="mt-4 text-xs text-cream/30">
-            No account needed &middot; Results in minutes
+            Takes 5 minutes &middot; Report delivered same day
           </p>
         </div>
       </div>

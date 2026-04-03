@@ -46,13 +46,16 @@ export default function PropertyPage() {
   const handleTaxBillSave = () => {
     const av = parseFloat(assessedValue.replace(/[^0-9.]/g, ''));
     const ta = parseFloat(taxAmount.replace(/[^0-9.]/g, ''));
-    if (!av || av <= 0) return;
+    if (!av || av <= 0 || av > 50_000_000) return;
+    const currentYear = new Date().getFullYear();
+    const parsedYear = taxYear ? parseInt(taxYear, 10) : null;
+    const validYear = parsedYear && parsedYear >= 1990 && parsedYear <= currentYear ? taxYear : null;
     updateState({
       hasTaxBill: true,
       taxBillData: {
         assessedValue: av,
-        taxAmount: ta > 0 ? ta : null,
-        taxYear: taxYear || null,
+        taxAmount: ta > 0 && ta < 10_000_000 ? ta : null,
+        taxYear: validYear,
         pin: pin || null,
       },
     });
@@ -188,7 +191,9 @@ export default function PropertyPage() {
                       </label>
                       <input
                         id="tax-year"
-                        type="text"
+                        type="number"
+                        min="1990"
+                        max={new Date().getFullYear()}
                         value={taxYear}
                         onChange={(e) => setTaxYear(e.target.value)}
                         placeholder="2025"
