@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { isAdmin, createApprovalEvent } from '@/lib/repository/admin';
 import { getReportById } from '@/lib/repository/reports';
-import { adminRegenerateSchema } from '@/lib/validations/report';
+import { adminRegenerateSchema, reportIdSchema } from '@/lib/validations/report';
 import { runNarratives } from '@/lib/pipeline/stages/stage5-narratives';
 import { runPdfAssembly } from '@/lib/pipeline/stages/stage7-pdf-assembly';
 import type { ReportNarrative } from '@/types/database';
@@ -17,7 +17,12 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: reportId } = await params;
+    const { id: rawId } = await params;
+    const idResult = reportIdSchema.safeParse(rawId);
+    if (!idResult.success) {
+      return NextResponse.json({ error: 'Invalid report ID' }, { status: 400 });
+    }
+    const reportId = idResult.data;
 
     // ── Authenticate user ──────────────────────────────────────────────────
     const supabase = await createClient();

@@ -6,13 +6,19 @@ import { createClient } from '@/lib/supabase/server';
 import { isAdmin, createApprovalEvent } from '@/lib/repository/admin';
 import { getReportById, updateReport } from '@/lib/repository/reports';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
+import { reportIdSchema } from '@/lib/validations/report';
 
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: reportId } = await params;
+    const { id: rawId } = await params;
+    const idResult = reportIdSchema.safeParse(rawId);
+    if (!idResult.success) {
+      return NextResponse.json({ error: 'Invalid report ID' }, { status: 400 });
+    }
+    const reportId = idResult.data;
 
     // ── Authenticate user ──────────────────────────────────────────────────
     const supabase = await createClient();

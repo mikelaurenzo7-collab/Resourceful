@@ -101,6 +101,10 @@ export const adminRegenerateSchema = z.object({
 
 export type AdminRegenerateInput = z.infer<typeof adminRegenerateSchema>;
 
+// ─── Report ID Validation ──────────────────────────────────────────────────
+
+export const reportIdSchema = z.string().uuid('Invalid report ID format');
+
 // ─── County Rule ────────────────────────────────────────────────────────────
 
 export const countyRuleSchema = z.object({
