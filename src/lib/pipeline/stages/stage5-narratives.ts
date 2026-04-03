@@ -231,8 +231,12 @@ export async function runNarratives(
   }
 
   // ── Value WITH photo condition adjustments (the real concluded value) ──
-  let concludedValue = comps.length > 0
-    ? computeMedianValue(comps, propertyData.building_sqft_gross, (c) => c.adjusted_price_per_sqft)
+  // Prefer strong comps (net adjustment ≤25%) for the primary valuation.
+  // Fall back to all comps only if fewer than 3 strong comps available.
+  const strongComps = comps.filter((c) => !c.is_weak_comparable);
+  const valuationComps = strongComps.length >= 3 ? strongComps : comps;
+  let concludedValue = valuationComps.length > 0
+    ? computeMedianValue(valuationComps, propertyData.building_sqft_gross, (c) => c.adjusted_price_per_sqft)
     : 0;
 
   // ── Value WITHOUT photo condition adjustments (market data only) ───────
@@ -310,8 +314,11 @@ export async function runNarratives(
   concludedValue = Math.round(concludedValue / 1000) * 1000;
   concludedValueWithoutPhotos = Math.round(concludedValueWithoutPhotos / 1000) * 1000;
 
-  // If income approach is available, weight it in (apply to both)
-  if (incomeData?.concluded_value_income_approach) {
+  // If income approach is available AND based on real rental comps, weight it in.
+  // Skip income weighting when only national fallback rents were used — those are
+  // not market-specific and would dilute the more reliable sales comparison approach.
+  const incomeBasedOnRealData = incomeData?.market_vacancy_rate_source === 'Derived from rental comparables';
+  if (incomeData?.concluded_value_income_approach && incomeBasedOnRealData) {
     const incomeValue = incomeData.concluded_value_income_approach;
     // 70% sales comparison, 30% income approach for commercial/industrial
     concludedValue = Math.round(
@@ -320,6 +327,10 @@ export async function runNarratives(
     concludedValueWithoutPhotos = Math.round(
       (concludedValueWithoutPhotos * 0.7 + incomeValue * 0.3) / 1000
     ) * 1000;
+  } else if (incomeData?.concluded_value_income_approach) {
+    console.log(
+      `[stage5] Income approach available but based on fallback rents — not weighted into concluded value`
+    );
   }
 
   // ── Photo value attribution ────────────────────────────────────────────
