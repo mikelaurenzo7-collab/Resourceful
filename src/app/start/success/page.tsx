@@ -11,6 +11,7 @@ function SuccessContent() {
 
   const [deletingTaxBill, setDeletingTaxBill] = useState(false);
   const [taxBillDeleted, setTaxBillDeleted] = useState(false);
+  const [emailPref, setEmailPref] = useState(true);
 
   return (
     <div className="min-h-screen bg-pattern relative overflow-hidden flex items-center justify-center px-6">
@@ -66,8 +67,8 @@ function SuccessContent() {
               },
               {
                 step: '3',
-                title: 'Report Delivered',
-                desc: 'Your complete report with verified savings, filing instructions, and step-by-step hearing guidance — delivered to your inbox.',
+                title: 'Report Ready on Your Dashboard',
+                desc: 'Your complete report with verified savings, filing instructions, and step-by-step hearing guidance — always accessible from your dashboard.',
                 active: false,
               },
             ].map((item) => (
@@ -104,8 +105,38 @@ function SuccessContent() {
                 Check Report Status
               </Button>
               <p className="text-xs text-cream/20">
-                We&apos;ll email your completed report — no need to wait here
+                Your report will be available on your dashboard — no need to wait here
               </p>
+            </div>
+
+            {/* Email notification preference */}
+            <div className="mt-6 card-premium rounded-lg p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <svg className="w-4 h-4 text-cream/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                <span className="text-xs text-cream/40">Email me when my report is ready</span>
+              </div>
+              <button
+                onClick={async () => {
+                  const newPref = !emailPref;
+                  setEmailPref(newPref);
+                  try {
+                    await fetch(`/api/reports/${reportId}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ email_delivery_preference: newPref }),
+                    });
+                  } catch { /* non-critical */ }
+                }}
+                className={`relative w-10 h-5 rounded-full transition-colors ${
+                  emailPref ? 'bg-gold/30' : 'bg-cream/10'
+                }`}
+              >
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${
+                  emailPref ? 'left-5.5 bg-gold' : 'left-0.5 bg-cream/30'
+                }`} style={{ left: emailPref ? '22px' : '2px' }} />
+              </button>
             </div>
           </>
         )}

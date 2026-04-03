@@ -3,8 +3,23 @@
 ## What This Is
 A nationwide web app that generates professional property tax appeal reports using AI analysis, public property data APIs, and owner-provided photographs. Reports are auto-delivered to clients after pipeline completion.
 
-## Delivery Model
-Reports are automatically delivered to clients after the pipeline completes all stages (1-8). Stage 8 sends the PDF and filing guide via email. If auto-delivery fails, the report falls back to status = 'pending_approval' for admin manual delivery. Admin can still review, reject, or re-run reports via the admin dashboard.
+## Delivery Model — Dashboard-First
+Reports are always accessible from the user's dashboard and /report/[id] page.
+PDF downloads generate fresh signed URLs on-demand — no expiring links.
+
+**Pipeline flow:**
+1. Stages 1-7 run automatically (data collection → PDF assembly)
+2. Report routes to admin for quality review (status = 'pending_approval')
+3. Admin approves → Stage 8 marks report as 'delivered'
+4. If user opted in (default: yes), a lightweight notification email is sent
+   with a link to the report page — not the PDF itself
+5. If email fails, report is still delivered via dashboard (email is non-fatal)
+
+**Outcome collection (calibration feedback loop):**
+- 60 days after delivery, a follow-up email asks "How did your appeal go?"
+- Users can report outcomes from the /report/[id] page (30+ days after delivery)
+- Outcomes feed the calibration system (predicted vs actual values)
+- County-level stats (win rate, avg savings) auto-update from real outcomes
 
 ## Nationwide Architecture Rule
 This platform serves every county in every state. ATTOM is the universal data source that covers the entire country. No county-specific logic is hardcoded in application code. All county-specific behavior comes from the county_rules database table: assessment ratios, appeal board names, filing deadlines, form names, hearing formats. The data-router supports future county-specific API adapters via county_rules.assessor_api_url, but none are required — ATTOM handles everything.

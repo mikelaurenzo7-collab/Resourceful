@@ -114,6 +114,10 @@ export type Report = {
   referral_discount_cents: number;
   api_partner_id: string | null;
   is_white_label: boolean;
+  // Dashboard-first delivery & outcome follow-up (migration 017)
+  email_delivery_preference: boolean;
+  outcome_followup_sent_at: string | null;
+  outcome_followup_token: string | null;
 };
 
 export type PropertyData = {
@@ -563,7 +567,7 @@ export type FormSubmission = {
 
 // ─── Insert Types (omit server-generated fields) ────────────────────────────
 
-export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_score' | 'case_value_at_stake' | 'is_underassessed' | 'underassessment_pct' | 'appeal_outcome_details' | 'outcome_reported_at' | 'actual_savings_cents' | 'outcome_notes' | 'referral_code_id' | 'referral_discount_cents' | 'api_partner_id' | 'is_white_label'> & {
+export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_score' | 'case_value_at_stake' | 'is_underassessed' | 'underassessment_pct' | 'appeal_outcome_details' | 'outcome_reported_at' | 'actual_savings_cents' | 'outcome_notes' | 'referral_code_id' | 'referral_discount_cents' | 'api_partner_id' | 'is_white_label' | 'email_delivery_preference' | 'outcome_followup_sent_at' | 'outcome_followup_token'> & {
   id?: string;
   created_at?: string;
   // Computed by Stage 5 — not needed at creation time; DB defaults apply
@@ -581,6 +585,10 @@ export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_sco
   referral_discount_cents?: number;
   api_partner_id?: string | null;
   is_white_label?: boolean;
+  // Dashboard-first delivery — DB defaults apply
+  email_delivery_preference?: boolean;
+  outcome_followup_sent_at?: string | null;
+  outcome_followup_token?: string | null;
 };
 
 export type PropertyDataInsert = Omit<PropertyData, 'id' | 'created_at'> & {
