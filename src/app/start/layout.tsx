@@ -6,7 +6,7 @@ export const metadata: Metadata = {
   description:
     'Start your property tax appeal report in minutes. Enter your address, document property issues, upload photos, and receive a professional appeal report with filing instructions for your county.',
   openGraph: {
-    title: 'Get Your Property Report | Resourceful',
+    title: 'Get Your Property Report | REsourceful',
     description:
       'Start your property tax appeal report in minutes. Professional reports with county-specific filing instructions.',
   },

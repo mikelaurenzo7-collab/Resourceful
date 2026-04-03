@@ -71,7 +71,7 @@ export default function ReportDownload({
                     Gather Your Materials
                   </h4>
                   <p className="text-sm text-cream/50 mt-1 leading-relaxed">
-                    Print your Resourceful report (the PDF you downloaded above). You will also
+                    Print your REsourceful report (the PDF you downloaded above). You will also
                     need your Property Index Number (PIN) and current tax bill. These are
                     included in Section 1 of your report.
                   </p>
@@ -88,7 +88,7 @@ export default function ReportDownload({
                   </h4>
                   <p className="text-sm text-cream/50 mt-1 leading-relaxed">
                     Visit your county assessor&apos;s website and locate the appeal filing portal.
-                    Most counties allow online filing. Upload your Resourceful report as supporting
+                    Most counties allow online filing. Upload your REsourceful report as supporting
                     evidence. Select &quot;Comparable Sales&quot; as your evidence type.
                   </p>
                 </div>

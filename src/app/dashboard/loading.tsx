@@ -1,3 +1,5 @@
+import BrandLogo from '@/components/ui/BrandLogo';
+
 export default function DashboardLoading() {
   return (
     <div className="min-h-screen bg-pattern">
@@ -7,7 +9,7 @@ export default function DashboardLoading() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center">
               <span className="text-navy-deep font-bold text-sm">R</span>
             </div>
-            <span className="font-display text-lg text-cream">Resourceful</span>
+            <BrandLogo />
           </div>
         </div>
       </header>

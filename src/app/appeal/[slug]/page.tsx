@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { parseCountySlug, buildCountySlug } from '@/lib/utils/county-slug';
 import { getCountyByName, getActiveCounties } from '@/lib/repository/county-rules';
 import Footer from '@/components/landing/Footer';
+import BrandLogo from '@/components/ui/BrandLogo';
 import type { CountyRule } from '@/types/database';
 
 // ─── Static Params (enables ISR for all active counties) ─────────────────────
@@ -29,15 +30,15 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const parsed = parseCountySlug(slug);
-  if (!parsed) return { title: 'County Not Found | Resourceful' };
+  if (!parsed) return { title: 'County Not Found | REsourceful' };
 
   const county = await getCountyByName(parsed.countyName, parsed.stateAbbrev);
-  if (!county) return { title: 'County Not Found | Resourceful' };
+  if (!county) return { title: 'County Not Found | REsourceful' };
 
   const stateName = county.state_name;
   const filingMethod = getFilingMethodText(county);
 
-  const title = `Property Tax Appeal in ${county.county_name}, ${stateName} | Resourceful`;
+  const title = `Property Tax Appeal in ${county.county_name}, ${stateName} | REsourceful`;
   const description = `Professional property tax appeal reports for ${county.county_name}. ${county.assessment_methodology}. File your appeal ${filingMethod}. ${county.appeal_board_name}.`;
 
   return {
@@ -76,7 +77,7 @@ export default async function CountyAppealPage({
       <nav className="fixed top-0 left-0 right-0 z-50 bg-navy-deep/80 backdrop-blur-xl nav-shadow">
         <div className="mx-auto max-w-6xl px-6 flex items-center justify-between h-16">
           <Link href="/" className="font-display text-xl text-gold">
-            Resourceful
+            <BrandLogo />
           </Link>
           <div className="flex items-center gap-6">
             <Link

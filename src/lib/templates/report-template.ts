@@ -186,7 +186,7 @@ export function generateReportHtml(data: ReportTemplateData): string {
       color: ${MUTED};
     }
     @bottom-right {
-      content: 'Resourceful';
+      content: 'REsourceful';
       font-family: 'Inter', Arial, sans-serif;
       font-size: 7pt;
       color: #ccc;

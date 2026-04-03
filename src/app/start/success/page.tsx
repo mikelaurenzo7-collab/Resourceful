@@ -3,6 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import { useState, Suspense } from 'react';
 import Button from '@/components/ui/Button';
+import Confetti from '@/components/ui/Confetti';
 
 function SuccessContent() {
   const searchParams = useSearchParams();
@@ -14,6 +15,7 @@ function SuccessContent() {
 
   return (
     <div className="min-h-screen bg-pattern relative overflow-hidden flex items-center justify-center px-6">
+      <Confetti />
       {/* Decorative glow orbs */}
       <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-emerald-500/[0.04] rounded-full blur-[150px] pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-gold/[0.04] rounded-full blur-[120px] pointer-events-none" />

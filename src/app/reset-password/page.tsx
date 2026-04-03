@@ -74,7 +74,7 @@ export default function ResetPasswordPage() {
         {/* Logo */}
         <div className="text-center mb-10">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center mx-auto mb-4">
-            <span className="text-navy-deep font-bold text-xl">R</span>
+            <span className="text-navy-deep font-bold text-lg">RE</span>
           </div>
           <h1 className="font-display text-3xl text-cream mb-2">Set New Password</h1>
           <p className="text-cream/50 text-sm">Enter your new password below.</p>

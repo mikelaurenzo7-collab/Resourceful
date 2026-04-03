@@ -2,12 +2,12 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | Resourceful',
+  title: 'Privacy Policy | REsourceful',
   description:
-    'Privacy Policy for Resourceful. Learn how we collect, use, and protect your personal information when you use our property tax appeal and analysis services.',
+    'Privacy Policy for REsourceful. Learn how we collect, use, and protect your personal information when you use our property tax appeal and analysis services.',
   openGraph: {
-    title: 'Privacy Policy | Resourceful',
-    description: 'How Resourceful collects, uses, and protects your personal information.',
+    title: 'Privacy Policy | REsourceful',
+    description: 'How REsourceful collects, uses, and protects your personal information.',
     type: 'website',
   },
 };
@@ -19,7 +19,7 @@ export default function PrivacyPage() {
       <nav className="bg-navy-deep/80 backdrop-blur-xl nav-shadow">
         <div className="mx-auto max-w-4xl px-6 flex items-center justify-between h-16">
           <Link href="/" className="font-display text-xl text-gold">
-            Resourceful
+            REsourceful
           </Link>
           <Link href="/" className="text-sm text-cream/50 hover:text-cream transition-colors">
             Back to Home

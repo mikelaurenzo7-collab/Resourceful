@@ -8,8 +8,8 @@ const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://resourceful.app";
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: "Resourceful | Professional Property Tax Appeal Reports",
-    template: "%s | Resourceful",
+    default: "REsourceful | Professional Property Tax Appeal Reports",
+    template: "%s | REsourceful",
   },
   description:
     "Expert-grade property tax appeal reports nationwide. Comparable sales analysis, assessment review, and pro se filing guidance. Save hundreds to thousands on your property taxes with our money-back guarantee.",
@@ -30,17 +30,17 @@ export const metadata: Metadata = {
     "lower property taxes",
   ],
   openGraph: {
-    title: "Resourceful | Professional Property Tax Appeal Reports",
+    title: "REsourceful | Professional Property Tax Appeal Reports",
     description:
       "Expert-grade property tax appeal reports. Professional valuation evidence, comparable sales analysis, and step-by-step pro se filing guides for property owners nationwide.",
     type: "website",
-    siteName: "Resourceful",
+    siteName: "REsourceful",
     url: baseUrl,
     locale: "en_US",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Resourceful | Property Tax Appeal Reports",
+    title: "REsourceful | Property Tax Appeal Reports",
     description:
       "Save hundreds to thousands on your property taxes. Professional appeal reports with money-back guarantee.",
   },

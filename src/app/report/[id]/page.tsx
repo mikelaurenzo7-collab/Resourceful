@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import BrandLogo from '@/components/ui/BrandLogo';
 
 interface CountyInfo {
   name: string;
@@ -212,7 +213,7 @@ export default function ReportViewerPage() {
       <nav className="bg-navy-deep/80 backdrop-blur-xl nav-shadow sticky top-0 z-50">
         <div className="mx-auto max-w-5xl px-6 flex items-center justify-between h-16">
           <Link href="/" className="font-display text-xl text-gold">
-            Resourceful
+            <BrandLogo />
           </Link>
           {data.pdfUrl && (
             <a

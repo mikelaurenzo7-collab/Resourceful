@@ -6,6 +6,7 @@ import Footer from '@/components/landing/Footer';
 import { ServiceJsonLd, FAQJsonLd } from '@/components/seo/JsonLd';
 import { ScrollAnimations } from '@/components/ui/ScrollAnimations';
 import Link from 'next/link';
+import BrandLogo from '@/components/ui/BrandLogo';
 
 export default function HomePage() {
   return (
@@ -17,7 +18,7 @@ export default function HomePage() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-navy-deep/80 backdrop-blur-xl nav-shadow">
         <div className="mx-auto max-w-6xl px-6 flex items-center justify-between h-16">
           <Link href="/" className="font-display text-xl text-gold hover:text-gold-light transition-colors">
-            Resourceful
+            <BrandLogo />
           </Link>
           <div className="flex items-center gap-6">
             <Link
@@ -102,7 +103,7 @@ export default function HomePage() {
 
       {/* Final CTA */}
       <section className="mx-auto max-w-6xl px-6 py-24" data-animate>
-        <div className="relative card-elevated rounded-2xl p-12 md:p-20 text-center overflow-hidden">
+        <div className="relative card-elevated animated-border rounded-2xl p-12 md:p-20 text-center overflow-hidden">
           {/* Background glow */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[300px] bg-gold/[0.04] rounded-full blur-[100px] pointer-events-none" />
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[400px] h-[150px] bg-gold/[0.03] rounded-full blur-[80px] pointer-events-none" />

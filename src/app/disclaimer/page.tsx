@@ -2,12 +2,12 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Disclaimer | Resourceful',
+  title: 'Disclaimer | REsourceful',
   description:
-    'Important disclaimers about Resourceful property analysis reports. Understand the limitations of our reports and your responsibilities as a property owner.',
+    'Important disclaimers about REsourceful property analysis reports. Understand the limitations of our reports and your responsibilities as a property owner.',
   openGraph: {
-    title: 'Disclaimer | Resourceful',
-    description: 'Important disclaimers about Resourceful property analysis reports and services.',
+    title: 'Disclaimer | REsourceful',
+    description: 'Important disclaimers about REsourceful property analysis reports and services.',
     type: 'website',
   },
 };
@@ -19,7 +19,7 @@ export default function DisclaimerPage() {
       <nav className="bg-navy-deep/80 backdrop-blur-xl nav-shadow">
         <div className="mx-auto max-w-4xl px-6 flex items-center justify-between h-16">
           <Link href="/" className="font-display text-xl text-gold">
-            Resourceful
+            REsourceful
           </Link>
           <Link href="/" className="text-sm text-cream/50 hover:text-cream transition-colors">
             Back to Home
@@ -35,7 +35,7 @@ export default function DisclaimerPage() {
           <section className="rounded-xl border border-amber-500/20 bg-amber-950/10 p-6">
             <h2 className="text-lg font-semibold text-amber-400 mb-3">Not Legal Advice</h2>
             <p>
-              Resourceful is <strong className="text-cream/80">not a law firm</strong> and does not provide
+              REsourceful is <strong className="text-cream/80">not a law firm</strong> and does not provide
               legal advice. Our Reports are informational tools generated using
               publicly available property data. Nothing in our Reports, website, emails, or communications
               should be construed as legal, tax, or financial advice. No attorney-client, fiduciary, or
@@ -150,7 +150,7 @@ export default function DisclaimerPage() {
           <section>
             <h2 className="text-lg font-semibold text-cream mb-3">Limitation of Liability</h2>
             <p>
-              To the fullest extent permitted by law, Resourceful and its affiliates, officers, employees, and
+              To the fullest extent permitted by law, REsourceful and its affiliates, officers, employees, and
               agents shall not be liable for any damages — direct, indirect, incidental, special, consequential,
               or punitive — arising from or related to use of our Reports, including but not limited to: failed
               appeals, increased assessments, missed deadlines, reliance on inaccurate data, or any decisions

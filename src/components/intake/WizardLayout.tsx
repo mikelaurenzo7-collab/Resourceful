@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import type { PropertyType, ServiceType, ReviewTier } from '@/types/database';
+import BrandLogo from '@/components/ui/BrandLogo';
 
 // ─── Wizard State ────────────────────────────────────────────────────────────
 
@@ -295,7 +296,7 @@ export default function WizardLayout({ children }: { children: React.ReactNode }
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center">
                 <span className="text-navy-deep font-bold text-sm">R</span>
               </div>
-              <span className="font-display text-lg text-cream">Resourceful</span>
+              <BrandLogo />
             </button>
 
             {/* Step indicators */}

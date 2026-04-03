@@ -91,7 +91,7 @@ function LoginForm() {
         {/* Logo */}
         <div className="text-center mb-10">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center mx-auto mb-4">
-            <span className="text-navy-deep font-bold text-xl">R</span>
+            <span className="text-navy-deep font-bold text-lg">RE</span>
           </div>
           <h1 className="font-display text-3xl text-cream mb-2">
             {resetMode ? 'Reset Password' : 'Welcome Back'}
@@ -155,7 +155,7 @@ function LoginForm() {
             </button>
           </form>
         ) : (
-          <form onSubmit={handleSubmit} className="card-premium rounded-xl p-8 space-y-6">
+          <form onSubmit={handleSubmit} className="card-premium animated-border rounded-xl p-8 space-y-6">
             {error && (
               <div className="rounded-lg bg-red-900/20 border border-red-500/20 p-3 text-sm text-red-400">
                 {error}

@@ -138,7 +138,7 @@ export async function aggregateCountyIntelligence(
   // Update county_rules with our aggregated intelligence
   const updates: Record<string, unknown> = {
     success_rate_pct: winRate,
-    success_rate_source: `Resourceful data (${totalDecided} outcomes)`,
+    success_rate_source: `REsourceful data (${totalDecided} outcomes)`,
     avg_savings_pct: avgSavings > 0 && savingsCount > 0
       ? Math.round((totalSavings / savingsCount) / (Number(outcomes[0]?.amount_paid_cents) || 4900) * 100)
       : null,

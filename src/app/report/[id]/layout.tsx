@@ -5,7 +5,7 @@ export const metadata: Metadata = {
     index: false,
     follow: false,
   },
-  title: 'Your Report | Resourceful',
+  title: 'Your Report | REsourceful',
 };
 
 export default function ReportLayout({

@@ -2,12 +2,12 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service | Resourceful',
+  title: 'Terms of Service | REsourceful',
   description:
-    'Terms of Service for Resourceful property tax appeal reports. Read our terms covering report delivery, money-back guarantee, refund policy, and usage guidelines.',
+    'Terms of Service for REsourceful property tax appeal reports. Read our terms covering report delivery, money-back guarantee, refund policy, and usage guidelines.',
   openGraph: {
-    title: 'Terms of Service | Resourceful',
-    description: 'Terms governing the use of Resourceful property tax appeal reports and related services.',
+    title: 'Terms of Service | REsourceful',
+    description: 'Terms governing the use of REsourceful property tax appeal reports and related services.',
     type: 'website',
   },
 };
@@ -19,7 +19,7 @@ export default function TermsPage() {
       <nav className="bg-navy-deep/80 backdrop-blur-xl nav-shadow">
         <div className="mx-auto max-w-4xl px-6 flex items-center justify-between h-16">
           <Link href="/" className="font-display text-xl text-gold">
-            Resourceful
+            REsourceful
           </Link>
           <Link href="/" className="text-sm text-cream/50 hover:text-cream transition-colors">
             Back to Home
@@ -35,7 +35,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-semibold text-cream mb-3">1. Overview</h2>
             <p>
-              Resourceful (&quot;we,&quot; &quot;us,&quot; &quot;our&quot;) provides data-driven property analysis
+              REsourceful (&quot;we,&quot; &quot;us,&quot; &quot;our&quot;) provides data-driven property analysis
               reports, including property tax appeal reports, pre-purchase analyses, and pre-listing reports
               (collectively, &quot;Reports&quot;). By purchasing or using a Report, you (&quot;you,&quot;
               &quot;client,&quot; &quot;user&quot;) agree to these Terms of Service.
@@ -144,7 +144,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-semibold text-cream mb-3">9. Limitation of Liability</h2>
             <p>
-              To the maximum extent permitted by applicable law, Resourceful shall not be liable for any
+              To the maximum extent permitted by applicable law, REsourceful shall not be liable for any
               indirect, incidental, special, consequential, or punitive damages arising from or related to your
               use of our Reports, including but not limited to failed appeals, missed deadlines, inaccurate
               data, or decisions made based on Report content. Our total liability shall not exceed the amount
@@ -155,7 +155,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-lg font-semibold text-cream mb-3">10. Indemnification</h2>
             <p>
-              You agree to indemnify and hold harmless Resourceful, its officers, employees, and agents from any
+              You agree to indemnify and hold harmless REsourceful, its officers, employees, and agents from any
               claims, damages, losses, or expenses arising from your use of our Reports, your filing of any
               appeal or legal proceeding, or your violation of these Terms.
             </p>

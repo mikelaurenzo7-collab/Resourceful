@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import type { Report, ReportStatus } from '@/types/database';
 
 export const dynamic = 'force-dynamic';
+import BrandLogo from '@/components/ui/BrandLogo';
 import PipelineProgress from '@/components/dashboard/PipelineProgress';
 import ReportDownload from '@/components/dashboard/ReportDownload';
 
@@ -113,7 +114,7 @@ export default async function DashboardPage() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center">
               <span className="text-navy-deep font-bold text-sm">R</span>
             </div>
-            <span className="font-display text-lg text-cream">Resourceful</span>
+            <BrandLogo />
           </div>
           <div className="flex items-center gap-4">
             <a

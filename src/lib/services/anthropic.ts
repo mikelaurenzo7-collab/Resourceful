@@ -391,7 +391,7 @@ ${payload.successRatePct ? `\nHISTORICAL SUCCESS RATE: ${payload.successRatePct}
 - Be honest about whether further appeal is worth it based on the dollar amount at stake.
 
 ## Our Filing Services
-- If ${county} County allows authorized representatives to file on behalf of property owners (authorizedRepAllowed is true), explain that Resourceful offers full-service filing:
+- If ${county} County allows authorized representatives to file on behalf of property owners (authorizedRepAllowed is true), explain that REsourceful offers full-service filing:
   - "If you purchased our Full Representation package, our team will handle the entire filing process and attend the hearing on your behalf. You don't need to do anything else."
   - "If you purchased Guided Filing, we'll walk you through every step on a live call — you'll file it yourself, but you won't be guessing."
   - If they're on the standard package, mention: "If you'd like us to handle the filing and hearing for you, you can upgrade to our Full Representation package."

@@ -384,6 +384,115 @@ input:focus, textarea:focus, select:focus {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATED GRADIENT BORDER (for premium cards, login form)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes borderRotate {
+  0% { --angle: 0deg; }
+  100% { --angle: 360deg; }
+}
+
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.animated-border {
+  position: relative;
+  border-radius: 12px;
+  isolation: isolate;
+}
+
+.animated-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--angle),
+    transparent 40%,
+    rgba(212, 168, 71, 0.4) 50%,
+    transparent 60%
+  );
+  animation: borderRotate 4s linear infinite;
+  z-index: -1;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  padding: 1px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONFETTI CELEBRATION (success page)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes confettiFall {
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+  80% { opacity: 1; }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.confetti-piece {
+  position: fixed;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  animation: confettiFall var(--duration, 3s) var(--delay, 0s) ease-in forwards;
+  z-index: 50;
+  pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATED UNDERLINE (for nav links)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.animated-underline {
+  position: relative;
+}
+
+.animated-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: linear-gradient(to right, var(--gold-light), var(--gold));
+  transition: width 0.3s ease;
+}
+
+.animated-underline:hover::after {
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HERO STAT COUNTER REVEAL
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes statReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.animate-stat-reveal {
+  animation: statReveal 0.8s var(--ease-premium) both;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    ACCORDION
    ═══════════════════════════════════════════════════════════════════════════ */
 

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import type { AdminUser } from '@/types/database';
+import BrandLogo from '@/components/ui/BrandLogo';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,9 +49,7 @@ export default async function AdminLayout({
       <aside className="flex w-64 flex-col bg-[#1a2744]">
         {/* Logo / Platform name */}
         <div className="flex h-16 items-center px-6">
-          <span className="text-xl font-bold text-white tracking-tight">
-            Resourceful
-          </span>
+          <BrandLogo className="text-white" />
           <span className="ml-2 rounded bg-white/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-300">
             Admin
           </span>

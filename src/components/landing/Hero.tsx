@@ -27,6 +27,16 @@ export default function Hero() {
         }}
       />
 
+      {/* Subtle floating house outline — reinforces property theme */}
+      <div
+        className="pointer-events-none absolute right-[8%] top-[15%] opacity-[0.04] animate-float hidden lg:block"
+        style={{ animationDuration: '8s' }}
+      >
+        <svg width="320" height="320" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-gold">
+          <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+      </div>
+
       <div className="relative mx-auto max-w-6xl px-6 pt-36 pb-28">
         {/* Eyebrow */}
         <div className="mb-8 flex items-center gap-3 animate-fade-in">
@@ -78,7 +88,7 @@ export default function Hero() {
                 <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
                   Assessed Value
                 </p>
-                <p className="font-display text-xl md:text-2xl text-cream animate-count" style={{ animationDelay: '1s' }}>
+                <p className="font-display text-xl md:text-2xl text-cream animate-stat-reveal" style={{ animationDelay: '1s' }}>
                   $320,000
                 </p>
               </div>
@@ -86,7 +96,7 @@ export default function Hero() {
                 <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
                   Actual Market Value
                 </p>
-                <p className="font-display text-xl md:text-2xl text-gold animate-count" style={{ animationDelay: '1.2s' }}>
+                <p className="font-display text-xl md:text-2xl text-gold animate-stat-reveal" style={{ animationDelay: '1.2s' }}>
                   $265,000
                 </p>
               </div>
@@ -94,7 +104,7 @@ export default function Hero() {
                 <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
                   Annual Overpayment
                 </p>
-                <p className="font-display text-xl md:text-2xl text-red-400 animate-count" style={{ animationDelay: '1.4s' }}>
+                <p className="font-display text-xl md:text-2xl text-red-400 animate-stat-reveal" style={{ animationDelay: '1.4s' }}>
                   $1,180
                 </p>
               </div>
