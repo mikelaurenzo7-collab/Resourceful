@@ -24,9 +24,9 @@ interface StatCardProps {
   color?: string;
 }
 
-function StatCard({ label, value, subtitle, color = 'text-gray-900' }: StatCardProps) {
+function StatCard({ label, value, subtitle, color = 'text-gray-100' }: StatCardProps) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 shadow-sm">
       <p className="text-xs font-medium uppercase tracking-wider text-gray-500">{label}</p>
       <p className={`mt-2 text-3xl font-bold ${color}`}>{value}</p>
       {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
@@ -222,7 +222,7 @@ export default async function TaxBillDataPage() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Tax Bill Intelligence</h1>
+        <h1 className="text-2xl font-bold text-gray-100">Tax Bill Intelligence</h1>
         <p className="mt-1 text-sm text-gray-500">
           Aggregated assessment data from user-uploaded tax bills. Use for model training, trend analysis, and market insights.
         </p>
@@ -234,7 +234,7 @@ export default async function TaxBillDataPage() {
           label="Tax Bills Collected"
           value={totalReports}
           subtitle={`${uniqueStates.size} states, ${uniqueCounties.size} counties`}
-          color="text-[#1a2744]"
+          color="text-amber-300"
         />
         <StatCard
           label="Avg Assessed Value"
@@ -245,7 +245,7 @@ export default async function TaxBillDataPage() {
           label="Avg Effective Tax Rate"
           value={formatPct(avgEffectiveTaxRate)}
           subtitle={`${reportsWithTax.length} bills with tax amount`}
-          color={avgEffectiveTaxRate > 0.025 ? 'text-amber-600' : 'text-[#1a2744]'}
+          color={avgEffectiveTaxRate > 0.025 ? 'text-amber-600' : 'text-amber-300'}
         />
       </div>
 
@@ -271,10 +271,10 @@ export default async function TaxBillDataPage() {
       {/* Monthly Trend */}
       {monthlyTrends.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-4 text-lg font-bold text-gray-900">Monthly Upload Trend</h2>
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <h2 className="mb-4 text-lg font-bold text-gray-100">Monthly Upload Trend</h2>
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+            <table className="min-w-full divide-y divide-white/[0.06]">
+              <thead className="bg-white/[0.03]">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Month</th>
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Uploads</th>
@@ -282,15 +282,15 @@ export default async function TaxBillDataPage() {
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Trend</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-white/[0.04]">
                 {monthlyTrends.map((m, i) => {
                   const prev = i > 0 ? monthlyTrends[i - 1] : null;
                   const change = prev ? ((m.count - prev.count) / prev.count) * 100 : 0;
                   return (
-                    <tr key={m.month} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">{m.month}</td>
-                      <td className="px-4 py-3 text-right text-sm font-semibold text-[#1a2744]">{m.count}</td>
-                      <td className="px-4 py-3 text-right text-sm text-gray-700">{formatCurrency(m.avgAssessedValue)}</td>
+                    <tr key={m.month} className="hover:bg-white/[0.03]">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-100">{m.month}</td>
+                      <td className="px-4 py-3 text-right text-sm font-semibold text-amber-300">{m.count}</td>
+                      <td className="px-4 py-3 text-right text-sm text-gray-300">{formatCurrency(m.avgAssessedValue)}</td>
                       <td className="px-4 py-3 text-right text-sm">
                         {prev ? (
                           <span className={change >= 0 ? 'text-green-600' : 'text-red-600'}>
@@ -312,10 +312,10 @@ export default async function TaxBillDataPage() {
       {/* State Breakdown */}
       {stateAggregates.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-4 text-lg font-bold text-gray-900">By State</h2>
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <h2 className="mb-4 text-lg font-bold text-gray-100">By State</h2>
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+            <table className="min-w-full divide-y divide-white/[0.06]">
+              <thead className="bg-white/[0.03]">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">State</th>
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Bills</th>
@@ -323,13 +323,13 @@ export default async function TaxBillDataPage() {
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Avg Tax Rate</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-white/[0.04]">
                 {stateAggregates.map((s) => (
-                  <tr key={s.state} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{s.state}</td>
-                    <td className="px-4 py-3 text-right text-sm font-semibold text-[#1a2744]">{s.count}</td>
-                    <td className="px-4 py-3 text-right text-sm text-gray-700">{formatCurrency(s.avgAssessedValue)}</td>
-                    <td className="px-4 py-3 text-right text-sm text-gray-700">
+                  <tr key={s.state} className="hover:bg-white/[0.03]">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-100">{s.state}</td>
+                    <td className="px-4 py-3 text-right text-sm font-semibold text-amber-300">{s.count}</td>
+                    <td className="px-4 py-3 text-right text-sm text-gray-300">{formatCurrency(s.avgAssessedValue)}</td>
+                    <td className="px-4 py-3 text-right text-sm text-gray-300">
                       {s.avgTaxRate > 0 ? formatPct(s.avgTaxRate) : '--'}
                     </td>
                   </tr>
@@ -343,10 +343,10 @@ export default async function TaxBillDataPage() {
       {/* County Breakdown */}
       {countyAggregates.length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-4 text-lg font-bold text-gray-900">By County</h2>
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <h2 className="mb-4 text-lg font-bold text-gray-100">By County</h2>
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+            <table className="min-w-full divide-y divide-white/[0.06]">
+              <thead className="bg-white/[0.03]">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">County</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">State</th>
@@ -357,17 +357,17 @@ export default async function TaxBillDataPage() {
                   <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">Revenue</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-white/[0.04]">
                 {countyAggregates.slice(0, 50).map((c) => (
-                  <tr key={`${c.county}-${c.state}`} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{c.county}</td>
+                  <tr key={`${c.county}-${c.state}`} className="hover:bg-white/[0.03]">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-100">{c.county}</td>
                     <td className="px-4 py-3 text-sm text-gray-500">{c.state}</td>
-                    <td className="px-4 py-3 text-right text-sm font-semibold text-[#1a2744]">{c.count}</td>
-                    <td className="px-4 py-3 text-right text-sm text-gray-700">{formatCurrency(c.avgAssessedValue)}</td>
-                    <td className="px-4 py-3 text-right text-sm text-gray-700">
+                    <td className="px-4 py-3 text-right text-sm font-semibold text-amber-300">{c.count}</td>
+                    <td className="px-4 py-3 text-right text-sm text-gray-300">{formatCurrency(c.avgAssessedValue)}</td>
+                    <td className="px-4 py-3 text-right text-sm text-gray-300">
                       {c.avgTaxAmount > 0 ? formatCurrency(c.avgTaxAmount) : '--'}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm text-gray-700">
+                    <td className="px-4 py-3 text-right text-sm text-gray-300">
                       {c.avgEffectiveTaxRate > 0 ? formatPct(c.avgEffectiveTaxRate) : '--'}
                     </td>
                     <td className="px-4 py-3 text-right text-sm text-green-700 font-medium">
@@ -388,10 +388,10 @@ export default async function TaxBillDataPage() {
 
       {/* Recent Uploads Table */}
       <section className="mb-8">
-        <h2 className="mb-4 text-lg font-bold text-gray-900">Recent Tax Bill Uploads</h2>
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <h2 className="mb-4 text-lg font-bold text-gray-100">Recent Tax Bill Uploads</h2>
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+          <table className="min-w-full divide-y divide-white/[0.06]">
+            <thead className="bg-white/[0.03]">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Date</th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Address</th>
@@ -403,23 +403,23 @@ export default async function TaxBillDataPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-white/[0.04]">
               {reports.slice(0, 100).map((r) => (
-                <tr key={r.id} className="hover:bg-gray-50">
+                <tr key={r.id} className="hover:bg-white/[0.03]">
                   <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
                     {new Date(r.created_at).toLocaleDateString()}
                   </td>
-                  <td className="px-4 py-3 text-sm font-medium text-gray-900 max-w-[200px] truncate">
+                  <td className="px-4 py-3 text-sm font-medium text-gray-100 max-w-[200px] truncate">
                     {r.property_address}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
                     {r.county ? `${r.county}, ${r.state}` : r.state}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500 capitalize">{r.property_type}</td>
-                  <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
+                  <td className="px-4 py-3 text-right text-sm font-medium text-gray-100">
                     {r.tax_bill_assessed_value ? formatCurrency(r.tax_bill_assessed_value) : '--'}
                   </td>
-                  <td className="px-4 py-3 text-right text-sm text-gray-700">
+                  <td className="px-4 py-3 text-right text-sm text-gray-300">
                     {r.tax_bill_tax_amount ? formatCurrency(r.tax_bill_tax_amount) : '--'}
                   </td>
                   <td className="px-4 py-3 text-right text-sm text-gray-500">
@@ -431,7 +431,7 @@ export default async function TaxBillDataPage() {
                       r.status === 'processing' ? 'bg-blue-100 text-blue-700' :
                       r.status === 'paid' ? 'bg-blue-100 text-blue-700' :
                       r.status === 'failed' ? 'bg-red-100 text-red-700' :
-                      'bg-gray-100 text-gray-700'
+                      'bg-white/[0.06] text-gray-300'
                     }`}>
                       {r.status}
                     </span>
@@ -450,11 +450,11 @@ export default async function TaxBillDataPage() {
 
       {/* Empty State */}
       {totalReports === 0 && (
-        <div className="rounded-xl border-2 border-dashed border-gray-300 p-12 text-center">
+        <div className="rounded-xl border-2 border-dashed border-white/10 p-12 text-center">
           <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          <h3 className="mt-4 text-sm font-medium text-gray-900">No tax bill data yet</h3>
+          <h3 className="mt-4 text-sm font-medium text-gray-100">No tax bill data yet</h3>
           <p className="mt-2 text-sm text-gray-500">
             Tax bill uploads will appear here as users complete the intake flow.
           </p>

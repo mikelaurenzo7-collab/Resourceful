@@ -40,7 +40,7 @@ function formatOutcome(outcome: string | null): string {
 }
 
 function outcomeColor(outcome: string | null): string {
-  if (!outcome) return 'bg-gray-100 text-gray-700';
+  if (!outcome) return 'bg-white/[0.06] text-gray-300';
   switch (outcome) {
     case 'won_full':
     case 'won_partial':
@@ -49,11 +49,11 @@ function outcomeColor(outcome: string | null): string {
     case 'lost':
       return 'bg-red-50 text-red-700 ring-1 ring-inset ring-red-600/20';
     case 'withdrawn':
-      return 'bg-gray-100 text-gray-600 ring-1 ring-inset ring-gray-300';
+      return 'bg-white/[0.06] text-gray-400 ring-1 ring-inset ring-gray-300';
     case 'pending_hearing':
       return 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-600/20';
     default:
-      return 'bg-gray-100 text-gray-700';
+      return 'bg-white/[0.06] text-gray-300';
   }
 }
 
@@ -127,14 +127,14 @@ export default async function OutcomesPage({
   return (
     <div className="p-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Appeal Outcomes</h1>
+        <h1 className="text-2xl font-bold text-gray-100">Appeal Outcomes</h1>
         <p className="mt-1 text-sm text-gray-500">
           Track appeal results and measure success rates across counties.
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="mb-6 border-b border-gray-200">
+      <div className="mb-6 border-b border-white/[0.06]">
         <nav className="-mb-px flex space-x-6">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key;
@@ -144,13 +144,13 @@ export default async function OutcomesPage({
                 href={`/admin/outcomes?tab=${tab.key}`}
                 className={`whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
                   isActive
-                    ? 'border-[#1a2744] text-[#1a2744]'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    ? 'border-amber-400/20 text-amber-300'
+                    : 'border-transparent text-gray-500 hover:border-white/10 hover:text-gray-300'
                 }`}
               >
                 {tab.label}
                 {tab.key === 'pending' && pendingReports && pendingReports.length > 0 && (
-                  <span className="ml-2 inline-flex items-center rounded-full bg-[#1a2744] px-2 py-0.5 text-[10px] font-semibold text-white">
+                  <span className="ml-2 inline-flex items-center rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-semibold text-white">
                     {pendingReports.length}
                   </span>
                 )}
@@ -164,9 +164,9 @@ export default async function OutcomesPage({
       {activeTab === 'pending' && (
         <>
           {pendingReports && pendingReports.length > 0 ? (
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
+              <table className="min-w-full divide-y divide-white/[0.06]">
+                <thead className="bg-white/[0.03]">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                       Property
@@ -188,22 +188,22 @@ export default async function OutcomesPage({
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-white/[0.04]">
                   {pendingReports.map((report) => (
-                    <tr key={report.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={report.id} className="hover:bg-white/[0.03] transition-colors">
                       <td className="px-4 py-3">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-gray-100">
                           {report.property_address}
                         </div>
                         <div className="text-xs text-gray-500">
                           {[report.city, report.state].filter(Boolean).join(', ')}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
+                      <td className="px-4 py-3 text-sm text-gray-300">
                         {report.county ?? '--'}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm text-gray-100">
                           {report.client_name ?? '--'}
                         </div>
                         <div className="text-xs text-gray-500">{report.client_email}</div>
@@ -211,13 +211,13 @@ export default async function OutcomesPage({
                       <td className="px-4 py-3 text-sm text-gray-500">
                         {formatDate(report.delivered_at)}
                       </td>
-                      <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
+                      <td className="px-4 py-3 text-right text-sm font-medium text-gray-100">
                         {formatCents(report.amount_paid_cents)}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <Link
                           href={`/admin/outcomes/${report.id}`}
-                          className="inline-flex items-center rounded-lg bg-[#1a2744] px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#243356]"
+                          className="inline-flex items-center rounded-lg bg-amber-400/15 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-amber-400/20"
                         >
                           Record Outcome
                         </Link>
@@ -228,7 +228,7 @@ export default async function OutcomesPage({
               </table>
             </div>
           ) : (
-            <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-12 text-center">
               <p className="text-sm text-gray-500">
                 No delivered reports are awaiting outcome recording.
               </p>
@@ -242,15 +242,15 @@ export default async function OutcomesPage({
         <>
           {/* Summary Stats */}
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 shadow-sm">
               <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
                 Total Appeals Tracked
               </p>
-              <p className="mt-1 text-2xl font-bold text-gray-900">
+              <p className="mt-1 text-2xl font-bold text-gray-100">
                 {(historyReports ?? []).length}
               </p>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 shadow-sm">
               <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
                 Win Rate
               </p>
@@ -259,11 +259,11 @@ export default async function OutcomesPage({
                 {wins.length} of {allWithOutcome.length} resolved appeals
               </p>
             </div>
-            <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 shadow-sm">
               <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
                 Average Savings
               </p>
-              <p className="mt-1 text-2xl font-bold text-gray-900">
+              <p className="mt-1 text-2xl font-bold text-gray-100">
                 {formatCents(avgSavings > 0 ? Math.round(avgSavings) : null)}
               </p>
               <p className="text-xs text-gray-400">
@@ -273,9 +273,9 @@ export default async function OutcomesPage({
           </div>
 
           {historyReports && historyReports.length > 0 ? (
-            <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
+              <table className="min-w-full divide-y divide-white/[0.06]">
+                <thead className="bg-white/[0.03]">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                       Property
@@ -294,18 +294,18 @@ export default async function OutcomesPage({
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-white/[0.04]">
                   {historyReports.map((report) => (
-                    <tr key={report.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={report.id} className="hover:bg-white/[0.03] transition-colors">
                       <td className="px-4 py-3">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-gray-100">
                           {report.property_address}
                         </div>
                         <div className="text-xs text-gray-500">
                           {[report.city, report.state].filter(Boolean).join(', ')}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-700">
+                      <td className="px-4 py-3 text-sm text-gray-300">
                         {report.county ?? '--'}
                       </td>
                       <td className="px-4 py-3">
@@ -315,7 +315,7 @@ export default async function OutcomesPage({
                           {formatOutcome(report.appeal_outcome)}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
+                      <td className="px-4 py-3 text-right text-sm font-medium text-gray-100">
                         {formatCents(report.actual_savings_cents)}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-500">
@@ -327,7 +327,7 @@ export default async function OutcomesPage({
               </table>
             </div>
           ) : (
-            <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-12 text-center">
               <p className="text-sm text-gray-500">No outcomes recorded yet.</p>
             </div>
           )}

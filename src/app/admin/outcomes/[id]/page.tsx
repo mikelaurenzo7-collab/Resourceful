@@ -70,7 +70,7 @@ export default async function RecordOutcomePage({
       <div className="mb-6">
         <Link
           href="/admin/outcomes"
-          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-300 transition-colors"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
@@ -80,21 +80,21 @@ export default async function RecordOutcomePage({
       </div>
 
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Record Appeal Outcome</h1>
+        <h1 className="text-2xl font-bold text-gray-100">Record Appeal Outcome</h1>
         <p className="mt-1 text-sm text-gray-500">
           Record the result of the property tax appeal for this report.
         </p>
       </div>
 
       {/* Property Details */}
-      <div className="mb-8 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+      <div className="mb-8 rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 shadow-sm">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-gray-500">
           Property Details
         </h2>
         <dl className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <dt className="text-xs font-medium text-gray-500">Address</dt>
-            <dd className="mt-1 text-sm font-medium text-gray-900">
+            <dd className="mt-1 text-sm font-medium text-gray-100">
               {report.property_address}
             </dd>
             <dd className="text-xs text-gray-500">
@@ -103,29 +103,29 @@ export default async function RecordOutcomePage({
           </div>
           <div>
             <dt className="text-xs font-medium text-gray-500">County</dt>
-            <dd className="mt-1 text-sm text-gray-900">{report.county ?? '--'}</dd>
+            <dd className="mt-1 text-sm text-gray-100">{report.county ?? '--'}</dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-gray-500">Client</dt>
-            <dd className="mt-1 text-sm text-gray-900">
+            <dd className="mt-1 text-sm text-gray-100">
               {report.client_name ?? report.client_email}
             </dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-gray-500">Amount Paid</dt>
-            <dd className="mt-1 text-sm font-medium text-gray-900">
+            <dd className="mt-1 text-sm font-medium text-gray-100">
               {formatCents(report.amount_paid_cents)}
             </dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-gray-500">Delivered</dt>
-            <dd className="mt-1 text-sm text-gray-900">
+            <dd className="mt-1 text-sm text-gray-100">
               {formatDate(report.delivered_at)}
             </dd>
           </div>
           <div>
             <dt className="text-xs font-medium text-gray-500">Property Type</dt>
-            <dd className="mt-1 text-sm capitalize text-gray-900">
+            <dd className="mt-1 text-sm capitalize text-gray-100">
               {report.property_type ?? '--'}
             </dd>
           </div>
@@ -134,7 +134,7 @@ export default async function RecordOutcomePage({
 
       {/* Outcome Form */}
       <form action={boundRecordOutcome}>
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 shadow-sm">
           <h2 className="mb-6 text-sm font-semibold uppercase tracking-wider text-gray-500">
             Appeal Outcome
           </h2>
@@ -144,7 +144,7 @@ export default async function RecordOutcomePage({
             <div>
               <label
                 htmlFor="appeal_outcome"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-300"
               >
                 Outcome <span className="text-red-500">*</span>
               </label>
@@ -152,7 +152,7 @@ export default async function RecordOutcomePage({
                 id="appeal_outcome"
                 name="appeal_outcome"
                 required
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]"
+                className="mt-1 block w-full rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm shadow-sm focus:border-amber-400/30 focus:outline-none focus:ring-1 focus:ring-amber-400/20"
               >
                 {outcomeOptions.map((opt) => (
                   <option key={opt.value} value={opt.value}>
@@ -166,7 +166,7 @@ export default async function RecordOutcomePage({
             <div>
               <label
                 htmlFor="actual_savings_dollars"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-300"
               >
                 Actual Savings (USD)
               </label>
@@ -185,7 +185,7 @@ export default async function RecordOutcomePage({
                   min="0"
                   step="0.01"
                   placeholder="0.00"
-                  className="block w-full rounded-lg border border-gray-300 bg-white py-2 pl-7 pr-3 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]"
+                  className="block w-full rounded-lg border border-white/10 bg-white/[0.02] py-2 pl-7 pr-3 text-sm shadow-sm focus:border-amber-400/30 focus:outline-none focus:ring-1 focus:ring-amber-400/20"
                 />
               </div>
             </div>
@@ -194,7 +194,7 @@ export default async function RecordOutcomePage({
             <div>
               <label
                 htmlFor="outcome_notes"
-                className="block text-sm font-medium text-gray-700"
+                className="block text-sm font-medium text-gray-300"
               >
                 Notes
               </label>
@@ -205,22 +205,22 @@ export default async function RecordOutcomePage({
                 id="outcome_notes"
                 name="outcome_notes"
                 rows={4}
-                className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]"
+                className="mt-1 block w-full rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-sm shadow-sm focus:border-amber-400/30 focus:outline-none focus:ring-1 focus:ring-amber-400/20"
               />
             </div>
           </div>
 
           {/* Actions */}
-          <div className="mt-8 flex items-center gap-3 border-t border-gray-100 pt-6">
+          <div className="mt-8 flex items-center gap-3 border-t border-white/[0.04] pt-6">
             <button
               type="submit"
-              className="inline-flex items-center rounded-lg bg-[#1a2744] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#243356]"
+              className="inline-flex items-center rounded-lg bg-amber-400/15 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-amber-400/20"
             >
               Save Outcome
             </button>
             <Link
               href="/admin/outcomes"
-              className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+              className="inline-flex items-center rounded-lg border border-white/10 bg-white/[0.02] px-4 py-2 text-sm font-medium text-gray-300 shadow-sm transition-colors hover:bg-white/[0.03]"
             >
               Cancel
             </Link>

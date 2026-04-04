@@ -4,37 +4,43 @@ import ReportStatusBadge from '@/components/admin/ReportStatusBadge';
 import type { Report, ReportStatus } from '@/types/database';
 
 const tabs: { key: ReportStatus | 'all'; label: string }[] = [
-  { key: 'pending_approval', label: 'Pending Approval' },
-  { key: 'all', label: 'All Reports' },
+  { key: 'pending_approval', label: 'Pending' },
+  { key: 'all', label: 'All' },
   { key: 'delivered', label: 'Delivered' },
   { key: 'rejected', label: 'Rejected' },
   { key: 'failed', label: 'Failed' },
-  { key: 'processing', label: 'In Progress' },
+  { key: 'processing', label: 'Processing' },
 ];
 
-function formatCurrency(value: number | null): string {
-  if (value == null) return '--';
+const STAGE_LABELS: Record<string, string> = {
+  'stage-1-data': 'Data Collection',
+  'stage-2-comps': 'Comparables',
+  'stage-3-income': 'Income Analysis',
+  'stage-4-photos': 'Photo Analysis',
+  'stage-5-narratives': 'Narratives',
+  'stage-6-filing': 'Filing Guide',
+  'stage-7-pdf': 'PDF Assembly',
+};
+
+function formatCents(cents: number | null): string {
+  if (cents == null) return '--';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(cents / 100);
 }
 
-function formatCents(cents: number | null): string {
-  if (cents == null) return '--';
-  return formatCurrency(cents / 100);
-}
-
-function formatDate(iso: string | null): string {
+function timeAgo(iso: string | null): string {
   if (!iso) return '--';
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
 }
 
 export default async function ReportsQueuePage({
@@ -63,7 +69,6 @@ export default async function ReportsQueuePage({
     query = query.eq('status', activeTab);
   }
 
-  // Text search across address, client email, county
   if (searchQuery) {
     query = query.or(
       `property_address.ilike.%${searchQuery}%,client_email.ilike.%${searchQuery}%,county.ilike.%${searchQuery}%,city.ilike.%${searchQuery}%`
@@ -76,8 +81,8 @@ export default async function ReportsQueuePage({
 
   if (error) {
     return (
-      <div className="p-8">
-        <div className="rounded-lg bg-red-50 border border-red-200 p-4 text-sm text-red-800">
+      <div className="p-6 lg:p-8">
+        <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 text-sm text-red-400">
           Error loading reports: {error.message}
         </div>
       </div>
@@ -85,35 +90,36 @@ export default async function ReportsQueuePage({
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 sm:p-6 lg:p-8">
+      {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Reports Queue</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-100">Reports Queue</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Review and manage property reports through the approval pipeline.
+          Review and manage property reports.
         </p>
       </div>
 
       {/* Search */}
-      <div className="mb-4">
+      <div className="mb-5">
         <form method="GET" className="flex gap-2">
           <input type="hidden" name="tab" value={activeTab} />
           <input
             type="text"
             name="q"
             defaultValue={searchQuery}
-            placeholder="Search by address, email, city, or county..."
-            className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm focus:border-[#1a2744] focus:ring-1 focus:ring-[#1a2744] focus:outline-none"
+            placeholder="Search address, email, county..."
+            className="flex-1 rounded-lg bg-white/[0.06] border border-white/10 px-4 py-2.5 text-sm text-gray-200 placeholder:text-gray-400 focus:border-amber-400/30 focus:ring-1 focus:ring-amber-400/20 focus:outline-none transition-colors"
           />
           <button
             type="submit"
-            className="rounded-lg bg-[#1a2744] px-4 py-2 text-sm font-medium text-white hover:bg-[#243656] transition-colors"
+            className="rounded-lg bg-amber-400/15 px-4 py-2.5 text-sm font-medium text-amber-300 border border-amber-400/20 hover:bg-amber-400/20 transition-colors"
           >
             Search
           </button>
           {searchQuery && (
             <Link
               href={`/admin/reports?tab=${activeTab}`}
-              className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              className="rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-gray-400 hover:bg-white/[0.06] transition-colors"
             >
               Clear
             </Link>
@@ -122,18 +128,18 @@ export default async function ReportsQueuePage({
       </div>
 
       {/* Tabs */}
-      <div className="mb-6 border-b border-gray-200">
-        <nav className="-mb-px flex space-x-6">
+      <div className="mb-6 overflow-x-auto">
+        <nav className="flex gap-1 bg-white/[0.03] rounded-lg p-1 min-w-max">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key;
             return (
               <Link
                 key={tab.key}
                 href={`/admin/reports?tab=${tab.key}`}
-                className={`whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors ${
+                className={`whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-all ${
                   isActive
-                    ? 'border-[#1a2744] text-[#1a2744]'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    ? 'bg-amber-400/15 text-amber-300 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-300 hover:bg-white/[0.04]'
                 }`}
               >
                 {tab.label}
@@ -143,131 +149,128 @@ export default async function ReportsQueuePage({
         </nav>
       </div>
 
-      {/* Table */}
+      {/* Reports list */}
       {reports && reports.length > 0 ? (
-        <><div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Address
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Type
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Photos
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Amount Paid
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Pipeline Stage
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Pipeline Completed
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
-                  Action
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {reports.map((report) => (
-                <tr key={report.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3">
-                    <div className="text-sm font-medium text-gray-900">
-                      {report.property_address}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {[report.city, report.state].filter(Boolean).join(', ')}
-                      {report.county && <span className="ml-1 text-gray-400">({report.county})</span>}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-sm capitalize text-gray-700">
-                    {report.property_type ?? '--'}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {report.photos_skipped ? (
-                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] font-semibold text-gray-500 ring-1 ring-inset ring-gray-300">
-                        No Photos
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-                        Has Photos
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <ReportStatusBadge status={report.status} />
-                      {report.review_tier === 'expert_reviewed' && (
-                        <span className="inline-flex items-center rounded-full bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-700 ring-1 ring-inset ring-purple-600/20">
-                          Expert
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
-                    {formatCents(report.amount_paid_cents)}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-700">
-                    {report.pipeline_last_completed_stage != null
-                      ? `Stage ${report.pipeline_last_completed_stage}`
-                      : '--'}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-500">
-                    {formatDate(report.pipeline_completed_at)}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <Link
-                      href={`/admin/reports/${report.id}/review`}
-                      className="inline-flex items-center rounded-lg bg-[#1a2744] px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-[#243356]"
-                    >
-                      Review
-                    </Link>
-                  </td>
+        <>
+          {/* Desktop table */}
+          <div className="hidden lg:block overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-white/[0.06]">
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500">Property</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500">Status</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-gray-500">Paid</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500">Stage</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-gray-500">Completed</th>
+                  <th className="px-4 py-3 text-center text-[11px] font-semibold uppercase tracking-wider text-gray-500">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-gray-200 px-4 py-3 bg-white rounded-xl mt-2">
-            <p className="text-sm text-gray-500">
-              Showing {offset + 1}–{Math.min(offset + pageSize, totalCount ?? 0)} of {totalCount ?? 0}
-            </p>
-            <div className="flex gap-1">
-              {currentPage > 1 && (
-                <Link
-                  href={`/admin/reports?tab=${activeTab}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ''}&page=${currentPage - 1}`}
-                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-                >
-                  Previous
-                </Link>
-              )}
-              {currentPage < totalPages && (
-                <Link
-                  href={`/admin/reports?tab=${activeTab}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ''}&page=${currentPage + 1}`}
-                  className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-                >
-                  Next
-                </Link>
-              )}
-            </div>
+              </thead>
+              <tbody className="divide-y divide-white/[0.04]">
+                {reports.map((report) => (
+                  <tr key={report.id} className="hover:bg-white/[0.02] transition-colors">
+                    <td className="px-4 py-3.5">
+                      <p className="text-sm font-medium text-gray-200">{report.property_address}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {[report.city, report.state].filter(Boolean).join(', ')}
+                        {report.county && <span className="text-gray-400"> &middot; {report.county}</span>}
+                      </p>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-1.5">
+                        <ReportStatusBadge status={report.status} />
+                        {!report.photos_skipped && (
+                          <span className="text-[10px] text-emerald-500">+photos</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5 text-right text-sm font-medium text-gray-300">
+                      {formatCents(report.amount_paid_cents)}
+                    </td>
+                    <td className="px-4 py-3.5 text-sm text-gray-400">
+                      {report.pipeline_last_completed_stage
+                        ? STAGE_LABELS[report.pipeline_last_completed_stage] ?? report.pipeline_last_completed_stage
+                        : '--'}
+                    </td>
+                    <td className="px-4 py-3.5 text-sm text-gray-500">
+                      {timeAgo(report.pipeline_completed_at)}
+                    </td>
+                    <td className="px-4 py-3.5 text-center">
+                      <Link
+                        href={`/admin/reports/${report.id}/review`}
+                        className="inline-flex items-center rounded-lg bg-amber-400/10 px-3 py-1.5 text-xs font-medium text-amber-300 border border-amber-400/15 transition-colors hover:bg-amber-400/20"
+                      >
+                        Review
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
+
+          {/* Mobile card list */}
+          <div className="lg:hidden space-y-3">
+            {reports.map((report) => (
+              <Link
+                key={report.id}
+                href={`/admin/reports/${report.id}/review`}
+                className="block rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 hover:bg-white/[0.04] transition-colors"
+              >
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-200 truncate">{report.property_address}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {[report.city, report.state, report.county].filter(Boolean).join(', ')}
+                    </p>
+                  </div>
+                  <ReportStatusBadge status={report.status} />
+                </div>
+                <div className="flex items-center justify-between text-xs text-gray-500 mt-3 pt-3 border-t border-white/[0.04]">
+                  <span>{formatCents(report.amount_paid_cents)}</span>
+                  <span>
+                    {report.pipeline_last_completed_stage
+                      ? STAGE_LABELS[report.pipeline_last_completed_stage] ?? report.pipeline_last_completed_stage
+                      : '--'}
+                  </span>
+                  <span>{timeAgo(report.pipeline_completed_at)}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 px-1">
+              <p className="text-xs text-gray-500">
+                {offset + 1}–{Math.min(offset + pageSize, totalCount ?? 0)} of {totalCount ?? 0}
+              </p>
+              <div className="flex gap-1">
+                {currentPage > 1 && (
+                  <Link
+                    href={`/admin/reports?tab=${activeTab}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ''}&page=${currentPage - 1}`}
+                    className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-gray-400 hover:bg-white/[0.06] transition-colors"
+                  >
+                    Prev
+                  </Link>
+                )}
+                {currentPage < totalPages && (
+                  <Link
+                    href={`/admin/reports?tab=${activeTab}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ''}&page=${currentPage + 1}`}
+                    className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-gray-400 hover:bg-white/[0.06] transition-colors"
+                  >
+                    Next
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
         </>
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-12 text-center">
           <p className="text-sm text-gray-500">
             {searchQuery
-              ? `No reports matching "${searchQuery}" found.`
-              : 'No reports found for this filter.'}
+              ? `No reports matching "${searchQuery}".`
+              : 'No reports for this filter.'}
           </p>
         </div>
       )}

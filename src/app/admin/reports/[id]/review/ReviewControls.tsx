@@ -136,7 +136,7 @@ export default function ReviewControls({
 
       {/* Section Review */}
       <section>
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Section Review</h2>
+        <h2 className="text-lg font-bold text-gray-100 mb-4">Section Review</h2>
         <div className="space-y-3">
           {narratives.length === 0 ? (
             <p className="text-sm text-gray-500 italic">No narrative sections generated yet.</p>
@@ -144,11 +144,11 @@ export default function ReviewControls({
             narratives.map((narrative) => (
               <div
                 key={narrative.id}
-                className="rounded-xl border border-gray-200 bg-white shadow-sm"
+                className="rounded-xl border border-white/[0.06] bg-white/[0.02]"
               >
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.04]">
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900 capitalize">
+                    <h3 className="text-sm font-semibold text-gray-100 capitalize">
                       {narrative.section_name.replace(/_/g, ' ')}
                     </h3>
                     <p className="text-xs text-gray-500">
@@ -160,7 +160,7 @@ export default function ReviewControls({
                     <button
                       onClick={() => handleRegenerate(narrative.section_name)}
                       disabled={isPending}
-                      className="rounded-lg border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                      className="rounded-lg border border-white/10 px-3 py-1 text-xs font-medium text-gray-300 hover:bg-white/[0.03] disabled:opacity-50"
                     >
                       Regenerate
                     </button>
@@ -169,13 +169,13 @@ export default function ReviewControls({
                         <button
                           onClick={() => handleSaveEdit(narrative.id)}
                           disabled={isPending}
-                          className="rounded-lg bg-[#1a2744] px-3 py-1 text-xs font-medium text-white hover:bg-[#243356] disabled:opacity-50"
+                          className="rounded-lg bg-amber-400/15 px-3 py-1 text-xs font-medium text-white hover:bg-amber-400/20 disabled:opacity-50"
                         >
                           {isPending ? 'Saving...' : 'Save'}
                         </button>
                         <button
                           onClick={handleCancelEdit}
-                          className="rounded-lg border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                          className="rounded-lg border border-white/10 px-3 py-1 text-xs font-medium text-gray-300 hover:bg-white/[0.03]"
                         >
                           Cancel
                         </button>
@@ -183,7 +183,7 @@ export default function ReviewControls({
                     ) : (
                       <button
                         onClick={() => handleStartEdit(narrative)}
-                        className="rounded-lg border border-[#1a2744] px-3 py-1 text-xs font-medium text-[#1a2744] hover:bg-[#1a2744] hover:text-white"
+                        className="rounded-lg border border-amber-400/20 px-3 py-1 text-xs font-medium text-amber-300 hover:bg-amber-400/15 hover:text-white"
                       >
                         Edit
                       </button>
@@ -193,13 +193,13 @@ export default function ReviewControls({
                 <div className="px-4 py-3">
                   {editingId === narrative.id ? (
                     <textarea
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#1a2744] focus:outline-none focus:ring-1 focus:ring-[#1a2744]"
+                      className="w-full rounded-lg border border-white/10 px-3 py-2 text-sm focus:border-amber-400/30 focus:outline-none focus:ring-1 focus:ring-amber-400/20"
                       rows={8}
                       value={editContent}
                       onChange={(e) => setEditContent(e.target.value)}
                     />
                   ) : (
-                    <p className="text-sm text-gray-700 line-clamp-2">
+                    <p className="text-sm text-gray-300 line-clamp-2">
                       {narrative.admin_edited_content ?? narrative.content ?? 'No content generated.'}
                     </p>
                   )}
@@ -240,11 +240,11 @@ export default function ReviewControls({
       )}
 
       {/* Rerun Pipeline */}
-      <section className="border-t border-gray-200 pt-6">
+      <section className="border-t border-white/[0.06] pt-6">
         <button
           onClick={handleRerunPipeline}
           disabled={isPending}
-          className="w-full rounded-xl border-2 border-dashed border-gray-300 px-6 py-3 text-sm font-medium text-gray-600 transition-colors hover:border-[#1a2744] hover:text-[#1a2744] disabled:opacity-50"
+          className="w-full rounded-xl border-2 border-dashed border-white/10 px-6 py-3 text-sm font-medium text-gray-400 transition-colors hover:border-amber-400/20 hover:text-amber-300 disabled:opacity-50"
         >
           Rerun Full Pipeline
         </button>

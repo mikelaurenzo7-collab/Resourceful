@@ -14,7 +14,7 @@ function SubmitButton() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-lg bg-[#1a2744] px-6 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#243356] disabled:opacity-50"
+      className="rounded-lg bg-amber-400/15 px-6 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-amber-400/20 disabled:opacity-50"
     >
       {pending ? 'Creating...' : 'Create Partner & Generate API Key'}
     </button>
@@ -47,20 +47,20 @@ export default function CreatePartnerPage() {
               <p className="text-xs font-semibold uppercase tracking-wider text-amber-800 mb-2">
                 API Key — Copy Now (shown only once)
               </p>
-              <code className="block break-all rounded bg-white px-3 py-2 text-sm font-mono text-gray-900 border border-amber-200">
+              <code className="block break-all rounded bg-white/[0.02] px-3 py-2 text-sm font-mono text-gray-100 border border-amber-200">
                 {state.plaintextKey}
               </code>
             </div>
             <div className="mt-6 flex gap-3">
               <Link
                 href="/admin/partners"
-                className="inline-flex items-center rounded-lg bg-[#1a2744] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#243356]"
+                className="inline-flex items-center rounded-lg bg-amber-400/15 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-amber-400/20"
               >
                 Back to Partners
               </Link>
               <Link
                 href="/admin/partners/create"
-                className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+                className="inline-flex items-center rounded-lg border border-white/10 bg-white/[0.02] px-4 py-2 text-sm font-medium text-gray-300 shadow-sm transition-colors hover:bg-white/[0.03]"
               >
                 Create Another
               </Link>
@@ -77,14 +77,14 @@ export default function CreatePartnerPage() {
       <div className="mb-6">
         <Link
           href="/admin/partners"
-          className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 transition-colors"
+          className="inline-flex items-center text-sm text-gray-500 hover:text-gray-300 transition-colors"
         >
           <svg className="mr-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
           Back to Partners
         </Link>
-        <h1 className="mt-2 text-2xl font-bold text-gray-900">Create API Partner</h1>
+        <h1 className="mt-2 text-2xl font-bold text-gray-100">Create API Partner</h1>
         <p className="mt-1 text-sm text-gray-500">
           Set up a new white-label partner with API access for programmatic report generation.
         </p>
@@ -97,13 +97,13 @@ export default function CreatePartnerPage() {
       )}
 
       <form action={formAction} className="mx-auto max-w-lg space-y-6">
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-5">
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 shadow-sm space-y-5">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
             Firm Details
           </h2>
 
           <div>
-            <label htmlFor="firm_name" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="firm_name" className="block text-sm font-medium text-gray-300">
               Firm Name <span className="text-red-500">*</span>
             </label>
             <input
@@ -111,13 +111,13 @@ export default function CreatePartnerPage() {
               name="firm_name"
               id="firm_name"
               required
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:ring-1 focus:ring-[#1a2744]"
+              className="mt-1 block w-full rounded-lg border border-white/10 px-3 py-2 text-sm shadow-sm focus:border-amber-400/30 focus:ring-1 focus:ring-amber-400/20"
               placeholder="Acme Tax Consultants"
             />
           </div>
 
           <div>
-            <label htmlFor="contact_email" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="contact_email" className="block text-sm font-medium text-gray-300">
               Contact Email <span className="text-red-500">*</span>
             </label>
             <input
@@ -125,33 +125,33 @@ export default function CreatePartnerPage() {
               name="contact_email"
               id="contact_email"
               required
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:ring-1 focus:ring-[#1a2744]"
+              className="mt-1 block w-full rounded-lg border border-white/10 px-3 py-2 text-sm shadow-sm focus:border-amber-400/30 focus:ring-1 focus:ring-amber-400/20"
               placeholder="contact@acmetax.com"
             />
           </div>
 
           <div>
-            <label htmlFor="contact_name" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="contact_name" className="block text-sm font-medium text-gray-300">
               Contact Name
             </label>
             <input
               type="text"
               name="contact_name"
               id="contact_name"
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:ring-1 focus:ring-[#1a2744]"
+              className="mt-1 block w-full rounded-lg border border-white/10 px-3 py-2 text-sm shadow-sm focus:border-amber-400/30 focus:ring-1 focus:ring-amber-400/20"
               placeholder="Jane Smith"
             />
           </div>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-5">
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 shadow-sm space-y-5">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
             Pricing
           </h2>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label htmlFor="revenue_share_pct" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="revenue_share_pct" className="block text-sm font-medium text-gray-300">
                 Our Revenue Share %
               </label>
               <input
@@ -162,13 +162,13 @@ export default function CreatePartnerPage() {
                 min={0}
                 max={100}
                 step={0.01}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:ring-1 focus:ring-[#1a2744]"
+                className="mt-1 block w-full rounded-lg border border-white/10 px-3 py-2 text-sm shadow-sm focus:border-amber-400/30 focus:ring-1 focus:ring-amber-400/20"
               />
               <p className="mt-1 text-xs text-gray-400">We keep this %, they keep the rest</p>
             </div>
 
             <div>
-              <label htmlFor="per_report_fee_cents" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="per_report_fee_cents" className="block text-sm font-medium text-gray-300">
                 Per-Report Fee (cents)
               </label>
               <input
@@ -177,14 +177,14 @@ export default function CreatePartnerPage() {
                 id="per_report_fee_cents"
                 defaultValue={2500}
                 min={0}
-                className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:ring-1 focus:ring-[#1a2744]"
+                className="mt-1 block w-full rounded-lg border border-white/10 px-3 py-2 text-sm shadow-sm focus:border-amber-400/30 focus:ring-1 focus:ring-amber-400/20"
               />
               <p className="mt-1 text-xs text-gray-400">2500 = $25.00 per report</p>
             </div>
           </div>
 
           <div>
-            <label htmlFor="monthly_report_limit" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="monthly_report_limit" className="block text-sm font-medium text-gray-300">
               Monthly Report Limit
             </label>
             <input
@@ -192,26 +192,26 @@ export default function CreatePartnerPage() {
               name="monthly_report_limit"
               id="monthly_report_limit"
               min={1}
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:ring-1 focus:ring-[#1a2744]"
+              className="mt-1 block w-full rounded-lg border border-white/10 px-3 py-2 text-sm shadow-sm focus:border-amber-400/30 focus:ring-1 focus:ring-amber-400/20"
               placeholder="Leave empty for unlimited"
             />
           </div>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm space-y-5">
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 shadow-sm space-y-5">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
             White-Label Branding
           </h2>
 
           <div>
-            <label htmlFor="white_label_name" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="white_label_name" className="block text-sm font-medium text-gray-300">
               Brand Name on Reports
             </label>
             <input
               type="text"
               name="white_label_name"
               id="white_label_name"
-              className="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-[#1a2744] focus:ring-1 focus:ring-[#1a2744]"
+              className="mt-1 block w-full rounded-lg border border-white/10 px-3 py-2 text-sm shadow-sm focus:border-amber-400/30 focus:ring-1 focus:ring-amber-400/20"
               placeholder="Their brand name (shown on PDFs)"
             />
           </div>
@@ -220,7 +220,7 @@ export default function CreatePartnerPage() {
         <div className="flex items-center justify-end gap-3">
           <Link
             href="/admin/partners"
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+            className="rounded-lg border border-white/10 bg-white/[0.02] px-4 py-2.5 text-sm font-medium text-gray-300 shadow-sm transition-colors hover:bg-white/[0.03]"
           >
             Cancel
           </Link>

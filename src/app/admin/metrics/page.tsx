@@ -22,10 +22,10 @@ interface StatCardProps {
   color?: string;
 }
 
-function StatCard({ label, value, subtitle, color = 'text-gray-900' }: StatCardProps) {
+function StatCard({ label, value, subtitle, color = 'text-gray-100' }: StatCardProps) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wider text-gray-500">{label}</p>
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">{label}</p>
       <p className={`mt-2 text-3xl font-bold ${color}`}>{value}</p>
       {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
     </div>
@@ -165,7 +165,7 @@ export default async function MetricsPage() {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Metrics Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-100">Metrics Dashboard</h1>
         <p className="mt-1 text-sm text-gray-500">
           Overview of pipeline performance, approvals, and revenue.
         </p>
@@ -177,7 +177,7 @@ export default async function MetricsPage() {
           label="Pending Approval"
           value={pendingCount}
           subtitle={`Avg age: ${avgPendingAge}`}
-          color={pendingCount > 10 ? 'text-amber-600' : 'text-[#1a2744]'}
+          color={pendingCount > 10 ? 'text-amber-600' : 'text-amber-300'}
         />
         <StatCard
           label="Delivered Today"
@@ -203,7 +203,7 @@ export default async function MetricsPage() {
           label="Revenue Today"
           value={formatCurrency(revenueToday)}
           subtitle={`${formatCurrency(revenueMonth)} this month`}
-          color="text-[#1a2744]"
+          color="text-amber-300"
         />
         <StatCard
           label="Approvals This Month"
@@ -215,10 +215,10 @@ export default async function MetricsPage() {
       {/* Failure Breakdown */}
       {Object.keys(failureByStage).length > 0 && (
         <section className="mb-8">
-          <h2 className="mb-4 text-lg font-bold text-gray-900">Pipeline Failures by Stage</h2>
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <h2 className="mb-4 text-lg font-bold text-gray-100">Pipeline Failures by Stage</h2>
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+            <table className="min-w-full divide-y divide-white/[0.06]">
+              <thead className="bg-white/[0.03]">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                     Stage
@@ -231,18 +231,18 @@ export default async function MetricsPage() {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-white/[0.04]">
                 {Object.entries(failureByStage)
                   .sort((a, b) => b[1] - a[1])
                   .map(([stage, count]) => (
-                    <tr key={stage} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                    <tr key={stage} className="hover:bg-white/[0.03]">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-100">
                         {stage}
                       </td>
                       <td className="px-4 py-3 text-right text-sm font-semibold text-[#b71c1c]">
                         {count}
                       </td>
-                      <td className="px-4 py-3 text-right text-sm text-gray-700">
+                      <td className="px-4 py-3 text-right text-sm text-gray-300">
                         {failedCount > 0 ? ((count / failedCount) * 100).toFixed(0) : 0}%
                       </td>
                     </tr>

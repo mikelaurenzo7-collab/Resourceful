@@ -91,19 +91,19 @@ export default async function ReviewPage({
   return (
     <div className="flex h-full">
       {/* LEFT PANEL - PDF Preview */}
-      <div className="w-1/2 border-r border-gray-200 bg-gray-100 p-4">
+      <div className="w-1/2 border-r border-white/[0.06] bg-white/[0.06] p-4">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-gray-700">PDF Preview</h2>
+          <h2 className="text-sm font-semibold text-gray-300">PDF Preview</h2>
           <ReportStatusBadge status={report.status} />
         </div>
         {report.report_pdf_storage_path ? (
           <embed
             src={report.report_pdf_storage_path}
             type="application/pdf"
-            className="h-[calc(100vh-8rem)] w-full rounded-lg border border-gray-300 shadow-sm"
+            className="h-[calc(100vh-8rem)] w-full rounded-lg border border-white/10 shadow-sm"
           />
         ) : (
-          <div className="flex h-[calc(100vh-8rem)] items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-white">
+          <div className="flex h-[calc(100vh-8rem)] items-center justify-center rounded-lg border-2 border-dashed border-white/10 bg-white/[0.02]">
             <div className="text-center">
               <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -159,16 +159,16 @@ export default async function ReviewPage({
             </section>
           ) : (
             <section>
-              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] p-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex-shrink-0 rounded-full bg-gray-100 p-2">
+                  <div className="flex-shrink-0 rounded-full bg-white/[0.06] p-2">
                     <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-600">No Photos — Market Data Only</h3>
+                    <h3 className="text-sm font-medium text-gray-400">No Photos — Market Data Only</h3>
                     <p className="text-xs text-gray-500">Client did not submit photos. Valuation based entirely on comparable sales and market data.</p>
                   </div>
                 </div>
@@ -178,15 +178,15 @@ export default async function ReviewPage({
 
           {/* Report Overview */}
           <section>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Report Overview</h2>
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-              <div className="grid grid-cols-2 divide-x divide-gray-100">
+            <h2 className="text-lg font-bold text-gray-100 mb-4">Report Overview</h2>
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02]">
+              <div className="grid grid-cols-2 divide-x divide-white/[0.04]">
                 <div className="p-4">
                   <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Property Address</p>
-                  <p className="mt-1 text-sm font-medium text-gray-900">
+                  <p className="mt-1 text-sm font-medium text-gray-100">
                     {report.property_address}
                   </p>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-400">
                     {[report.city, report.state].filter(Boolean).join(', ')}
                     {report.county && <span className="text-gray-400"> ({report.county})</span>}
                   </p>
@@ -195,51 +195,51 @@ export default async function ReviewPage({
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Property Type</p>
-                      <p className="mt-1 text-sm font-medium text-gray-900 capitalize">{report.property_type ?? '--'}</p>
+                      <p className="mt-1 text-sm font-medium text-gray-100 capitalize">{report.property_type ?? '--'}</p>
                     </div>
                     <div>
                       <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Service Type</p>
-                      <p className="mt-1 text-sm font-medium text-gray-900 capitalize">{report.service_type?.replace(/_/g, ' ') ?? '--'}</p>
+                      <p className="mt-1 text-sm font-medium text-gray-100 capitalize">{report.service_type?.replace(/_/g, ' ') ?? '--'}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="border-t border-gray-100 grid grid-cols-4 divide-x divide-gray-100">
+              <div className="border-t border-white/[0.04] grid grid-cols-4 divide-x divide-white/[0.04]">
                 <div className="p-4">
                   <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Concluded Value</p>
-                  <p className="mt-1 text-lg font-bold text-[#1a2744]">{formatCurrency(concludedValue)}</p>
+                  <p className="mt-1 text-lg font-bold text-amber-300">{formatCurrency(concludedValue)}</p>
                 </div>
                 <div className="p-4">
                   <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Assessed Value</p>
-                  <p className="mt-1 text-lg font-semibold text-gray-900">{formatCurrency(assessedValue)}</p>
+                  <p className="mt-1 text-lg font-semibold text-gray-100">{formatCurrency(assessedValue)}</p>
                 </div>
                 <div className="p-4">
                   <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Assessment Ratio</p>
-                  <p className="mt-1 text-sm font-semibold text-gray-900">
+                  <p className="mt-1 text-sm font-semibold text-gray-100">
                     {propertyData?.assessment_ratio != null ? `${(propertyData.assessment_ratio * 100).toFixed(1)}%` : '--'}
                   </p>
                 </div>
                 <div className="p-4">
                   <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Comps Used</p>
-                  <p className="mt-1 text-lg font-semibold text-gray-900">{comps.length}</p>
+                  <p className="mt-1 text-lg font-semibold text-gray-100">{comps.length}</p>
                 </div>
               </div>
 
-              <div className="border-t border-gray-100 grid grid-cols-3 divide-x divide-gray-100">
+              <div className="border-t border-white/[0.04] grid grid-cols-3 divide-x divide-white/[0.04]">
                 <div className="p-4">
                   <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Condition Rating</p>
-                  <p className="mt-1 text-sm font-semibold text-gray-900">{overallCondition}/10</p>
+                  <p className="mt-1 text-sm font-semibold text-gray-100">{overallCondition}/10</p>
                 </div>
                 <div className="p-4">
                   <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Pipeline Duration</p>
-                  <p className="mt-1 text-sm font-semibold text-gray-900">
+                  <p className="mt-1 text-sm font-semibold text-gray-100">
                     {computePipelineDuration(report.pipeline_started_at, report.pipeline_completed_at)}
                   </p>
                 </div>
                 <div className="p-4">
                   <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Completed</p>
-                  <p className="mt-1 text-sm text-gray-900">{formatDate(report.pipeline_completed_at)}</p>
+                  <p className="mt-1 text-sm text-gray-100">{formatDate(report.pipeline_completed_at)}</p>
                 </div>
               </div>
             </div>
@@ -281,7 +281,7 @@ export default async function ReviewPage({
 
           {/* Quality Flags */}
           <section>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Quality Flags</h2>
+            <h2 className="text-lg font-bold text-gray-100 mb-4">Quality Flags</h2>
             <QualityFlags
               report={report}
               comps={comps}
@@ -301,7 +301,7 @@ export default async function ReviewPage({
 
           {/* Approval Audit Trail */}
           <section>
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Approval Audit Trail</h2>
+            <h2 className="text-lg font-bold text-gray-100 mb-4">Approval Audit Trail</h2>
             <ApprovalAuditTrail events={events} />
           </section>
         </div>

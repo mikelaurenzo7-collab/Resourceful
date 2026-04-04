@@ -36,7 +36,7 @@ export default function RejectModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+      <div className="relative z-10 w-full max-w-md rounded-xl bg-white/[0.02] p-6 shadow-2xl">
         <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
         <p className="mt-1 text-sm text-gray-500">
           Please provide a reason. This will be recorded in the audit trail.

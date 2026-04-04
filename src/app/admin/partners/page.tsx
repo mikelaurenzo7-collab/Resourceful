@@ -48,14 +48,14 @@ export default async function PartnersPage() {
     <div className="p-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">API Partners</h1>
+          <h1 className="text-2xl font-bold text-gray-100">API Partners</h1>
           <p className="mt-1 text-sm text-gray-500">
             Manage white-label partners and API access for property tax firms.
           </p>
         </div>
         <Link
           href="/admin/partners/create"
-          className="inline-flex items-center rounded-lg bg-[#1a2744] px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#243356]"
+          className="inline-flex items-center rounded-lg bg-amber-400/15 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-amber-400/20"
         >
           <svg className="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -65,9 +65,9 @@ export default async function PartnersPage() {
       </div>
 
       {partners.length > 0 ? (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
+          <table className="min-w-full divide-y divide-white/[0.06]">
+            <thead className="bg-white/[0.03]">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                   Firm
@@ -98,11 +98,11 @@ export default async function PartnersPage() {
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-white/[0.04]">
               {partners.map((partner) => (
-                <tr key={partner.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={partner.id} className="hover:bg-white/[0.03] transition-colors">
                   <td className="px-4 py-3">
-                    <div className="text-sm font-medium text-gray-900">
+                    <div className="text-sm font-medium text-gray-100">
                       {partner.firm_name}
                     </div>
                     {partner.white_label_name && (
@@ -112,7 +112,7 @@ export default async function PartnersPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="text-sm text-gray-900">{partner.contact_name ?? '--'}</div>
+                    <div className="text-sm text-gray-100">{partner.contact_name ?? '--'}</div>
                     <div className="text-xs text-gray-500">{partner.contact_email}</div>
                   </td>
                   <td className="px-4 py-3 text-center">
@@ -127,23 +127,23 @@ export default async function PartnersPage() {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <code className="rounded bg-gray-100 px-2 py-1 text-xs font-mono text-gray-700">
+                    <code className="rounded bg-white/[0.06] px-2 py-1 text-xs font-mono text-gray-300">
                       {partner.api_key_prefix}****
                     </code>
                   </td>
-                  <td className="px-4 py-3 text-center text-sm text-gray-700">
+                  <td className="px-4 py-3 text-center text-sm text-gray-300">
                     {partner.reports_this_month}
                     {partner.monthly_report_limit !== null && (
                       <span className="text-gray-400"> / {partner.monthly_report_limit}</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-center text-sm font-medium text-gray-900">
+                  <td className="px-4 py-3 text-center text-sm font-medium text-gray-100">
                     {partner.total_reports_generated}
                   </td>
-                  <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
+                  <td className="px-4 py-3 text-right text-sm font-medium text-gray-100">
                     {formatCurrency(partner.total_revenue_cents)}
                   </td>
-                  <td className="px-4 py-3 text-right text-sm text-gray-700">
+                  <td className="px-4 py-3 text-right text-sm text-gray-300">
                     {formatCurrency(partner.per_report_fee_cents)}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
@@ -155,7 +155,7 @@ export default async function PartnersPage() {
           </table>
         </div>
       ) : (
-        <div className="rounded-xl border border-gray-200 bg-white p-12 text-center">
+        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-12 text-center">
           <svg
             className="mx-auto h-12 w-12 text-gray-300"
             fill="none"
@@ -172,7 +172,7 @@ export default async function PartnersPage() {
           <p className="mt-4 text-sm text-gray-500">No API partners yet.</p>
           <Link
             href="/admin/partners/create"
-            className="mt-4 inline-flex items-center rounded-lg bg-[#1a2744] px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#243356]"
+            className="mt-4 inline-flex items-center rounded-lg bg-amber-400/15 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-amber-400/20"
           >
             Create Your First Partner
           </Link>
