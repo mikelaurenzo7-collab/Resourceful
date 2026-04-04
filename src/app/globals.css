@@ -462,6 +462,27 @@ a > svg, button > svg, [role="img"] > svg {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   PROSE — Legal & Long-Form Content
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.prose-legal {
+  color: rgba(245, 240, 232, 0.6);
+  line-height: 1.75;
+  font-size: 0.9375rem;
+}
+.prose-legal h1 { font-size: 1.75rem; color: var(--cream); margin-top: 2rem; margin-bottom: 0.75rem; font-family: 'Playfair Display', Georgia, serif; }
+.prose-legal h2 { font-size: 1.25rem; color: var(--cream); margin-top: 1.75rem; margin-bottom: 0.5rem; font-family: 'Playfair Display', Georgia, serif; }
+.prose-legal h3 { font-size: 1.1rem; color: rgba(245, 240, 232, 0.85); margin-top: 1.25rem; margin-bottom: 0.5rem; }
+.prose-legal p { margin-bottom: 1rem; }
+.prose-legal ul, .prose-legal ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+.prose-legal li { margin-bottom: 0.25rem; }
+.prose-legal a { color: var(--gold); text-decoration: underline; text-underline-offset: 2px; }
+.prose-legal a:hover { color: var(--gold-light); }
+.prose-legal strong { color: rgba(245, 240, 232, 0.8); font-weight: 600; }
+.prose-legal blockquote { border-left: 2px solid var(--gold); padding-left: 1rem; margin: 1rem 0; color: rgba(245, 240, 232, 0.5); font-style: italic; }
+.prose-legal hr { border: none; border-top: 1px solid rgba(212, 168, 71, 0.1); margin: 2rem 0; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
    ACCESSIBILITY — Reduced Motion
    ═══════════════════════════════════════════════════════════════════════════ */
 
