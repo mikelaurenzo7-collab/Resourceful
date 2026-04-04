@@ -1,10 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Externalize heavy native packages so they don't bloat the serverless bundle.
-  // @sparticuz/chromium (~45MB) and puppeteer-core need to be loaded at runtime
-  // rather than bundled into each function.
-  serverExternalPackages: ['puppeteer-core', '@sparticuz/chromium'],
-
   async headers() {
     return [
       {

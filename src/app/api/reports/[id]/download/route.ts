@@ -1,16 +1,13 @@
 // ─── GET /api/reports/[id]/download ──────────────────────────────────────────
 // On-demand PDF download. Generates a fresh signed URL (1-hour expiry) and
-// redirects the user to it. No more 7-day expiring links — users can always
-// download their report from the dashboard or report page.
-//
-// Auth: report owner (via Supabase auth) OR the report's UUID is unguessable
-// (consistent with existing viewer endpoint pattern).
+// redirects the user to it. If the PDF doesn't exist in storage (pre-migration
+// reports or pipeline failures), regenerates it on the fly.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { Report } from '@/types/database';
 
-const SIGNED_URL_EXPIRY_SECONDS = 60 * 60; // 1 hour (short-lived, on-demand)
+const SIGNED_URL_EXPIRY_SECONDS = 60 * 60; // 1 hour
 
 export async function GET(
   _req: NextRequest,
@@ -43,17 +40,45 @@ export async function GET(
     );
   }
 
-  if (!report.report_pdf_storage_path) {
-    return NextResponse.json(
-      { error: 'PDF not yet generated for this report' },
-      { status: 400 }
-    );
+  let storagePath = report.report_pdf_storage_path;
+
+  // ── On-demand regeneration fallback ───────────────────────────────────
+  // If the PDF file doesn't exist, regenerate it transparently.
+  if (!storagePath) {
+    try {
+      const { fetchReportTemplateData } = await import('@/lib/pdf/fetch-report-data');
+      const { generateReportPDF } = await import('@/lib/pdf');
+
+      const templateData = await fetchReportTemplateData(reportId, supabase);
+      if (!templateData) {
+        return NextResponse.json({ error: 'Report data not available for regeneration' }, { status: 500 });
+      }
+
+      const pdfBuffer = await generateReportPDF(templateData);
+
+      const shortId = reportId.split('-')[0];
+      const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
+      storagePath = `${reportId}/report_${shortId}_${dateStr}.pdf`;
+
+      await supabase.storage.from('reports').upload(storagePath, pdfBuffer, {
+        contentType: 'application/pdf',
+        upsert: true,
+      });
+
+      await supabase.from('reports').update({ report_pdf_storage_path: storagePath }).eq('id', reportId);
+
+      console.warn(`[PDF] Regenerated on demand for report ${reportId}`);
+    } catch (err) {
+      console.error(`[download] On-demand PDF regeneration failed for ${reportId}:`, err);
+      return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 });
+    }
   }
 
+  // ── Generate signed URL ───────────────────────────────────────────────
   const { data: signedUrlData, error: signedUrlError } = await supabase
     .storage
     .from('reports')
-    .createSignedUrl(report.report_pdf_storage_path, SIGNED_URL_EXPIRY_SECONDS);
+    .createSignedUrl(storagePath, SIGNED_URL_EXPIRY_SECONDS);
 
   if (signedUrlError || !signedUrlData?.signedUrl) {
     console.error(`[download] Failed to create signed URL for report ${reportId}:`, signedUrlError?.message);
@@ -63,6 +88,5 @@ export async function GET(
     );
   }
 
-  // Redirect to the signed URL for immediate download
   return NextResponse.redirect(signedUrlData.signedUrl);
 }

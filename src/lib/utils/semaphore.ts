@@ -54,6 +54,3 @@ export async function withSemaphore<T>(
     semaphore.release();
   }
 }
-
-// Global PDF generation semaphore — max 3 concurrent Chromium instances
-export const pdfSemaphore = new Semaphore(3);

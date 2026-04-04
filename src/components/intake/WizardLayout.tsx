@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import type { PropertyType, ServiceType, ReviewTier } from '@/types/database';
 
 // ─── Wizard State ────────────────────────────────────────────────────────────
@@ -236,7 +236,9 @@ export default function WizardLayout({ children }: { children: React.ReactNode }
   const [currentStep, setCurrentStep] = useState(1);
   const [hydrated, setHydrated] = useState(false);
 
-  // Restore from sessionStorage on mount
+  const searchParams = useSearchParams();
+
+  // Restore from sessionStorage + query params on mount
   useEffect(() => {
     const raw = sessionStorage.getItem('wizard');
     if (raw) {
@@ -245,8 +247,34 @@ export default function WizardLayout({ children }: { children: React.ReactNode }
         setState((prev) => ({ ...prev, ...saved }));
       } catch { /* ignore corrupt data */ }
     }
+
+    // Pre-populate from URL query params (from homepage or service card links)
+    const addressParam = searchParams.get('address');
+    if (addressParam) {
+      try {
+        const parsed = JSON.parse(addressParam);
+        if (parsed && parsed.line1) {
+          setState((prev) => ({ ...prev, address: parsed }));
+        }
+      } catch { /* ignore invalid JSON */ }
+    }
+
+    const tierParam = searchParams.get('tier');
+    if (tierParam) {
+      const tierMap: Record<string, ReviewTier> = {
+        'auto': 'auto',
+        'expert-reviewed': 'expert_reviewed',
+        'guided-filing': 'guided_filing',
+        'full-representation': 'full_representation',
+      };
+      const mappedTier = tierMap[tierParam];
+      if (mappedTier) {
+        setState((prev) => ({ ...prev, reviewTier: mappedTier }));
+      }
+    }
+
     setHydrated(true);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Persist to sessionStorage on change
   useEffect(() => {

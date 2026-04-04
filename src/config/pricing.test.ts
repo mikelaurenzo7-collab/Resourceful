@@ -5,6 +5,8 @@ import {
   formatPrice,
   PRICING,
   PRICING_EXPERT,
+  PRICING_GUIDED,
+  PRICING_FULL_REPRESENTATION,
   TAX_BILL_DISCOUNT,
 } from './pricing';
 
@@ -122,6 +124,86 @@ describe('pricing constants', () => {
     const keys = Object.keys(PRICING) as (keyof typeof PRICING)[];
     for (const key of keys) {
       expect(PRICING_EXPERT[key]).toBeGreaterThan(PRICING[key]);
+    }
+  });
+});
+
+// ─── Guided Filing Tier ────────────────────────────────────────────────────
+
+describe('getPriceForReport — guided_filing tier', () => {
+  it('returns guided price for residential tax appeal', () => {
+    expect(getPriceForReport('tax_appeal', 'residential', 'guided_filing')).toBe(19900);
+  });
+
+  it('returns guided price for commercial tax appeal', () => {
+    expect(getPriceForReport('tax_appeal', 'commercial', 'guided_filing')).toBe(34900);
+  });
+
+  it('downgrades to expert for pre_purchase', () => {
+    expect(getPriceForReport('pre_purchase', 'residential', 'guided_filing')).toBe(17900);
+  });
+
+  it('downgrades to expert for pre_listing', () => {
+    expect(getPriceForReport('pre_listing', 'residential', 'guided_filing')).toBe(17900);
+  });
+});
+
+// ─── Full Representation Tier ──────────────────────────────────────────────
+
+describe('getPriceForReport — full_representation tier', () => {
+  it('returns full_rep price for residential tax appeal', () => {
+    expect(getPriceForReport('tax_appeal', 'residential', 'full_representation')).toBe(39900);
+  });
+
+  it('returns full_rep price for commercial tax appeal', () => {
+    expect(getPriceForReport('tax_appeal', 'commercial', 'full_representation')).toBe(59900);
+  });
+
+  it('returns full_rep price for industrial tax appeal', () => {
+    expect(getPriceForReport('tax_appeal', 'industrial', 'full_representation')).toBe(59900);
+  });
+
+  it('returns full_rep price for land tax appeal', () => {
+    expect(getPriceForReport('tax_appeal', 'land', 'full_representation')).toBe(39900);
+  });
+
+  it('downgrades to expert for pre_purchase', () => {
+    expect(getPriceForReport('pre_purchase', 'residential', 'full_representation')).toBe(17900);
+  });
+
+  it('downgrades to expert for pre_listing', () => {
+    expect(getPriceForReport('pre_listing', 'residential', 'full_representation')).toBe(17900);
+  });
+
+  it('applies tax bill discount to full_rep price', () => {
+    // $399 * 0.85 = $339.15 → rounds to $339 → 33900 cents
+    expect(getPriceForReport('tax_appeal', 'residential', 'full_representation', true)).toBe(33900);
+  });
+});
+
+// ─── Pricing Constants — All Tiers ─────────────────────────────────────────
+
+describe('pricing constants — all tiers integrity', () => {
+  it('PRICING_GUIDED values are all positive integers', () => {
+    for (const value of Object.values(PRICING_GUIDED)) {
+      expect(value).toBeGreaterThan(0);
+      expect(Number.isInteger(value)).toBe(true);
+    }
+  });
+
+  it('PRICING_FULL_REPRESENTATION values are all positive integers', () => {
+    for (const value of Object.values(PRICING_FULL_REPRESENTATION)) {
+      expect(value).toBeGreaterThan(0);
+      expect(Number.isInteger(value)).toBe(true);
+    }
+  });
+
+  it('full_rep >= guided >= expert >= auto for tax appeal types', () => {
+    const taxKeys = ['TAX_APPEAL_RESIDENTIAL', 'TAX_APPEAL_COMMERCIAL', 'TAX_APPEAL_INDUSTRIAL', 'TAX_APPEAL_LAND'] as const;
+    for (const key of taxKeys) {
+      expect(PRICING_FULL_REPRESENTATION[key]).toBeGreaterThanOrEqual(PRICING_GUIDED[key]);
+      expect(PRICING_GUIDED[key]).toBeGreaterThanOrEqual(PRICING_EXPERT[key]);
+      expect(PRICING_EXPERT[key]).toBeGreaterThanOrEqual(PRICING[key]);
     }
   });
 });
