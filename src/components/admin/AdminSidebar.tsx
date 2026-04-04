@@ -33,8 +33,8 @@ export default function AdminSidebar({
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
             <span className="text-[#1a2744] font-bold text-xs">R</span>
           </div>
-          <span className="text-lg font-bold text-white tracking-tight">
-            Resourceful
+          <span className="text-lg font-bold tracking-tight">
+            <span className="text-amber-300">RE</span><span className="text-white">sourceful</span>
           </span>
           <span className="rounded bg-amber-400/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300">
             Admin
@@ -128,7 +128,7 @@ export default function AdminSidebar({
           </svg>
         </button>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-white">Resourceful</span>
+          <span className="text-sm font-bold"><span className="text-amber-300">RE</span><span className="text-white">sourceful</span></span>
           <span className="rounded bg-amber-400/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-300">Admin</span>
         </div>
         <div className="w-9" /> {/* Spacer for centering */}

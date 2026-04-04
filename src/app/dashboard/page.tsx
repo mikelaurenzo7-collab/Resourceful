@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 import PipelineProgress from '@/components/dashboard/PipelineProgress';
 import ReportDownload from '@/components/dashboard/ReportDownload';
 import { ScrollAnimations } from '@/components/ui/ScrollAnimations';
+import Wordmark from '@/components/ui/Wordmark';
 
 const STATUS_MESSAGES: Partial<Record<ReportStatus, { title: string; description: string }>> = {
   intake: {
@@ -119,7 +120,7 @@ export default async function DashboardPage() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center">
               <span className="text-navy-deep font-bold text-sm">R</span>
             </div>
-            <span className="font-display text-lg text-cream group-hover:text-gold transition-colors">Resourceful</span>
+            <Wordmark className="font-display text-lg text-cream group-hover:text-gold-light transition-colors" />
           </Link>
           <div className="flex items-center gap-3 md:gap-5">
             <Link

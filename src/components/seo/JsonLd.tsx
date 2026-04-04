@@ -7,7 +7,7 @@ export function OrganizationJsonLd() {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Organization',
-    name: 'Resourceful',
+    name: 'REsourceful',
     url: baseUrl,
     logo: `${baseUrl}/logo.png`,
     description:
@@ -35,7 +35,7 @@ export function WebSiteJsonLd() {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
-    name: 'Resourceful',
+    name: 'REsourceful',
     url: baseUrl,
     description: 'Professional property tax appeal reports with data-driven comparable sales analysis.',
     potentialAction: {
@@ -63,7 +63,7 @@ export function ServiceJsonLd() {
     serviceType: 'Property Tax Appeal Report',
     provider: {
       '@type': 'Organization',
-      name: 'Resourceful',
+      name: 'REsourceful',
       url: baseUrl,
     },
     areaServed: {

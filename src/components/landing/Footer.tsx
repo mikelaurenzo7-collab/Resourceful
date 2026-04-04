@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Wordmark from '@/components/ui/Wordmark';
 
 export default function Footer() {
   return (
@@ -10,8 +11,8 @@ export default function Footer() {
         <div className="grid md:grid-cols-4 gap-12">
           {/* Brand */}
           <div className="md:col-span-2">
-            <Link href="/" className="font-display text-2xl text-gold hover:text-gold-light transition-colors">
-              Resourceful
+            <Link href="/" className="font-display text-2xl text-cream hover:text-gold-light transition-colors">
+              <Wordmark />
             </Link>
             <p className="mt-4 text-sm text-cream/40 leading-relaxed max-w-sm">
               Professional property tax appeal reports built on real comparable sales data
@@ -72,7 +73,7 @@ export default function Footer() {
         <div className="mt-16 pt-8 space-y-3" style={{ borderTop: '1px solid rgba(212, 168, 71, 0.06)' }}>
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-xs text-cream/25">
-              &copy; {new Date().getFullYear()} Resourceful. All rights reserved.
+              &copy; {new Date().getFullYear()} REsourceful. All rights reserved.
             </p>
             <div className="flex items-center gap-4 text-xs text-cream/20">
               <Link href="/terms" className="hover:text-cream/40 transition-colors">Terms</Link>
@@ -83,7 +84,7 @@ export default function Footer() {
             </div>
           </div>
           <p className="text-xs text-cream/15 text-center md:text-left leading-relaxed max-w-3xl">
-            Resourceful is not a law firm and does not provide legal advice. Reports are data-driven
+            REsourceful is not a law firm and does not provide legal advice. Reports are data-driven
             informational tools based on public property data, not formal appraisals. You are responsible for
             verifying all data, meeting filing deadlines, and making your own decisions regarding property tax
             appeals. See our{' '}

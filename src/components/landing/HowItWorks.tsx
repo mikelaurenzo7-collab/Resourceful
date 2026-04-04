@@ -55,9 +55,9 @@ export default function HowItWorks() {
             data-animate={i % 2 === 0 ? 'slide-left' : 'slide-right'}
             data-delay={String((i + 1) * 200)}
           >
-            {/* Connector line */}
+            {/* Connector line — behind content, clipped to gap between cards */}
             {i < steps.length - 1 && (
-              <div className="hidden md:block absolute top-10 left-full w-full h-px bg-gradient-to-r from-gold/25 via-gold/15 to-transparent -translate-x-6 animate-draw-line" />
+              <div className="hidden md:block absolute top-10 left-[calc(100%-8px)] w-[calc(100%-56px)] h-px bg-gradient-to-r from-gold/20 via-gold/10 to-transparent -z-10" />
             )}
 
             <div className="flex items-center gap-4 mb-6">

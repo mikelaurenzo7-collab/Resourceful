@@ -222,8 +222,8 @@ export default function ReportViewerPage() {
       {/* Nav */}
       <nav className="bg-navy-deep/80 backdrop-blur-xl nav-shadow sticky top-0 z-50">
         <div className="mx-auto max-w-5xl px-6 flex items-center justify-between h-16">
-          <Link href="/" className="font-display text-xl text-gold">
-            Resourceful
+          <Link href="/" className="font-display text-xl text-cream">
+            <span className="text-gold">RE</span>sourceful
           </Link>
           <a
             href={`/api/reports/${reportId}/download`}

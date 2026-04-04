@@ -6,6 +6,7 @@ import Footer from '@/components/landing/Footer';
 import { ServiceJsonLd, FAQJsonLd } from '@/components/seo/JsonLd';
 import { ScrollAnimations } from '@/components/ui/ScrollAnimations';
 import Link from 'next/link';
+import Wordmark from '@/components/ui/Wordmark';
 
 export default function HomePage() {
   return (
@@ -16,8 +17,8 @@ export default function HomePage() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-navy-deep/80 backdrop-blur-xl nav-shadow">
         <div className="mx-auto max-w-6xl px-6 flex items-center justify-between h-16">
-          <Link href="/" className="font-display text-xl text-gold hover:text-gold-light transition-colors">
-            Resourceful
+          <Link href="/" className="font-display text-xl text-cream hover:text-gold-light transition-colors">
+            <Wordmark />
           </Link>
           <div className="flex items-center gap-6">
             <Link
