@@ -192,9 +192,9 @@ export default function Hero() {
 
         {/* Headline */}
         <h1 className="font-display text-4xl md:text-6xl lg:text-7xl leading-[1.08] text-cream max-w-4xl">
-          <span className="inline-block animate-fade-in" style={{ animationDelay: '0.1s' }}>Stop </span>
-          <span className="inline-block animate-fade-in" style={{ animationDelay: '0.25s' }}>Overpaying </span>
-          <span className="inline-block text-gold-gradient animate-fade-in" style={{ animationDelay: '0.4s' }}>Property </span>
+          <span className="inline-block animate-fade-in" style={{ animationDelay: '0.1s' }}>Stop</span>{' '}
+          <span className="inline-block animate-fade-in" style={{ animationDelay: '0.25s' }}>Overpaying</span>{' '}
+          <span className="inline-block text-gold-gradient animate-fade-in" style={{ animationDelay: '0.4s' }}>Property</span>{' '}
           <span className="inline-block text-gold-gradient animate-fade-in" style={{ animationDelay: '0.55s' }}>Taxes</span>
         </h1>
 
