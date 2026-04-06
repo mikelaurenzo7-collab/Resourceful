@@ -273,14 +273,7 @@ async function fileByMail(
     };
   }
 
-  // ROADMAP: Lob API for automated certified mail (Phase 3 enhancement)
-  // const letter = await lob.letters.create({
-  //   to: { name: countyRule.appeal_board_name, address: countyRule.appeal_board_address },
-  //   from: { name: 'Resourceful', address: '...' },
-  //   file: reportPdfUrl,
-  //   color: true,
-  //   certified: true,
-  // });
+  // ROADMAP: Lob API integration for automated certified mail (Phase 3)
 
   return {
     success: true,

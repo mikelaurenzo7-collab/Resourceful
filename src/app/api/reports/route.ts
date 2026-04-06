@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('[api/reports] Unhandled error:', message, err instanceof Error ? err.stack : '');
     return NextResponse.json(
-      { error: message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

@@ -65,11 +65,9 @@ export async function GET(
       await getPropertyDetail(fullAddress);
 
     if (attomError || !propertyDetail) {
+      console.error('[api/assessment] ATTOM lookup failed:', attomError);
       return NextResponse.json(
-        {
-          error: 'Unable to retrieve property assessment data',
-          details: attomError,
-        },
+        { error: 'Unable to retrieve property assessment data' },
         { status: 502 }
       );
     }
