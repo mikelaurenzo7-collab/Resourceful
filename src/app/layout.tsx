@@ -82,13 +82,13 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
         <OrganizationJsonLd />
         <WebSiteJsonLd />
       </head>
-      <body className="font-sans antialiased bg-[#0f1419] text-[#f5f0e8] min-h-screen">
+      <body className="font-sans antialiased bg-[#0f1419] text-[#f5f0e8] min-h-screen" style={{ ['--font-inter' as string]: "'Inter', system-ui, sans-serif", ['--font-playfair' as string]: "'Playfair Display', Georgia, serif" }}>
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-gold focus:text-navy-deep focus:rounded-lg focus:font-medium focus:text-sm"

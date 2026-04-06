@@ -5,16 +5,16 @@ export default function Footer() {
   return (
     <footer className="relative bg-navy-deep">
       {/* Top gradient line */}
-      <div className="h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
+      <div className="h-px bg-gradient-to-r from-transparent via-cream/[0.06] to-transparent" />
 
-      <div className="mx-auto max-w-6xl px-6 py-16">
+      <div className="mx-auto max-w-6xl px-6 py-14">
         <div className="grid md:grid-cols-4 gap-12">
           {/* Brand */}
           <div className="md:col-span-2">
-            <Link href="/" className="font-display text-2xl text-cream hover:text-gold-light transition-colors">
+            <Link href="/" className="font-display text-xl text-cream hover:text-gold-light transition-colors">
               <Wordmark />
             </Link>
-            <p className="mt-4 text-sm text-cream/40 leading-relaxed max-w-sm">
+            <p className="mt-4 text-sm text-cream/30 leading-relaxed max-w-sm">
               Professional property tax appeal reports built on real comparable sales data
               and IAAO appraisal standards. Serving homeowners in all 50 states.
             </p>
@@ -22,22 +22,22 @@ export default function Footer() {
 
           {/* Services */}
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-cream/50 mb-4">
+            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-cream/40 mb-4">
               Services
             </h4>
             <ul className="space-y-3">
               <li>
-                <Link href="/start" className="text-sm text-cream/40 hover:text-gold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
+                <Link href="/start" className="text-sm text-cream/30 hover:text-cream/60 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
                   Tax Appeal Report
                 </Link>
               </li>
               <li>
-                <Link href="/start" className="text-sm text-cream/40 hover:text-gold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
+                <Link href="/start" className="text-sm text-cream/30 hover:text-cream/60 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
                   Pre-Purchase Analysis
                 </Link>
               </li>
               <li>
-                <Link href="/start" className="text-sm text-cream/40 hover:text-gold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
+                <Link href="/start" className="text-sm text-cream/30 hover:text-cream/60 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
                   Pre-Listing Report
                 </Link>
               </li>
@@ -46,22 +46,22 @@ export default function Footer() {
 
           {/* Legal */}
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-cream/50 mb-4">
+            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-cream/40 mb-4">
               Legal
             </h4>
             <ul className="space-y-3">
               <li>
-                <Link href="/terms" className="text-sm text-cream/40 hover:text-gold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
+                <Link href="/terms" className="text-sm text-cream/30 hover:text-cream/60 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
                   Terms of Service
                 </Link>
               </li>
               <li>
-                <Link href="/privacy" className="text-sm text-cream/40 hover:text-gold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
+                <Link href="/privacy" className="text-sm text-cream/30 hover:text-cream/60 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/disclaimer" className="text-sm text-cream/40 hover:text-gold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
+                <Link href="/disclaimer" className="text-sm text-cream/30 hover:text-cream/60 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
                   Disclaimer
                 </Link>
               </li>

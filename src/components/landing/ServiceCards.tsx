@@ -70,14 +70,14 @@ const services: ServiceDef[] = [
 export default function ServiceCards() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-24">
-      <div className="text-center mb-16">
-        <span className="text-sm font-medium tracking-widest text-gold uppercase">
+      <div className="text-center mb-14">
+        <span className="text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase">
           Our Reports
         </span>
-        <h2 className="font-display text-3xl md:text-4xl text-cream mt-3">
+        <h2 className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
           Choose Your Report
         </h2>
-        <p className="mt-4 text-cream/45 max-w-xl mx-auto leading-relaxed">
+        <p className="mt-4 text-cream/40 max-w-xl mx-auto leading-relaxed">
           Each report is built from real market data, professionally analyzed, and reviewed
           before delivery.
         </p>
@@ -122,17 +122,17 @@ export default function ServiceCards() {
                 </div>
               )}
 
-              <div className="text-gold mb-5 transition-transform duration-300 group-hover:scale-110">{svc.icon}</div>
+              <div className="text-gold/80 mb-5 transition-transform duration-300 group-hover:scale-110">{svc.icon}</div>
 
-              <h3 className="font-display text-xl text-cream mb-3">{svc.title}</h3>
-              <p className="text-sm text-cream/45 leading-relaxed mb-6 flex-grow">
+              <h3 className="font-display text-xl text-cream mb-2">{svc.title}</h3>
+              <p className="text-[13px] text-cream/40 leading-relaxed mb-6 flex-grow">
                 {svc.description}
               </p>
 
-              <ul className="space-y-2.5 mb-8">
+              <ul className="space-y-2 mb-8">
                 {svc.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5 text-sm text-cream/65">
-                    <svg className="w-4 h-4 text-gold/70 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <li key={f} className="flex items-start gap-2 text-[13px] text-cream/55">
+                    <svg className="w-3.5 h-3.5 text-gold/50 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                     {f}

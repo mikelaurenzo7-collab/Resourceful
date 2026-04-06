@@ -191,40 +191,41 @@ export default function Hero() {
         </div>
 
         {/* Headline */}
-        <h1 className="font-display text-4xl md:text-6xl lg:text-7xl leading-[1.08] text-cream max-w-4xl">
-          <span className="inline-block animate-fade-in" style={{ animationDelay: '0.1s' }}>Stop </span>
-          <span className="inline-block animate-fade-in" style={{ animationDelay: '0.25s' }}>Overpaying </span>
-          <span className="inline-block text-gold-gradient animate-fade-in" style={{ animationDelay: '0.4s' }}>Property </span>
-          <span className="inline-block text-gold-gradient animate-fade-in" style={{ animationDelay: '0.55s' }}>Taxes</span>
+        <h1 className="font-display text-5xl md:text-6xl lg:text-7xl leading-[1.08] text-cream max-w-4xl tracking-tight">
+          <span className="inline animate-fade-in" style={{ animationDelay: '0.1s' }}>Stop </span>
+          <span className="inline animate-fade-in" style={{ animationDelay: '0.25s' }}>Overpaying</span>
+          <br className="hidden lg:block" />
+          <span className="inline text-gold-gradient animate-fade-in" style={{ animationDelay: '0.4s' }}> Property Taxes</span>
         </h1>
 
         <p
-          className="mt-7 max-w-2xl text-lg md:text-xl text-cream/55 leading-relaxed animate-fade-in"
+          className="mt-8 max-w-2xl text-lg md:text-xl text-cream/50 leading-relaxed animate-fade-in"
           style={{ animationDelay: '0.6s' }}
         >
-          We compare your home to 5&ndash;10 similar recent sales and adjust for every difference &mdash;
-          the same method licensed appraisers use. Your full report with filing instructions
-          is delivered in hours, not weeks.
+          We compare your property to 5&ndash;10 similar recent sales and adjust for every
+          difference &mdash; the same method licensed appraisers use. Your full evidence
+          package is delivered in hours, not weeks.
         </p>
 
         {/* Address input */}
         <div className="mt-10 max-w-xl animate-fade-in" style={{ animationDelay: '0.7s' }}>
-          <div className="relative">
-            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gold/50 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <div className="relative group">
+            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gold/40 group-focus-within:text-gold/70 transition-colors pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             <input
               ref={inputRef}
               type="text"
               placeholder="Enter your property address..."
-              className="w-full bg-navy-light/60 border border-gold/20 rounded-xl pl-12 pr-4 py-4 text-cream placeholder:text-cream/30 focus:border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold/20 transition-all text-base"
+              className="w-full bg-navy-light/50 border border-cream/[0.08] rounded-xl pl-12 pr-4 py-4 text-cream placeholder:text-cream/25 focus:border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold/20 focus:bg-navy-light/70 transition-all text-base"
             />
           </div>
         </div>
 
         {/* Value display */}
         <div className="mt-8 flex flex-wrap gap-8 items-end animate-fade-in" style={{ animationDelay: '0.75s' }}>
-          <div className="card-premium border-gradient rounded-xl px-8 py-7 animate-glow">
+          <div className="card-premium border-gradient rounded-xl px-8 py-7">
             <div className="grid grid-cols-3 gap-8 md:gap-12 text-center">
               {loading ? (
                 /* Skeleton loader */
@@ -269,17 +270,18 @@ export default function Hero() {
         </div>
 
         {/* CTA */}
-        <div className="mt-12 animate-fade-in" style={{ animationDelay: '0.9s' }}>
+        <div className="mt-10 animate-fade-in" style={{ animationDelay: '0.9s' }}>
           <Link
             href={ctaHref}
-            className="btn-glow animate-glow inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-8 py-4 text-lg font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.02] hover:brightness-110"
+            className="btn-glow inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-8 py-4 text-base font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.02] hover:brightness-110"
           >
-            {hasResult ? 'Get My Full Report' : 'Get My Property Report'}
+            {hasResult ? 'Get My Full Report' : 'Run the Numbers'}
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
           </Link>
-          <p className="mt-4 text-xs text-cream/30">
+          <p className="mt-4 text-xs text-cream/25 flex items-center gap-2">
+            <svg className="w-3.5 h-3.5 text-cream/20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
             No account needed &middot; Results in minutes
           </p>
         </div>

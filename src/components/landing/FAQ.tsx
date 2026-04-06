@@ -50,11 +50,11 @@ export default function FAQ() {
 
   return (
     <section className="mx-auto max-w-3xl px-6 py-24">
-      <div className="text-center mb-16">
-        <span className="text-sm font-medium tracking-widest text-gold uppercase">
+      <div className="text-center mb-14">
+        <span className="text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase">
           Common Questions
         </span>
-        <h2 className="font-display text-3xl md:text-4xl text-cream mt-3">
+        <h2 className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
           Frequently Asked Questions
         </h2>
       </div>

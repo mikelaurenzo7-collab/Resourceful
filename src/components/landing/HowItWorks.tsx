@@ -38,11 +38,11 @@ const steps = [
 export default function HowItWorks() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-24">
-      <div className="text-center mb-16">
-        <span className="text-sm font-medium tracking-widest text-gold uppercase">
+      <div className="text-center mb-14">
+        <span className="text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase">
           How It Works
         </span>
-        <h2 className="font-display text-3xl md:text-4xl text-cream mt-3">
+        <h2 className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
           Three Steps to Lower Taxes
         </h2>
       </div>
@@ -62,18 +62,15 @@ export default function HowItWorks() {
 
             <div className="flex items-center gap-4 mb-6">
               <div
-                className="flex items-center justify-center w-16 h-16 rounded-2xl border border-gold/25 bg-gold/[0.06] text-gold transition-all duration-300 group-hover:border-gold/40 group-hover:bg-gold/10"
-                style={{ boxShadow: '0 0 20px rgba(212, 168, 71, 0.1), 0 0 40px rgba(212, 168, 71, 0.04)' }}
+                className="flex items-center justify-center w-14 h-14 rounded-2xl border border-gold/15 bg-gold/[0.05] text-gold/80 transition-all duration-300 group-hover:border-gold/30 group-hover:bg-gold/[0.08]"
               >
-                <div className={i === 0 ? 'animate-float' : ''}>
-                  {step.icon}
-                </div>
+                {step.icon}
               </div>
-              <span className="font-display text-5xl text-gold/[0.12] select-none">{step.number}</span>
+              <span className="font-display text-4xl text-cream/[0.06] select-none">{step.number}</span>
             </div>
 
-            <h3 className="font-display text-xl text-cream mb-3">{step.title}</h3>
-            <p className="text-sm text-cream/45 leading-relaxed">{step.description}</p>
+            <h3 className="font-display text-lg text-cream mb-2">{step.title}</h3>
+            <p className="text-[13px] text-cream/40 leading-relaxed">{step.description}</p>
           </div>
         ))}
       </div>
