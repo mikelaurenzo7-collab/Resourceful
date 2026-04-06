@@ -15,7 +15,7 @@ export default function FilingGuide({ guide }: { guide: FilingGuideData }) {
       {/* Deadline callout — visually prominent */}
       <View style={styles.deadlineBox} wrap={false}>
         <Text style={[theme.label, { color: colors.accent }]}>Appeal Deadline</Text>
-        <Text style={styles.deadlineText}>{guide.filing_deadline}</Text>
+        <Text style={styles.deadlineText}>{guide.filing_deadline ?? 'Contact your county assessor for deadlines'}</Text>
         <Text style={[theme.caption, { marginTop: 2 }]}>
           {guide.appeal_board_name}
         </Text>
@@ -44,7 +44,7 @@ export default function FilingGuide({ guide }: { guide: FilingGuideData }) {
       </View>
 
       {/* Step-by-step filing sequence */}
-      {guide.steps.length > 0 && (
+      {(guide.steps ?? []).length > 0 && (
         <View style={{ marginTop: 12 }}>
           <Text style={theme.headingMD}>Step-by-Step Filing Process</Text>
           {guide.steps.map((step, i) => (
@@ -59,7 +59,7 @@ export default function FilingGuide({ guide }: { guide: FilingGuideData }) {
       )}
 
       {/* Required documents */}
-      {guide.required_documents.length > 0 && (
+      {(guide.required_documents ?? []).length > 0 && (
         <View style={{ marginTop: 10 }}>
           <Text style={theme.headingMD}>Required Documents</Text>
           {guide.required_documents.map((doc, i) => (
@@ -74,7 +74,7 @@ export default function FilingGuide({ guide }: { guide: FilingGuideData }) {
       )}
 
       {/* Tips */}
-      {guide.tips.length > 0 && (
+      {(guide.tips ?? []).length > 0 && (
         <View style={{ marginTop: 10 }}>
           <Text style={theme.headingMD}>Pro Se Tips</Text>
           {guide.tips.map((tip, i) => (

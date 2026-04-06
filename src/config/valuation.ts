@@ -237,6 +237,7 @@ export const SIZE_ADJ_MAX_PCT           = 15;     // maximum size adjustment cap
 // ─── Land-to-Building Ratio ─────────────────────────────────────────────────
 
 export const LAND_RATIO_THRESHOLD_PCT = 20;       // % difference to trigger adjustment
+export const LAND_RATIO_ADJ_MAX_PCT = 10;         // max ±10% cap per USPAP
 
 // ─── Photo Condition Adjustments ────────────────────────────────────────────
 // Defect impact by severity × value_impact level. Used in stage4 and stage5.
@@ -284,7 +285,9 @@ export function resolvePropertySubtype(
     case 'commercial':  return 'commercial_general';
     case 'industrial':  return 'industrial_general';
     case 'land':        return 'land';
-    default:            return 'residential_sfr';
+    default:
+      console.warn(`[valuation] Unknown property type '${propertyType}' — defaulting to residential_sfr`);
+      return 'residential_sfr';
   }
 }
 

@@ -232,9 +232,11 @@ export async function runNarratives(
   }
 
   // ── Value WITH photo condition adjustments (the real concluded value) ──
-  let concludedValue = comps.length > 0
-    ? computeMedianValue(comps, propertyData.building_sqft_gross, (c) => c.adjusted_price_per_sqft)
-    : 0;
+  if (comps.length === 0) {
+    return { success: false, error: 'No comparable sales available — cannot generate narrative without market data' };
+  }
+
+  let concludedValue = computeMedianValue(comps, propertyData.building_sqft_gross, (c) => c.adjusted_price_per_sqft);
 
   // ── Value WITHOUT photo condition adjustments (market data only) ───────
   // Strip out the photo-based condition adjustment from each comp to see

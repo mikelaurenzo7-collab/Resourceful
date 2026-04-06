@@ -61,7 +61,6 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         {data.maps.regional && (
           <View style={{ marginVertical: 8 }} wrap={false}>
             <Image src={data.maps.regional.url} style={{ width: '100%', height: 200 }} />
-            <SectionHeader number="" title="" />
           </View>
         )}
 

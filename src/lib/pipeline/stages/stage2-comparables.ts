@@ -21,6 +21,7 @@ import {
   SIZE_ADJ_SMALLER_PER_10PCT,
   SIZE_ADJ_MAX_PCT,
   LAND_RATIO_THRESHOLD_PCT,
+  LAND_RATIO_ADJ_MAX_PCT,
 } from '@/config/valuation';
 
 // ─── Search Tiers by Property Type ──────────────────────────────────────────
@@ -128,13 +129,15 @@ function calculateAdjustments(
   let adjustment_pct_market_trends = 0;
   if (comp.saleDate) {
     const saleDate = new Date(comp.saleDate);
-    const now = new Date();
-    const monthsSinceSale = (now.getFullYear() - saleDate.getFullYear()) * 12 +
-      (now.getMonth() - saleDate.getMonth());
-    if (monthsSinceSale > 6) {
-      adjustment_pct_market_trends = Math.round(
-        Math.min(monthsSinceSale * MARKET_TRENDS_ADJ_PER_MONTH, MARKET_TRENDS_ADJ_MAX_PCT) * 100
-      ) / 100;
+    if (!isNaN(saleDate.getTime())) {
+      const now = new Date();
+      const monthsSinceSale = (now.getFullYear() - saleDate.getFullYear()) * 12 +
+        (now.getMonth() - saleDate.getMonth());
+      if (monthsSinceSale > 6) {
+        adjustment_pct_market_trends = Math.round(
+          Math.min(monthsSinceSale * MARKET_TRENDS_ADJ_PER_MONTH, MARKET_TRENDS_ADJ_MAX_PCT) * 100
+        ) / 100;
+      }
     }
   }
 
@@ -189,7 +192,10 @@ function calculateAdjustments(
     const compRatio = comp.lotSquareFeet / comp.buildingSquareFeet;
     const ratioDiffPct = ((compRatio - subjectRatio) / subjectRatio) * 100;
     if (Math.abs(ratioDiffPct) > LAND_RATIO_THRESHOLD_PCT) {
-      adjustment_pct_land_to_building = Math.round((ratioDiffPct / LAND_RATIO_THRESHOLD_PCT) * -1 * 100) / 100;
+      const rawAdj = (ratioDiffPct / LAND_RATIO_THRESHOLD_PCT) * -1;
+      adjustment_pct_land_to_building = Math.round(
+        Math.max(Math.min(rawAdj, LAND_RATIO_ADJ_MAX_PCT), -LAND_RATIO_ADJ_MAX_PCT) * 100
+      ) / 100;
     }
   }
 
