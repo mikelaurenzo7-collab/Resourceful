@@ -28,7 +28,7 @@ const STATUS_MESSAGES: Partial<Record<ReportStatus, { title: string; description
   },
   processing: {
     title: 'Generating Your Report',
-    description: 'Your report is being prepared by our analysis engine. This typically takes 2-6 hours.',
+    description: 'Your report is being prepared by our analysis engine. Most reports are delivered within 48 hours.',
   },
   pending_approval: {
     title: 'Under Quality Review',
