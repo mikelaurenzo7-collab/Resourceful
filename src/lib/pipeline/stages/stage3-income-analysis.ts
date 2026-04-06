@@ -184,7 +184,8 @@ export async function runIncomeAnalysis(
       .map((c) => {
         // Estimate NOI for each comp using our expense ratio
         const compAnnualRent = (c.building_sqft! * concludedMarketRentPerSqFtYr);
-        const compNoi = compAnnualRent * (1 - DEFAULT_VACANCY_RATE) * (1 - totalExpenses / effectiveGrossIncome);
+        const expenseRatio = effectiveGrossIncome > 0 ? totalExpenses / effectiveGrossIncome : DEFAULT_EXPENSE_RATIO;
+        const compNoi = compAnnualRent * (1 - DEFAULT_VACANCY_RATE) * (1 - expenseRatio);
         return compNoi / c.sale_price!;
       })
       .filter((r) => r > 0.03 && r < 0.15) // reasonable cap rate range

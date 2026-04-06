@@ -177,6 +177,48 @@ function CheckoutForm() {
           </div>
         </div>
 
+        {/* Trust signals */}
+        <div className="rounded-xl border border-gold/10 bg-gold/[0.03] p-5 space-y-3">
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-gold/60 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <div>
+              <p className="text-sm text-cream/80 font-medium">Comparable sales analysis</p>
+              <p className="text-xs text-cream/40">5-10 recent sales, not automated estimates</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-gold/60 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <div>
+              <p className="text-sm text-cream/80 font-medium">IAAO-standard methodology</p>
+              <p className="text-xs text-cream/40">Same standards used by licensed appraisers</p>
+            </div>
+          </div>
+          {guaranteeEligible && (
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-emerald-400/70 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+              <div>
+                <p className="text-sm text-emerald-400/80 font-medium">Money-back guarantee</p>
+                <p className="text-xs text-cream/40">Photo-backed appeals: refund if denied in full</p>
+              </div>
+            </div>
+          )}
+          <div className="flex items-start gap-3">
+            <svg className="w-5 h-5 text-gold/60 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <div>
+              <p className="text-sm text-cream/80 font-medium">Expert-reviewed before delivery</p>
+              <p className="text-xs text-cream/40">Every report reviewed for accuracy</p>
+            </div>
+          </div>
+        </div>
+
         {/* Stripe Payment Element */}
         <div className="card-premium rounded-xl overflow-hidden">
           <div className="border-b border-gold/10 px-6 py-4 bg-gold/5">
@@ -188,7 +230,7 @@ function CheckoutForm() {
         </div>
 
         {error && (
-          <div className="rounded-lg bg-red-900/20 border border-red-500/20 p-4">
+          <div role="alert" className="rounded-lg bg-red-900/20 border border-red-500/20 p-4">
             <p className="text-sm text-red-400">{error}</p>
             <p className="text-xs text-red-400/60 mt-1">Please check your card details and try again. Your report data is saved.</p>
           </div>
@@ -596,7 +638,7 @@ export default function PaymentPage() {
           </div>
 
           {createError && (
-            <div className="rounded-lg bg-red-900/20 border border-red-500/20 p-4 text-sm text-red-400">
+            <div role="alert" className="rounded-lg bg-red-900/20 border border-red-500/20 p-4 text-sm text-red-400">
               {createError}
             </div>
           )}

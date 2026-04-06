@@ -17,6 +17,7 @@ import {
   REPLACEMENT_COST_PER_SQFT,
   OVER_IMPROVEMENT_THRESHOLD_PCT,
   CONDITION_DEFECT_ADJUSTMENTS,
+  CONDITION_BASE_OFFSET,
   OVER_IMPROVEMENT_ADJ_PCT,
   OVER_IMPROVEMENT_ADJ_MAX_PCT,
   type QualityGrade,
@@ -277,7 +278,7 @@ export async function runNarratives(
         })()
       : 'average';
 
-    const baseOffset = overallCondition === 'poor' ? -3 : overallCondition === 'fair' ? -1.5 : 0;
+    const baseOffset = CONDITION_BASE_OFFSET[overallCondition] ?? 0;
     photoConditionAdjustmentPct = Math.max(
       Math.round((defectAdj + baseOffset) * 100) / 100,
       -25

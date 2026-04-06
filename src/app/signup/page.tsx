@@ -101,7 +101,7 @@ export default function SignupPage() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="card-premium rounded-xl p-8 space-y-5">
           {error && (
-            <div className="rounded-lg bg-red-900/20 border border-red-500/20 p-3 text-sm text-red-400">
+            <div role="alert" className="rounded-lg bg-red-900/20 border border-red-500/20 p-3 text-sm text-red-400">
               {error}
             </div>
           )}

@@ -75,6 +75,21 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
+
+    // ── Authenticate user ──────────────────────────────────────────────────
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
 
     // Only allow updating specific fields
@@ -94,9 +109,26 @@ export async function PATCH(
       );
     }
 
-    // Verify the report exists (no auth required — report UUID is unguessable,
-    // consistent with existing viewer/download endpoint patterns)
+    // Verify ownership before allowing mutation
     const adminSupabase = createAdminClient();
+    const { data: report } = await adminSupabase
+      .from('reports')
+      .select('user_id, client_email')
+      .eq('id', id)
+      .single();
+
+    if (!report) {
+      return NextResponse.json({ error: 'Report not found' }, { status: 404 });
+    }
+
+    const isOwner = report.user_id
+      ? report.user_id === user.id
+      : report.client_email === user.email;
+
+    if (!isOwner) {
+      return NextResponse.json({ error: 'Not authorized' }, { status: 403 });
+    }
+
     const { error: updateError } = await adminSupabase
       .from('reports')
       .update(updates)

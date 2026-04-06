@@ -67,7 +67,7 @@ function LoginForm() {
         {/* Form */}
         <form onSubmit={handleSubmit} className="card-premium rounded-xl p-8 space-y-6">
           {error && (
-            <div className="rounded-lg bg-red-900/20 border border-red-500/20 p-3 text-sm text-red-400">
+            <div role="alert" className="rounded-lg bg-red-900/20 border border-red-500/20 p-3 text-sm text-red-400">
               {error}
             </div>
           )}
@@ -88,9 +88,14 @@ function LoginForm() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-cream/80 mb-2">
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-cream/80">
+                Password
+              </label>
+              <a href="/auth/reset-password" className="text-xs text-gold/70 hover:text-gold transition-colors">
+                Forgot password?
+              </a>
+            </div>
             <input
               id="password"
               type="password"
