@@ -65,14 +65,28 @@ export async function GET(request: NextRequest) {
       supabase.from('measurements').delete().in('report_id', reportIds),
     ]);
 
+    // ── Clean up expired rate limit entries ─────────────────────────────
+    let rateLimitCleaned = 0;
+    try {
+      const { data: expired } = await supabase
+        .from('rate_limit_entries')
+        .delete()
+        .lt('expires_at', new Date().toISOString())
+        .select('key');
+      rateLimitCleaned = expired?.length ?? 0;
+    } catch {
+      console.warn('[cron/cleanup] Rate limit cleanup failed (table may not exist yet)');
+    }
+
     console.log(
-      `[cron/cleanup] Cleaned ${failedReports.length} failed reports: ${photosDeleted} photos, ${pdfsDeleted} PDFs`
+      `[cron/cleanup] Cleaned ${failedReports.length} failed reports: ${photosDeleted} photos, ${pdfsDeleted} PDFs, ${rateLimitCleaned} rate limit entries`
     );
 
     return NextResponse.json({
       cleaned: failedReports.length,
       photosDeleted,
       pdfsDeleted,
+      rateLimitCleaned,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {

@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
+import { applyRateLimit } from '@/lib/rate-limit';
 import { createCalibrationEntry } from '@/lib/services/calibration';
 import type { Report, PropertyData } from '@/types/database';
 
@@ -22,6 +23,14 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Rate limit: 10 outcome submissions per 15 minutes per IP
+  const rateLimitResponse = await applyRateLimit(req, {
+    prefix: 'outcome-submit',
+    limit: 10,
+    windowSeconds: 900,
+  });
+  if (rateLimitResponse) return rateLimitResponse;
+
   const { id: reportId } = await params;
 
   if (!reportId) {
@@ -110,6 +119,7 @@ export async function POST(
       actual_savings_cents: actualSavingsCents,
       outcome_notes: notes ?? null,
       outcome_reported_at: new Date().toISOString(),
+      outcome_followup_token: null, // Invalidate token after use
       appeal_outcome_details: {
         new_assessed_value: new_assessed_value ?? null,
         reported_by: 'client',
