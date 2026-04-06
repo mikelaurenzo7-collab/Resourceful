@@ -8,6 +8,17 @@
 -- The admin layout (app/admin/layout.tsx) checks this table server-side
 -- and redirects non-admins to the homepage.
 
+-- Add a unique constraint on email if it doesn't exist
+-- (prevents duplicate admin entries for the same email)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'admin_users_email_unique'
+  ) THEN
+    ALTER TABLE admin_users ADD CONSTRAINT admin_users_email_unique UNIQUE (email);
+  END IF;
+END $$;
+
 -- Remove any existing admin users that aren't the founder
 -- (safety measure for clean slate)
 DELETE FROM admin_users
@@ -28,14 +39,3 @@ WHERE au.email = 'mikelaurenzo7@gmail.com'
 ON CONFLICT (email) DO UPDATE SET
   is_super_admin = true,
   user_id = EXCLUDED.user_id;
-
--- Add a unique constraint on email if it doesn't exist
--- (prevents duplicate admin entries for the same email)
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'admin_users_email_unique'
-  ) THEN
-    ALTER TABLE admin_users ADD CONSTRAINT admin_users_email_unique UNIQUE (email);
-  END IF;
-END $$;
