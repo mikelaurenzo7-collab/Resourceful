@@ -35,7 +35,7 @@ function getAdminEmail(): string {
   return addr;
 }
 
-// Read on every call so env changes take effect without restart
+// Cached on first access to avoid repeated env lookups and warnings
 let _fromAddress: string | null = null;
 let _adminEmail: string | null = null;
 
