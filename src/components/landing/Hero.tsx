@@ -166,7 +166,7 @@ export default function Hero() {
 
       {/* Decorative gold gradient orb */}
       <div
-        className="pointer-events-none absolute -top-32 -left-32 h-[600px] w-[600px] animate-float rounded-full opacity-25"
+        className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 h-[600px] w-[600px] animate-float rounded-full opacity-20"
         style={{
           background: 'radial-gradient(circle, rgba(212,168,71,0.3) 0%, rgba(212,168,71,0.08) 40%, transparent 70%)',
           filter: 'blur(80px)',
@@ -182,108 +182,111 @@ export default function Hero() {
       />
 
       <div className="relative mx-auto max-w-6xl px-6 pt-36 pb-28">
-        {/* Eyebrow */}
-        <div className="mb-8 flex items-center gap-3 animate-fade-in">
-          <span className="h-px w-12 bg-gradient-to-r from-gold/60 to-transparent" />
-          <span className="text-sm font-medium tracking-widest text-gold/80 uppercase">
-            Property Tax Intelligence
-          </span>
-        </div>
-
-        {/* Headline */}
-        <h1 className="font-display text-5xl md:text-6xl lg:text-7xl leading-[1.08] text-cream max-w-4xl tracking-tight">
-          <span className="inline animate-fade-in" style={{ animationDelay: '0.1s' }}>Stop </span>
-          <span className="inline animate-fade-in" style={{ animationDelay: '0.25s' }}>Overpaying</span>
-          <br className="hidden lg:block" />
-          <span className="inline text-gold-gradient animate-fade-in" style={{ animationDelay: '0.4s' }}> Property Taxes</span>
-        </h1>
-
-        <p
-          className="mt-8 max-w-2xl text-lg md:text-xl text-cream/50 leading-relaxed animate-fade-in"
-          style={{ animationDelay: '0.6s' }}
-        >
-          We compare your property to 5&ndash;10 similar recent sales and adjust for every
-          difference &mdash; the same method licensed appraisers use. Your full evidence
-          package is delivered in hours, not weeks.
-        </p>
-
-        {/* Address input */}
-        <div className="mt-10 max-w-xl animate-fade-in" style={{ animationDelay: '0.7s' }}>
-          <div className="relative group">
-            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gold/40 group-focus-within:text-gold/70 transition-colors pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <input
-              ref={inputRef}
-              type="text"
-              placeholder="Enter your property address..."
-              className="w-full bg-navy-light/50 border border-cream/[0.08] rounded-xl pl-12 pr-4 py-4 text-cream placeholder:text-cream/25 focus:border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold/20 focus:bg-navy-light/70 transition-all text-base"
-            />
+        <div className="text-center">
+          {/* Eyebrow */}
+          <div className="mb-8 flex items-center justify-center gap-3 animate-fade-in">
+            <span className="h-px w-12 bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+            <span className="text-sm font-medium tracking-widest text-gold/80 uppercase">
+              Property Tax Intelligence
+            </span>
+            <span className="h-px w-12 bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
           </div>
-        </div>
 
-        {/* Value display */}
-        <div className="mt-8 flex flex-wrap gap-8 items-end animate-fade-in" style={{ animationDelay: '0.75s' }}>
-          <div className="card-premium border-gradient rounded-xl px-8 py-7">
-            <div className="grid grid-cols-3 gap-8 md:gap-12 text-center">
-              {loading ? (
-                /* Skeleton loader */
-                <>
-                  {[0, 1, 2].map((i) => (
-                    <div key={i}>
-                      <div className="h-3 w-20 mx-auto bg-cream/10 rounded animate-pulse mb-3" />
-                      <div className="h-7 w-28 mx-auto bg-cream/10 rounded animate-pulse" />
-                    </div>
-                  ))}
-                </>
-              ) : (
-                <>
-                  <div className={`transition-all duration-500 ${hasResult ? 'opacity-100 translate-y-0' : ''}`}>
-                    <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
-                      Assessed Value
-                    </p>
-                    <p className="font-display text-xl md:text-2xl text-cream">
-                      {formatDollar(displayAssessed)}
-                    </p>
-                  </div>
-                  <div className={`transition-all duration-500 delay-100 ${hasResult ? 'opacity-100 translate-y-0' : ''}`}>
-                    <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
-                      Estimated Market Value
-                    </p>
-                    <p className="font-display text-xl md:text-2xl text-gold">
-                      {formatDollar(displayMarket)}
-                    </p>
-                  </div>
-                  <div className={`transition-all duration-500 delay-200 ${hasResult ? 'opacity-100 translate-y-0' : ''}`}>
-                    <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
-                      Annual Overpayment
-                    </p>
-                    <p className="font-display text-xl md:text-2xl text-red-400">
-                      {formatDollar(displayOverpayment)}
-                    </p>
-                  </div>
-                </>
-              )}
+          {/* Headline */}
+          <h1 className="font-display text-5xl md:text-6xl lg:text-7xl leading-[1.08] text-cream tracking-tight mx-auto max-w-4xl">
+            <span className="inline animate-fade-in" style={{ animationDelay: '0.1s' }}>Stop </span>
+            <span className="inline animate-fade-in" style={{ animationDelay: '0.25s' }}>Overpaying</span>
+            <br className="hidden lg:block" />
+            <span className="inline text-gold-gradient animate-fade-in" style={{ animationDelay: '0.4s' }}> Property Taxes</span>
+          </h1>
+
+          <p
+            className="mt-8 max-w-2xl mx-auto text-lg md:text-xl text-cream/50 leading-relaxed animate-fade-in"
+            style={{ animationDelay: '0.6s' }}
+          >
+            We compare your property to 5&ndash;10 similar recent sales and adjust for every
+            difference &mdash; the same method licensed appraisers use. Your full evidence
+            package is delivered in hours, not weeks.
+          </p>
+
+          {/* Address input */}
+          <div className="mt-10 max-w-xl mx-auto animate-fade-in" style={{ animationDelay: '0.7s' }}>
+            <div className="relative group">
+              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gold/40 group-focus-within:text-gold/70 transition-colors pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <input
+                ref={inputRef}
+                type="text"
+                placeholder="Enter your property address..."
+                className="w-full bg-navy-light/50 border border-cream/[0.08] rounded-xl pl-12 pr-4 py-4 text-cream placeholder:text-cream/25 focus:border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold/20 focus:bg-navy-light/70 transition-all text-base"
+              />
             </div>
           </div>
-        </div>
 
-        {/* CTA */}
-        <div className="mt-10 animate-fade-in" style={{ animationDelay: '0.9s' }}>
-          <Link
-            href={ctaHref}
-            className="btn-glow inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-8 py-4 text-base font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.02] hover:brightness-110"
-          >
-            {hasResult ? 'Get My Full Report' : 'Run the Numbers'}
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </Link>
-          <p className="mt-4 text-xs text-cream/25 flex items-center gap-2">
-            <svg className="w-3.5 h-3.5 text-cream/20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-            No account needed &middot; Results in minutes
-          </p>
+          {/* Value display */}
+          <div className="mt-8 flex justify-center animate-fade-in" style={{ animationDelay: '0.75s' }}>
+            <div className="card-premium border-gradient rounded-xl px-8 py-7 inline-block">
+              <div className="grid grid-cols-3 gap-8 md:gap-12 text-center">
+                {loading ? (
+                  /* Skeleton loader */
+                  <>
+                    {[0, 1, 2].map((i) => (
+                      <div key={i}>
+                        <div className="h-3 w-20 mx-auto bg-cream/10 rounded animate-pulse mb-3" />
+                        <div className="h-7 w-28 mx-auto bg-cream/10 rounded animate-pulse" />
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <div className={`transition-all duration-500 ${hasResult ? 'opacity-100 translate-y-0' : ''}`}>
+                      <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
+                        Assessed Value
+                      </p>
+                      <p className="font-display text-xl md:text-2xl text-cream">
+                        {formatDollar(displayAssessed)}
+                      </p>
+                    </div>
+                    <div className={`transition-all duration-500 delay-100 ${hasResult ? 'opacity-100 translate-y-0' : ''}`}>
+                      <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
+                        Estimated Market Value
+                      </p>
+                      <p className="font-display text-xl md:text-2xl text-gold">
+                        {formatDollar(displayMarket)}
+                      </p>
+                    </div>
+                    <div className={`transition-all duration-500 delay-200 ${hasResult ? 'opacity-100 translate-y-0' : ''}`}>
+                      <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
+                        Annual Overpayment
+                      </p>
+                      <p className="font-display text-xl md:text-2xl text-red-400">
+                        {formatDollar(displayOverpayment)}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* CTA */}
+          <div className="mt-10 animate-fade-in" style={{ animationDelay: '0.9s' }}>
+            <Link
+              href={ctaHref}
+              className="btn-glow inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-8 py-4 text-base font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.02] hover:brightness-110"
+            >
+              {hasResult ? 'Get My Full Report' : 'Run the Numbers'}
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </Link>
+            <p className="mt-4 text-xs text-cream/25 flex items-center justify-center gap-2">
+              <svg className="w-3.5 h-3.5 text-cream/20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+              No account needed &middot; Results in minutes
+            </p>
+          </div>
         </div>
       </div>
     </section>
