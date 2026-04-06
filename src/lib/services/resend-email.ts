@@ -15,8 +15,39 @@ function getResend(): Resend {
   return _resend;
 }
 
-const FROM_ADDRESS = process.env.RESEND_FROM_ADDRESS ?? 'reports@resourceful.app';
-const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL ?? 'admin@resourceful.app';
+// Lazy-evaluated: these resolve on first email send, not at module load time.
+// This avoids build-time failures while still catching misconfig at runtime.
+function getFromAddress(): string {
+  const addr = process.env.RESEND_FROM_ADDRESS;
+  if (!addr) {
+    console.warn('[resend] WARNING: RESEND_FROM_ADDRESS not set, using default: reports@resourceful.app');
+    return 'reports@resourceful.app';
+  }
+  return addr;
+}
+
+function getAdminEmail(): string {
+  const addr = process.env.ADMIN_NOTIFICATION_EMAIL;
+  if (!addr) {
+    console.warn('[resend] WARNING: ADMIN_NOTIFICATION_EMAIL not set, using default: admin@resourceful.app');
+    return 'admin@resourceful.app';
+  }
+  return addr;
+}
+
+// Read on every call so env changes take effect without restart
+let _fromAddress: string | null = null;
+let _adminEmail: string | null = null;
+
+function FROM_ADDRESS_LAZY(): string {
+  if (!_fromAddress) _fromAddress = getFromAddress();
+  return _fromAddress;
+}
+
+function ADMIN_EMAIL_LAZY(): string {
+  if (!_adminEmail) _adminEmail = getAdminEmail();
+  return _adminEmail;
+}
 
 /**
  * Send an email with retry logic (3 attempts, exponential backoff).
@@ -31,14 +62,6 @@ async function sendWithRetry(params: Parameters<Resend['emails']['send']>[0]) {
     },
     { maxAttempts: 3, baseDelayMs: 1000, retryOn: isRetryableError }
   );
-}
-
-// Warn at init time if email config is using defaults — prevents silent misconfiguration
-if (!process.env.RESEND_FROM_ADDRESS) {
-  console.warn('[resend] WARNING: RESEND_FROM_ADDRESS not set, using default: reports@resourceful.app');
-}
-if (!process.env.ADMIN_NOTIFICATION_EMAIL) {
-  console.warn('[resend] WARNING: ADMIN_NOTIFICATION_EMAIL not set, using default: admin@resourceful.app');
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -129,7 +152,7 @@ export async function sendReportDeliveryEmail(
 ): Promise<ServiceResult<EmailResult>> {
   try {
     const result = await sendWithRetry({
-      from: FROM_ADDRESS,
+      from: FROM_ADDRESS_LAZY(),
       to: params.to,
       subject: params.potentialSavings > 0
         ? `You could save ${escapeHtml(formatDollarValue(params.potentialSavings))} — Your Report is Ready`
@@ -202,8 +225,8 @@ export async function sendAdminNotification(
 ): Promise<ServiceResult<EmailResult>> {
   try {
     const result = await sendWithRetry({
-      from: FROM_ADDRESS,
-      to: ADMIN_EMAIL,
+      from: FROM_ADDRESS_LAZY(),
+      to: ADMIN_EMAIL_LAZY(),
       subject: params.potentialSavings && params.potentialSavings > 0
         ? `[Review] ${escapeHtml(formatDollarValue(params.potentialSavings))} savings — ${escapeHtml(params.propertyAddress)}`
         : `[Review Needed] Report ${params.reportId.slice(0, 8)} — ${escapeHtml(params.propertyAddress)}`,
@@ -261,8 +284,8 @@ export async function sendReportRejectionAlert(
 ): Promise<ServiceResult<EmailResult>> {
   try {
     const result = await sendWithRetry({
-      from: FROM_ADDRESS,
-      to: ADMIN_EMAIL,
+      from: FROM_ADDRESS_LAZY(),
+      to: ADMIN_EMAIL_LAZY(),
       subject: `[Rejected] Report ${params.reportId.slice(0, 8)} — ${params.propertyAddress}`,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -309,7 +332,7 @@ export async function sendReportReadyNotification(
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app';
   try {
     const result = await sendWithRetry({
-      from: FROM_ADDRESS,
+      from: FROM_ADDRESS_LAZY(),
       to: params.to,
       subject: params.potentialSavings > 0
         ? `You could save ${escapeHtml(formatDollarValue(params.potentialSavings))} — Your Report is Ready`
@@ -381,7 +404,7 @@ export async function sendOutcomeFollowupEmail(
 
   try {
     const result = await sendWithRetry({
-      from: FROM_ADDRESS,
+      from: FROM_ADDRESS_LAZY(),
       to: params.to,
       subject: 'How Did Your Property Tax Appeal Go?',
       html: `

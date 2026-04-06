@@ -65,8 +65,6 @@ export async function runPdfAssembly(
     .from('reports')
     .update({
       report_pdf_storage_path: storagePath,
-      status: 'pending_approval',
-      pipeline_completed_at: new Date().toISOString(),
     })
     .eq('id', reportId);
 
@@ -75,7 +73,7 @@ export async function runPdfAssembly(
   }
 
   // ── Send admin notification ───────────────────────────────────────────
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://app.resourceful.com';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
   const reviewUrl = `${appUrl}/admin/reports/${reportId}`;
 
   const notifResult = await sendAdminNotification({

@@ -97,7 +97,7 @@ export async function GET(request: Request) {
 
   // ── ATTOM (optional) ─────────────────────────────────────────────────
   if (!process.env.ATTOM_API_KEY) {
-    results.attom = { status: 'not_configured', message: 'Not configured — using free public records instead (this is fine)' };
+    results.attom = { status: 'not_configured', message: 'Not configured — falling back to public records enrichment' };
   } else {
     results.attom = { status: 'ok', message: 'Configured' };
   }

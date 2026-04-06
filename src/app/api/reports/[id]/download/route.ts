@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report } from '@/types/database';
 
 const SIGNED_URL_EXPIRY_SECONDS = 60 * 60; // 1 hour
@@ -13,6 +14,14 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Rate limit: 30 downloads per 15 minutes per IP
+  const rateLimitResponse = await applyRateLimit(_req, {
+    prefix: 'report-download',
+    limit: 30,
+    windowSeconds: 900,
+  });
+  if (rateLimitResponse) return rateLimitResponse;
+
   const { id: reportId } = await params;
 
   if (!reportId) {

@@ -18,9 +18,19 @@ import './styles/theme';
  * @throws Error if rendering fails
  */
 export async function generateReportPDF(data: ReportTemplateData): Promise<Buffer> {
+  const PDF_TIMEOUT_MS = 120_000; // 2 minutes — generous for complex reports
+
   // Cast required because @react-pdf/renderer types expect ReactElement<DocumentProps>
   // but our component returns Document which satisfies this at runtime
   const element = React.createElement(ReportDocument, { data });
-  const buffer = await renderToBuffer(element as Parameters<typeof renderToBuffer>[0]);
+  const renderPromise = renderToBuffer(element as Parameters<typeof renderToBuffer>[0]);
+
+  const buffer = await Promise.race([
+    renderPromise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('PDF generation timed out after 120s')), PDF_TIMEOUT_MS)
+    ),
+  ]);
+
   return Buffer.from(buffer);
 }
