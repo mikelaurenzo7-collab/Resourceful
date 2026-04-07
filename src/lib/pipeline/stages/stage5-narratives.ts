@@ -73,13 +73,19 @@ function computeCostApproach(
   const costPerSqft = costTable[grade] ?? costTable.average;
   const rcn = Math.round(costPerSqft * buildingSqft);
 
+  // Require a credible land value to produce a valid cost approach.
+  // Without land, the indicated value would be a depreciated improvement value only —
+  // not a full USPAP cost approach and potentially misleading as overassessment evidence.
+  if (!landValue || landValue <= 0) {
+    return { rcn, costApproachValue: null };
+  }
+
   // Total obsolescence = physical + functional, capped at 90%
   const totalObsolescence = Math.min((physicalDepreciationPct ?? 0) + functionalObsolescencePct, 90);
   const depreciatedBuildingValue = Math.round(rcn * (1 - totalObsolescence / 100));
 
   // Land never depreciates — add at cost (assessor's land value is the best estimate)
-  const landComponent = landValue ?? 0;
-  const costApproachValue = Math.round((depreciatedBuildingValue + landComponent) / 1000) * 1000;
+  const costApproachValue = Math.round((depreciatedBuildingValue + landValue) / 1000) * 1000;
 
   return { rcn, costApproachValue };
 }

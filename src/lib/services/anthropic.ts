@@ -667,12 +667,13 @@ You are NOT a neutral party. You are your client's expert witness. Every number 
 YOUR EXPERTISE IN ${county.toUpperCase()} COUNTY, ${state.toUpperCase()}:
 ${countyExpertise.map(e => `- ${e}`).join('\n')}
 ${payload.researchIntelligence?.strategyInsights ? `
-LIVE RESEARCH INTELLIGENCE (researched for this specific report):
+LIVE RESEARCH INTELLIGENCE (researched for this specific report — cite sources where relevant):
 ${payload.researchIntelligence.strategyInsights}
 ${payload.researchIntelligence.deadlineInfo ? `\nCURRENT DEADLINE INFO: ${payload.researchIntelligence.deadlineInfo}` : ''}
 ${payload.researchIntelligence.boardIntelligence ? `\nBOARD INTELLIGENCE: ${payload.researchIntelligence.boardIntelligence}` : ''}
 ${payload.researchIntelligence.recentChanges ? `\nRECENT CHANGES: ${payload.researchIntelligence.recentChanges}` : ''}
-Use this research to make your analysis current and county-specific. Reference specific procedures, deadlines, or strategies where relevant.` : ''}
+${payload.researchIntelligence.sources?.length ? `\nSOURCES CONSULTED (cite these inline where relevant — e.g., "per ${county} County Assessor website" or "per local reporting"):\n${payload.researchIntelligence.sources.slice(0, 8).map((s, i) => `  ${i + 1}. ${s}`).join('\n')}` : ''}
+Use this research to make your analysis current and county-specific. Reference specific procedures, deadlines, or strategies where relevant. When citing information from these sources, use natural attribution (e.g., "according to the county assessor's office," "as reported by [source]") rather than bare URLs.` : ''}
 
 You must return valid JSON — an array of objects with these keys:
 - "section_name": one of the exact values listed below
