@@ -51,8 +51,8 @@ export default function HomePage() {
               </svg>
             </div>
             <div>
-              <p className="font-display text-xl text-cream">Over 50%</p>
-              <p className="text-[11px] text-cream/35 leading-tight">of properties are over-assessed</p>
+              <p className="font-display text-xl text-cream">1 in 2 Homes</p>
+              <p className="text-[11px] text-cream/35 leading-tight">over-assessed — often by 10–20%</p>
             </div>
           </div>
           <div className="hidden md:block h-8 w-px bg-cream/[0.06]" />
@@ -64,7 +64,7 @@ export default function HomePage() {
             </div>
             <div>
               <p className="font-display text-xl text-cream">$800 &ndash; $3,000+</p>
-              <p className="text-[11px] text-cream/35 leading-tight">average annual savings per appeal</p>
+              <p className="text-[11px] text-cream/35 leading-tight">average annual savings when appeals win</p>
             </div>
           </div>
           <div className="hidden md:block h-8 w-px bg-cream/[0.06]" />
@@ -75,8 +75,8 @@ export default function HomePage() {
               </svg>
             </div>
             <div>
-              <p className="font-display text-xl text-cream">Same Day</p>
-              <p className="text-[11px] text-cream/35 leading-tight">report delivery for most properties</p>
+              <p className="font-display text-xl text-cream">48-Hour</p>
+              <p className="text-[11px] text-cream/35 leading-tight">delivery for most properties nationwide</p>
             </div>
           </div>
         </div>
@@ -137,9 +137,9 @@ export default function HomePage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
             </div>
-            <h3 className="font-display text-lg text-cream mb-2">Satisfaction Guarantee</h3>
+            <h3 className="font-display text-lg text-cream mb-2">Money-Back Guarantee</h3>
             <p className="text-sm text-cream/35 leading-relaxed">
-              If your photo-supported appeal is denied in full, send us the denial letter for a complete refund. No questions asked.
+              If your photo-supported tax appeal is denied in full, send us the denial letter. We&apos;ll refund your report — no questions asked.
             </p>
           </div>
           <div className="card-premium rounded-xl p-8 text-center" data-animate data-delay="200">
@@ -177,8 +177,11 @@ export default function HomePage() {
             Ready to Stop Overpaying?
           </h2>
           <p className="relative mt-5 text-cream/40 max-w-lg mx-auto text-lg leading-relaxed">
-            Takes 5 minutes. We pull comparable sales, analyze your property, and build
-            your full evidence package. Upload your tax bill to save 15%.
+            Takes 5 minutes. We pull comparable sales, analyze your property, and deliver
+            a professional evidence package — the same method licensed appraisers use.
+          </p>
+          <p className="relative mt-2 text-sm text-gold/50">
+            Upload your tax bill and save 15% on your report.
           </p>
           <Link
             href="/start"

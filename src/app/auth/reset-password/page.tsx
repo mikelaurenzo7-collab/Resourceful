@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import Button from '@/components/ui/Button';
+import Wordmark from '@/components/ui/Wordmark';
 
 export default function ResetPasswordPage() {
   const [email, setEmail] = useState('');
@@ -43,9 +44,15 @@ export default function ResetPasswordPage() {
     return (
       <div className="min-h-screen bg-pattern flex items-center justify-center px-6">
         <div className="w-full max-w-md text-center">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center mx-auto mb-4">
-            <svg className="w-6 h-6 text-navy-deep" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+          <a href="/" className="inline-flex flex-col items-center gap-2 mb-6 hover:opacity-80 transition-opacity">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center">
+              <span className="text-navy-deep font-bold text-xl">R</span>
+            </div>
+            <Wordmark className="font-display text-base text-cream/70 tracking-wide" />
+          </a>
+          <div className="w-16 h-16 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8 text-gold/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
           </div>
           <h1 className="font-display text-3xl text-cream mb-3">Check Your Email</h1>
@@ -65,9 +72,12 @@ export default function ResetPasswordPage() {
     <div className="min-h-screen bg-pattern flex items-center justify-center px-6">
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center mx-auto mb-4">
-            <span className="text-navy-deep font-bold text-xl">R</span>
-          </div>
+          <a href="/" className="inline-flex flex-col items-center gap-2 mb-6 hover:opacity-80 transition-opacity">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center">
+              <span className="text-navy-deep font-bold text-xl">R</span>
+            </div>
+            <Wordmark className="font-display text-base text-cream/70 tracking-wide" />
+          </a>
           <h1 className="font-display text-3xl text-cream mb-2">Reset Password</h1>
           <p className="text-cream/50 text-sm">Enter your email and we&apos;ll send a reset link.</p>
         </div>

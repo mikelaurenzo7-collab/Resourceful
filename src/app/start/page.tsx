@@ -66,49 +66,62 @@ export default function GoalsPage() {
   return (
     <main className="max-w-3xl mx-auto px-6 py-12">
       <div className="text-center mb-10 animate-fade-in">
+        <span className="inline-block text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase mb-3">
+          Step 1 — Get Started
+        </span>
         <h1 className="font-display text-3xl md:text-4xl text-cream mb-3">
           How can we help you?
         </h1>
         <p className="text-cream/50 max-w-lg mx-auto">
-          Tell us what you&apos;re looking to accomplish and we&apos;ll guide you through the process.
+          Select your goal and we&apos;ll build a professional report tailored to your property and county.
         </p>
       </div>
 
-      <div className="space-y-4 animate-slide-up">
+      <div className="space-y-3 animate-slide-up">
         {SERVICE_OPTIONS.map((opt) => {
           const isSelected = state.serviceType === opt.id;
           return (
             <button
               key={opt.id}
               onClick={() => handleSelect(opt.id)}
-              className={`w-full text-left rounded-xl p-6 transition-all duration-300 border ${
+              className={`w-full text-left rounded-xl p-6 transition-all duration-300 border group ${
                 isSelected
-                  ? 'border-gold/60 bg-gold/10 shadow-lg shadow-gold/5'
-                  : 'border-gold/10 bg-navy-light/50 hover:border-gold/30 hover:bg-navy-light'
+                  ? 'border-gold/50 bg-gradient-to-br from-gold/[0.08] to-gold/[0.04] shadow-lg shadow-gold/5 ring-1 ring-gold/20'
+                  : 'border-gold/10 bg-navy-light/40 hover:border-gold/25 hover:bg-navy-light/60'
               }`}
             >
               <div className="flex items-start gap-4">
                 <div
-                  className={`w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                    isSelected ? 'bg-gold/20 text-gold' : 'bg-gold/5 text-cream/40'
+                  className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 ${
+                    isSelected
+                      ? 'bg-gold/20 text-gold shadow-[0_0_20px_rgba(212,168,71,0.15)]'
+                      : 'bg-gold/5 text-cream/35 group-hover:bg-gold/10 group-hover:text-cream/60'
                   }`}
                 >
                   {opt.icon}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 mb-1">
-                    <h3 className={`font-display text-lg ${isSelected ? 'text-gold' : 'text-cream'}`}>
+                  <div className="flex items-center gap-3 mb-1.5">
+                    <h3 className={`font-display text-lg leading-tight ${isSelected ? 'text-gold' : 'text-cream'}`}>
                       {opt.title}
                     </h3>
-                    <span className="text-xs text-cream/30 bg-cream/5 rounded px-2 py-0.5">
+                    <span className={`text-xs rounded-full px-2.5 py-0.5 border transition-colors ${
+                      isSelected
+                        ? 'text-gold/70 bg-gold/10 border-gold/20'
+                        : 'text-cream/25 bg-cream/[0.03] border-cream/[0.06]'
+                    }`}>
                       {opt.subtitle}
                     </span>
                   </div>
-                  <p className="text-sm text-cream/50 leading-relaxed">{opt.description}</p>
+                  <p className={`text-sm leading-relaxed ${isSelected ? 'text-cream/60' : 'text-cream/45'}`}>
+                    {opt.description}
+                  </p>
                 </div>
                 <div
-                  className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-1 flex items-center justify-center ${
-                    isSelected ? 'border-gold bg-gold' : 'border-cream/20'
+                  className={`w-5 h-5 rounded-full border-2 flex-shrink-0 mt-1 flex items-center justify-center transition-all duration-300 ${
+                    isSelected
+                      ? 'border-gold bg-gold shadow-[0_0_8px_rgba(212,168,71,0.4)]'
+                      : 'border-cream/20 group-hover:border-cream/35'
                   }`}
                 >
                   {isSelected && (
@@ -127,15 +140,16 @@ export default function GoalsPage() {
       {state.serviceType === 'tax_appeal' && (
         <div className="mt-8 animate-fade-in">
           <label className="block text-sm text-cream/60 mb-2">
-            What outcome are you hoping for? <span className="text-cream/30">(optional)</span>
+            Tell us about your situation <span className="text-cream/30">(optional)</span>
           </label>
           <textarea
             value={state.desiredOutcome}
             onChange={(e) => updateState({ desiredOutcome: e.target.value })}
-            placeholder="e.g., My taxes went up 40% last year and I think my home is over-assessed compared to my neighbors..."
+            placeholder="e.g., My taxes went up 40% last year and I believe my home is over-assessed compared to my neighbors..."
             rows={3}
             className="w-full rounded-lg bg-navy-light border border-gold/15 px-4 py-3 text-sm text-cream placeholder-cream/25 focus:outline-none focus:border-gold/40 focus:ring-1 focus:ring-gold/20 resize-none"
           />
+          <p className="text-xs text-cream/25 mt-1.5">This helps our analysts understand your case — add as much context as you like.</p>
         </div>
       )}
 
@@ -151,6 +165,9 @@ export default function GoalsPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
           </svg>
         </Button>
+        {!state.serviceType && (
+          <p className="text-center text-xs text-cream/25 mt-3">Select a report type above to continue</p>
+        )}
       </div>
     </main>
   );

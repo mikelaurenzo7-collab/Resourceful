@@ -28,13 +28,16 @@ export default function SituationPage() {
   return (
     <main className="max-w-3xl mx-auto px-6 py-12">
       <div className="text-center mb-10 animate-fade-in">
+        <span className="inline-block text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase mb-3">
+          Step 3 — Property Condition
+        </span>
         <h1 className="font-display text-3xl text-cream mb-3">
-          {isTaxAppeal ? 'Tell Us About Your Property' : 'Property Condition'}
+          {isTaxAppeal ? 'Document Your Property' : 'Property Condition'}
         </h1>
         <p className="text-cream/50 max-w-lg mx-auto">
           {isTaxAppeal
-            ? "Select any issues affecting your property. These strengthen your appeal by documenting conditions that reduce your property's value below the assessed amount."
-            : 'Select any known issues so we can factor them into our analysis.'}
+            ? "Select any issues affecting your property. Each documented condition reduces your assessed value and strengthens your appeal evidence."
+            : 'Select any known issues so we can factor them into the analysis.'}
         </p>
       </div>
 
@@ -176,7 +179,7 @@ export default function SituationPage() {
       {/* Additional notes */}
       <div className="mt-8">
         <label className="block text-sm text-cream/60 mb-2">
-          Anything else we should know? <span className="text-cream/30">(optional)</span>
+          Anything else our analysts should know? <span className="text-cream/30">(optional)</span>
         </label>
         <textarea
           value={state.additionalNotes}
@@ -189,6 +192,7 @@ export default function SituationPage() {
           rows={3}
           className="w-full rounded-lg bg-navy-light border border-gold/15 px-4 py-3 text-sm text-cream placeholder-cream/25 focus:outline-none focus:border-gold/40 focus:ring-1 focus:ring-gold/20 resize-none"
         />
+        <p className="text-xs text-cream/25 mt-1.5">Every detail you share helps strengthen your report.</p>
       </div>
 
       {/* Selected issues summary */}
@@ -212,7 +216,7 @@ export default function SituationPage() {
       )}
 
       {/* Navigation */}
-      <div className="flex gap-4 mt-10 pt-6 border-t border-gold/10">
+      <div className="flex gap-4 mt-10 pt-2">
         <Button variant="secondary" size="lg" onClick={() => router.push('/start/property')}>
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
