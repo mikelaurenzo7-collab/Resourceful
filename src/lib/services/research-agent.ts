@@ -138,6 +138,85 @@ const READ_PAGE_TOOL: Anthropic.Tool = {
   },
 };
 
+// ─── Research Prompt Builders ────────────────────────────────────────────────
+
+function buildResearchSystemPrompt(context: ResearchContext, currentYear: number): string {
+  const toolsBlock = `You have access to two tools:
+- web_search: Search the web for current information
+- read_page: Read a specific web page for detailed information`;
+
+  const outputBlock = `After researching, provide your findings as a structured response with these sections:
+- STRATEGY_INSIGHTS: The most effective approach for this specific case
+- DEADLINE_INFO: Any time-sensitive information (deadlines, market timing, listing freshness)
+- BOARD_INTELLIGENCE: How the local assessment authority operates and what they respond to
+- RECENT_CHANGES: Any ${currentYear} changes, procedural updates, or market shifts
+
+Be concise but specific. Cite sources where possible. If you can't find information on a topic, say so rather than guessing.`;
+
+  if (context.serviceType === 'pre_purchase') {
+    return `You are a buyer-side real estate market analyst helping a buyer evaluate a ${context.propertyType} property in ${context.countyName} County, ${context.stateName}. Your job is to uncover every market data point and risk factor that affects this property's true value and negotiation position.
+
+${toolsBlock}
+
+Research these topics (in order of priority):
+1. Current ${currentYear} market conditions in ${context.countyName} County for ${context.propertyType} properties — price trends, days on market, list-to-sale ratios, inventory levels
+2. Recent comparable sales and price per square foot trends in ${context.countyName} County
+3. Neighborhood-specific factors: development plans, school ratings, crime trends, walkability, flood or environmental risk, anything that impacts long-term value
+4. Tax exposure post-purchase: how ${context.countyName} County assesses ${context.propertyType} properties, typical assessment ratio, and how quickly values are reassessed after a sale
+5. Any red flags: areas of declining value, high insurance costs, infrastructure issues, or local economic headwinds
+${context.desiredOutcome ? `\nClient's goal: ${context.desiredOutcome}` : ''}
+
+${outputBlock}`;
+  }
+
+  if (context.serviceType === 'pre_listing') {
+    return `You are a seller-side real estate market analyst helping a seller price and position a ${context.propertyType} property in ${context.countyName} County, ${context.stateName}. Your job is to surface every market data point that informs a winning pricing strategy.
+
+${toolsBlock}
+
+Research these topics (in order of priority):
+1. Current ${currentYear} market conditions in ${context.countyName} County for ${context.propertyType} properties — days on market, list-to-sale ratios, buyer demand, seasonal trends
+2. Active comparable listings and recent sold comparables — what are similar properties listed and selling for?
+3. Pricing strategies that are working in this market right now — is this a buyer's or seller's market? Are prices rising, stable, or softening?
+4. Buyer preferences and must-haves for ${context.propertyType} properties in this area — what features command premiums?
+5. Assessment vs. market value in ${context.countyName} County — how does the county's assessed value typically compare to actual sale prices? This helps buyers understand their tax exposure.
+${context.desiredOutcome ? `\nClient's goal: ${context.desiredOutcome}` : ''}
+
+${outputBlock}`;
+  }
+
+  // Default: tax_appeal
+  return `You are a property tax appeal research specialist. Your job is to research the most current and effective appeal strategies for a ${context.propertyType} property in ${context.countyName} County, ${context.stateName}.
+
+${toolsBlock}
+
+Property context:
+- County: ${context.countyName} County, ${context.stateName}
+- Property type: ${context.propertyType}
+${context.desiredOutcome ? `- Client's desired outcome: ${context.desiredOutcome}` : ''}
+${context.assessedValue ? `- Current assessed value: $${context.assessedValue.toLocaleString()}` : ''}
+${context.propertyIssues?.length ? `- Known property issues: ${context.propertyIssues.join(', ')}` : ''}
+
+Research these topics (in order of priority):
+1. Current ${currentYear} filing deadlines and any recent procedural changes to the appeal process in ${context.countyName} County
+2. What arguments and evidence ${context.countyName} County's appeal board finds most persuasive for ${context.propertyType} properties
+3. Recent rule changes, new requirements, or procedural updates for ${currentYear}
+4. Tips and tactics from successful appellants in ${context.countyName} County — what wins and what backfires
+5. Recent local market trends, news, or county-wide reassessment controversies that would support an appeal (e.g., media coverage of overassessment patterns, declining market indicators)
+
+${outputBlock}`;
+}
+
+function buildResearchInitialMessage(context: ResearchContext, currentYear: number): string {
+  if (context.serviceType === 'pre_purchase') {
+    return `Research current market conditions and risk factors for a ${context.propertyType} property purchase in ${context.countyName} County, ${context.stateName} for ${currentYear}. Use web_search and read_page tools to find current, specific market intelligence.`;
+  }
+  if (context.serviceType === 'pre_listing') {
+    return `Research current market conditions and pricing strategy for listing a ${context.propertyType} property in ${context.countyName} County, ${context.stateName} in ${currentYear}. Use web_search and read_page tools to find current comparable listings, recent sales, and market momentum.`;
+  }
+  return `Research the best appeal strategy for a ${context.propertyType} property tax appeal in ${context.countyName} County, ${context.stateName} for ${currentYear}. Use web_search and read_page tools to find current filing deadlines, board tactics, and local market evidence.`;
+}
+
 // ─── Public API ─────────────────────────────────────────────────────────────
 
 /**
@@ -168,38 +247,12 @@ export async function researchAppealStrategy(
   let searchCount = 0;
   const MAX_SEARCHES = 5;
 
-  const systemPrompt = `You are a property tax appeal research specialist. Your job is to research the most current and effective appeal strategies for a specific county, property type, and situation.
-
-You have access to two tools:
-- web_search: Search the web for current information
-- read_page: Read a specific web page for detailed information
-
-Research the following for this specific case:
-- County: ${context.countyName} County, ${context.stateName}
-- Property type: ${context.propertyType}
-- Service: ${context.serviceType === 'tax_appeal' ? 'Property tax appeal' : context.serviceType === 'pre_purchase' ? 'Pre-purchase analysis' : 'Pre-listing analysis'}
-${context.desiredOutcome ? `- Client's desired outcome: ${context.desiredOutcome}` : ''}
-${context.assessedValue ? `- Current assessed value: $${context.assessedValue.toLocaleString()}` : ''}
-${context.propertyIssues?.length ? `- Property issues: ${context.propertyIssues.join(', ')}` : ''}
-
-Research these topics (in order of priority):
-1. Current ${currentYear} filing deadlines and any recent changes to the appeal process
-2. What arguments and evidence the ${context.countyName} County board responds to for ${context.propertyType} properties
-3. Recent rule changes or procedural updates for ${currentYear}
-4. Tips from successful appellants in this county
-
-After researching, provide your findings as a structured response with these sections:
-- STRATEGY_INSIGHTS: The most effective approach for this specific case
-- DEADLINE_INFO: Current filing deadline and any time-sensitive information
-- BOARD_INTELLIGENCE: How this specific board operates and what they respond to
-- RECENT_CHANGES: Any ${currentYear} rule changes, procedural updates, or new requirements
-
-Be concise but specific. Cite your sources. If you can't find information on a topic, say so rather than guessing.`;
+  const systemPrompt = buildResearchSystemPrompt(context, currentYear);
 
   const messages: Anthropic.MessageParam[] = [
     {
       role: 'user',
-      content: `Research the best appeal strategy for a ${context.propertyType} property tax appeal in ${context.countyName} County, ${context.stateName} for ${currentYear}. Use web_search and read_page tools to find current, specific information.`,
+      content: buildResearchInitialMessage(context, currentYear),
     },
   ];
 
