@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import Button from '@/components/ui/Button';
+import Wordmark from '@/components/ui/Wordmark';
 
 function LoginForm() {
   const router = useRouter();
@@ -57,9 +58,12 @@ function LoginForm() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-10">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center mx-auto mb-4">
-            <span className="text-navy-deep font-bold text-xl">R</span>
-          </div>
+          <a href="/" className="inline-flex flex-col items-center gap-2 mb-6 hover:opacity-80 transition-opacity">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gold-light to-gold-dark flex items-center justify-center">
+              <span className="text-navy-deep font-bold text-xl">R</span>
+            </div>
+            <Wordmark className="font-display text-base text-cream/70 tracking-wide" />
+          </a>
           <h1 className="font-display text-3xl text-cream mb-2">Welcome Back</h1>
           <p className="text-cream/50 text-sm">Sign in to access your reports and dashboard.</p>
         </div>

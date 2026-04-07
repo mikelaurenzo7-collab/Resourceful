@@ -76,15 +76,18 @@ export default function PhotosPage() {
   return (
     <main className="max-w-3xl mx-auto px-6 py-12">
       <div className="text-center mb-10 animate-fade-in">
+        <span className="inline-block text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase mb-3">
+          Step 4 — Your Evidence
+        </span>
         <h1 className="font-display text-3xl text-cream mb-3">Your Property, Your Evidence</h1>
         <p className="text-cream/50 max-w-lg mx-auto leading-relaxed">
-          County assessors assume average condition from a desk. They&apos;ve never walked your
-          basement, seen your roof, or noticed deferred maintenance.
-          <span className="text-gold/70"> Your photos are evidence they don&apos;t have.</span>
+          County assessors value your home from a desk — they&apos;ve never seen your basement, roof,
+          or deferred maintenance.
+          <span className="text-gold/70"> Your photos are evidence they&apos;ll never have.</span>
         </p>
         <p className="text-xs text-cream/30 mt-3 max-w-md mx-auto">
-          Our AI analyzes each photo for condition defects and calculates the depreciation
-          impact on your property&apos;s value. More photos = stronger case.
+          Our AI analyzes each photo for condition defects and quantifies the depreciation
+          impact on your value. More photos = stronger case.
         </p>
       </div>
 
@@ -237,7 +240,7 @@ export default function PhotosPage() {
             </div>
           </>
         ) : (
-          <div className="flex gap-4 pt-6 border-t border-gold/10">
+          <div className="flex gap-4 pt-2">
             <Button variant="secondary" size="lg" onClick={() => setShowUploader(false)}>
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />

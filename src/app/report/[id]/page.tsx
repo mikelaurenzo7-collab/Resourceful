@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Wordmark from '@/components/ui/Wordmark';
 
 interface CountyInfo {
   name: string;
@@ -222,8 +223,8 @@ export default function ReportViewerPage() {
       {/* Nav */}
       <nav className="bg-navy-deep/80 backdrop-blur-xl nav-shadow sticky top-0 z-50">
         <div className="mx-auto max-w-5xl px-6 flex items-center justify-between h-16">
-          <Link href="/" className="font-display text-xl text-cream">
-            <span className="text-gold">RE</span>sourceful
+          <Link href="/" className="font-display text-xl text-cream hover:opacity-80 transition-opacity">
+            <Wordmark />
           </Link>
           <a
             href={`/api/reports/${reportId}/download`}
@@ -239,12 +240,18 @@ export default function ReportViewerPage() {
 
       <div className="mx-auto max-w-5xl px-6 py-10">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="font-display text-2xl md:text-3xl text-cream mb-1">{data.propertyAddress}</h1>
-          <p className="text-sm text-cream/40">
-            {isTaxAppeal ? 'Tax Appeal Report' : data.serviceType === 'pre_purchase' ? 'Pre-Purchase Analysis' : 'Pre-Listing Report'}
-            {data.deliveredAt && ` — Delivered ${new Date(data.deliveredAt).toLocaleDateString()}`}
-          </p>
+        <div className="mb-8 animate-fade-in">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[11px] font-semibold tracking-[0.18em] text-gold/60 uppercase">
+              {isTaxAppeal ? 'Tax Appeal Report' : data.serviceType === 'pre_purchase' ? 'Pre-Purchase Analysis' : 'Pre-Listing Report'}
+            </span>
+            {data.deliveredAt && (
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-400/80 border border-emerald-500/15 rounded-full px-2.5 py-0.5 font-medium">
+                Delivered {new Date(data.deliveredAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+            )}
+          </div>
+          <h1 className="font-display text-2xl md:text-3xl text-cream leading-tight">{data.propertyAddress}</h1>
         </div>
 
         {/* Tabs */}
@@ -272,33 +279,35 @@ export default function ReportViewerPage() {
             {/* Value summary cards */}
             <div className="grid md:grid-cols-3 gap-4">
               <div className="card-premium rounded-xl p-6">
-                <p className="text-xs uppercase tracking-widest text-cream/40 mb-1">Assessed Value</p>
-                <p className="font-display text-2xl text-cream">{formatDollar(data.assessedValue)}</p>
+                <p className="text-[10px] uppercase tracking-widest text-cream/35 mb-2">County Assessed Value</p>
+                <p className="font-display text-3xl text-cream">{formatDollar(data.assessedValue)}</p>
+                <p className="text-xs text-cream/25 mt-1.5">Per county records</p>
               </div>
-              <div className="card-premium rounded-xl p-6">
-                <p className="text-xs uppercase tracking-widest text-cream/40 mb-1">Our Concluded Value</p>
-                <p className="font-display text-2xl text-gold">{formatDollar(data.concludedValue)}</p>
+              <div className="card-premium rounded-xl p-6 ring-1 ring-gold/20">
+                <p className="text-[10px] uppercase tracking-widest text-gold/60 mb-2">Our Concluded Value</p>
+                <p className="font-display text-3xl text-gold">{formatDollar(data.concludedValue)}</p>
+                <p className="text-xs text-cream/25 mt-1.5">Based on comparable sales</p>
               </div>
               {isTaxAppeal && data.potentialSavings > 0 && (
-                <div className="card-premium rounded-xl p-6 border border-emerald-500/20">
-                  <p className="text-xs uppercase tracking-widest text-emerald-400/60 mb-1">Potential Savings</p>
-                  <p className="font-display text-2xl text-emerald-400">{formatDollar(data.potentialSavings)}</p>
-                  <p className="text-xs text-cream/30 mt-1">in over-assessment</p>
+                <div className="card-premium rounded-xl p-6 border border-emerald-500/25 bg-emerald-500/[0.04]">
+                  <p className="text-[10px] uppercase tracking-widest text-emerald-400/60 mb-2">Potential Annual Savings</p>
+                  <p className="font-display text-3xl text-emerald-400">{formatDollar(data.potentialSavings)}</p>
+                  <p className="text-xs text-emerald-400/40 mt-1.5">From reduced assessment</p>
                 </div>
               )}
             </div>
 
             {/* Download CTA */}
-            <div className="card-premium rounded-xl p-6 flex items-center justify-between">
+            <div className="card-elevated rounded-xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <p className="text-cream font-medium">Your Full Report (PDF)</p>
+                <p className="text-cream font-semibold">Your Full Report (PDF)</p>
                 <p className="text-xs text-cream/40 mt-0.5">
-                  Includes comparable sales, adjustment grid, narratives, and filing instructions.
+                  Comparable sales grid, adjustment analysis, condition narrative, and county-specific filing instructions.
                 </p>
               </div>
               <a
                 href={`/api/reports/${reportId}/download`}
-                className="flex items-center gap-2 text-sm font-medium bg-gold/10 text-gold border border-gold/20 px-4 py-2.5 rounded-lg hover:bg-gold/20 transition-all flex-shrink-0"
+                className="flex items-center gap-2 text-sm font-semibold text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark px-5 py-2.5 rounded-lg hover:shadow-gold hover:brightness-110 transition-all flex-shrink-0 w-full sm:w-auto justify-center"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

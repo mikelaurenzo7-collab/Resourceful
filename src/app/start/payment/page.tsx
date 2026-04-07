@@ -396,9 +396,12 @@ export default function PaymentPage() {
     return (
       <main className="max-w-2xl mx-auto px-6 py-12">
         <div className="text-center mb-10 animate-fade-in">
+          <span className="inline-block text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase mb-3">
+            Step 5 — Your Report
+          </span>
           <h1 className="font-display text-3xl text-cream mb-3">Choose Your Package</h1>
           <p className="text-cream/50">
-            Select how you&apos;d like your report prepared, then enter your email.
+            Select how you&apos;d like your report prepared and reviewed, then complete checkout.
           </p>
         </div>
 
@@ -610,30 +613,35 @@ export default function PaymentPage() {
           </div>
 
           {/* Email collection */}
-          <div className="card-premium rounded-xl p-6 space-y-4">
-            <div>
-              <label className="block text-sm text-cream/60 mb-1.5">Email address *</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
-                placeholder="your@email.com"
-                className="w-full rounded-lg bg-navy-light border border-gold/15 px-4 py-3 text-cream placeholder-cream/25 focus:outline-none focus:border-gold/40 focus:ring-1 focus:ring-gold/20"
-              />
-              {emailError && <p className="text-xs text-red-400 mt-1">{emailError}</p>}
-              <p className="text-xs text-cream/30 mt-1">We&apos;ll send your completed report here.</p>
+          <div className="card-premium rounded-xl overflow-hidden">
+            <div className="px-6 py-4 bg-gold/[0.04] border-b border-gold/10">
+              <p className="text-xs uppercase tracking-widest text-gold/70">Delivery Details</p>
             </div>
-            <div>
-              <label className="block text-sm text-cream/60 mb-1.5">
-                Your name <span className="text-cream/30">(optional)</span>
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="John Smith"
-                className="w-full rounded-lg bg-navy-light border border-gold/15 px-4 py-3 text-cream placeholder-cream/25 focus:outline-none focus:border-gold/40 focus:ring-1 focus:ring-gold/20"
-              />
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm text-cream/70 font-medium mb-1.5">Email Address *</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
+                  placeholder="your@email.com"
+                  className="w-full rounded-lg bg-navy-light border border-gold/15 px-4 py-3 text-cream placeholder-cream/25 focus:outline-none focus:border-gold/40 focus:ring-1 focus:ring-gold/20"
+                />
+                {emailError && <p className="text-xs text-red-400 mt-1.5">{emailError}</p>}
+                <p className="text-xs text-cream/30 mt-1.5">Your completed report will be delivered here — and always accessible from your dashboard.</p>
+              </div>
+              <div>
+                <label className="block text-sm text-cream/70 font-medium mb-1.5">
+                  Your Name <span className="text-cream/30 font-normal">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Jane Smith"
+                  className="w-full rounded-lg bg-navy-light border border-gold/15 px-4 py-3 text-cream placeholder-cream/25 focus:outline-none focus:border-gold/40 focus:ring-1 focus:ring-gold/20"
+                />
+              </div>
             </div>
           </div>
 
@@ -679,9 +687,12 @@ export default function PaymentPage() {
   return (
     <main className="max-w-2xl mx-auto px-6 py-12">
       <div className="text-center mb-10 animate-fade-in">
+        <span className="inline-block text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase mb-3">
+          Final Step — Payment
+        </span>
         <h1 className="font-display text-3xl text-cream mb-3">Complete Your Order</h1>
         <p className="text-cream/50">
-          Review your details and submit payment to begin report generation.
+          Review your order summary and submit payment. Your report begins immediately.
         </p>
       </div>
 

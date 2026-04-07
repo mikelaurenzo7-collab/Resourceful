@@ -36,22 +36,25 @@ function SuccessContent() {
           You&apos;re All Set
         </h1>
 
-        <p className="text-cream/50 text-lg mb-2">
-          Your report is now being built by our team.
+        <p className="text-cream/60 text-lg mb-2 font-medium">
+          Your report is being built right now.
         </p>
         <p className="text-cream/40 text-sm mb-8 max-w-md mx-auto leading-relaxed">
           {serviceType === 'pre_purchase'
-            ? 'We\u2019re analyzing comparable sales and market data to give you a clear picture of this property\u2019s true value before you buy.'
+            ? 'We\'re analyzing comparable sales and market data to give you a clear picture of this property\'s true value before you buy.'
             : serviceType === 'pre_listing'
-              ? 'We\u2019re building a data-driven market analysis to strengthen your listing price and give buyers confidence.'
-              : 'We\u2019re pulling comparable sales, analyzing your photos, and building your full evidence package for the appeal.'}
+              ? 'We\'re building a data-driven market analysis to strengthen your listing price and give buyers confidence.'
+              : 'We\'re pulling comparable sales, analyzing your photos, and building your full evidence package for the appeal.'}
           {' '}Every report is reviewed for accuracy before it reaches you.
         </p>
 
         {/* What happens next */}
-        <div className="card-premium rounded-xl p-6 text-left mb-8">
-          <h2 className="text-sm font-medium text-gold mb-4">What Happens Next</h2>
-          <div className="space-y-4">
+        <div className="card-premium rounded-xl overflow-hidden text-left mb-8">
+          <div className="px-6 pt-5 pb-4 border-b border-gold/[0.08] flex items-center gap-2">
+            <div className="w-2 h-2 rounded-full bg-gold animate-pulse" />
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-gold/80">What Happens Next</h2>
+          </div>
+          <div className="p-6 space-y-5">
             {[
               {
                 step: '1',
@@ -61,31 +64,36 @@ function SuccessContent() {
               },
               {
                 step: '2',
-                title: 'Expert Review',
+                title: 'Quality Review',
                 desc: 'Every report is reviewed by our team for accuracy and completeness before it reaches you. We stand behind our numbers.',
                 active: false,
               },
               {
                 step: '3',
-                title: 'Report Ready on Your Dashboard',
-                desc: 'Your complete report with verified savings, filing instructions, and step-by-step hearing guidance — always accessible from your dashboard.',
+                title: 'Delivered to Your Dashboard',
+                desc: 'Your complete report — comparable sales, filing instructions, and step-by-step hearing guidance — accessible anytime from your dashboard.',
                 active: false,
               },
-            ].map((item) => (
-              <div key={item.step} className="flex items-start gap-3">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                  item.active ? 'bg-gold/20 ring-2 ring-gold/30' : 'bg-gold/15'
+            ].map((item, i) => (
+              <div key={item.step} className="flex items-start gap-4">
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                  item.active
+                    ? 'bg-gold/20 ring-2 ring-gold/30 shadow-[0_0_12px_rgba(212,168,71,0.2)]'
+                    : 'bg-navy-light border border-gold/15'
                 }`}>
                   {item.active ? (
-                    <div className="w-2 h-2 rounded-full bg-gold animate-pulse" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-gold animate-pulse" />
                   ) : (
-                    <span className="text-xs text-gold font-bold">{item.step}</span>
+                    <span className="text-xs text-gold/60 font-semibold">{item.step}</span>
                   )}
                 </div>
-                <div>
-                  <p className={`text-sm font-medium ${item.active ? 'text-gold' : 'text-cream'}`}>{item.title}</p>
-                  <p className="text-xs text-cream/40 mt-0.5">{item.desc}</p>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-medium leading-snug ${item.active ? 'text-gold' : 'text-cream/80'}`}>{item.title}</p>
+                  <p className="text-xs text-cream/40 mt-1 leading-relaxed">{item.desc}</p>
                 </div>
+                {i < 2 && (
+                  <div className="absolute ml-3 mt-8 w-px h-5 bg-gold/10 hidden" />
+                )}
               </div>
             ))}
           </div>

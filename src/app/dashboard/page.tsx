@@ -201,8 +201,9 @@ export default async function DashboardPage() {
       {/* ─── Main Content ──���───────────────────────────────────────── */}
       <main className="max-w-5xl mx-auto px-6 py-12">
         <div className="mb-10 animate-fade-in">
-          <h1 className="font-display text-3xl text-cream mb-2">Your Dashboard</h1>
-          <p className="text-cream/50">Track your reports and download completed analyses.</p>
+          <span className="text-[11px] font-semibold tracking-[0.2em] text-gold/60 uppercase block mb-2">Your Reports</span>
+          <h1 className="font-display text-3xl text-cream mb-2">Dashboard</h1>
+          <p className="text-cream/40">Track your reports, download completed analyses, and file your appeal.</p>
         </div>
 
         {/* ─── Active Report ───────────────────────────────────────── */}
@@ -364,25 +365,32 @@ export default async function DashboardPage() {
         {/* ─── Empty State ───────��──────────────────────────��──────── */}
         {userReports.length === 0 && (
           <div className="text-center py-24 animate-fade-in">
-            <div className="w-20 h-20 rounded-2xl bg-gold/[0.08] border border-gold/[0.12] flex items-center justify-center mx-auto mb-8"
-                 style={{ boxShadow: '0 0 30px rgba(212, 168, 71, 0.06)' }}>
-              <svg className="w-10 h-10 text-gold/40" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+            <div className="relative w-24 h-24 mx-auto mb-10">
+              <div className="absolute -inset-4 rounded-full bg-gold/[0.04] blur-xl" />
+              <div className="relative w-24 h-24 rounded-2xl bg-gold/[0.08] border border-gold/[0.12] flex items-center justify-center"
+                  style={{ boxShadow: '0 0 30px rgba(212, 168, 71, 0.06)' }}>
+                <svg className="w-11 h-11 text-gold/40" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
             </div>
             <h2 className="font-display text-2xl text-cream mb-3">No Reports Yet</h2>
-            <p className="text-cream/40 mb-8 max-w-sm mx-auto">
-              Get started with your first property analysis. We compare your home to recent sales and build your evidence package.
+            <p className="text-cream/40 mb-2 max-w-sm mx-auto">
+              Get your first property analysis in minutes.
+            </p>
+            <p className="text-cream/25 text-sm mb-10 max-w-xs mx-auto">
+              We compare your home against 5–10 recent sales, document property conditions, and build a professional evidence package.
             </p>
             <Link
               href="/start"
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-8 py-4 text-base font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.02]"
+              className="inline-flex items-center gap-2.5 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-8 py-4 text-base font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.02] btn-glow"
             >
-              Start Your Report
+              Run the Numbers
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
               </svg>
             </Link>
+            <p className="text-xs text-cream/20 mt-4">Takes about 5 minutes to complete</p>
           </div>
         )}
 
