@@ -91,9 +91,10 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=${ANON_KEY}
 SUPABASE_SERVICE_ROLE_KEY=${SERVICE_ROLE_KEY}
 SUPABASE_PROJECT_REF=local
 
-# ---- Google APIs (leave blank to skip maps) ---------------
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
-GOOGLE_MAPS_SERVER_KEY=
+# ---- Azure Maps (leave blank to use Census geocoder fallback) ---
+AZURE_MAPS_SUBSCRIPTION_KEY=
+NEXT_PUBLIC_AZURE_MAPS_CLIENT_ID=
+NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN=
 
 # ---- ATTOM (leave blank to use mock data) -----------------
 ATTOM_API_KEY=

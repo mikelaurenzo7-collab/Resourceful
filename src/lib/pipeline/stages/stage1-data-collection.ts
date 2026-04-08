@@ -7,7 +7,7 @@
 // downstream stage (narratives, filing guide, delivery). We use multiple
 // sources to ensure we identify the correct county:
 //   1. ATTOM property detail → location.countyFips (most reliable)
-//   2. Google Geocode → county name
+//   2. Azure Maps / Census Geocode → county name
 //   3. User-provided county_fips (if set at intake)
 //   4. User-provided county + state (fallback for county_rules lookup)
 //
@@ -18,7 +18,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Report, PropertyData, CountyRule } from '@/types/database';
 import type { StageResult } from '../orchestrator';
-import { geocodeAddress } from '@/lib/services/google-maps';
+import { geocodeAddress } from '@/lib/services/azure-maps';
 import { collectPropertyData } from '@/lib/services/data-router';
 import { needsEnrichment, enrichCounty } from '@/lib/services/county-enrichment';
 import {

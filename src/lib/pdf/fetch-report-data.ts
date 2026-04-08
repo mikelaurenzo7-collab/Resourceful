@@ -14,7 +14,7 @@ import type {
   CountyRule,
   Photo,
 } from '@/types/database';
-import { getStaticMapUrl, getStreetViewUrl } from '@/lib/services/google-maps';
+import { getStaticMapUrl } from '@/lib/services/azure-maps';
 import type { ReportTemplateData, FilingGuide } from '@/lib/templates/report-template';
 
 /**

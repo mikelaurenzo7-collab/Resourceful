@@ -21,16 +21,31 @@ export default function PhotosPage() {
     if (!state.address) router.push('/start/property');
   }, [setCurrentStep, state.address, router]);
 
-  // Auto-fetch Street View when address is available
+  // Auto-fetch street-level imagery via Mapillary when address is available
   useEffect(() => {
     if (state.address && !streetViewLoaded) {
+      setStreetViewLoaded(true);
+      // Fetch Mapillary image via server-side API to keep token safe
       const addr = `${state.address.line1}, ${state.address.city}, ${state.address.state} ${state.address.zip}`;
-      const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-      if (key) {
-        const url = `https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${encodeURIComponent(addr)}&key=${key}`;
-        setStreetViewUrl(url);
-        setStreetViewLoaded(true);
-      }
+      fetch(`/api/address-search?q=${encodeURIComponent(addr)}`)
+        .then(res => res.json())
+        .then(data => {
+          const s = data.suggestions?.[0];
+          if (s?.latitude && s?.longitude) {
+            const token = process.env.NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN;
+            if (token) {
+              const bbox = `${s.longitude - 0.001},${s.latitude - 0.001},${s.longitude + 0.001},${s.latitude + 0.001}`;
+              fetch(`https://graph.mapillary.com/images?access_token=${token}&fields=thumb_2048_url&bbox=${bbox}&limit=1`)
+                .then(r => r.json())
+                .then(j => {
+                  const url = j?.data?.[0]?.thumb_2048_url;
+                  if (url) setStreetViewUrl(url);
+                })
+                .catch(() => {});
+            }
+          }
+        })
+        .catch(() => {});
     }
   }, [state.address, streetViewLoaded]);
 
@@ -110,7 +125,7 @@ export default function PhotosPage() {
             />
           </div>
           <p className="text-xs text-cream/30 mt-2 text-center">
-            Google Street View — we&apos;ll include this in your report automatically
+            Street-level imagery — we&apos;ll include this in your report automatically
           </p>
         </div>
       )}

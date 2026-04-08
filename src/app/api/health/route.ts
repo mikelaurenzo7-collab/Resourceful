@@ -81,11 +81,18 @@ export async function GET(request: Request) {
     results.stripe_publishable = { status: 'ok', message: 'Configured' };
   }
 
-  // ── Google Maps ───────────────────────────────────────────────────────
-  if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) {
-    results.google_maps = { status: 'not_configured', message: 'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY missing (geocoding will fail)' };
+  // ── Azure Maps ────────────────────────────────────────────────────────
+  if (!process.env.AZURE_MAPS_SUBSCRIPTION_KEY) {
+    results.azure_maps = { status: 'not_configured', message: 'AZURE_MAPS_SUBSCRIPTION_KEY missing (geocoding will use Census fallback)' };
   } else {
-    results.google_maps = { status: 'ok', message: 'Configured' };
+    results.azure_maps = { status: 'ok', message: 'Configured' };
+  }
+
+  // ── Mapillary ─────────────────────────────────────────────────────────
+  if (!process.env.NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN) {
+    results.mapillary = { status: 'not_configured', message: 'NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN missing (street imagery disabled)' };
+  } else {
+    results.mapillary = { status: 'ok', message: 'Configured' };
   }
 
   // ── Resend Email ──────────────────────────────────────────────────────

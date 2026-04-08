@@ -19,46 +19,34 @@ interface ValuationResult {
   estimatedAnnualSavings: number | null;
 }
 
+interface AddressSuggestion {
+  formattedAddress: string;
+  streetNumber: string | null;
+  route: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  county: string | null;
+  latitude: number;
+  longitude: number;
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function formatDollar(value: number): string {
   return `$${value.toLocaleString('en-US', { minimumFractionDigits: 0 })}`;
 }
 
-function parseAddressComponents(place: google.maps.places.PlaceResult): ParsedAddress | null {
-  const components = place.address_components;
-  if (!components) return null;
-
-  let streetNumber = '';
-  let route = '';
-  let city = '';
-  let state = '';
-  let zip = '';
-  let county = '';
-
-  for (const c of components) {
-    const t = c.types[0];
-    if (t === 'street_number') streetNumber = c.long_name;
-    else if (t === 'route') route = c.long_name;
-    else if (t === 'locality') city = c.long_name;
-    else if (t === 'administrative_area_level_1') state = c.short_name;
-    else if (t === 'postal_code') zip = c.long_name;
-    else if (t === 'administrative_area_level_2')
-      county = c.long_name.replace(/ County$| Parish$| Borough$/i, '');
-  }
-
-  const line1 = [streetNumber, route].filter(Boolean).join(' ');
-  if (!line1) return null;
-
-  return { line1, city, state, zip, county };
-}
-
 // ─── Component ──────────────────────────────────────────────────────────────
 
 export default function Hero() {
   const inputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [address, setAddress] = useState<ParsedAddress | null>(null);
   const [valuation, setValuation] = useState<ValuationResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -103,61 +91,62 @@ export default function Hero() {
       });
       setHasResult(true);
     } catch {
-      // Silently fall back to static display
       setHasResult(false);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Initialize Google Places Autocomplete
+  // Fetch address suggestions from server-side Azure Maps proxy
+  const fetchSuggestions = useCallback(async (q: string) => {
+    if (q.trim().length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/address-search?q=${encodeURIComponent(q)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setSuggestions(data.suggestions ?? []);
+      setShowSuggestions(true);
+    } catch {
+      // Silent — autocomplete is non-critical
+    }
+  }, []);
+
+  // Debounced search on input change
   useEffect(() => {
-    if (!inputRef.current || autocompleteRef.current) return;
-    if (typeof google === 'undefined' || !google.maps?.places) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchSuggestions(query), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query, fetchSuggestions]);
 
-    const ac = new google.maps.places.Autocomplete(inputRef.current, {
-      componentRestrictions: { country: 'us' },
-      types: ['address'],
-      fields: ['address_components', 'formatted_address'],
-    });
-
-    ac.addListener('place_changed', () => {
-      const place = ac.getPlace();
-      const parsed = parseAddressComponents(place);
-      if (parsed) {
-        setAddress(parsed);
-        fetchValuation(parsed);
-      }
-    });
-
-    autocompleteRef.current = ac;
-  }, [fetchValuation]);
-
-  // Retry init when Google Maps loads after mount
+  // Close dropdown on outside click
   useEffect(() => {
-    if (autocompleteRef.current) return;
-    const timer = setInterval(() => {
-      if (typeof google !== 'undefined' && google.maps?.places && inputRef.current) {
-        clearInterval(timer);
-        // Re-trigger the effect
-        const ac = new google.maps.places.Autocomplete(inputRef.current, {
-          componentRestrictions: { country: 'us' },
-          types: ['address'],
-          fields: ['address_components', 'formatted_address'],
-        });
-        ac.addListener('place_changed', () => {
-          const place = ac.getPlace();
-          const parsed = parseAddressComponents(place);
-          if (parsed) {
-            setAddress(parsed);
-            fetchValuation(parsed);
-          }
-        });
-        autocompleteRef.current = ac;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
       }
-    }, 500);
-    return () => clearInterval(timer);
-  }, [fetchValuation]);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSelect = (s: AddressSuggestion) => {
+    const line1 = [s.streetNumber, s.route].filter(Boolean).join(' ');
+    const parsed: ParsedAddress = {
+      line1: line1 || s.formattedAddress,
+      city: s.city ?? '',
+      state: s.state ?? '',
+      zip: s.zip ?? '',
+      county: s.county ?? '',
+    };
+    setQuery(s.formattedAddress);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    setAddress(parsed);
+    fetchValuation(parsed);
+  };
 
   return (
     <section className="relative overflow-hidden bg-pattern bg-noise">
@@ -211,7 +200,7 @@ export default function Hero() {
 
           {/* Address input */}
           <div className="mt-10 max-w-xl mx-auto animate-fade-in" style={{ animationDelay: '0.7s' }}>
-            <div className="relative group">
+            <div className="relative group" ref={containerRef}>
               <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gold/40 group-focus-within:text-gold/70 transition-colors pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -219,9 +208,33 @@ export default function Hero() {
               <input
                 ref={inputRef}
                 type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => { if (suggestions.length) setShowSuggestions(true); }}
                 placeholder="Enter your property address..."
                 className="w-full bg-navy-light/50 border border-cream/[0.08] rounded-xl pl-12 pr-4 py-4 text-cream placeholder:text-cream/25 focus:border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold/20 focus:bg-navy-light/70 transition-all text-base"
+                autoComplete="off"
+                role="combobox"
+                aria-expanded={showSuggestions && suggestions.length > 0}
+                aria-autocomplete="list"
               />
+              {/* Autocomplete dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <ul className="absolute z-50 mt-1 w-full rounded-xl border border-gold/20 bg-navy-deep/95 backdrop-blur-sm shadow-xl overflow-hidden" role="listbox">
+                  {suggestions.map((s, i) => (
+                    <li key={i}>
+                      <button
+                        type="button"
+                        className="w-full text-left px-4 py-3 text-sm text-cream hover:bg-gold/10 transition-colors border-b border-gold/5 last:border-0"
+                        onMouseDown={() => handleSelect(s)}
+                        role="option"
+                      >
+                        {s.formattedAddress}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
 

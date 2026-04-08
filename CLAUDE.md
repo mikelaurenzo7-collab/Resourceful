@@ -29,7 +29,7 @@ This platform serves every county in every state. ATTOM is the universal data so
 - Supabase (Postgres, Storage, Auth) — RLS on every table
 - Anthropic AI API (model names are env-var constants — never hardcoded)
 - ATTOM Data API for property data
-- Google Maps, Geocoding, Places, Street View, Static Maps APIs
+- Azure Maps (geocoding, static maps, address search) + Mapillary (street-level imagery)
 - Stripe for payments, Resend for email
 - @sparticuz/chromium + puppeteer-core for PDF generation
 - Deployed on Vercel

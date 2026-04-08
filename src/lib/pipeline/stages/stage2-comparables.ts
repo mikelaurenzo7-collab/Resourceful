@@ -8,7 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, PropertyType, ComparableSaleInsert, Report, PropertyData } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { getSalesComparables, type AttomSaleComp } from '@/lib/services/attom';
-import { getStreetViewUrl } from '@/lib/services/google-maps';
+import { getMapillaryImageUrl, geocodeAddress } from '@/lib/services/azure-maps';
 import {
   EFFECTIVE_AGE_ADJ_RATE_PER_YEAR,
   EFFECTIVE_AGE_ADJ_MAX_PCT,
@@ -336,8 +336,20 @@ export async function runComparables(
     ? [...nonDistressed, ...distressed].slice(0, MAX_COMPS)
     : selectedComps; // not enough clean comps — use all
 
+  // ── Pre-fetch street-level imagery from Mapillary (parallel) ────────
+  const mapillaryUrls = await Promise.all(
+    sortedComps.map(async (comp) => {
+      const compAddress = `${comp.address}, ${comp.city}, ${comp.state} ${comp.zip}`;
+      const geo = await geocodeAddress(compAddress);
+      if (geo.data?.latitude && geo.data?.longitude) {
+        return getMapillaryImageUrl(geo.data.latitude, geo.data.longitude);
+      }
+      return null;
+    })
+  );
+
   // ── Calculate adjustments and write to DB ─────────────────────────────
-  const compInserts: ComparableSaleInsert[] = sortedComps.map((comp) => {
+  const compInserts: ComparableSaleInsert[] = sortedComps.map((comp, idx) => {
     const adj = calculateAdjustments(subject, comp);
 
     const pricePerSqft = comp.buildingSquareFeet && comp.buildingSquareFeet > 0
@@ -353,11 +365,7 @@ export async function runComparables(
         ? Math.round((comp.lotSquareFeet / comp.buildingSquareFeet) * 100) / 100
         : null;
 
-    // Build Street View URL for this comp using the service function.
-    const compAddress = `${comp.address}, ${comp.city}, ${comp.state} ${comp.zip}`;
-    const comparablePhotoStoragePath = comp.address
-      ? getStreetViewUrl({ address: compAddress, width: 640, height: 480 })
-      : null;
+    const comparablePhotoStoragePath = mapillaryUrls[idx] ?? null;
 
     const { isDistressed, notes: saleNotes } = classifySaleCondition(comp);
     const compActualAge = comp.yearBuilt

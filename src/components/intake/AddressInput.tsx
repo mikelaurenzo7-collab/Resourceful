@@ -2,6 +2,18 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 
+interface AddressSuggestion {
+  formattedAddress: string;
+  streetNumber: string | null;
+  route: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  county: string | null;
+  latitude: number;
+  longitude: number;
+}
+
 interface AddressInputProps {
   onAddressSelect: (address: {
     line1: string;
@@ -28,94 +40,68 @@ function formatAddress(address: NonNullable<AddressInputProps['initialAddress']>
 export default function AddressInput({ onAddressSelect, initialAddress = null }: AddressInputProps) {
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  const [placesLoaded, setPlacesLoaded] = useState(false);
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Check if Google Maps Places API is available
-  useEffect(() => {
-    const checkGoogle = () => {
-      if (typeof google !== 'undefined' && google.maps?.places) {
-        setPlacesLoaded(true);
-        return true;
-      }
-      return false;
-    };
-
-    if (checkGoogle()) return;
-
-    // Poll for Google Maps to load (loaded via Script in layout)
-    const interval = setInterval(() => {
-      if (checkGoogle()) clearInterval(interval);
-    }, 500);
-
-    return () => clearInterval(interval);
+  // Fetch suggestions from our server-side Azure Maps proxy
+  const fetchSuggestions = useCallback(async (q: string) => {
+    if (q.trim().length < 3) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/address-search?q=${encodeURIComponent(q)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setSuggestions(data.suggestions ?? []);
+      setShowSuggestions(true);
+    } catch {
+      // Silent — autocomplete is non-critical
+    }
   }, []);
 
+  // Pre-fill input if initialAddress is provided
   useEffect(() => {
     if (!initialAddress || query.trim()) return;
     setQuery(formatAddress(initialAddress));
   }, [initialAddress, query]);
 
-  const handlePlaceSelect = useCallback(() => {
-    const place = autocompleteRef.current?.getPlace();
-    if (!place?.address_components) return;
-
-    let line1 = '';
-    let city = '';
-    let state = '';
-    let zip = '';
-    let county = '';
-    let streetNumber = '';
-    let route = '';
-
-    for (const component of place.address_components) {
-      const types = component.types;
-      if (types.includes('street_number')) {
-        streetNumber = component.long_name;
-      } else if (types.includes('route')) {
-        route = component.long_name;
-      } else if (types.includes('locality') || types.includes('sublocality_level_1')) {
-        city = component.long_name;
-      } else if (types.includes('administrative_area_level_1')) {
-        state = component.short_name;
-      } else if (types.includes('postal_code')) {
-        zip = component.long_name;
-      } else if (types.includes('administrative_area_level_2')) {
-        // County — strip " County", " Parish", " Borough" suffix
-        county = component.long_name
-          .replace(/\s*(County|Parish|Borough)$/i, '')
-          .trim();
-      }
-    }
-
-    line1 = streetNumber ? `${streetNumber} ${route}` : route;
-
-    if (line1 && city && state) {
-      setQuery(place.formatted_address ?? line1);
-      onAddressSelect({ line1, city, state, zip, county });
-    }
-  }, [onAddressSelect]);
-
-  // Initialize Google Places Autocomplete
+  // Debounced search on input change
   useEffect(() => {
-    if (!placesLoaded || !inputRef.current || autocompleteRef.current) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchSuggestions(query), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query, fetchSuggestions]);
 
-    const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
-      componentRestrictions: { country: 'us' },
-      types: ['address'],
-      fields: ['address_components', 'formatted_address'],
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSelect = (s: AddressSuggestion) => {
+    const line1 = [s.streetNumber, s.route].filter(Boolean).join(' ');
+    setQuery(s.formattedAddress);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    onAddressSelect({
+      line1: line1 || s.formattedAddress,
+      city: s.city ?? '',
+      state: s.state ?? '',
+      zip: s.zip ?? '',
+      county: s.county ?? '',
     });
+  };
 
-    autocomplete.addListener('place_changed', handlePlaceSelect);
-    autocompleteRef.current = autocomplete;
-  }, [placesLoaded, handlePlaceSelect]);
-
-  // Fallback for manual entry when Google Places isn't available
   const handleManualSubmit = () => {
     if (!query.trim()) return;
-    // If Places API parsed it already, this won't be called.
-    // For manual entry, provide the raw query as line1.
     onAddressSelect({
       line1: query.trim(),
       city: '',
@@ -126,7 +112,7 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full" ref={containerRef}>
       <label className="block text-sm font-medium text-cream/80 mb-2">
         Property Address
       </label>
@@ -144,11 +130,10 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
           </svg>
         </div>
         <input
-          ref={inputRef}
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => setIsFocused(true)}
+          onFocus={() => { setIsFocused(true); if (suggestions.length) setShowSuggestions(true); }}
           onBlur={() => setIsFocused(false)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -158,6 +143,10 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
           }}
           placeholder="Start typing your property address..."
           className="flex-1 bg-transparent px-4 py-4 text-cream placeholder:text-cream/30 focus:outline-none"
+          autoComplete="off"
+          role="combobox"
+          aria-expanded={showSuggestions && suggestions.length > 0}
+          aria-autocomplete="list"
         />
         <button
           onClick={handleManualSubmit}
@@ -166,8 +155,27 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
           Look Up
         </button>
       </div>
+
+      {/* Autocomplete dropdown */}
+      {showSuggestions && suggestions.length > 0 && (
+        <ul className="absolute z-50 mt-1 w-full max-w-lg rounded-lg border border-gold/20 bg-navy-deep/95 backdrop-blur-sm shadow-xl overflow-hidden" role="listbox">
+          {suggestions.map((s, i) => (
+            <li key={i}>
+              <button
+                type="button"
+                className="w-full text-left px-4 py-3 text-sm text-cream hover:bg-gold/10 transition-colors border-b border-gold/5 last:border-0"
+                onMouseDown={() => handleSelect(s)}
+                role="option"
+              >
+                {s.formattedAddress}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <p className="mt-2 text-xs text-cream/30">
-        {placesLoaded ? 'Powered by Google Places Autocomplete' : 'Enter your full property address'}
+        Enter your full property address
       </p>
     </div>
   );

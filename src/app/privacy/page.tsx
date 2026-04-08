@@ -109,10 +109,17 @@ export default function PrivacyPage() {
                 sales data.
               </li>
               <li>
-                <strong className="text-cream/80">Google Maps Platform</strong> — Address autocomplete, geocoding,
-                and Street View imagery. Subject to{' '}
-                <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-light transition-colors">
-                  Google&apos;s Privacy Policy
+                <strong className="text-cream/80">Azure Maps</strong> — Address autocomplete and geocoding.
+                Subject to{' '}
+                <a href="https://privacy.microsoft.com/privacystatement" target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-light transition-colors">
+                  Microsoft&apos;s Privacy Statement
+                </a>.
+              </li>
+              <li>
+                <strong className="text-cream/80">Mapillary</strong> — Street-level imagery.
+                Subject to{' '}
+                <a href="https://www.mapillary.com/privacy" target="_blank" rel="noopener noreferrer" className="text-gold hover:text-gold-light transition-colors">
+                  Mapillary&apos;s Privacy Policy
                 </a>.
               </li>
               <li>
