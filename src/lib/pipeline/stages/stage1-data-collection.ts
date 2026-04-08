@@ -168,6 +168,11 @@ export async function runDataCollection(
     return { success: false, error: `Geocoding failed: ${geocodeResult.error}` };
   }
 
+  // Reject null island (0,0) — indicates a silent geocoding failure
+  if (geocodeResult.data.latitude === 0 && geocodeResult.data.longitude === 0) {
+    return { success: false, error: `Geocoding returned null island (0,0) for "${fullAddress}" — address may be invalid` };
+  }
+
   // Data collection may return partial data — that's OK if we have tax bill
   if (dataResult.error || !dataResult.data) {
     if (!hasTaxBill) {

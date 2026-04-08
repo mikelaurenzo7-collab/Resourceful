@@ -62,12 +62,15 @@ export async function POST(request: NextRequest) {
     const conservativeErrorRate = 0.08;
     const estimatedOverassessment = Math.round(assessedValue * conservativeErrorRate);
 
+    // Use actual tax rate when available; fall back to 1% effective rate
+    // estimate when ATTOM returns $0 tax amount (common for new construction,
+    // exempt properties, or stale records).
     const taxRate =
-      taxAmount > 0 && assessedValue > 0 ? taxAmount / assessedValue : null;
+      taxAmount > 0 && assessedValue > 0
+        ? taxAmount / assessedValue
+        : 0.01;
 
-    const estimatedAnnualSavings = taxRate
-      ? Math.max(Math.round(estimatedOverassessment * taxRate), 50)
-      : null;
+    const estimatedAnnualSavings = Math.max(Math.round(estimatedOverassessment * taxRate), 50);
 
     return NextResponse.json({
       assessedValue,

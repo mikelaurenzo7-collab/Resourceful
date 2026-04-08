@@ -108,11 +108,13 @@ const REQUIRED_PHOTO_TYPES: Record<string, string[]> = {
 
 /**
  * Compute the mode (most frequent value) from an array of condition ratings.
- * In case of tie, returns the worse condition (conservative estimate).
+ * Tie-breaking depends on service type:
+ * - tax_appeal / pre_purchase → pick LOWER condition (conservative, benefits owner/buyer)
+ * - pre_listing → pick HIGHER condition (favorable, benefits seller)
  */
 const CONDITION_ORDER = ['poor', 'fair', 'average', 'good', 'excellent'] as const;
 
-function computeConditionMode(values: string[]): string {
+function computeConditionMode(values: string[], serviceType: string = 'tax_appeal'): string {
   if (values.length === 0) return 'average';
 
   const freq: Record<string, number> = {};
@@ -133,15 +135,16 @@ function computeConditionMode(values: string[]): string {
     }
   }
 
-  // If single winner, return it. On tie, pick the worse condition (lower index).
-  // For tax appeals, conservative = lower value = stronger appeal case.
-  // Choosing the better condition would inflate value and weaken the appeal.
   if (candidates.length === 1) return candidates[0];
+
+  // Tie-breaking: sort by condition order and pick based on service type.
+  // pre_listing → higher condition benefits the seller
+  // tax_appeal / pre_purchase → lower condition benefits the owner/buyer
   const sorted = candidates.sort((a, b) =>
     CONDITION_ORDER.indexOf(a as (typeof CONDITION_ORDER)[number]) -
     CONDITION_ORDER.indexOf(b as (typeof CONDITION_ORDER)[number])
   );
-  return sorted[0];
+  return serviceType === 'pre_listing' ? sorted[sorted.length - 1] : sorted[0];
 }
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
@@ -295,7 +298,7 @@ export async function runPhotoAnalysis(
   }
 
   // ── Compute overall condition ─────────────────────────────────────────
-  const overallCondition = computeConditionMode(conditionRatings);
+  const overallCondition = computeConditionMode(conditionRatings, serviceType);
 
   console.log(
     `[stage4] Overall condition: ${overallCondition} from ${conditionRatings.length} photos`

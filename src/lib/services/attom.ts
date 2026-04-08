@@ -155,37 +155,67 @@ async function attomFetch<T>(
     }
   }
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20_000); // 20s timeout
-    const response = await fetch(url.toString(), {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-        apikey: API_KEY,
-      },
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
+  const MAX_RETRIES = 3;
+  const BASE_DELAY_MS = 1000;
 
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      console.error(
-        `[attom] ${path} responded ${response.status}: ${body.slice(0, 500)}`
-      );
-      return {
-        data: null,
-        error: `ATTOM API returned ${response.status}: ${response.statusText}`,
-      };
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20_000); // 20s timeout
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+          apikey: API_KEY,
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      // Retry on 429 (rate limited) or 5xx (transient server errors)
+      if ((response.status === 429 || response.status >= 500) && attempt < MAX_RETRIES) {
+        const retryAfter = response.headers.get('retry-after');
+        const delayMs = retryAfter
+          ? parseInt(retryAfter, 10) * 1000
+          : BASE_DELAY_MS * Math.pow(2, attempt);
+        console.warn(
+          `[attom] ${path} returned ${response.status}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        console.error(
+          `[attom] ${path} responded ${response.status}: ${body.slice(0, 500)}`
+        );
+        return {
+          data: null,
+          error: `ATTOM API returned ${response.status}: ${response.statusText}`,
+        };
+      }
+
+      const json = (await response.json()) as T;
+      return { data: json, error: null };
+    } catch (err) {
+      // Retry on network errors (not abort timeouts)
+      if (attempt < MAX_RETRIES && err instanceof Error && err.name !== 'AbortError') {
+        const delayMs = BASE_DELAY_MS * Math.pow(2, attempt);
+        console.warn(
+          `[attom] ${path} fetch error, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES}): ${err.message}`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[attom] ${path} fetch error: ${message}`);
+      return { data: null, error: `ATTOM API request failed: ${message}` };
     }
-
-    const json = (await response.json()) as T;
-    return { data: json, error: null };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`[attom] ${path} fetch error: ${message}`);
-    return { data: null, error: `ATTOM API request failed: ${message}` };
   }
+
+  // Should never reach here, but TypeScript needs a return
+  return { data: null, error: 'ATTOM API request failed after retries' };
 }
 
 // ─── Normalizers ─────────────────────────────────────────────────────────────
