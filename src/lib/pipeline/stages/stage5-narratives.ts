@@ -10,6 +10,7 @@ import {
   generateNarratives,
   type NarrativePayload,
 } from '@/lib/services/anthropic';
+import { detectValueDetractors, type DetractorAnalysis } from '@/lib/services/value-detractors';
 import { AI_MODELS } from '@/config/ai';
 import {
   ECONOMIC_LIFE,
@@ -45,6 +46,11 @@ const _SECTION_SORT_ORDER: Record<string, { title: string; order: number }> = {
   cost_approach_narrative: { title: 'Cost Approach', order: 15 },
   reconciliation_narrative: { title: 'Reconciliation & Final Value', order: 16 },
   appeal_argument_summary: { title: 'Appeal Argument Summary', order: 17 },
+  hearing_script: { title: 'Hearing Rehearsal Script', order: 17.5 },
+  // Service-type-specific action guides (Stage 6)
+  pro_se_filing_guide: { title: 'Pro Se Filing Guide', order: 18 },
+  negotiation_guide: { title: 'Negotiation Strategy Guide', order: 18 },
+  pricing_strategy_guide: { title: 'Pricing Strategy Guide', order: 18 },
   // legacy aliases
   neighborhood_analysis: { title: 'Neighborhood Analysis', order: 8 },
   value_conclusion: { title: 'Reconciliation & Final Value', order: 15 },
@@ -837,6 +843,12 @@ export async function runNarratives(
       economic_life_years: propertyData.property_subtype
         ? (ECONOMIC_LIFE[propertyData.property_subtype] ?? null)
         : null,
+      // Data provenance — helps AI frame "estimated" vs "confirmed" data
+      data_source_notes: propertyData.data_collection_notes
+        ?.split('\n')
+        .find(line => line.startsWith('DATA PROVENANCE:'))
+        ?? null,
+      assessed_value_source: propertyData.assessed_value_source,
     },
     comparableSales: comps.map((c) => ({
       address: c.address ?? '',
@@ -910,39 +922,89 @@ export async function runNarratives(
         }
       : null,
     floodZone: propertyData.flood_zone_designation,
+    reviewTier: (report.review_tier ?? 'auto') as NarrativePayload['reviewTier'],
     overvaluationAnalysis,
   };
 
-  // ── Per-report research — adaptive web search for current strategies ──
+  // ── Per-report research + value detractor detection (parallel) ──────
   let researchIntelligence: typeof payload.researchIntelligence = null;
-  try {
-    const { researchAppealStrategy } = await import('@/lib/services/research-agent');
-    const research = await researchAppealStrategy({
-      countyName: countyRule?.county_name ?? report.county ?? '',
-      stateName: countyRule?.state_name ?? report.state ?? '',
-      propertyType: report.property_type ?? 'residential',
-      serviceType: report.service_type ?? 'tax_appeal',
-      desiredOutcome: report.desired_outcome,
-      assessedValue: propertyData.assessed_value,
-      concludedValue,
-      propertyIssues: report.property_issues ?? [],
-    });
-    if (research.strategyInsights) {
-      researchIntelligence = {
-        strategyInsights: research.strategyInsights,
-        deadlineInfo: research.deadlineInfo,
-        boardIntelligence: research.boardIntelligence,
-        recentChanges: research.recentChanges,
-        sources: research.sources,
-      };
-      console.log(`[stage5] Research complete: ${research.searchesPerformed} searches, ${research.sources.length} sources`);
+  let detractorAnalysis: DetractorAnalysis | null = null;
+
+  // Run research agent and value detractor detection in parallel
+  const [researchResult, detractorResult] = await Promise.allSettled([
+    // Research agent
+    (async () => {
+      const { researchAppealStrategy } = await import('@/lib/services/research-agent');
+      return researchAppealStrategy({
+        countyName: countyRule?.county_name ?? report.county ?? '',
+        stateName: countyRule?.state_name ?? report.state ?? '',
+        propertyType: report.property_type ?? 'residential',
+        serviceType: report.service_type ?? 'tax_appeal',
+        desiredOutcome: report.desired_outcome,
+        assessedValue: propertyData.assessed_value,
+        concludedValue,
+        propertyIssues: report.property_issues ?? [],
+      });
+    })(),
+    // Value detractor proximity analysis
+    (async () => {
+      // Need lat/lng from the report
+      const reportLat = report.latitude;
+      const reportLng = report.longitude;
+      if (!reportLat || !reportLng) return null;
+      return detectValueDetractors({
+        lat: reportLat,
+        lng: reportLng,
+        address: report.property_address,
+        city: report.city ?? '',
+        state: report.state ?? '',
+        floodZone: propertyData.flood_zone_designation,
+      });
+    })(),
+  ]);
+
+  // Process research result
+  if (researchResult.status === 'fulfilled' && researchResult.value?.strategyInsights) {
+    const research = researchResult.value;
+    researchIntelligence = {
+      strategyInsights: research.strategyInsights,
+      deadlineInfo: research.deadlineInfo,
+      boardIntelligence: research.boardIntelligence,
+      recentChanges: research.recentChanges,
+      sources: research.sources,
+    };
+    console.log(`[stage5] Research complete: ${research.searchesPerformed} searches, ${research.sources.length} sources`);
+  } else if (researchResult.status === 'rejected') {
+    console.warn(`[stage5] Research agent failed (non-fatal): ${researchResult.reason}`);
+  }
+
+  // Process detractor result
+  if (detractorResult.status === 'fulfilled' && detractorResult.value) {
+    detractorAnalysis = detractorResult.value;
+    if (detractorAnalysis.detractors.length > 0) {
+      console.log(
+        `[stage5] Value detractors found: ${detractorAnalysis.detractors.length} factors, ` +
+        `aggregate impact: ${detractorAnalysis.totalEstimatedImpactPct}%`
+      );
     }
-  } catch (err) {
-    // Research is non-fatal — narratives can generate without it
-    console.warn(`[stage5] Research agent failed (non-fatal): ${err instanceof Error ? err.message : err}`);
+  } else if (detractorResult.status === 'rejected') {
+    console.warn(`[stage5] Value detractor detection failed (non-fatal): ${detractorResult.reason}`);
   }
 
   payload.researchIntelligence = researchIntelligence;
+  payload.valueDetractors = detractorAnalysis && detractorAnalysis.detractors.length > 0
+    ? {
+        detractors: detractorAnalysis.detractors.map(d => ({
+          type: d.type,
+          name: d.name,
+          distance_meters: d.distance_meters,
+          estimated_impact_pct: d.estimated_impact_pct,
+          details: d.details,
+        })),
+        totalEstimatedImpactPct: detractorAnalysis.totalEstimatedImpactPct,
+        summary: detractorAnalysis.summary,
+      }
+    : null;
 
   // ── Call Anthropic to generate narratives ──────────────────────────────
   console.log(`[stage5] Generating narratives for report ${reportId}...`);

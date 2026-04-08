@@ -46,6 +46,7 @@ describe('data-router types', () => {
       attom_raw_response: null,
       county_assessor_raw_response: null,
       data_collection_notes: null,
+      data_source_map: {},
       latitude: 41.8781,
       longitude: -87.6298,
       countyFips: '17031',

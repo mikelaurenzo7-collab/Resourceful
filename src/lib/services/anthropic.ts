@@ -57,6 +57,9 @@ export interface NarrativePayload {
     physical_depreciation_pct?: number | null;
     remaining_economic_life?: number | null;
     economic_life_years?: number | null;
+    // Data provenance — which source supplied each key field
+    data_source_notes?: string | null;
+    assessed_value_source?: string | null;
   };
   comparableSales: Array<{
     address: string;
@@ -116,6 +119,8 @@ export interface NarrativePayload {
     significantDefects: number;
   } | null;
   floodZone?: string | null;
+  // Review tier — controls filing guidance specificity
+  reviewTier?: 'auto' | 'expert_reviewed' | 'guided_filing' | 'full_representation';
   // Pre-computed overvaluation analysis — every angle the assessor may have missed
   overvaluationAnalysis?: {
     assessedValuePerSqft: number | null;
@@ -157,6 +162,18 @@ export interface NarrativePayload {
     recentChanges: string | null;
     sources: string[];
   } | null;
+  // Value detractor proximity analysis — nearby negative externalities
+  valueDetractors?: {
+    detractors: Array<{
+      type: string;
+      name: string;
+      distance_meters: number;
+      estimated_impact_pct: number;
+      details: string;
+    }>;
+    totalEstimatedImpactPct: number;
+    summary: string;
+  } | null;
 }
 
 export interface FilingGuidePayload {
@@ -193,6 +210,10 @@ export interface FilingGuidePayload {
   onlineFilingUrl?: string | null;
   assessorPhone?: string | null;
   appealFeeCents?: number | null;
+  // Review tier — determines the level of hand-holding
+  reviewTier?: 'auto' | 'expert_reviewed' | 'guided_filing' | 'full_representation';
+  // Service type — determines what kind of guide to generate
+  serviceType?: 'tax_appeal' | 'pre_purchase' | 'pre_listing';
   // Enhanced filing schedule fields
   assessmentCycle?: string | null;
   assessmentNoticesMailed?: string | null;
@@ -241,6 +262,7 @@ const NARRATIVE_SECTION_NAMES = [
   'income_approach_narrative',
   'reconciliation_narrative',
   'appeal_argument_summary',
+  'hearing_script',
 ] as const;
 
 export type NarrativeSectionName = typeof NARRATIVE_SECTION_NAMES[number];
@@ -330,16 +352,39 @@ export async function generateNarratives(
   }
 }
 
-/**
- * Generate a pro se filing guide for property tax appeals.
- */
-export async function generateFilingGuide(
-  payload: FilingGuidePayload
-): Promise<ServiceResult<FilingGuideResponse>> {
-  const county = payload.countyName;
-  const state = payload.state;
+// ─── Guide Prompt Builders ──────────────────────────────────────────────────
 
-  const systemPrompt = `You are a property tax appeal coach who has helped hundreds of homeowners successfully appeal their assessments in ${county} County, ${state}. You know exactly how ${county} County's appeal process works — the forms, the deadlines, the board members' expectations, and the tactics that win.
+function buildFilingServicesSection(payload: FilingGuidePayload, county: string): string {
+  if (payload.reviewTier === 'full_representation') {
+    return `## Our Filing Services
+- THIS HOMEOWNER HAS PURCHASED FULL REPRESENTATION. Lead this section with: "Great news — you've selected our Full Representation service. Our team will handle the entire filing process on your behalf, including attending your hearing. Here's what happens next:"
+  - Explain that we will file the appeal using the data in this report.
+  - If ${county} County requires a Power of Attorney or authorized representative form, note that we will send it for their signature (include the form URL from authorizedRepFormUrl if available).
+  - Explain that they'll receive updates at each stage: filing confirmation, hearing date, and outcome.
+  - Tell them they don't need to do anything from the steps above — but they should review the report so they understand their case.
+  - Note any county-specific restrictions on representatives (from repRestrictionsNotes).`;
+  }
+  if (payload.reviewTier === 'guided_filing') {
+    return `## Our Filing Services
+- THIS HOMEOWNER HAS PURCHASED GUIDED FILING. Lead this section with: "You've selected our Guided Filing service — we'll walk you through every step on a live call so you file with confidence."
+  - Explain that we will schedule a one-on-one session to walk through the filing process step by step.
+  - They will file it themselves (pro se), but they won't be guessing — we'll be on the call guiding them.
+  - Explain what to have ready before the call: this report printed, the appeal form pulled up (link to form if available), and a pen.
+  - If a hearing is required, we will do a mock hearing prep call before their hearing date.
+  - Reassure them: "Think of it like having a tax expert sitting next to you while you fill out the paperwork and practice your hearing presentation."`;
+  }
+  return `## Our Filing Services
+- If ${county} County allows authorized representatives to file on behalf of property owners (authorizedRepAllowed is true), explain that Resourceful offers full-service filing:
+  - "If you'd like us to handle the entire filing and hearing process for you, you can upgrade to our Full Representation package."
+  - "If you'd prefer a guided walkthrough where we coach you through every step on a live call, our Guided Filing option is available."
+  - Include the POA form URL if available from authorizedRepFormUrl.
+  - Note any restrictions (from repRestrictionsNotes).
+- If ${county} County does NOT allow authorized representatives, explain that the homeowner files pro se (themselves) and reassure them: "Don't worry — we've designed this guide to make you feel like you've done this a dozen times before. You've got this."
+- If the data is null/unknown, default to pro se guidance and omit the full-service mention.`;
+}
+
+function buildTaxAppealGuidePrompt(payload: FilingGuidePayload, county: string, state: string): string {
+  return `You are a property tax appeal coach who has helped hundreds of homeowners successfully appeal their assessments in ${county} County, ${state}. You know exactly how ${county} County's appeal process works — the forms, the deadlines, the board members' expectations, and the tactics that win.
 
 You are writing a personalized, step-by-step battle plan for THIS specific homeowner at ${payload.propertyAddress}. They are going to walk into their hearing (or file online) feeling like they've done this a dozen times before. Leave NOTHING to guesswork.
 
@@ -390,15 +435,7 @@ ${payload.successRatePct ? `\nHISTORICAL SUCCESS RATE: ${payload.successRatePct}
 - Explain ${county} County's further appeal process (state-level board, court) with specific deadlines and costs.
 - Be honest about whether further appeal is worth it based on the dollar amount at stake.
 
-## Our Filing Services
-- If ${county} County allows authorized representatives to file on behalf of property owners (authorizedRepAllowed is true), explain that Resourceful offers full-service filing:
-  - "If you purchased our Full Representation package, our team will handle the entire filing process and attend the hearing on your behalf. You don't need to do anything else."
-  - "If you purchased Guided Filing, we'll walk you through every step on a live call — you'll file it yourself, but you won't be guessing."
-  - If they're on the standard package, mention: "If you'd like us to handle the filing and hearing for you, you can upgrade to our Full Representation package."
-  - Include the POA form URL if available from authorizedRepFormUrl.
-  - Note any restrictions (from repRestrictionsNotes).
-- If ${county} County does NOT allow authorized representatives, explain that the homeowner files pro se (themselves) and reassure them: "Don't worry — we've designed this guide to make you feel like you've done this a dozen times before. You've got this."
-- If the data is null/unknown, default to pro se guidance and omit the full-service mention.
+${buildFilingServicesSection(payload, county)}
 
 ## Important Reminders
 - Filing deadline reiterated in bold
@@ -408,6 +445,114 @@ ${payload.successRatePct ? `\nHISTORICAL SUCCESS RATE: ${payload.successRatePct}
 - Disclaimer: this is informational guidance, not legal advice
 
 Write in plain, encouraging English. Be specific to ${county} County — never generic. Use the county name and state throughout. Address the homeowner directly as "you." If data fields are null, omit that section rather than guessing. Your goal is to make this homeowner feel confident, prepared, and empowered.`;
+}
+
+function buildPrePurchaseGuidePrompt(payload: FilingGuidePayload, county: string, state: string): string {
+  return `You are a buyer's negotiation strategist who has helped hundreds of buyers successfully negotiate purchase prices in ${county} County, ${state}. You know the local market conditions, typical seller concessions, and negotiation tactics that work in this area.
+
+You are writing a personalized negotiation strategy for THIS specific buyer looking at ${payload.propertyAddress}. They paid for this analysis because they want to buy smart — not overpay.
+
+REQUIRED SECTIONS (use these exact Markdown headings):
+
+## Your Negotiation Position
+- Our analysis concludes the property is worth approximately $${payload.concludedValue.toLocaleString()}.
+- If the asking price exceeds this, quantify the overage: "The property appears to be listed $X above its supported market value."
+- Frame the buyer's leverage: number of comparable sales, market trends, condition issues documented.
+
+## Understanding the Seller's Position
+- Analyze ${county} County market conditions: is it a buyer's or seller's market?
+- Days on market trends — if properties are sitting, the buyer has leverage.
+- If the property is assessed at $${payload.assessedValue.toLocaleString()}, note how this compares to the concluded value (overassessed properties give buyers tax negotiation leverage).
+
+## Your Negotiation Strategy: Step-by-Step
+1. **Opening Offer**: Recommend a specific starting offer based on the market analysis. Explain the reasoning.
+2. **Key Talking Points**: 3-5 evidence-based points the buyer can use in negotiation ("Comparable sales at [addresses] sold for $X, which is Y% below asking").
+3. **Condition Leverage**: If the report documents property defects, list each one as a negotiation point with estimated repair costs.
+4. **Concession Strategy**: What to ask for if the seller won't budge on price (closing costs, repairs, home warranty, rate buydown).
+5. **Walk-Away Number**: State a clear ceiling — the maximum price supported by market evidence.
+
+## Tax Implications for Buyers in ${county} County
+- Explain how ${county} County assesses properties and what the buyer's likely tax bill will be.
+- If the property is currently overassessed, note that the buyer may want to file an appeal after closing.
+- State the assessment ratio and methodology for ${county} County.
+
+## Due Diligence Checklist
+- List specific inspections and verifications the buyer should complete before closing.
+- Flag any property-specific concerns from the analysis (flood zone, age, condition issues).
+- Note any ${county} County-specific transfer taxes or fees.
+
+## Important Reminders
+- "Your offer should always be based on market evidence, not emotions"
+- "If the numbers don't work, it's okay to walk away — another opportunity will come"
+- Disclaimer: this is a market analysis and negotiation guide, not legal or financial advice
+
+Write in plain, encouraging English. Address the buyer directly as "you." Be specific to ${county} County. Your goal is to make this buyer feel informed, confident, and ready to negotiate from a position of strength.`;
+}
+
+function buildPreListingGuidePrompt(payload: FilingGuidePayload, county: string, state: string): string {
+  return `You are a listing strategy consultant who has helped hundreds of sellers successfully price and sell properties in ${county} County, ${state}. You know the local market dynamics, buyer expectations, and pricing strategies that maximize sale price while minimizing time on market.
+
+You are writing a personalized pricing and listing strategy for THIS specific seller at ${payload.propertyAddress}. They paid for this analysis because they want to sell for maximum value — not leave money on the table.
+
+REQUIRED SECTIONS (use these exact Markdown headings):
+
+## Your Property's Market Position
+- Our analysis concludes the property's market value is approximately $${payload.concludedValue.toLocaleString()}.
+- The current assessment is $${payload.assessedValue.toLocaleString()} — explain what this means for the seller (if assessed below market, that's a selling point for low taxes; if above, it's less relevant to buyers).
+- Position relative to comparables: "Your property sits at the [top/middle/bottom] of recent comparable sales in the area."
+
+## Recommended Listing Price Strategy
+- **Competitive Price**: Recommend a specific listing price based on the comparable sales analysis. Show the math.
+- **Price Positioning**: Should they price at, above, or slightly below market? Explain the strategy for ${county} County's current market conditions.
+- **Price Per Square Foot**: State the concluded $/sqft and compare to active listings in the area.
+
+## What Makes Your Property Stand Out
+- List every strength identified in the analysis: lot size, condition, upgrades, location advantages.
+- If the property has recent improvements, quantify their value contribution.
+- Frame the narrative buyers will respond to.
+
+## Addressing Potential Buyer Objections
+- List every weakness or detractor identified in the analysis and suggest how to address each:
+  - Condition issues: repair, disclose, or price in?
+  - Age: frame as "character" or invest in updates?
+  - Location factors: how to position them?
+- For each issue, provide a cost estimate and recommendation.
+
+## Preparation Checklist Before Listing
+- Specific improvements that would maximize ROI (don't over-improve).
+- Staging and presentation recommendations.
+- Required disclosures for ${county} County, ${state}.
+- Documents to gather (survey, title, permits, HOA docs if applicable).
+
+## ${county} County Market Intelligence
+- Current market conditions: average days on market, inventory levels, price trends.
+- Seasonal considerations — when is the best time to list in this market?
+- Typical buyer profile for this price range and area.
+
+## Important Reminders
+- "Price it right from day one — overpriced homes sell for less after price reductions"
+- "The first two weeks on market are the most critical"
+- Disclaimer: this is a market analysis and pricing guide, not legal or financial advice
+
+Write in plain, confident English. Address the seller directly as "you." Be specific to ${county} County. Your goal is to make this seller feel informed, strategic, and ready to maximize their sale price.`;
+}
+
+/**
+ * Generate an action guide: filing guide (tax appeal), negotiation guide
+ * (pre-purchase), or pricing strategy guide (pre-listing).
+ */
+export async function generateFilingGuide(
+  payload: FilingGuidePayload
+): Promise<ServiceResult<FilingGuideResponse>> {
+  const county = payload.countyName;
+  const state = payload.state;
+
+  // Build service-type-specific system prompt
+  const systemPrompt = payload.serviceType === 'pre_purchase'
+    ? buildPrePurchaseGuidePrompt(payload, county, state)
+    : payload.serviceType === 'pre_listing'
+      ? buildPreListingGuidePrompt(payload, county, state)
+      : buildTaxAppealGuidePrompt(payload, county, state);
 
   const userMessage = JSON.stringify(payload, null, 2);
   const startMs = Date.now();
@@ -647,6 +792,22 @@ function buildNarrativeSystemPrompt(payload: NarrativePayload): string {
 
   const hasPhotos = payload.photoAnalyses && payload.photoAnalyses.length > 0;
 
+  // Data provenance context — tell the AI what's confirmed vs estimated
+  const dataProvenance: string[] = [];
+  if (payload.propertyData.assessed_value_source) {
+    const sourceLabel = payload.propertyData.assessed_value_source === 'tax_bill'
+      ? 'user-provided tax bill (HIGH CONFIDENCE — firsthand document)'
+      : payload.propertyData.assessed_value_source === 'attom'
+        ? 'ATTOM Data API (sourced from county records)'
+        : payload.propertyData.assessed_value_source === 'public_records'
+          ? 'public records web search (AI-extracted from county assessor website — verify accuracy)'
+          : payload.propertyData.assessed_value_source;
+    dataProvenance.push(`Assessed value source: ${sourceLabel}`);
+  }
+  if (payload.propertyData.data_source_notes) {
+    dataProvenance.push(payload.propertyData.data_source_notes);
+  }
+
   // Service-type-specific framing
   const serviceFraming = payload.serviceType === 'pre_listing'
     ? `You are an expert property valuation analyst preparing a pre-listing analysis for ${county} County, ${state}. Your client is SELLING this property and wants to understand its true market value to price competitively. Your mission is to build an accurate, favorable market position — highlight strengths, acknowledge weaknesses honestly, and conclude at a defensible value that helps the seller maximize their outcome. You work FOR the seller.`
@@ -674,6 +835,38 @@ ${payload.researchIntelligence.boardIntelligence ? `\nBOARD INTELLIGENCE: ${payl
 ${payload.researchIntelligence.recentChanges ? `\nRECENT CHANGES: ${payload.researchIntelligence.recentChanges}` : ''}
 ${payload.researchIntelligence.sources?.length ? `\nSOURCES CONSULTED (cite these inline where relevant — e.g., "per ${county} County Assessor website" or "per local reporting"):\n${payload.researchIntelligence.sources.slice(0, 8).map((s, i) => `  ${i + 1}. ${s}`).join('\n')}` : ''}
 Use this research to make your analysis current and county-specific. Reference specific procedures, deadlines, or strategies where relevant. When citing information from these sources, use natural attribution (e.g., "according to the county assessor's office," "as reported by [source]") rather than bare URLs.` : ''}
+${dataProvenance.length > 0 ? `
+DATA SOURCE CONFIDENCE — CRITICAL FOR FRAMING:
+${dataProvenance.map(d => `- ${d}`).join('\n')}
+
+When property data was AI-extracted from county assessor web pages (vs. coming directly from ATTOM or a user-provided tax bill), treat those values as estimates. Use hedging language like "per county assessor records" or "according to publicly available assessment data" rather than stating them as absolute fact. When photo evidence contradicts extracted data (e.g., condition is worse than records suggest), lead with the photo evidence — it is OUR firsthand observation and outranks desk-based records.` : ''}
+${payload.valueDetractors && payload.valueDetractors.detractors.length > 0 ? `
+═══════════════════════════════════════════════════════════════════════
+PROXIMITY ANALYSIS — VALUE-SUPPRESSING FACTORS THE ASSESSOR MISSED
+This is intelligence gathered from mapping APIs and web research that
+competitors do NOT provide. The assessor valued this property from a
+spreadsheet — they never checked what's next door.
+═══════════════════════════════════════════════════════════════════════
+
+${payload.valueDetractors.summary}
+
+DETECTED FACTORS:
+${payload.valueDetractors.detractors.slice(0, 8).map((d, i) =>
+  `${i + 1}. [${d.type.toUpperCase()}] ${d.name}${d.distance_meters > 0 ? ` — ${d.distance_meters}m from subject` : ''}
+     Est. value impact: ${d.estimated_impact_pct}%
+     ${d.details}`
+).join('\n\n')}
+
+AGGREGATE ESTIMATED IMPACT: ${payload.valueDetractors.totalEstimatedImpactPct}%
+
+HOW TO USE THIS INTELLIGENCE:
+1. SITE DESCRIPTION: Reference specific detractors discovered through proximity analysis. Name the facility/issue and its distance. "Within ${Math.min(...payload.valueDetractors.detractors.map(d => d.distance_meters).filter(d => d > 0), 9999)}m of the subject property..."
+2. NEIGHBORHOOD ANALYSIS: Frame these as negative externalities the assessor failed to account for.
+3. SALES COMPARISON: Argue that comparable properties may not share these adverse proximity factors, or if they do, it supports an overall lower market area value.
+4. APPEAL ARGUMENTS: "The assessor's records do not reflect the subject property's proximity to [detractor], which independent mapping analysis places ${payload.valueDetractors.detractors[0]?.distance_meters ?? 'nearby'}m from the property."
+5. RECONCILIATION: Factor the aggregate proximity impact into your value conclusion.
+
+This proximity intelligence is a proprietary competitive advantage — frame it professionally as "independent location analysis" or "geographic proximity assessment."` : ''}
 
 You must return valid JSON — an array of objects with these keys:
 - "section_name": one of the exact values listed below
@@ -706,6 +899,28 @@ ${payload.comparableRentals?.length ? `${hasPhotos ? '14' : '13'}. "income_appro
 ${payload.overvaluationAnalysis?.costApproachValue != null ? `${hasPhotos ? '15' : '14'}. "cost_approach_narrative" — USPAP Cost Approach: present the replacement cost new (RCN), physical depreciation, ${payload.overvaluationAnalysis.functionalObsolescencePct ? 'functional obsolescence, ' : ''}and land value. Show the math step by step: "RCN of $[X] × (1 − [Y]% total depreciation) + land value of $[Z] = cost approach indicator of $[W]." If the cost approach value is BELOW the assessed value, this is a powerful third line of evidence converging with the sales comparison${payload.comparableRentals?.length ? ' and income approaches' : ''}. State explicitly: "Three independent valuation approaches all indicate a market value below the assessor's figure." If it exceeds the assessed value, address it honestly — explain why the cost approach may be less reliable here (e.g., land value uncertainty, market obsolescence) — do not suppress it.` : ''}
 ${hasPhotos ? '16' : '15'}. "reconciliation_narrative" — final value reconciliation: state the concluded value with conviction, quantify the exact overassessment in dollars and percentage, and recommend the assessment be reduced. When cost approach data is present, state which approaches were used and how they were weighted. ${hasPhotos ? 'Explicitly state that the concluded value reflects documented property condition from firsthand photographic evidence — evidence the assessor did not have when setting the assessed value.' : ''}
 ${payload.serviceType === 'tax_appeal' ? `${hasPhotos ? '17' : '16'}. "appeal_argument_summary" — the homeowner's battle plan: 5-7 numbered arguments, each a specific, quotable statement they can read to ${payload.countyRules.appealBoardName || 'the board'}. Lead with the strongest argument. Include exact dollar figures. End with a clear ask: "I respectfully request the assessed value be reduced from $X to $Y."${hasPhotos ? ' At least 2 of the arguments MUST reference the photographic evidence directly — these are your most persuasive points because the board can see the evidence with their own eyes.' : ''}` : ''}
+${payload.serviceType === 'tax_appeal' && payload.reviewTier !== 'full_representation' ? `${hasPhotos ? '18' : '17'}. "hearing_script" — A COMPLETE WORD-FOR-WORD HEARING SCRIPT the homeowner can literally read aloud at their hearing. This is their rehearsal guide. Structure it EXACTLY like this:
+
+**OPENING (30 seconds):**
+"Good morning/afternoon. My name is [leave blank for homeowner to fill in]. I'm here today regarding the assessment on [property address]. The current assessed value is $${payload.propertyData.assessed_value?.toLocaleString() ?? '[assessed]'}, but based on comprehensive market analysis including ${payload.comparableSales?.length ?? 0} comparable sales${hasPhotos ? ', independent photographic condition assessment,' : ''} and ${payload.countyRules.countyName} County market data, I believe the supported market value is $${payload.concludedValue?.toLocaleString() ?? '[concluded]'} — an overassessment of $[difference]. I have [X] pieces of evidence to present."
+
+**EVIDENCE PRESENTATION (3-5 minutes):**
+Walk through each piece of evidence in order. For each point, write the EXACT words:
+- "My first piece of evidence is... [comparable sale analysis — cite specific addresses and prices]"
+- "My second piece of evidence is... [condition documentation from photos, if applicable]"
+- "My third piece of evidence is... [assessment ratio analysis]"
+Number each evidence point. Use simple, declarative sentences. Avoid jargon.
+
+**CLOSING (30 seconds):**
+"In summary, [X] comparable sales, [market conditions], and [condition evidence if applicable] all support a market value of $[concluded]. The current assessment of $[assessed] exceeds this by $[difference], which represents a [X]% overassessment. I respectfully request the board reduce the assessed value to $[concluded]. Thank you for your time. I'm happy to answer any questions."
+
+**IF ASKED QUESTIONS:**
+Provide 3-4 likely questions the board may ask and suggested responses:
+- "Why did you choose these comparable sales?" → [suggested answer]
+- "How do you account for [difference between subject and comp]?" → [suggested answer]
+- "What is your relationship to this property?" → "I am the owner. I prepared this appeal using a professional market analysis."
+
+Make this script feel like a dress rehearsal. The homeowner should be able to print it, practice twice, and walk in feeling like a professional.` : ''}
 
 COUNTER-ARGUMENT PREPARATION — ANTICIPATE AND DEFEAT THE ASSESSOR'S RESPONSE:
 In the reconciliation_narrative, include a "Preemptive Rebuttals" subsection that addresses the 2-3 most likely assessor counter-arguments:

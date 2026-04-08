@@ -1,8 +1,9 @@
-// ─── Stage 6: Pro Se Filing Guide ────────────────────────────────────────────
-// Generates a county-specific pro se filing guide using AI, grounded entirely
-// in county_rules data + appeal_argument_summary + concluded/assessed values.
-// Covers deadline, where to file, form names + links, what to write, what to
-// attach, what to expect, and the 3 strongest arguments.
+// ─── Stage 6: Action Guide Generation ────────────────────────────────────────
+// Generates service-type-specific guidance:
+//   - tax_appeal: Pro se filing guide (county-specific, step-by-step)
+//   - pre_purchase: Negotiation strategy guide
+//   - pre_listing: Pricing strategy guide
+// Grounded in county_rules data + appeal_argument_summary + values.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Report, CountyRule, ReportNarrative, PropertyData, IncomeAnalysis } from '@/types/database';
@@ -205,6 +206,9 @@ export async function runFilingGuide(
     boardPersonalityNotes: countyRule?.board_personality_notes ?? null,
     winningArgumentPatterns: countyRule?.winning_argument_patterns ?? null,
     successRatePct: countyRule?.success_rate_pct ?? null,
+    // Review tier — controls how much hand-holding the guide provides
+    reviewTier: (report.review_tier ?? 'auto') as FilingGuidePayload['reviewTier'],
+    serviceType: (report.service_type ?? 'tax_appeal') as FilingGuidePayload['serviceType'],
   };
 
   // ── Generate filing guide via AI ──────────────────────────────────────
@@ -220,19 +224,35 @@ export async function runFilingGuide(
 
   const { guide, prompt_tokens, completion_tokens, generation_duration_ms } = guideResult.data;
 
-  // ── Delete existing filing guide narrative ────────────────────────────
+  // ── Determine section name based on service type ──────────────────────
+  const sectionName = report.service_type === 'pre_purchase'
+    ? 'negotiation_guide'
+    : report.service_type === 'pre_listing'
+      ? 'pricing_strategy_guide'
+      : 'pro_se_filing_guide';
+
+  // ── Delete existing guide narrative ───────────────────────────────────
   await supabase
     .from('report_narratives')
     .delete()
     .eq('report_id', reportId)
-    .eq('section_name', 'pro_se_filing_guide');
+    .eq('section_name', sectionName);
+
+  // Also clean up legacy section name if switching service types
+  if (sectionName !== 'pro_se_filing_guide') {
+    await supabase
+      .from('report_narratives')
+      .delete()
+      .eq('report_id', reportId)
+      .eq('section_name', 'pro_se_filing_guide');
+  }
 
   // ── Store as report_narratives row ────────────────────────────────────
   const { error: insertError } = await supabase
     .from('report_narratives')
     .insert({
       report_id: reportId,
-      section_name: 'pro_se_filing_guide',
+      section_name: sectionName,
       content: guide,
       model_used: AI_MODELS.FAST,
       prompt_tokens,

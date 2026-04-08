@@ -381,11 +381,34 @@ function parseResearchOutput(text: string): ResearchResult {
     return value && value.length > 10 ? value : null;
   };
 
+  // Validate extracted content — detect low-quality or hallucinated output
+  const validateSection = (content: string | null, label: string): string | null => {
+    if (!content) return null;
+    // Flag if the AI just repeated the section label with no substance
+    if (content.length < 30) {
+      console.warn(`[research-agent] ${label} section too short (${content.length} chars) — discarding`);
+      return null;
+    }
+    // Detect boilerplate non-answers
+    const boilerplate = /i (?:could not|couldn't|was unable to|did not|didn't) find/i;
+    if (boilerplate.test(content) && content.length < 100) {
+      console.warn(`[research-agent] ${label} section is a non-answer — discarding`);
+      return null;
+    }
+    // Cap at reasonable length to prevent prompt bloat
+    return content.slice(0, 3000);
+  };
+
+  const strategyRaw = extractSection('STRATEGY_INSIGHTS') ?? text.slice(0, 2000);
+  const deadlineRaw = extractSection('DEADLINE_INFO');
+  const boardRaw = extractSection('BOARD_INTELLIGENCE');
+  const changesRaw = extractSection('RECENT_CHANGES');
+
   return {
-    strategyInsights: extractSection('STRATEGY_INSIGHTS') ?? text.slice(0, 2000),
-    deadlineInfo: extractSection('DEADLINE_INFO'),
-    boardIntelligence: extractSection('BOARD_INTELLIGENCE'),
-    recentChanges: extractSection('RECENT_CHANGES'),
+    strategyInsights: validateSection(strategyRaw, 'STRATEGY_INSIGHTS') ?? strategyRaw.slice(0, 2000),
+    deadlineInfo: validateSection(deadlineRaw, 'DEADLINE_INFO'),
+    boardIntelligence: validateSection(boardRaw, 'BOARD_INTELLIGENCE'),
+    recentChanges: validateSection(changesRaw, 'RECENT_CHANGES'),
     searchesPerformed: 0,
     sources: [],
   };

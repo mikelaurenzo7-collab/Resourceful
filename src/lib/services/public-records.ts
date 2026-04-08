@@ -104,7 +104,16 @@ async function extractPropertyDataFromText(
       () => getAIClient().messages.create({
       model: AI_MODELS.FAST,
       max_tokens: 2000,
-      system: `You are a data extraction specialist. Extract structured property data from public county assessor records. Return ONLY valid JSON, no markdown, no explanation. If a field is not found, use null.`,
+      system: `You are a data extraction specialist. Extract structured property data from public county assessor records. Return ONLY valid JSON, no markdown, no explanation. If a field is not found, use null.
+
+CRITICAL EXTRACTION RULES:
+- For dollar amounts that appear as ranges (e.g. "$500,000 - $600,000"), use the LOWER bound.
+- Strip commas and dollar signs before converting to numbers.
+- year_built must be a 4-digit year between 1700 and ${new Date().getFullYear()}.
+- building_sqft and lot_sqft must be positive numbers. Ignore values under 100 sqft for buildings.
+- assessed_value must be a positive number. If you see "total assessed" vs "taxable value", prefer "total assessed".
+- Do NOT confuse land value with total assessed value.
+- If a field appears in multiple formats or locations, prefer the most specific/recent value.`,
       messages: [{
         role: 'user',
         content: `Extract property data for "${address}, ${city}, ${state}" from these public records pages:
@@ -155,6 +164,60 @@ Return this exact JSON structure:
     if (!jsonMatch) return null;
 
     const parsed = JSON.parse(jsonMatch[0]);
+
+    // ── Sanity checks on extracted data ─────────────────────────────────
+    const currentYear = new Date().getFullYear();
+
+    // Year built: must be reasonable (1700 to current year + 1 for under-construction)
+    if (parsed.year_built != null) {
+      const yb = Number(parsed.year_built);
+      if (isNaN(yb) || yb < 1700 || yb > currentYear + 1) {
+        console.warn(`[public-records] Invalid year_built ${parsed.year_built} — nulling`);
+        parsed.year_built = null;
+      }
+    }
+
+    // Building sqft: must be positive and at least 100
+    if (parsed.building_sqft != null) {
+      const sqft = Number(parsed.building_sqft);
+      if (isNaN(sqft) || sqft < 100 || sqft > 500_000) {
+        console.warn(`[public-records] Suspicious building_sqft ${parsed.building_sqft} — nulling`);
+        parsed.building_sqft = null;
+      }
+    }
+
+    // Living area: same bounds
+    if (parsed.living_area_sqft != null) {
+      const sqft = Number(parsed.living_area_sqft);
+      if (isNaN(sqft) || sqft < 100 || sqft > 500_000) {
+        parsed.living_area_sqft = null;
+      }
+    }
+
+    // Lot sqft: must be positive
+    if (parsed.lot_sqft != null) {
+      const sqft = Number(parsed.lot_sqft);
+      if (isNaN(sqft) || sqft <= 0 || sqft > 50_000_000) {
+        parsed.lot_sqft = null;
+      }
+    }
+
+    // Assessed value: must be positive and reasonable (not $1, not $1B)
+    if (parsed.assessed_value != null) {
+      const val = Number(parsed.assessed_value);
+      if (isNaN(val) || val < 1000 || val > 500_000_000) {
+        console.warn(`[public-records] Suspicious assessed_value ${parsed.assessed_value} — nulling`);
+        parsed.assessed_value = null;
+      }
+    }
+
+    // Market value: same bounds
+    if (parsed.market_value != null) {
+      const val = Number(parsed.market_value);
+      if (isNaN(val) || val < 1000 || val > 500_000_000) {
+        parsed.market_value = null;
+      }
+    }
 
     // Convert to AttomPropertyDetail-compatible format
     return {
@@ -272,7 +335,19 @@ Return a JSON array of comparable sales:
 
     const parsed = JSON.parse(jsonMatch[0]) as Array<Record<string, unknown>>;
 
-    return parsed.map((comp, i) => ({
+    return parsed
+      .filter((comp) => {
+        // Validate essential comp fields
+        const price = Number(comp.sale_price);
+        if (isNaN(price) || price < 10_000 || price > 500_000_000) return false;
+        // Sale date must be parseable and not in the future
+        if (comp.sale_date) {
+          const d = new Date(String(comp.sale_date));
+          if (isNaN(d.getTime()) || d.getTime() > Date.now() + 86400000) return false;
+        }
+        return true;
+      })
+      .map((comp, i) => ({
       attomId: i,
       address: String(comp.address ?? ''),
       city: String(comp.city ?? city),

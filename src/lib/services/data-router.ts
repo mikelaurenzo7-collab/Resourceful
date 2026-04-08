@@ -47,6 +47,24 @@ export interface CollectPropertyDataParams {
 }
 
 /**
+ * Data source trust levels — ordered from most to least trustworthy.
+ * Per CLAUDE.md: user data > our measurements > independent sources > county records.
+ */
+export type DataConfidence = 'user_provided' | 'independently_verified' | 'county_records' | 'ai_extracted';
+
+/**
+ * Tracks which source supplied each key field and how much we trust it.
+ * Passed downstream so narratives can frame "estimated" vs "confirmed" data.
+ */
+export interface DataSourceMap {
+  assessed_value?: { source: string; confidence: DataConfidence };
+  building_sqft?: { source: string; confidence: DataConfidence };
+  year_built?: { source: string; confidence: DataConfidence };
+  lot_size_sqft?: { source: string; confidence: DataConfidence };
+  property_class?: { source: string; confidence: DataConfidence };
+}
+
+/**
  * Unified property data collected from all sources.
  * Maps directly to the PropertyData table columns (minus id/report_id).
  */
@@ -76,6 +94,9 @@ export interface CollectedPropertyData {
   county_assessor_raw_response: Record<string, unknown> | null;
   data_collection_notes: string | null;
 
+  // Data provenance — tracks which source supplied each key field
+  data_source_map: DataSourceMap;
+
   // Location info (written to the Report, not PropertyData)
   latitude: number | null;
   longitude: number | null;
@@ -91,6 +112,25 @@ export interface ServiceResult<T> {
 // ─── Normalizers ─────────────────────────────────────────────────────────────
 
 function attomToCollected(detail: AttomPropertyDetail, source: string): CollectedPropertyData {
+  const confidence: DataConfidence = source === 'public_records' ? 'ai_extracted' : 'county_records';
+  const sourceMap: DataSourceMap = {};
+
+  if (detail.assessment.assessedValue) {
+    sourceMap.assessed_value = { source, confidence };
+  }
+  if (detail.summary.buildingSquareFeet) {
+    sourceMap.building_sqft = { source, confidence };
+  }
+  if (detail.summary.yearBuilt) {
+    sourceMap.year_built = { source, confidence };
+  }
+  if (detail.lot.lotSquareFeet) {
+    sourceMap.lot_size_sqft = { source, confidence };
+  }
+  if (detail.summary.propertyClass) {
+    sourceMap.property_class = { source, confidence };
+  }
+
   return {
     assessed_value: detail.assessment.assessedValue || null,
     assessed_value_source: source,
@@ -117,6 +157,8 @@ function attomToCollected(detail: AttomPropertyDetail, source: string): Collecte
     county_assessor_raw_response: null,
     data_collection_notes: null,
 
+    data_source_map: sourceMap,
+
     latitude: detail.location.latitude || null,
     longitude: detail.location.longitude || null,
     countyFips: detail.location.countyFips || null,
@@ -137,6 +179,14 @@ function mergeSupplemental(
     .filter(Boolean)
     .join('; ');
 
+  // Merge source maps — base wins for fields it already has
+  const mergedSourceMap: DataSourceMap = { ...base.data_source_map };
+  for (const [key, val] of Object.entries(supplement.data_source_map) as [keyof DataSourceMap, DataSourceMap[keyof DataSourceMap]][]) {
+    if (!mergedSourceMap[key] && val) {
+      mergedSourceMap[key] = val;
+    }
+  }
+
   return {
     ...base,
     assessed_value: base.assessed_value ?? supplement.assessed_value,
@@ -155,6 +205,7 @@ function mergeSupplemental(
     longitude: base.longitude ?? supplement.longitude,
     countyFips: base.countyFips ?? supplement.countyFips,
     countyName: base.countyName ?? supplement.countyName,
+    data_source_map: mergedSourceMap,
     data_collection_notes: notes,
   };
 }

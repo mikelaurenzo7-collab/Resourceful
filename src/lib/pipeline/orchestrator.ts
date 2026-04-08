@@ -71,8 +71,8 @@ const STAGES: StageDefinition[] = [
   {
     number: 6,
     name: 'stage-6-filing',
-    // Filing guide is only relevant for tax appeals
-    skipWhen: (_pt, st) => st !== 'tax_appeal',
+    // Generates filing guide (tax_appeal), negotiation guide (pre_purchase),
+    // or pricing strategy guide (pre_listing) — every service type gets guidance
     run: runFilingGuide,
   },
   {

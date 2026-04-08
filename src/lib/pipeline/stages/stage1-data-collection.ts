@@ -313,6 +313,16 @@ export async function runDataCollection(
     );
   }
 
+  // Record data source provenance for downstream narrative framing
+  if (collected?.data_source_map) {
+    const sourceEntries = Object.entries(collected.data_source_map)
+      .map(([field, info]) => `${field}: ${(info as { source: string; confidence: string }).source} (${(info as { source: string; confidence: string }).confidence})`)
+      .join(', ');
+    if (sourceEntries) {
+      notes.push(`DATA PROVENANCE: ${sourceEntries}`);
+    }
+  }
+
   // ── Compute valuation intelligence fields ─────────────────────────────
   const propertySubtype = resolvePropertySubtype(
     attom?.summary.propertyClass,
