@@ -45,7 +45,7 @@ export async function POST(
       );
     }
 
-    if (report.user_id !== user.id) {
+    if (report.user_id !== user.id && report.client_email !== user.email) {
       return NextResponse.json(
         { error: 'Not authorized to add measurements to this report' },
         { status: 403 }

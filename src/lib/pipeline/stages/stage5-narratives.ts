@@ -571,8 +571,8 @@ export async function runNarratives(
   // Requires: subtype (for RCN table), quality grade, sqft, depreciation, land value.
   // When all three approaches converge below the assessed value, the case is
   // mathematically airtight.
-  const landValue = (propertyData as unknown as Record<string, unknown>).land_value as number | null ?? null;
-  const qualityGrade = (propertyData as unknown as Record<string, unknown>).quality_grade as string | null ?? 'average';
+  const landValue = propertyData.land_value ?? null;
+  const qualityGrade = propertyData.quality_grade ?? 'average';
 
   const { rcn: costApproachRcn, costApproachValue } = computeCostApproach(
     propertyData.property_subtype,

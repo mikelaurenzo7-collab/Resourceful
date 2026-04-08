@@ -44,7 +44,7 @@ export async function POST(
     const admin = createAdminClient();
     const { data: claimed, error: claimError } = await admin
       .from('reports')
-      .update({ status: 'delivering' as never })
+      .update({ status: 'delivering' as const })
       .eq('id', reportId)
       .eq('status', 'pending_approval')
       .select('id')
@@ -69,7 +69,7 @@ export async function POST(
       // Rollback: return to pending_approval so another admin can retry
       await admin
         .from('reports')
-        .update({ status: 'pending_approval' as never })
+        .update({ status: 'pending_approval' as const })
         .eq('id', reportId);
       return NextResponse.json(
         { error: `Delivery failed: ${deliveryResult.error}` },

@@ -144,25 +144,54 @@ export async function POST(
   // ── Recalculate county stats (non-blocking) ───────────────────────────
   if (report.county_fips) {
     try {
-      // Count wins and total for this county
+      // Count wins and total for this county.
+      // Join property_data to get assessed_value for percentage calculations.
       const { data: countyOutcomes } = await adminSupabase
         .from('reports')
-        .select('appeal_outcome, actual_savings_cents')
+        .select('appeal_outcome, actual_savings_cents, property_data(assessed_value)')
         .eq('county_fips', report.county_fips)
         .not('outcome_reported_at', 'is', null);
 
-      if (countyOutcomes && countyOutcomes.length > 0) {
-        const wins = countyOutcomes.filter(r => r.appeal_outcome === 'won');
-        const winRate = wins.length / countyOutcomes.length;
-        const avgSavings = wins.length > 0
-          ? wins.reduce((sum, r) => sum + ((r.actual_savings_cents as number) ?? 0), 0) / wins.length / 100
-          : 0;
+      type OutcomeRow = {
+        appeal_outcome: string | null;
+        actual_savings_cents: number | null;
+        property_data: { assessed_value: number | null }[] | { assessed_value: number | null } | null;
+      };
+      const outcomes = (countyOutcomes ?? []) as unknown as OutcomeRow[];
+
+      if (outcomes.length > 0) {
+        const wins = outcomes.filter(r => r.appeal_outcome === 'won');
+        const winRate = wins.length / outcomes.length;
+
+        // Compute avg_savings_pct as the mean percentage reduction in assessed value
+        // across winning appeals. actual_savings_cents is the assessment reduction in cents.
+        let avgSavingsPct: number | null = null;
+        if (wins.length > 0) {
+          const savingsPcts = wins
+            .map((r) => {
+              const savingsCents = (r.actual_savings_cents as number) ?? 0;
+              const pd = Array.isArray(r.property_data) ? r.property_data[0] : r.property_data;
+              const assessed = (pd as { assessed_value: number | null } | null)?.assessed_value ?? 0;
+              if (savingsCents > 0 && assessed > 0) {
+                // savings in dollars / assessed value = percentage
+                return ((savingsCents / 100) / assessed) * 100;
+              }
+              return null;
+            })
+            .filter((p): p is number => p != null);
+
+          if (savingsPcts.length > 0) {
+            avgSavingsPct = Math.round(
+              savingsPcts.reduce((sum, p) => sum + p, 0) / savingsPcts.length * 10
+            ) / 10;
+          }
+        }
 
         await adminSupabase
           .from('county_rules')
           .update({
             success_rate_pct: Math.round(winRate * 100),
-            avg_savings_pct: avgSavings > 0 ? Math.round(avgSavings) : null,
+            avg_savings_pct: avgSavingsPct,
             success_rate_source: 'client_reported_outcomes',
           })
           .eq('county_fips', report.county_fips);

@@ -46,11 +46,11 @@ export async function runDelivery(
     return { success: false, error: `Failed to fetch report: ${reportError?.message}` };
   }
 
-  const deliverableStatuses = ['processing', 'pending_approval', 'approved'];
+  const deliverableStatuses = ['processing', 'pending_approval', 'approved', 'delivering'];
   if (!deliverableStatuses.includes(report.status)) {
     return {
       success: false,
-      error: `Report status is '${report.status}' — must be processing, pending_approval, or approved to deliver`,
+      error: `Report status is '${report.status}' — must be processing, pending_approval, approved, or delivering to deliver`,
     };
   }
 
@@ -85,20 +85,9 @@ export async function runDelivery(
     return { success: false, error: `Failed to update report status: ${statusUpdateError.message}` };
   }
 
-  // Record approval event
-  const { error: approvalInsertError } = await supabase
-    .from('approval_events')
-    .insert({
-      report_id: reportId,
-      admin_user_id: adminUserId,
-      action: 'approved',
-      section_name: null,
-      notes: 'Report approved and delivered to client',
-    });
-
-  if (approvalInsertError) {
-    console.warn(`[stage8] Failed to record approval event: ${approvalInsertError.message}`);
-  }
+  // NOTE: Approval event is recorded by the caller (approve route), not here.
+  // This prevents duplicate approval_events when delivery is triggered via
+  // the admin approve API.
 
   // ── Subscribe to annual assessment reminders (non-blocking) ──────────
   try {
