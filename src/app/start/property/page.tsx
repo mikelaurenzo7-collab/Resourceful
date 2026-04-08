@@ -87,6 +87,7 @@ export default function PropertyPage() {
         {/* Address */}
         <section>
           <AddressInput
+            initialAddress={state.address}
             onAddressSelect={(addr) => updateState({ address: addr })}
           />
           {state.address && (

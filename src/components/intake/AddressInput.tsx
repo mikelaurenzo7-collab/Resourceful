@@ -10,9 +10,22 @@ interface AddressInputProps {
     zip: string;
     county: string;
   }) => void;
+  initialAddress?: {
+    line1: string;
+    city: string;
+    state: string;
+    zip: string;
+    county: string;
+  } | null;
 }
 
-export default function AddressInput({ onAddressSelect }: AddressInputProps) {
+function formatAddress(address: NonNullable<AddressInputProps['initialAddress']>): string {
+  const locality = [address.city, address.state].filter(Boolean).join(', ');
+  const localityWithZip = [locality, address.zip].filter(Boolean).join(' ');
+  return [address.line1, localityWithZip].filter(Boolean).join(', ');
+}
+
+export default function AddressInput({ onAddressSelect, initialAddress = null }: AddressInputProps) {
   const [query, setQuery] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -38,6 +51,11 @@ export default function AddressInput({ onAddressSelect }: AddressInputProps) {
 
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (!initialAddress || query.trim()) return;
+    setQuery(formatAddress(initialAddress));
+  }, [initialAddress, query]);
 
   const handlePlaceSelect = useCallback(() => {
     const place = autocompleteRef.current?.getPlace();
