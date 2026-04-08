@@ -112,26 +112,8 @@ async function searchWeb(query: string): Promise<string[]> {
 }
 
 async function fetchPageText(url: string): Promise<string | null> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10_000);
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ResourcefulBot/1.0)' },
-    });
-    clearTimeout(timeout);
-    if (!response.ok) return null;
-    const html = await response.text();
-    return html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 12_000);
-  } catch {
-    return null;
-  }
+  const { fetchPageText: sharedFetch } = await import('@/lib/utils/page-fetch');
+  return sharedFetch(url, 12_000, 10_000);
 }
 
 // ─── AI Extraction ───────────────────────────────────────────────────────────

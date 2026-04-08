@@ -82,35 +82,8 @@ async function webSearch(query: string): Promise<string[]> {
 }
 
 async function fetchPageText(url: string): Promise<string | null> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15_000);
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; ResourcefulBot/1.0; property-tax-research)',
-        'Accept': 'text/html,application/xhtml+xml',
-      },
-    });
-    clearTimeout(timeout);
-
-    if (!response.ok) return null;
-
-    const html = await response.text();
-    // Strip HTML tags to get raw text, limit to 15k chars for AI context
-    const text = html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 15_000);
-
-    return text;
-  } catch (err) {
-    console.warn(`[public-records] Failed to fetch ${url}: ${err}`);
-    return null;
-  }
+  const { fetchPageText: sharedFetch } = await import('@/lib/utils/page-fetch');
+  return sharedFetch(url, 15_000, 15_000);
 }
 
 // ─── AI Extraction ───────────────────────────────────────────────────────────

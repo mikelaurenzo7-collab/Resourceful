@@ -127,10 +127,10 @@ export default function DisclaimerPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-cream mb-3">Photographs and Street View</h2>
+            <h2 className="text-lg font-semibold text-cream mb-3">Photographs and Street-Level Imagery</h2>
             <p>
-              Our Reports may include Google Street View imagery automatically retrieved for your property
-              address. Street View images may be outdated and not reflect current property conditions. Photos
+              Our Reports may include street-level imagery automatically retrieved for your property
+              address. Street-level images may be outdated and not reflect current property conditions. Photos
               you submit are used solely for generating your Report and are not independently verified for
               accuracy or authenticity.
             </p>

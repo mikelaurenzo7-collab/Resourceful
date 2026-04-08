@@ -84,26 +84,8 @@ async function executeWebSearch(query: string): Promise<{ results: Array<{ title
 }
 
 async function fetchPageContent(url: string): Promise<string> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8_000);
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ResourcefulBot/1.0)' },
-    });
-    clearTimeout(timeout);
-    if (!response.ok) return '';
-    const html = await response.text();
-    return html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 8_000);
-  } catch {
-    return '';
-  }
+  const { fetchPageText } = await import('@/lib/utils/page-fetch');
+  return (await fetchPageText(url, 12_000, 12_000)) ?? '';
 }
 
 // ─── Tool Definitions ───────────────────────────────────────────────────────
