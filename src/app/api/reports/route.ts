@@ -182,8 +182,11 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('[api/reports] Unhandled error:', message, err instanceof Error ? err.stack : '');
+
+    // Surface database/Supabase errors for debugging (non-sensitive)
+    const isDbError = message.includes('Failed to create report') || message.includes('violates');
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: isDbError ? message : 'Internal server error' },
       { status: 500 }
     );
   }

@@ -112,7 +112,7 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
   };
 
   return (
-    <div className="w-full" ref={containerRef}>
+    <div className="relative w-full" ref={containerRef}>
       <label className="block text-sm font-medium text-cream/80 mb-2">
         Property Address
       </label>

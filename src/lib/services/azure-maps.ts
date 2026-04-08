@@ -336,7 +336,11 @@ export async function searchAddresses(
   query: string,
   limit: number = 5
 ): Promise<AutocompleteSuggestion[]> {
-  if (!AZURE_KEY || !query.trim()) return [];
+  if (!AZURE_KEY) {
+    console.warn('[azure-maps] AZURE_MAPS_SUBSCRIPTION_KEY is not set — autocomplete disabled');
+    return [];
+  }
+  if (!query.trim()) return [];
 
   const url = new URL(AZURE_FUZZY_SEARCH_URL);
   url.searchParams.set('api-version', '1.0');
@@ -353,7 +357,11 @@ export async function searchAddresses(
     const response = await fetch(url.toString(), { signal: controller.signal });
     clearTimeout(timeout);
 
-    if (!response.ok) return [];
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      console.error(`[azure-maps] Fuzzy search failed (${response.status}): ${body.slice(0, 300)}`);
+      return [];
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const json = (await response.json()) as any;
