@@ -15,7 +15,7 @@ export type ReportStatus =
 
 export type ServiceType = 'tax_appeal' | 'pre_purchase' | 'pre_listing';
 
-export type PropertyType = 'residential' | 'commercial' | 'industrial' | 'land';
+export type PropertyType = 'residential' | 'commercial' | 'industrial' | 'land' | 'agricultural';
 
 export type PhotoType =
   | 'exterior_front' | 'exterior_rear'

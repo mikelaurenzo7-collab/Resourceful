@@ -22,6 +22,7 @@ import {
   OVER_IMPROVEMENT_ADJ_MAX_PCT,
   type QualityGrade,
 } from '@/config/valuation';
+import { getCalibrationParams } from '@/lib/repository/calibration';
 // Attorney referral system removed — all filing handled in-house or guided pro se.
 
 // ─── Section Mapping ────────────────────────────────────────────────────────
@@ -183,6 +184,13 @@ export async function runNarratives(
       .single();
     countyRule = data as CountyRule | null;
   }
+
+  // ── Load calibration params (learned value bias correction) ───────────
+  const cal = await getCalibrationParams(
+    supabase,
+    report.property_type,
+    report.county_fips ?? null,
+  );
 
   // ── Extract photo analyses from photo records ─────────────────────────
   const photos = (photosRes.data ?? []) as Photo[];
@@ -372,6 +380,15 @@ export async function runNarratives(
     ) * 1000;
   }
 
+  // ── Apply calibration value bias correction ───────────────────────────
+  // value_bias_pct > 0 means system historically overvalues; apply downward correction
+  if (cal.value_bias_pct !== 0 && cal.sample_count > 0) {
+    const biasFactor = 1 - (cal.value_bias_pct / 100);
+    concludedValue = Math.round((concludedValue * biasFactor) / 1000) * 1000;
+    concludedValueWithoutPhotos = Math.round((concludedValueWithoutPhotos * biasFactor) / 1000) * 1000;
+    console.log(`[stage5] Applied calibration bias correction of ${cal.value_bias_pct}% (n=${cal.sample_count})`);
+  }
+
   // ── Photo value attribution ────────────────────────────────────────────
   const photoImpactDollars = concludedValueWithoutPhotos - concludedValue;
   const photoImpactPct = concludedValueWithoutPhotos > 0
@@ -489,6 +506,10 @@ export async function runNarratives(
         break;
       case 'industrial':
         assessmentRatio = countyRule.assessment_ratio_industrial;
+        break;
+      case 'agricultural':
+        assessmentRatio = (countyRule as Record<string, unknown>).assessment_ratio_agricultural as number | null
+          ?? countyRule.assessment_ratio_residential;
         break;
       default:
         assessmentRatio = countyRule.assessment_ratio_residential;

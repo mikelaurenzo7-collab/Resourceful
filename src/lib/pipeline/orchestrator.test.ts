@@ -4,12 +4,12 @@ import { describe, it, expect } from 'vitest';
 // We replicate the skip logic here to ensure correctness, since these
 // predicates determine which pipeline stages run for each property/service type.
 
-type PropertyType = 'residential' | 'commercial' | 'industrial' | 'land';
+type PropertyType = 'residential' | 'commercial' | 'industrial' | 'land' | 'agricultural';
 
 // These predicates must match the orchestrator exactly:
-// Stage 3 (income) — for commercial, industrial, and residential (multifamily filtered inside stage)
+// Stage 3 (income) — for commercial, industrial, agricultural, and residential (multifamily filtered inside stage)
 const stage3SkipWhen = (pt: PropertyType, _st: string) =>
-  pt !== 'commercial' && pt !== 'industrial' && pt !== 'residential';
+  pt !== 'commercial' && pt !== 'industrial' && pt !== 'residential' && pt !== 'agricultural';
 
 // Stage 6 (filing guide) — only for tax_appeal
 const stage6SkipWhen = (_pt: PropertyType, st: string) =>
@@ -31,6 +31,10 @@ describe('pipeline stage skip logic', () => {
 
     it('skips for land properties', () => {
       expect(stage3SkipWhen('land', 'tax_appeal')).toBe(true);
+    });
+
+    it('runs for agricultural properties', () => {
+      expect(stage3SkipWhen('agricultural', 'tax_appeal')).toBe(false);
     });
 
     it('runs for commercial regardless of service type', () => {
@@ -57,6 +61,7 @@ describe('pipeline stage skip logic', () => {
       expect(stage6SkipWhen('commercial', 'tax_appeal')).toBe(false);
       expect(stage6SkipWhen('industrial', 'tax_appeal')).toBe(false);
       expect(stage6SkipWhen('land', 'tax_appeal')).toBe(false);
+      expect(stage6SkipWhen('agricultural', 'tax_appeal')).toBe(false);
     });
   });
 
@@ -79,6 +84,11 @@ describe('pipeline stage skip logic', () => {
     it('commercial pre_listing: runs stage 3, skips stage 6', () => {
       expect(stage3SkipWhen('commercial', 'pre_listing')).toBe(false);
       expect(stage6SkipWhen('commercial', 'pre_listing')).toBe(true);
+    });
+
+    it('agricultural tax appeal: runs both stages 3 and 6', () => {
+      expect(stage3SkipWhen('agricultural', 'tax_appeal')).toBe(false);
+      expect(stage6SkipWhen('agricultural', 'tax_appeal')).toBe(false);
     });
   });
 });

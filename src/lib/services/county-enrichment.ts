@@ -10,6 +10,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODELS } from '@/config/ai';
+import { withRetry, isRetryableError } from '@/lib/utils/retry';
 import type { CountyRule } from '@/types/database';
 
 // ─── AI Client ───────────────────────────────────────────────────────────────
@@ -128,7 +129,8 @@ async function extractCountyIntelligence(
   const combined = pageTexts.join('\n\n---\n\n').slice(0, 25_000);
 
   try {
-    const response = await getAIClient().messages.create({
+    const response = await withRetry(
+      () => getAIClient().messages.create({
       model: AI_MODELS.FAST,
       max_tokens: 3000,
       system: `You are a property tax appeal research specialist. Extract county-specific appeal procedure data from web pages. Return ONLY valid JSON, no markdown. If a field cannot be determined, use null.`,
@@ -169,7 +171,9 @@ Return this exact JSON:
   "winning_argument_patterns": "<what types of arguments tend to win in this county>"
 }`,
       }],
-    });
+    }),
+      { maxAttempts: 3, baseDelayMs: 2000, retryOn: isRetryableError }
+    );
 
     const text = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')

@@ -27,6 +27,10 @@ export const ECONOMIC_LIFE: Record<string, number> = {
   industrial_flex:          40,  // Flex / R&D space
   industrial_self_storage:  50,  // Self-storage (minimal mechanical systems)
   industrial_general:       40,  // Default for unclassified industrial
+  // Agricultural
+  agricultural_general:     40,  // Farm buildings (barns, silos, equipment sheds)
+  agricultural_crop:        35,  // Crop storage, irrigation, specialty structures
+  agricultural_pasture:      0,  // Grazing/pasture land — no improvement depreciation
   // Land never depreciates
   land:                      0,
 };
@@ -83,6 +87,21 @@ export const PROPERTY_SUBTYPE_MAP: Record<string, string> = {
   'STORAGE': 'industrial_self_storage',
   'SELF STORAGE': 'industrial_self_storage',
   'SELF-STORAGE': 'industrial_self_storage',
+  // Agricultural
+  'AG': 'agricultural_general',
+  'AGR': 'agricultural_general',
+  'AGRICULTURAL': 'agricultural_general',
+  'FARM': 'agricultural_general',
+  'FARM BUILDINGS': 'agricultural_general',
+  'FARMSTEAD': 'agricultural_general',
+  'RANCH': 'agricultural_general',
+  'CROP': 'agricultural_crop',
+  'CROPLAND': 'agricultural_crop',
+  'ORCHARD': 'agricultural_crop',
+  'VINEYARD': 'agricultural_crop',
+  'TIMBER': 'agricultural_crop',
+  'PASTURE': 'agricultural_pasture',
+  'GRAZING': 'agricultural_pasture',
   // Land
   'LAND': 'land',
   'VAC': 'land',
@@ -156,6 +175,10 @@ export const INCOME_PARAMS: Record<string, IncomeParams> = {
   industrial_general:       { vacancy_rate: 0.05, expense_ratio: 0.24, cap_rate_default: 0.075, rent_fallback_per_sqft_yr: 6  },
   // Multi-family residential (2-4 units) — income-producing residential
   residential_multifamily:   { vacancy_rate: 0.05, expense_ratio: 0.35, cap_rate_default: 0.070, rent_fallback_per_sqft_yr: 14 },
+  // Agricultural — lease rates and expenses from USDA NASS and farmland market reports
+  agricultural_general:      { vacancy_rate: 0.03, expense_ratio: 0.25, cap_rate_default: 0.050, rent_fallback_per_sqft_yr: 0.50 },
+  agricultural_crop:         { vacancy_rate: 0.05, expense_ratio: 0.30, cap_rate_default: 0.045, rent_fallback_per_sqft_yr: 0.75 },
+  agricultural_pasture:      { vacancy_rate: 0.03, expense_ratio: 0.15, cap_rate_default: 0.040, rent_fallback_per_sqft_yr: 0.25 },
 };
 
 // ─── Case Strength Scoring ─────────────────────────────────────────────────────
@@ -212,6 +235,9 @@ export const REPLACEMENT_COST_PER_SQFT: Record<string, Record<QualityGrade, numb
   industrial_flex:          { economy: 65,  average: 95,  good: 130, excellent: 170, luxury: 170 },
   industrial_self_storage:  { economy: 35,  average: 50,  good: 70,  excellent: 95,  luxury: 95  },
   industrial_general:       { economy: 50,  average: 72,  good: 100, excellent: 135, luxury: 135 },
+  // Agricultural
+  agricultural_general:     { economy: 40,  average: 55,  good: 75,  excellent: 100, luxury: 100 },
+  agricultural_crop:        { economy: 35,  average: 50,  good: 65,  excellent: 85,  luxury: 85  },
 };
 
 // ─── Conditions of Sale Adjustment ────────────────────────────────────────────
@@ -286,6 +312,7 @@ export function resolvePropertySubtype(
     case 'residential': return 'residential_sfr';
     case 'commercial':  return 'commercial_general';
     case 'industrial':  return 'industrial_general';
+    case 'agricultural': return 'agricultural_general';
     case 'land':        return 'land';
     default:
       console.warn(`[valuation] Unknown property type '${propertyType}' — defaulting to residential_sfr`);

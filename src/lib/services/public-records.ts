@@ -15,6 +15,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODELS } from '@/config/ai';
+import { withRetry, isRetryableError } from '@/lib/utils/retry';
 import type {
   AttomPropertyDetail,
   AttomSaleComp,
@@ -99,7 +100,8 @@ async function extractPropertyDataFromText(
   const combinedText = pageTexts.join('\n\n---PAGE BREAK---\n\n').slice(0, 30_000);
 
   try {
-    const response = await getAIClient().messages.create({
+    const response = await withRetry(
+      () => getAIClient().messages.create({
       model: AI_MODELS.FAST,
       max_tokens: 2000,
       system: `You are a data extraction specialist. Extract structured property data from public county assessor records. Return ONLY valid JSON, no markdown, no explanation. If a field is not found, use null.`,
@@ -139,7 +141,9 @@ Return this exact JSON structure:
   "county_fips": <string or null>
 }`,
       }],
-    });
+    }),
+      { maxAttempts: 3, baseDelayMs: 2000, retryOn: isRetryableError }
+    );
 
     const text = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')
@@ -224,7 +228,8 @@ async function extractCompsFromText(
   const combinedText = pageTexts.join('\n\n---PAGE BREAK---\n\n').slice(0, 30_000);
 
   try {
-    const response = await getAIClient().messages.create({
+    const response = await withRetry(
+      () => getAIClient().messages.create({
       model: AI_MODELS.FAST,
       max_tokens: 4000,
       system: `You are a data extraction specialist. Extract recently sold comparable properties from web pages. Return ONLY valid JSON array, no markdown. Each comp should be a recent sale within a few miles of the subject property. Only include sales with actual sale prices (not listings). Return empty array [] if no sold data found.`,
@@ -253,7 +258,9 @@ Return a JSON array of comparable sales:
   }
 ]`,
       }],
-    });
+    }),
+      { maxAttempts: 3, baseDelayMs: 2000, retryOn: isRetryableError }
+    );
 
     const text = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')

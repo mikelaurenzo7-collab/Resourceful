@@ -50,6 +50,13 @@ const requirementsByPropertyType: Record<PropertyType, PhotoRequirement[]> = {
     { type: 'exterior_west', label: 'Right Boundary', reason: 'Boundary condition and context.' },
     { type: 'aerial', label: 'Aerial/Overview', reason: 'Overall lot shape, topography, and any encumbrances if possible.' },
   ],
+  agricultural: [
+    { type: 'exterior_front', label: 'Road Frontage', reason: 'Primary road access, fencing, and entry condition.' },
+    { type: 'exterior_rear', label: 'Rear/Back Acreage', reason: 'Land use, terrain, and any structures visible from rear.' },
+    { type: 'exterior_east', label: 'East Boundary', reason: 'Boundary fencing, neighboring land use, and drainage.' },
+    { type: 'exterior_west', label: 'West Boundary', reason: 'Boundary condition, irrigation, and topography.' },
+    { type: 'aerial', label: 'Aerial Overview', reason: 'Shows total acreage, field layout, and improvements from above.' },
+  ],
 };
 
 interface UploadedPhoto {

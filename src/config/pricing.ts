@@ -60,7 +60,7 @@ export const PRICING_FULL_REPRESENTATION = {
 export const TAX_BILL_DISCOUNT = 0.15;
 
 export type ServiceType = 'tax_appeal' | 'pre_purchase' | 'pre_listing';
-export type PropertyType = 'residential' | 'commercial' | 'industrial' | 'land';
+export type PropertyType = 'residential' | 'commercial' | 'industrial' | 'land' | 'agricultural';
 
 export function getPriceForReport(
   serviceType: ServiceType,
@@ -91,7 +91,7 @@ export function getPriceForReport(
   if (serviceType === 'pre_purchase') base = table.PRE_PURCHASE;
   else if (serviceType === 'pre_listing') base = table.PRE_LISTING;
   else if (propertyType === 'residential') base = table.TAX_APPEAL_RESIDENTIAL;
-  else if (propertyType === 'land') base = table.TAX_APPEAL_LAND;
+  else if (propertyType === 'land' || propertyType === 'agricultural') base = table.TAX_APPEAL_LAND;
   else base = table.TAX_APPEAL_COMMERCIAL;
 
   if (hasTaxBill) {

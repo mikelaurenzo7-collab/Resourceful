@@ -54,8 +54,8 @@ const STAGES: StageDefinition[] = [
   {
     number: 3,
     name: 'stage-3-income',
-    // Run for commercial, industrial, and multi-family residential (income-producing)
-    skipWhen: (pt, _st) => pt !== 'commercial' && pt !== 'industrial' && pt !== 'residential',
+    // Run for commercial, industrial, agricultural, and multi-family residential (income-producing)
+    skipWhen: (pt, _st) => pt !== 'commercial' && pt !== 'industrial' && pt !== 'residential' && pt !== 'agricultural',
     run: runIncomeAnalysis,
   },
   {

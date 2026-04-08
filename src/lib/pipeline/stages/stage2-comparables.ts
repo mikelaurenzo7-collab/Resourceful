@@ -23,6 +23,7 @@ import {
   LAND_RATIO_THRESHOLD_PCT,
   LAND_RATIO_ADJ_MAX_PCT,
 } from '@/config/valuation';
+import { getCalibrationParams, type CalibrationMultipliers } from '@/lib/repository/calibration';
 
 // ─── Search Tiers by Property Type ──────────────────────────────────────────
 
@@ -48,6 +49,10 @@ const SEARCH_TIERS: Record<string, SearchTier[]> = {
   ],
   land: [
     { radiusMiles: 5, monthsBack: 36, gbaVariance: 0.50 },
+  ],
+  agricultural: [
+    { radiusMiles: 5, monthsBack: 36, gbaVariance: 0.50 },
+    { radiusMiles: 10, monthsBack: 48, gbaVariance: 0.50 },
   ],
 };
 
@@ -97,6 +102,7 @@ interface AdjustmentResult {
 function calculateAdjustments(
   subject: SubjectData,
   comp: AttomSaleComp,
+  cal: CalibrationMultipliers = { size_multiplier: 1, condition_multiplier: 1, market_trend_multiplier: 1, land_ratio_multiplier: 1, value_bias_pct: 0, sqft_correction_factor: 1, sample_count: 0 },
 ): AdjustmentResult {
   let adjustment_pct_size = 0;
   let adjustment_pct_condition = 0;
@@ -135,7 +141,7 @@ function calculateAdjustments(
         (now.getMonth() - saleDate.getMonth());
       if (monthsSinceSale > 6) {
         adjustment_pct_market_trends = Math.round(
-          Math.min(monthsSinceSale * MARKET_TRENDS_ADJ_PER_MONTH, MARKET_TRENDS_ADJ_MAX_PCT) * 100
+          Math.min(monthsSinceSale * MARKET_TRENDS_ADJ_PER_MONTH * cal.market_trend_multiplier, MARKET_TRENDS_ADJ_MAX_PCT) * 100
         ) / 100;
       }
     }
@@ -145,9 +151,9 @@ function calculateAdjustments(
     const sizeDiffPct = ((comp.buildingSquareFeet - subject.buildingSqFt) / subject.buildingSqFt) * 100;
     const sizeBuckets = sizeDiffPct / 10;
     if (sizeDiffPct > 0) {
-      adjustment_pct_size = Math.round(Math.max(sizeBuckets * SIZE_ADJ_LARGER_PER_10PCT, -SIZE_ADJ_MAX_PCT) * 100) / 100;
+      adjustment_pct_size = Math.round(Math.max(sizeBuckets * SIZE_ADJ_LARGER_PER_10PCT * cal.size_multiplier, -SIZE_ADJ_MAX_PCT) * 100) / 100;
     } else {
-      adjustment_pct_size = Math.round(Math.min(Math.abs(sizeBuckets) * SIZE_ADJ_SMALLER_PER_10PCT, SIZE_ADJ_MAX_PCT) * 100) / 100;
+      adjustment_pct_size = Math.round(Math.min(Math.abs(sizeBuckets) * SIZE_ADJ_SMALLER_PER_10PCT * cal.size_multiplier, SIZE_ADJ_MAX_PCT) * 100) / 100;
     }
   }
 
@@ -166,14 +172,14 @@ function calculateAdjustments(
     // Use comp's chronological age as its effective age (no photo evidence for comps)
     const compEffectiveAge = Math.max(compActualAge, 0);
     const effectiveAgeDiff = compEffectiveAge - subject.effectiveAge;
-    const rawAdj = effectiveAgeDiff * EFFECTIVE_AGE_ADJ_RATE_PER_YEAR;
+    const rawAdj = effectiveAgeDiff * EFFECTIVE_AGE_ADJ_RATE_PER_YEAR * cal.condition_multiplier;
     adjustment_pct_condition = Math.round(
       Math.max(Math.min(rawAdj, EFFECTIVE_AGE_ADJ_MAX_PCT), -EFFECTIVE_AGE_ADJ_MAX_PCT) * 100
     ) / 100;
   } else if (subject.yearBuilt > 0 && comp.yearBuilt && comp.yearBuilt > 0) {
     // Fallback: subject has no effective age — use chronological age difference
     const ageDiffYears = comp.yearBuilt - subject.yearBuilt;
-    const rawAdj = ageDiffYears * EFFECTIVE_AGE_ADJ_RATE_PER_YEAR;
+    const rawAdj = ageDiffYears * EFFECTIVE_AGE_ADJ_RATE_PER_YEAR * cal.condition_multiplier;
     adjustment_pct_condition = Math.round(
       Math.max(Math.min(rawAdj, EFFECTIVE_AGE_ADJ_MAX_PCT), -EFFECTIVE_AGE_ADJ_MAX_PCT) * 100
     ) / 100;
@@ -192,7 +198,7 @@ function calculateAdjustments(
     const compRatio = comp.lotSquareFeet / comp.buildingSquareFeet;
     const ratioDiffPct = ((compRatio - subjectRatio) / subjectRatio) * 100;
     if (Math.abs(ratioDiffPct) > LAND_RATIO_THRESHOLD_PCT) {
-      const rawAdj = (ratioDiffPct / LAND_RATIO_THRESHOLD_PCT) * -1;
+      const rawAdj = (ratioDiffPct / LAND_RATIO_THRESHOLD_PCT) * -1 * cal.land_ratio_multiplier;
       adjustment_pct_land_to_building = Math.round(
         Math.max(Math.min(rawAdj, LAND_RATIO_ADJ_MAX_PCT), -LAND_RATIO_ADJ_MAX_PCT) * 100
       ) / 100;
@@ -271,8 +277,17 @@ export async function runComparables(
 
   const propertyType = report.property_type as PropertyType;
 
+  // ── Load calibration params (learned from blind-test feedback) ────────
+  const cal = await getCalibrationParams(supabase, propertyType, report.county_fips ?? null);
+  if (cal.sample_count > 0) {
+    console.log(`[stage2] Using calibration params (n=${cal.sample_count}) for ${propertyType}/${report.county_fips}`);
+  }
+
+  // Apply sqft correction factor from calibration (e.g. 1.04 means ATTOM overreports by 4%)
+  const correctedBuildingSqFt = (propertyData.building_sqft_gross ?? 0) / cal.sqft_correction_factor;
+
   const subject: SubjectData = {
-    buildingSqFt: propertyData.building_sqft_gross ?? 0,
+    buildingSqFt: correctedBuildingSqFt,
     lotSqFt: propertyData.lot_size_sqft ?? 0,
     yearBuilt: propertyData.year_built ?? 0,
     effectiveAge: propertyData.effective_age ?? (propertyData.year_built
@@ -360,7 +375,7 @@ export async function runComparables(
 
   // ── Calculate adjustments and write to DB ─────────────────────────────
   const compInserts: ComparableSaleInsert[] = sortedComps.map((comp, idx) => {
-    const adj = calculateAdjustments(subject, comp);
+    const adj = calculateAdjustments(subject, comp, cal);
 
     const pricePerSqft = comp.buildingSquareFeet && comp.buildingSquareFeet > 0
       ? Math.round((comp.salePrice / comp.buildingSquareFeet) * 100) / 100

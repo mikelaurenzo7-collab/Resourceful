@@ -102,6 +102,7 @@ const REQUIRED_PHOTO_TYPES: Record<string, string[]> = {
     'interior_garage', 'structural_detail',
   ],
   land: ['exterior_front', 'exterior_east', 'exterior_west', 'aerial'],
+  agricultural: ['exterior_front', 'exterior_rear', 'exterior_east', 'exterior_west', 'aerial'],
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────

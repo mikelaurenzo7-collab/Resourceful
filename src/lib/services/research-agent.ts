@@ -12,6 +12,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODELS } from '@/config/ai';
+import { withRetry, isRetryableError } from '@/lib/utils/retry';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -242,13 +243,16 @@ export async function researchAppealStrategy(
     // Tool-use loop: Claude searches, reads pages, then produces final output
     // eslint-disable-next-line no-constant-condition
     while (searchCount < MAX_SEARCHES) {
-      const response = await getClient().messages.create({
-        model: AI_MODELS.FAST,
-        max_tokens: 2000,
-        system: systemPrompt,
-        tools: [SEARCH_TOOL, READ_PAGE_TOOL],
-        messages,
-      });
+      const response = await withRetry(
+        () => getClient().messages.create({
+          model: AI_MODELS.FAST,
+          max_tokens: 2000,
+          system: systemPrompt,
+          tools: [SEARCH_TOOL, READ_PAGE_TOOL],
+          messages,
+        }),
+        { maxAttempts: 3, baseDelayMs: 2000, retryOn: isRetryableError }
+      );
 
       // Check if Claude wants to use tools
       if (response.stop_reason === 'tool_use') {
@@ -334,12 +338,15 @@ export async function researchAppealStrategy(
       content: 'Search limit reached. Please provide your final structured analysis with STRATEGY_INSIGHTS, DEADLINE_INFO, BOARD_INTELLIGENCE, and RECENT_CHANGES sections based on everything you found.',
     });
 
-    const finalResponse = await getClient().messages.create({
-      model: AI_MODELS.FAST,
-      max_tokens: 2000,
-      system: systemPrompt,
-      messages,
-    });
+    const finalResponse = await withRetry(
+      () => getClient().messages.create({
+        model: AI_MODELS.FAST,
+        max_tokens: 2000,
+        system: systemPrompt,
+        messages,
+      }),
+      { maxAttempts: 3, baseDelayMs: 2000, retryOn: isRetryableError }
+    );
 
     const finalText = finalResponse.content
       .filter((b): b is Anthropic.TextBlock => b.type === 'text')

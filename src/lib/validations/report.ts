@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 // ─── Enums ──────────────────────────────────────────────────────────────────
 
-const propertyTypeEnum = z.enum(['residential', 'commercial', 'industrial', 'land']);
+const propertyTypeEnum = z.enum(['residential', 'commercial', 'industrial', 'land', 'agricultural']);
 const serviceTypeEnum = z.enum(['tax_appeal', 'pre_purchase', 'pre_listing']);
 const reviewTierEnum = z.enum(['auto', 'expert_reviewed', 'guided_filing', 'full_representation']);
 const photoTypeEnum = z.enum([
