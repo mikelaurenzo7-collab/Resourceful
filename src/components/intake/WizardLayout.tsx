@@ -301,8 +301,6 @@ export default function WizardLayout({ children }: { children: React.ReactNode }
 
   const totalSteps = WIZARD_STEPS.length;
 
-  const progressPercent = Math.round((currentStep / totalSteps) * 100);
-
   if (!hydrated) {
     return (
       <div className="min-h-screen bg-pattern flex items-center justify-center">
@@ -329,14 +327,11 @@ export default function WizardLayout({ children }: { children: React.ReactNode }
 
             {/* Step indicators */}
             <div className="hidden md:flex items-center gap-1.5 text-xs text-cream/40">
-              {WIZARD_STEPS.map((step, i) => {
+              {WIZARD_STEPS.map((step) => {
                 const isComplete = currentStep > step.number;
                 const isActive = currentStep === step.number;
                 return (
                   <React.Fragment key={step.number}>
-                    {i > 0 && (
-                      <div className={`w-6 h-px ${isComplete ? 'bg-gold/40' : 'bg-gold/15'}`} />
-                    )}
                     <div
                       className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] transition-all ${
                         isComplete
@@ -368,16 +363,6 @@ export default function WizardLayout({ children }: { children: React.ReactNode }
             </div>
           </div>
         </header>
-
-        {/* Progress bar */}
-        <div className="h-0.5 bg-navy-light/60">
-          <div
-            className="h-full bg-gradient-to-r from-gold-light via-gold to-gold-dark transition-all duration-700 ease-out relative"
-            style={{ width: `${progressPercent}%` }}
-          >
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-gold shadow-[0_0_8px_rgba(212,168,71,0.6)]" />
-          </div>
-        </div>
 
         {/* Step content */}
         {children}
