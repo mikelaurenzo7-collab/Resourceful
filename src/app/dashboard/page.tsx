@@ -67,11 +67,27 @@ export default async function DashboardPage() {
   const userEmail = user.email ?? '';
   const userInitial = userEmail[0]?.toUpperCase() ?? 'U';
 
-  // Fetch user's reports
+  // Link any unclaimed reports to this user (email-only → authenticated)
+  // This runs on every dashboard load — fast no-op when nothing to link
+  if (userEmail) {
+    try {
+      const { createAdminClient } = await import('@/lib/supabase/admin');
+      const admin = createAdminClient();
+      await admin
+        .from('reports')
+        .update({ user_id: user.id })
+        .eq('client_email', userEmail.toLowerCase())
+        .is('user_id', null);
+    } catch (linkErr) {
+      console.warn('[dashboard] Report linking failed (non-fatal):', linkErr);
+    }
+  }
+
+  // Fetch user's reports by user_id (linked) OR client_email (fallback)
   const { data: reports, error } = await supabase
     .from('reports')
-    .select('id, status, service_type, property_type, property_address, city, state, county, pipeline_last_completed_stage, report_pdf_storage_path, created_at')
-    .eq('user_id', user.id)
+    .select('id, status, service_type, property_type, property_address, city, state, county, pipeline_last_completed_stage, report_pdf_storage_path, created_at, client_email')
+    .or(`user_id.eq.${user.id},client_email.eq.${userEmail.toLowerCase()}`)
     .order('created_at', { ascending: false })
     .limit(50);
 

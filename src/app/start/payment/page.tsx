@@ -50,9 +50,8 @@ function CheckoutForm() {
         return;
       }
 
-      // Payment succeeded — clear wizard state, redirect to success
+      // Payment succeeded — clear wizard state (intake kept for success page), redirect
       sessionStorage.removeItem('wizard');
-      sessionStorage.removeItem('intake');
       router.push(`/start/success?reportId=${state.reportId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Payment failed.');
@@ -354,12 +353,14 @@ export default function PaymentPage() {
       const data = await response.json();
       if (data.founderAccess) {
         // Founder bypass — pipeline already triggered, go straight to success
+        try { sessionStorage.setItem('intake', JSON.stringify({ email })); } catch {}
         sessionStorage.removeItem('wizard');
-        sessionStorage.removeItem('intake');
         router.push(`/start/success?reportId=${data.reportId}`);
         return;
       }
       updateState({ reportId: data.reportId, clientSecret: data.clientSecret, priceCents: data.priceCents });
+      // Persist email for the success page account creation form
+      try { sessionStorage.setItem('intake', JSON.stringify({ email, reportId: data.reportId })); } catch {}
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : 'Failed to create report.');
     } finally {
