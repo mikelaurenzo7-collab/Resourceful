@@ -238,11 +238,50 @@ export async function runNarratives(
   }
 
   // ── Value WITH photo condition adjustments (the real concluded value) ──
-  if (comps.length === 0) {
-    return { success: false, error: 'No comparable sales available — cannot generate narrative without market data' };
+  // When 0 comps are available (thin rural markets), fall back to cost/income approach.
+  if (comps.length === 0 && !incomeData?.concluded_value_income_approach) {
+    // Check if we can use cost approach as sole valuation method
+    const landValue = propertyData.land_value ?? null;
+    const qualityGrade = propertyData.quality_grade ?? 'average';
+    const { costApproachValue } = computeCostApproach(
+      propertyData.property_subtype,
+      qualityGrade,
+      propertyData.building_sqft_gross,
+      propertyData.physical_depreciation_pct,
+      0, // no functional obsolescence without comps
+      landValue
+    );
+    if (!costApproachValue) {
+      return {
+        success: false,
+        error: 'No comparable sales, income data, or sufficient cost approach data available — cannot generate valuation',
+      };
+    }
+    console.warn(`[stage5] 0 comps and no income data — falling back to cost approach only ($${costApproachValue.toLocaleString()})`);
   }
 
-  let concludedValue = computeMedianValue(comps, propertyData.building_sqft_gross, (c) => c.adjusted_price_per_sqft);
+  let concludedValue: number;
+  if (comps.length > 0) {
+    concludedValue = computeMedianValue(comps, propertyData.building_sqft_gross, (c) => c.adjusted_price_per_sqft);
+  } else if (incomeData?.concluded_value_income_approach) {
+    // No comps but income approach available — use income as primary
+    concludedValue = incomeData.concluded_value_income_approach;
+    console.warn(`[stage5] 0 comps — using income approach as primary value: $${concludedValue.toLocaleString()}`);
+  } else {
+    // Cost approach only (validated above)
+    const landValue = propertyData.land_value ?? null;
+    const qualityGrade = propertyData.quality_grade ?? 'average';
+    const { costApproachValue } = computeCostApproach(
+      propertyData.property_subtype,
+      qualityGrade,
+      propertyData.building_sqft_gross,
+      propertyData.physical_depreciation_pct,
+      0,
+      landValue
+    );
+    concludedValue = costApproachValue!;
+    console.warn(`[stage5] 0 comps, no income — using cost approach as primary value: $${concludedValue.toLocaleString()}`);
+  }
 
   // ── Value WITHOUT photo condition adjustments (market data only) ───────
   // Strip out the photo-based condition adjustment from each comp to see
@@ -320,9 +359,11 @@ export async function runNarratives(
   concludedValueWithoutPhotos = Math.round(concludedValueWithoutPhotos / 1000) * 1000;
 
   // If income approach is available, weight it in (apply to both)
-  if (incomeData?.concluded_value_income_approach) {
+  // Only blend when we have sales comp data — if income was already the primary
+  // value source (0 comps), don't dilute it with itself.
+  if (incomeData?.concluded_value_income_approach && comps.length > 0) {
     const incomeValue = incomeData.concluded_value_income_approach;
-    // 70% sales comparison, 30% income approach for commercial/industrial
+    // 70% sales comparison, 30% income approach for commercial/industrial/multifamily
     concludedValue = Math.round(
       (concludedValue * 0.7 + incomeValue * 0.3) / 1000
     ) * 1000;
@@ -342,6 +383,13 @@ export async function runNarratives(
     (sum, p) => sum + p.defects.filter(d => d.severity === 'significant').length, 0
   );
 
+  // Determine primary valuation method for transparency
+  const valuationMethod: string =
+    comps.length > 0 && incomeData?.concluded_value_income_approach ? 'sales_income_blend' :
+    comps.length > 0 ? 'sales_comparison' :
+    incomeData?.concluded_value_income_approach ? 'income' :
+    'cost';
+
   // Store attribution on property_data
   const { error: attrUpdateError } = await supabase
     .from('property_data')
@@ -354,6 +402,8 @@ export async function runNarratives(
       photo_defect_count: totalDefects,
       photo_defect_count_significant: significantDefects,
       photo_count: photoAnalyses.length,
+      comp_count: comps.length,
+      valuation_method: valuationMethod,
     })
     .eq('report_id', reportId);
 

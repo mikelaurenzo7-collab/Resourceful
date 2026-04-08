@@ -154,6 +154,8 @@ export const INCOME_PARAMS: Record<string, IncomeParams> = {
   industrial_flex:          { vacancy_rate: 0.06, expense_ratio: 0.24, cap_rate_default: 0.070, rent_fallback_per_sqft_yr: 9  },
   industrial_self_storage:  { vacancy_rate: 0.10, expense_ratio: 0.35, cap_rate_default: 0.060, rent_fallback_per_sqft_yr: 12 },
   industrial_general:       { vacancy_rate: 0.05, expense_ratio: 0.24, cap_rate_default: 0.075, rent_fallback_per_sqft_yr: 6  },
+  // Multi-family residential (2-4 units) — income-producing residential
+  residential_multifamily:   { vacancy_rate: 0.05, expense_ratio: 0.35, cap_rate_default: 0.070, rent_fallback_per_sqft_yr: 14 },
 };
 
 // ─── Case Strength Scoring ─────────────────────────────────────────────────────

@@ -27,11 +27,9 @@ export async function runIncomeAnalysis(
     return { success: false, error: `Failed to fetch report: ${reportError?.message}` };
   }
 
-  // Only run for commercial/industrial
-  if (report.property_type !== 'commercial' && report.property_type !== 'industrial') {
-    console.log(`[stage3] Skipping income analysis for ${report.property_type} property`);
-    return { success: true };
-  }
+  // Only commercial/industrial/residential run Stage 3 at orchestrator level.
+  // For residential, filter further: only multifamily gets income analysis.
+  // The subtype check happens after fetching property_data below.
 
   // ── Fetch property data ───────────────────────────────────────────────
   const { data: pdData, error: pdError } = await supabase
@@ -58,6 +56,13 @@ export async function runIncomeAnalysis(
   // ── Resolve subtype-specific income parameters ────────────────────────
   const subtype = propertyData.property_subtype
     ?? resolvePropertySubtype(propertyData.property_class, report.property_type);
+
+  // For residential, only multifamily gets income analysis
+  if (report.property_type === 'residential' && subtype !== 'residential_multifamily') {
+    console.log(`[stage3] Skipping income analysis for non-multifamily residential (subtype: ${subtype})`);
+    return { success: true };
+  }
+
   const incomeParams = INCOME_PARAMS[subtype] ?? INCOME_PARAMS['commercial_general'];
   const DEFAULT_VACANCY_RATE = incomeParams.vacancy_rate;
   const DEFAULT_EXPENSE_RATIO = incomeParams.expense_ratio;
@@ -139,6 +144,14 @@ export async function runIncomeAnalysis(
       `[stage3] No rental comps found. Using subtype fallback rate: $${concludedMarketRentPerSqFtYr}/sqft/yr for "${subtype}"`
     );
   }
+
+  // ── Rental comp confidence scoring ──────────────────────────────────
+  const rentalCompCount = rentalResult.data?.length ?? 0;
+  const rentalCompConfidence: 'high' | 'medium' | 'low' | 'none' =
+    rentalCompCount >= 5 ? 'high' :
+    rentalCompCount >= 2 ? 'medium' :
+    rentalCompCount === 1 ? 'low' :
+    'none';
 
   // ── Build pro forma ───────────────────────────────────────────────────
   const potentialGrossIncome = Math.round(buildingSqFt * concludedMarketRentPerSqFtYr);
@@ -247,6 +260,7 @@ export async function runIncomeAnalysis(
       capitalized_value: capitalizedValue,
       concluded_value_income_approach: concludedValueIncomeApproach,
       investor_survey_reference: null,
+      rental_comp_confidence: rentalCompConfidence,
     });
 
   if (insertError) {
@@ -254,7 +268,7 @@ export async function runIncomeAnalysis(
   }
 
   console.log(
-    `[stage3] Income analysis complete. NOI: $${netOperatingIncome}, Cap: ${(concludedCapRate * 100).toFixed(2)}%, Value: $${concludedValueIncomeApproach}`
+    `[stage3] Income analysis complete. NOI: $${netOperatingIncome}, Cap: ${(concludedCapRate * 100).toFixed(2)}%, Value: $${concludedValueIncomeApproach}, Rental confidence: ${rentalCompConfidence} (${rentalCompCount} comps)`
   );
 
   return { success: true };

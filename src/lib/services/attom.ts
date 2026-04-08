@@ -359,7 +359,29 @@ export async function getPropertyDetail(
   }
 
   try {
-    return { data: normalizePropertyDetail(result.data), error: null };
+    const detail = normalizePropertyDetail(result.data);
+
+    // ── Data quality validation ──────────────────────────────────────────
+    // ATTOM sometimes returns zero or missing values for critical fields.
+    // Flag these so downstream stages can handle gracefully.
+    const warnings: string[] = [];
+    if (!detail.summary.buildingSquareFeet || detail.summary.buildingSquareFeet <= 0) {
+      warnings.push('buildingSquareFeet is 0 or missing');
+    }
+    if (!detail.summary.yearBuilt || detail.summary.yearBuilt <= 1700) {
+      warnings.push('yearBuilt is missing or implausible');
+    }
+    if (!detail.assessment.assessedValue || detail.assessment.assessedValue <= 0) {
+      warnings.push('assessedValue is 0 or missing');
+    }
+    if (!detail.summary.lotSquareFeet || detail.summary.lotSquareFeet <= 0) {
+      warnings.push('lotSquareFeet is 0 or missing');
+    }
+    if (warnings.length > 0) {
+      console.warn(`[attom] Data quality warnings for "${address}": ${warnings.join('; ')}`);
+    }
+
+    return { data: detail, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[attom] Failed to normalize property detail: ${message}`);
@@ -389,7 +411,20 @@ export async function getSalesComparables(
   }
 
   try {
-    return { data: normalizeSaleComps(result.data), error: null };
+    const comps = normalizeSaleComps(result.data);
+
+    // Filter out comps with obviously bad data (zero sale price, missing essential fields)
+    const validComps = comps.filter((c) => {
+      if (!c.salePrice || c.salePrice <= 0) return false;
+      if (!c.saleDate) return false;
+      return true;
+    });
+
+    if (validComps.length < comps.length) {
+      console.warn(`[attom] Filtered ${comps.length - validComps.length} invalid comps (missing sale price/date)`);
+    }
+
+    return { data: validComps, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[attom] Failed to normalize sale comps: ${message}`);

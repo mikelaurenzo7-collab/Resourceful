@@ -313,7 +313,17 @@ export async function runComparables(
   }
 
   if (allComps.length === 0) {
-    return { success: false, error: 'No comparable sales found after all search tiers' };
+    // Graceful degradation: allow pipeline to continue with cost/income approaches.
+    // Stage 5 will detect 0 comps and rely on alternative valuation methods.
+    console.warn(
+      `[stage2] No comparable sales found after all search tiers for report ${reportId}. ` +
+      `Pipeline will continue with cost and/or income approach if available.`
+    );
+
+    // Clean up any stale comps from a previous run
+    await supabase.from('comparable_sales').delete().eq('report_id', reportId);
+
+    return { success: true };
   }
 
   // Limit to best comps (closest distance, most recent)

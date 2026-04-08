@@ -7,9 +7,9 @@ import { describe, it, expect } from 'vitest';
 type PropertyType = 'residential' | 'commercial' | 'industrial' | 'land';
 
 // These predicates must match the orchestrator exactly:
-// Stage 3 (income) — only for commercial and industrial
+// Stage 3 (income) — for commercial, industrial, and residential (multifamily filtered inside stage)
 const stage3SkipWhen = (pt: PropertyType, _st: string) =>
-  pt !== 'commercial' && pt !== 'industrial';
+  pt !== 'commercial' && pt !== 'industrial' && pt !== 'residential';
 
 // Stage 6 (filing guide) — only for tax_appeal
 const stage6SkipWhen = (_pt: PropertyType, st: string) =>
@@ -25,8 +25,8 @@ describe('pipeline stage skip logic', () => {
       expect(stage3SkipWhen('industrial', 'tax_appeal')).toBe(false);
     });
 
-    it('skips for residential properties', () => {
-      expect(stage3SkipWhen('residential', 'tax_appeal')).toBe(true);
+    it('runs for residential properties (multifamily filtered inside stage)', () => {
+      expect(stage3SkipWhen('residential', 'tax_appeal')).toBe(false);
     });
 
     it('skips for land properties', () => {
@@ -61,8 +61,8 @@ describe('pipeline stage skip logic', () => {
   });
 
   describe('stage combinations for typical reports', () => {
-    it('residential tax appeal: skips stage 3, runs stage 6', () => {
-      expect(stage3SkipWhen('residential', 'tax_appeal')).toBe(true);
+    it('residential tax appeal: runs stage 3 (multifamily check inside), runs stage 6', () => {
+      expect(stage3SkipWhen('residential', 'tax_appeal')).toBe(false);
       expect(stage6SkipWhen('residential', 'tax_appeal')).toBe(false);
     });
 
@@ -71,8 +71,8 @@ describe('pipeline stage skip logic', () => {
       expect(stage6SkipWhen('commercial', 'tax_appeal')).toBe(false);
     });
 
-    it('residential pre_purchase: skips both stages 3 and 6', () => {
-      expect(stage3SkipWhen('residential', 'pre_purchase')).toBe(true);
+    it('residential pre_purchase: runs stage 3 (multifamily check inside), skips stage 6', () => {
+      expect(stage3SkipWhen('residential', 'pre_purchase')).toBe(false);
       expect(stage6SkipWhen('residential', 'pre_purchase')).toBe(true);
     });
 
