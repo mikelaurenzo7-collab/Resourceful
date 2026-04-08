@@ -86,6 +86,11 @@ export async function POST(
     const narrativeResult = await runNarratives(reportId, admin);
 
     if (!narrativeResult.success) {
+      // Restore the old narrative if regeneration failed to prevent data loss
+      if (existingNarrative) {
+        const { id: _id, ...restoreData } = existingNarrative;
+        await admin.from('report_narratives').insert(restoreData);
+      }
       return NextResponse.json(
         { error: `Narrative regeneration failed: ${narrativeResult.error}` },
         { status: 500 }

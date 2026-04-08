@@ -31,12 +31,23 @@ export interface RateLimitResult {
 const memoryStore = new Map<string, { count: number; expiresAt: number }>();
 let dbFailureCount = 0;
 const DB_FAILURE_THRESHOLD = 3; // Switch to memory after 3 consecutive DB failures
+let lastCleanup = 0;
+const CLEANUP_INTERVAL_MS = 60_000; // Prune expired entries every 60s
 
 function checkMemoryRateLimit(
   key: string,
   config: RateLimitConfig
 ): RateLimitResult {
   const now = Date.now();
+
+  // Periodically prune expired entries to prevent unbounded memory growth
+  if (now - lastCleanup > CLEANUP_INTERVAL_MS) {
+    lastCleanup = now;
+    memoryStore.forEach((v, k) => {
+      if (now >= v.expiresAt) memoryStore.delete(k);
+    });
+  }
+
   const windowMs = config.windowSeconds * 1000;
   const resetAt = Math.floor(now / windowMs) * windowMs + windowMs;
 

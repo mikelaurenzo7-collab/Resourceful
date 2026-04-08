@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PropertyType, PhotoType } from '@/types/database';
 
 interface PhotoRequirement {
@@ -71,6 +71,16 @@ export default function PhotoUploader({ propertyType, onPhotosChange, onFileUplo
   const [uploadingType, setUploadingType] = useState<PhotoType | null>(null);
   const [captions, setCaptions] = useState<Record<string, string>>({});
   const requirements = requirementsByPropertyType[propertyType];
+  const blobUrlsRef = useRef<Set<string>>(new Set());
+
+  // Revoke all blob URLs on unmount to prevent memory leaks
+  useEffect(() => {
+    const urls = blobUrlsRef.current;
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+      urls.clear();
+    };
+  }, []);
 
   const handleFileSelect = async (type: PhotoType, file: File) => {
     const caption = captions[type] ?? '';
@@ -83,7 +93,15 @@ export default function PhotoUploader({ propertyType, onPhotosChange, onFileUplo
       if (!success) return; // Upload failed — don't add to local state
     }
 
+    // Revoke the old blob URL for this photo type if replacing
+    const oldPhoto = photos.find((p) => p.type === type);
+    if (oldPhoto) {
+      URL.revokeObjectURL(oldPhoto.preview);
+      blobUrlsRef.current.delete(oldPhoto.preview);
+    }
+
     const preview = URL.createObjectURL(file);
+    blobUrlsRef.current.add(preview);
     const updated = [...photos.filter((p) => p.type !== type), { type, name: file.name, preview, caption }];
     setPhotos(updated);
     onPhotosChange(updated);
@@ -194,6 +212,11 @@ export default function PhotoUploader({ propertyType, onPhotosChange, onFileUplo
                         <p className="text-xs text-cream/60 truncate max-w-[200px]">{photo.name}</p>
                         <button
                           onClick={() => {
+                            const removed = photos.find((p) => p.type === req.type);
+                            if (removed) {
+                              URL.revokeObjectURL(removed.preview);
+                              blobUrlsRef.current.delete(removed.preview);
+                            }
                             const updated = photos.filter((p) => p.type !== req.type);
                             setPhotos(updated);
                             onPhotosChange(updated);

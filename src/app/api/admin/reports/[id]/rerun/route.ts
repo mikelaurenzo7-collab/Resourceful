@@ -68,10 +68,29 @@ export async function POST(
     // ── Trigger full pipeline from stage 1 (fire-and-forget) ───────────────
     console.log(`[api/admin/rerun] Triggering full pipeline rerun for report ${reportId}`);
 
-    runPipeline(reportId, 1).catch((err) => {
+    runPipeline(reportId, 1).catch(async (err) => {
+      const errMessage = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
       console.error(
-        `[api/admin/rerun] Pipeline failed for report ${reportId}: ${err}`
+        `[api/admin/rerun] Pipeline failed for report ${reportId}: ${errMessage}`
       );
+      // Update report status so it doesn't stay stuck in 'paid'
+      try {
+        const { createAdminClient: adminClient } = await import('@/lib/supabase/admin');
+        await adminClient().from('reports').update({
+          status: 'failed',
+          pipeline_error_log: [{
+            stage: 'pipeline',
+            error: errMessage,
+            stack: stack ?? errMessage,
+            timestamp: new Date().toISOString(),
+          }],
+        } as never).eq('id', reportId);
+      } catch (dbErr) {
+        console.error(
+          `[api/admin/rerun] CRITICAL: Pipeline failed AND status update failed for ${reportId}: ${dbErr}`
+        );
+      }
     });
 
     return NextResponse.json(

@@ -7,6 +7,7 @@ const actionLabels: Record<string, { label: string; color: string }> = {
   regenerate_section: { label: 'Regenerated Section', color: 'text-blue-700 bg-blue-50' },
   edit_section: { label: 'Edited Section', color: 'text-indigo-700 bg-indigo-50' },
   rerun_pipeline: { label: 'Reran Pipeline', color: 'text-purple-700 bg-purple-50' },
+  hold_for_review: { label: 'Held for Review', color: 'text-amber-700 bg-amber-50' },
 };
 
 interface ApprovalAuditTrailProps {
