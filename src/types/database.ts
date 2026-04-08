@@ -8,6 +8,7 @@ export type ReportStatus =
   | 'processing'
   | 'pending_approval'
   | 'approved'
+  | 'delivering'
   | 'delivered'
   | 'rejected'
   | 'failed';

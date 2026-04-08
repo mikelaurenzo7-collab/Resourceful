@@ -34,8 +34,9 @@ export interface StaticMapParams {
 }
 
 export interface StreetViewParams {
-  lat: number;
-  lng: number;
+  lat?: number;
+  lng?: number;
+  address?: string;
   heading?: number;
   pitch?: number;
   width: number;
@@ -246,7 +247,11 @@ export function getStaticMapUrl(params: StaticMapParams): string {
  */
 export function getStreetViewUrl(params: StreetViewParams): string {
   const url = new URL(STREET_VIEW_URL);
-  url.searchParams.set('location', `${params.lat},${params.lng}`);
+  if (params.address) {
+    url.searchParams.set('location', params.address);
+  } else if (params.lat !== undefined && params.lng !== undefined) {
+    url.searchParams.set('location', `${params.lat},${params.lng}`);
+  }
   url.searchParams.set('size', `${params.width}x${params.height}`);
   url.searchParams.set('key', API_KEY);
   if (params.heading !== undefined) {

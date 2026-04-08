@@ -43,8 +43,8 @@ export async function GET(
 
   const report = reportData as Report;
 
-  // Only show reports that have been delivered
-  if (!['delivered', 'approved', 'pending_approval'].includes(report.status)) {
+  // Only show reports that have been delivered or are in the delivery pipeline
+  if (!['delivered', 'approved', 'pending_approval', 'delivering'].includes(report.status)) {
     const statusMessages: Record<string, string> = {
       intake: 'Your report is being prepared. We\'ll email you when it\'s ready.',
       paid: 'Payment confirmed. Your report is being generated now.',

@@ -353,11 +353,10 @@ export async function runComparables(
         ? Math.round((comp.lotSquareFeet / comp.buildingSquareFeet) * 100) / 100
         : null;
 
-    // Build Street View URL for this comp using comp's address for accuracy.
-    // We use address-based Street View (not lat/lng) to get the actual comp's facade.
+    // Build Street View URL for this comp using the service function.
     const compAddress = `${comp.address}, ${comp.city}, ${comp.state} ${comp.zip}`;
     const comparablePhotoStoragePath = comp.address
-      ? `https://maps.googleapis.com/maps/api/streetview?size=640x480&location=${encodeURIComponent(compAddress)}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ''}`
+      ? getStreetViewUrl({ address: compAddress, width: 640, height: 480 })
       : null;
 
     const { isDistressed, notes: saleNotes } = classifySaleCondition(comp);

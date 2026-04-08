@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report } from '@/types/database';
 
@@ -32,7 +33,7 @@ export async function GET(
 
   const { data: reportData, error: reportError } = await supabase
     .from('reports')
-    .select('status, report_pdf_storage_path')
+    .select('status, report_pdf_storage_path, user_id, client_email')
     .eq('id', reportId)
     .single();
 
@@ -40,9 +41,30 @@ export async function GET(
     return NextResponse.json({ error: 'Report not found' }, { status: 404 });
   }
 
-  const report = reportData as Pick<Report, 'status' | 'report_pdf_storage_path'>;
+  const report = reportData as Pick<Report, 'status' | 'report_pdf_storage_path' | 'user_id' | 'client_email'>;
 
-  if (!['delivered', 'approved', 'pending_approval'].includes(report.status)) {
+  // ── Verify ownership: session user must own the report ────────────────
+  const userSupabase = await createClient();
+  const { data: { user } } = await userSupabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
+  const isOwner = report.user_id
+    ? report.user_id === user.id
+    : report.client_email === user.email;
+
+  if (!isOwner) {
+    // Also allow admin access
+    const { isAdmin } = await import('@/lib/repository/admin');
+    const adminCheck = await isAdmin(user.id);
+    if (!adminCheck) {
+      return NextResponse.json({ error: 'Not authorized to download this report' }, { status: 403 });
+    }
+  }
+
+  if (!['delivered', 'approved', 'pending_approval', 'delivering'].includes(report.status)) {
     return NextResponse.json(
       { error: 'Report is not ready for download yet' },
       { status: 400 }

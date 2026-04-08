@@ -45,7 +45,12 @@ export async function POST(
       );
     }
 
-    if (report.user_id !== user.id) {
+    // For auth-based reports: match user_id. For email-only reports (user_id is null): match email.
+    const isOwner = report.user_id
+      ? report.user_id === user.id
+      : report.client_email === user.email;
+
+    if (!isOwner) {
       return NextResponse.json(
         { error: 'Not authorized to upload photos to this report' },
         { status: 403 }
