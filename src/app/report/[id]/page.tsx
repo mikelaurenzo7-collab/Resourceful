@@ -55,6 +55,10 @@ interface ReportData {
   county: CountyInfo | null;
   outcomeReportedAt: string | null;
   appealOutcome: string | null;
+  caseStrengthScore: number | null;
+  compCount: number;
+  photoCount: number;
+  photoDefectCount: number | null;
 }
 
 function formatDollar(value: number): string {
@@ -296,6 +300,101 @@ export default function ReportViewerPage() {
                 </div>
               )}
             </div>
+
+            {/* ── Deadline Countdown ─────────────────────────────── */}
+            {isTaxAppeal && county?.nextAppealDeadline && (() => {
+              const deadline = new Date(county.nextAppealDeadline);
+              const daysLeft = Math.ceil((deadline.getTime() - Date.now()) / 86400000);
+              if (daysLeft < 0) return null;
+              const urgent = daysLeft <= 14;
+              const soon = daysLeft <= 30;
+              return (
+                <div className={`rounded-xl border p-4 flex items-center gap-4 ${
+                  urgent ? 'border-red-500/25 bg-red-950/20' : soon ? 'border-amber-500/20 bg-amber-950/15' : 'border-blue-500/15 bg-blue-950/10'
+                }`}>
+                  <div className={`w-14 h-14 rounded-xl flex flex-col items-center justify-center flex-shrink-0 ${
+                    urgent ? 'bg-red-500/15' : soon ? 'bg-amber-500/10' : 'bg-blue-500/10'
+                  }`}>
+                    <span className={`text-xl font-bold leading-none ${urgent ? 'text-red-400' : soon ? 'text-amber-400' : 'text-blue-400'}`}>{daysLeft}</span>
+                    <span className={`text-[9px] uppercase tracking-wider mt-0.5 ${urgent ? 'text-red-400/60' : soon ? 'text-amber-400/60' : 'text-blue-400/60'}`}>days</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium ${urgent ? 'text-red-300' : soon ? 'text-amber-300' : 'text-blue-300'}`}>
+                      {urgent ? 'Filing deadline is approaching fast' : soon ? 'Your filing deadline is coming up' : 'Time to prepare your appeal'}
+                    </p>
+                    <p className={`text-xs mt-0.5 ${urgent ? 'text-red-400/50' : soon ? 'text-amber-400/50' : 'text-blue-400/50'}`}>
+                      {county.name} deadline: {deadline.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('filing')}
+                    className={`text-xs font-medium px-3 py-1.5 rounded-lg border transition-all flex-shrink-0 ${
+                      urgent ? 'border-red-500/20 text-red-400 hover:bg-red-500/10' : soon ? 'border-amber-500/20 text-amber-400 hover:bg-amber-500/10' : 'border-blue-500/20 text-blue-400 hover:bg-blue-500/10'
+                    }`}
+                  >
+                    Filing Steps
+                  </button>
+                </div>
+              );
+            })()}
+
+            {/* ── Case Intelligence & Evidence ────────────────────── */}
+            {(data.caseStrengthScore != null || data.compCount > 0 || data.photoCount > 0) && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {data.caseStrengthScore != null && (
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center">
+                    <div className="relative w-14 h-14 mx-auto mb-2">
+                      <svg viewBox="0 0 36 36" className="w-14 h-14 -rotate-90">
+                        <circle cx="18" cy="18" r="15" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-cream/[0.06]" />
+                        <circle
+                          cx="18" cy="18" r="15" fill="none" strokeWidth="2.5"
+                          strokeDasharray={`${(data.caseStrengthScore / 100) * 94.25} 94.25`}
+                          strokeLinecap="round"
+                          className={data.caseStrengthScore >= 75 ? 'text-emerald-400' : data.caseStrengthScore >= 50 ? 'text-amber-400' : 'text-cream/40'}
+                          stroke="currentColor"
+                        />
+                      </svg>
+                      <span className={`absolute inset-0 flex items-center justify-center text-sm font-bold ${
+                        data.caseStrengthScore >= 75 ? 'text-emerald-400' : data.caseStrengthScore >= 50 ? 'text-amber-400' : 'text-cream/50'
+                      }`}>
+                        {data.caseStrengthScore}
+                      </span>
+                    </div>
+                    <p className="text-[10px] uppercase tracking-widest text-cream/35">Case Strength</p>
+                    <p className="text-[10px] mt-0.5 text-cream/20">
+                      {data.caseStrengthScore >= 75 ? 'Strong' : data.caseStrengthScore >= 50 ? 'Moderate' : 'Developing'}
+                    </p>
+                  </div>
+                )}
+                {data.compCount > 0 && (
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center">
+                    <div className="w-14 h-14 mx-auto mb-2 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                      <span className="text-xl font-bold text-blue-400">{data.compCount}</span>
+                    </div>
+                    <p className="text-[10px] uppercase tracking-widest text-cream/35">Comparable Sales</p>
+                    <p className="text-[10px] mt-0.5 text-cream/20">Market evidence</p>
+                  </div>
+                )}
+                {data.photoCount > 0 && (
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center">
+                    <div className="w-14 h-14 mx-auto mb-2 rounded-xl bg-gold/10 flex items-center justify-center">
+                      <span className="text-xl font-bold text-gold">{data.photoCount}</span>
+                    </div>
+                    <p className="text-[10px] uppercase tracking-widest text-cream/35">Photos Analyzed</p>
+                    <p className="text-[10px] mt-0.5 text-cream/20">AI-inspected evidence</p>
+                  </div>
+                )}
+                {data.photoDefectCount != null && data.photoDefectCount > 0 && (
+                  <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center">
+                    <div className="w-14 h-14 mx-auto mb-2 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                      <span className="text-xl font-bold text-amber-400">{data.photoDefectCount}</span>
+                    </div>
+                    <p className="text-[10px] uppercase tracking-widest text-cream/35">Issues Documented</p>
+                    <p className="text-[10px] mt-0.5 text-cream/20">Condition evidence</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Download CTA */}
             <div className="card-elevated rounded-xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

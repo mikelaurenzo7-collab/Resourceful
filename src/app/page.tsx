@@ -1,6 +1,7 @@
 import Hero from '@/components/landing/Hero';
 import ServiceCards from '@/components/landing/ServiceCards';
 import HowItWorks from '@/components/landing/HowItWorks';
+import PropertyIntelligence from '@/components/landing/PropertyIntelligence';
 import FAQ from '@/components/landing/FAQ';
 import Footer from '@/components/landing/Footer';
 import { ServiceJsonLd, FAQJsonLd } from '@/components/seo/JsonLd';
@@ -119,6 +120,14 @@ export default function HomePage() {
 
       {/* How it works */}
       <HowItWorks />
+
+      {/* Divider */}
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="divider-glow" />
+      </div>
+
+      {/* Property Intelligence */}
+      <PropertyIntelligence />
 
       {/* Divider */}
       <div className="mx-auto max-w-6xl px-6">
