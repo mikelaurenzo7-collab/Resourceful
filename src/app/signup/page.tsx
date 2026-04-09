@@ -39,7 +39,16 @@ export default function SignupPage() {
         },
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        if (authError.message.includes('already registered')) {
+          throw new Error('An account with this email already exists. Try signing in instead.');
+        }
+        if (authError.message.includes('password')) {
+          throw new Error('Password must be at least 8 characters.');
+        }
+        console.error('[signup] Auth error:', authError.message);
+        throw new Error('Unable to create account. Please try again.');
+      }
 
       // If email confirmation is required, Supabase returns a user but
       // session is null. Show confirmation message instead of redirecting.
@@ -52,7 +61,7 @@ export default function SignupPage() {
       router.push('/start');
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+      setError(err instanceof Error ? err.message : 'Unable to create account. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -151,6 +160,8 @@ export default function SignupPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="(555) 555-0100"
+              pattern="[0-9\-\(\)\+\s]*"
+              title="Phone number (digits, dashes, parentheses, spaces)"
               className="w-full rounded-lg border border-gold/20 bg-navy-deep/60 px-4 py-3 text-cream placeholder:text-cream/30 focus:border-gold focus:ring-2 focus:ring-gold/15 focus:outline-none transition-all"
             />
             <p className="mt-1.5 text-xs text-cream/25">

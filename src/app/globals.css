@@ -67,6 +67,11 @@ h2 { font-family: var(--font-playfair), Georgia, serif; }
   transform: translateY(-2px);
 }
 
+/* Static card — no lift on hover (for dashboard info panels) */
+.card-premium.card-static:hover {
+  transform: none;
+}
+
 /* Elevated card — for CTAs and featured content */
 .card-elevated {
   background: linear-gradient(145deg, rgba(30, 48, 85, 0.6), rgba(15, 20, 25, 0.9));
@@ -156,7 +161,7 @@ input:focus, textarea:focus, select:focus {
   outline: none;
   border-color: var(--gold) !important;
   box-shadow:
-    0 0 0 3px rgba(212, 168, 71, 0.15),
+    0 0 0 3px rgba(212, 168, 71, 0.2),
     0 0 20px rgba(212, 168, 71, 0.05);
 }
 

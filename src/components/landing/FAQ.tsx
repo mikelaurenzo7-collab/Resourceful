@@ -96,7 +96,7 @@ export default function FAQ() {
               aria-labelledby={`faq-question-${i}`}
               className="accordion-content"
               style={{
-                maxHeight: openIndex === i ? '500px' : '0',
+                maxHeight: openIndex === i ? '800px' : '0',
                 opacity: openIndex === i ? 1 : 0,
                 transition: 'max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease-out',
               }}

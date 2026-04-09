@@ -41,7 +41,15 @@ function LoginForm() {
           console.error('[login] Database schema error:', authError.message);
           throw new Error('A temporary system error occurred. Please try again in a few minutes.');
         }
-        throw authError;
+        if (authError.message.includes('Email not confirmed')) {
+          throw new Error('Please check your email and confirm your account before signing in.');
+        }
+        if (authError.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid email or password. Please try again.');
+        }
+        // Fallback: don't expose raw Supabase message
+        console.error('[login] Auth error:', authError.message);
+        throw new Error('Unable to sign in. Please check your credentials and try again.');
       }
 
       router.push(redirect);

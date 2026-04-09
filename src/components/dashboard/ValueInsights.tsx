@@ -26,6 +26,7 @@ export default function ValueInsights({
   concludedValue,
   potentialSavings,
   caseStrength,
+  // propertyType reserved for future use (commercial vs residential display)
   serviceType,
 }: ValueInsightsProps) {
   const isTaxAppeal = serviceType === 'tax_appeal';

@@ -10,6 +10,7 @@ import AppealJourney from '@/components/dashboard/AppealJourney';
 import DashboardAutoRefresh from '@/components/dashboard/DashboardAutoRefresh';
 import ValueInsights from '@/components/dashboard/ValueInsights';
 import OutcomeReporter from '@/components/dashboard/OutcomeReporter';
+import AccountMenu from '@/components/dashboard/AccountMenu';
 import { ScrollAnimations } from '@/components/ui/ScrollAnimations';
 import Wordmark from '@/components/ui/Wordmark';
 
@@ -46,7 +47,7 @@ const STATUS_MESSAGES: Partial<Record<ReportStatus, { title: string; description
   },
   delivered: {
     title: 'Report Delivered',
-    description: 'Your report is ready. Download it below and follow the filing guide to submit your appeal.',
+    description: 'Your report is ready. View the full analysis, download the PDF, and follow the filing guide.',
   },
   failed: {
     title: 'Processing Error',
@@ -219,58 +220,7 @@ export default async function DashboardPage() {
               </svg>
             </Link>
 
-            {/* Account menu */}
-            <div className="relative group">
-              <button
-                className="flex items-center gap-2 rounded-full px-2 py-1.5 hover:bg-gold/5 transition-colors focus:outline-none focus:ring-2 focus:ring-gold/30"
-                aria-label="Account menu"
-                aria-haspopup="true"
-              >
-                <div className="w-8 h-8 rounded-full bg-gold/15 border border-gold/25 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-gold">{userInitial}</span>
-                </div>
-                <svg className="w-3.5 h-3.5 text-cream/30 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {/* Dropdown */}
-              <div className="absolute right-0 top-full mt-2 w-64 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible transition-all duration-200 z-50">
-                <div className="card-premium rounded-xl p-1 shadow-lg border border-gold/10">
-                  <div className="px-4 py-3 border-b border-gold/[0.06]">
-                    <p className="text-sm font-medium text-cream truncate">{userEmail}</p>
-                    <p className="text-xs text-cream/30 mt-0.5">Personal Account</p>
-                  </div>
-                  <div className="py-1">
-                    <Link href="/dashboard" className="flex items-center gap-3 px-4 py-2.5 text-sm text-cream/60 hover:text-cream hover:bg-gold/5 rounded-lg transition-colors">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                      </svg>
-                      Dashboard
-                    </Link>
-                    <Link href="/start" className="flex items-center gap-3 px-4 py-2.5 text-sm text-cream/60 hover:text-cream hover:bg-gold/5 rounded-lg transition-colors">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-                      </svg>
-                      New Report
-                    </Link>
-                  </div>
-                  <div className="border-t border-gold/[0.06] py-1">
-                    <form action="/auth/signout" method="post">
-                      <button
-                        type="submit"
-                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-400/70 hover:text-red-400 hover:bg-red-500/5 rounded-lg transition-colors text-left"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        Sign Out
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <AccountMenu userEmail={userEmail} userInitial={userInitial} />
           </div>
         </div>
       </header>
@@ -294,7 +244,7 @@ export default async function DashboardPage() {
 
         {/* ── Quick Stats ─────────────────────────────────────────── */}
         {userReports.length > 1 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8 animate-fade-in">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8 animate-fade-in" role="region" aria-label="Report statistics">
             {[
               {
                 label: 'Total Reports',
@@ -361,11 +311,12 @@ export default async function DashboardPage() {
           <div className="space-y-4 mb-14 animate-slide-up">
 
             {/* Status card */}
-            <div className="card-premium rounded-xl p-6 md:p-8">
+            <div className="card-premium card-static rounded-xl p-6 md:p-8">
               <div className="flex flex-col sm:flex-row items-start gap-5 mb-8">
                 {isInProgress ? (
                   <div className="w-12 h-12 rounded-full bg-gold/15 flex items-center justify-center flex-shrink-0">
                     <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+                    <span className="sr-only">Processing</span>
                   </div>
                 ) : activeReport.status === 'failed' || activeReport.status === 'rejected' ? (
                   <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
@@ -423,7 +374,7 @@ export default async function DashboardPage() {
             {activeReport.status === 'delivered' && (
               <>
                 {/* View report CTA */}
-                <div className="card-premium rounded-xl p-5 md:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" data-animate>
+                <div className="card-premium card-static rounded-xl p-5 md:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" data-animate>
                   <div className="min-w-0">
                     <p className="text-cream font-medium">View Your Full Report</p>
                     <p className="text-xs text-cream/40 mt-0.5">

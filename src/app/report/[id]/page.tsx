@@ -263,12 +263,14 @@ export default function ReportViewerPage() {
 
         {/* Tabs */}
         {isTaxAppeal && (
-          <div className="flex gap-1 mb-8 bg-navy-light/50 rounded-lg p-1 w-fit">
+          <div className="flex gap-1 mb-8 bg-navy-light/50 rounded-lg p-1 w-fit" role="tablist" aria-label="Report sections">
             {(['overview', 'filing', 'guide'] as const).map((tab) => (
               <button
                 key={tab}
+                role="tab"
+                aria-selected={activeTab === tab}
                 onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-all cursor-pointer ${
                   activeTab === tab
                     ? 'bg-gold/15 text-gold'
                     : 'text-cream/40 hover:text-cream/60'
