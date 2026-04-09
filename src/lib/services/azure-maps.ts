@@ -349,7 +349,7 @@ export async function searchAddresses(
   url.searchParams.set('countrySet', 'US');
   url.searchParams.set('typeahead', 'true');
   url.searchParams.set('limit', String(limit));
-  url.searchParams.set('entityType', 'Address');
+  url.searchParams.set('idxSet', 'PAD,Addr');
 
   try {
     const controller = new AbortController();
