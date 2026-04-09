@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
-import { getActiveCounties } from '@/lib/repository/county-rules';
+import { getActiveCounties, getActiveStates } from '@/lib/repository/county-rules';
 import { buildCountySlug } from '@/lib/utils/county-slug';
+import { buildStateSlug } from '@/lib/utils/state-slug';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app';
@@ -50,10 +51,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Generate county appeal landing page entries
+  // Generate state and county SEO pages
+  let statePages: MetadataRoute.Sitemap = [];
   let countyPages: MetadataRoute.Sitemap = [];
   try {
-    const counties = await getActiveCounties();
+    const [states, counties] = await Promise.all([
+      getActiveStates(),
+      getActiveCounties(),
+    ]);
+
+    statePages = states.map(s => ({
+      url: `${baseUrl}/appeal/state/${buildStateSlug(s.state_name)}`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly' as const,
+      priority: 0.85,
+    }));
+
     countyPages = counties.map((c) => ({
       url: `${baseUrl}/appeal/${buildCountySlug(c.county_name, c.state_abbreviation)}`,
       lastModified: new Date(c.updated_at),
@@ -64,5 +77,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // If DB is unavailable, return static pages only
   }
 
-  return [...staticPages, ...countyPages];
+  return [...staticPages, ...statePages, ...countyPages];
 }
