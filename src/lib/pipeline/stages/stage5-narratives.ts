@@ -360,8 +360,8 @@ export async function runNarratives(
             report.city ?? '',
             report.state ?? '',
             report.property_type ?? 'residential',
-            propertyData.latitude ?? null,
-            propertyData.longitude ?? null,
+            report.latitude ?? null,
+            report.longitude ?? null,
           );
           if (aiEst && aiEst.estimatedValue > 0) {
             (propertyData as Record<string, unknown>)['_priorSaleExtrapolated'] = aiEst.estimatedValue;
