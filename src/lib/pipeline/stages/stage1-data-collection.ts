@@ -374,6 +374,18 @@ export async function runDataCollection(
     // quality_grade: not exposed in ATTOM basic feed — defaults to 'average'.
     // Can be overridden via admin tools or future ATTOM premium field mapping.
     quality_grade: 'average',
+    // Regrid parcel intelligence (migration 022)
+    parcel_boundary_geojson: collected?.parcel_boundary_geojson ?? null,
+    lot_frontage_ft: collected?.lot_frontage_ft ?? null,
+    lot_depth_ft: collected?.lot_depth_ft ?? null,
+    lot_shape_description: collected?.lot_shape_description ?? null,
+    legal_description: collected?.legal_description ?? null,
+    owner_name: collected?.owner_name ?? null,
+    owner_mailing_address: collected?.owner_mailing_address ?? null,
+    zoning_description: collected?.zoning_description ?? null,
+    apn: collected?.apn ?? null,
+    regrid_parcel_id: collected?.regrid_parcel_id ?? null,
+    parcel_data_source: collected?.parcel_data_source ?? null,
   };
 
   // ── Update report with geocode coordinates + resolved county FIPS ──────

@@ -196,6 +196,19 @@ export type PropertyData = {
   photo_defect_count: number;
   photo_defect_count_significant: number;
   photo_count: number;
+  // Regrid parcel intelligence (migration 022)
+  parcel_boundary_geojson: Record<string, unknown> | null;
+  lot_frontage_ft: number | null;
+  lot_depth_ft: number | null;
+  lot_shape_description: string | null;
+  legal_description: string | null;
+  owner_name: string | null;
+  owner_mailing_address: string | null;
+  zoning_description: string | null;
+  zoning_overlay_district: string | null;
+  apn: string | null;
+  regrid_parcel_id: string | null;
+  parcel_data_source: string | null;
   created_at: string;
 };
 

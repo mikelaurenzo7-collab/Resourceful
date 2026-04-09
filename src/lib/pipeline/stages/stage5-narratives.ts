@@ -987,6 +987,14 @@ export async function runNarratives(
         .find(line => line.startsWith('DATA PROVENANCE:'))
         ?? null,
       assessed_value_source: propertyData.assessed_value_source,
+      // Regrid parcel intelligence — enriches site description, HBU, and cost approach
+      lot_frontage_ft: propertyData.lot_frontage_ft ?? null,
+      lot_depth_ft: propertyData.lot_depth_ft ?? null,
+      lot_shape_description: propertyData.lot_shape_description ?? null,
+      legal_description: propertyData.legal_description ?? null,
+      zoning_description: propertyData.zoning_description ?? null,
+      owner_name: propertyData.owner_name ?? null,
+      apn: propertyData.apn ?? null,
     },
     comparableSales: comps.map((c) => ({
       address: c.address ?? '',

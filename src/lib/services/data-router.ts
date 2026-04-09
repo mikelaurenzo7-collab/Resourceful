@@ -26,6 +26,11 @@ import {
 } from './lightbox';
 
 import {
+  getParcelByAddress,
+  type RegridParcelData,
+} from './regrid';
+
+import {
   getPropertyDetailFromPublicRecords,
 } from './public-records';
 
@@ -107,6 +112,20 @@ export interface CollectedPropertyData {
   longitude: number | null;
   countyFips: string | null;
   countyName: string | null;
+
+  // Regrid parcel intelligence (unique data not available from other sources)
+  parcel_boundary_geojson: Record<string, unknown> | null;
+  lot_frontage_ft: number | null;
+  lot_depth_ft: number | null;
+  lot_shape_description: string | null;
+  legal_description: string | null;
+  owner_name: string | null;
+  owner_mailing_address: string | null;
+  zoning_description: string | null;
+  zoning_overlay_district: string | null;
+  apn: string | null;
+  regrid_parcel_id: string | null;
+  parcel_data_source: string | null;
 }
 
 export interface ServiceResult<T> {
@@ -168,6 +187,20 @@ function attomToCollected(detail: AttomPropertyDetail, source: string): Collecte
     longitude: detail.location.longitude || null,
     countyFips: detail.location.countyFips || null,
     countyName: detail.location.countyName || null,
+
+    // Regrid fields — not populated from ATTOM
+    parcel_boundary_geojson: null,
+    lot_frontage_ft: null,
+    lot_depth_ft: null,
+    lot_shape_description: null,
+    legal_description: null,
+    owner_name: null,
+    owner_mailing_address: null,
+    zoning_description: null,
+    zoning_overlay_district: null,
+    apn: null,
+    regrid_parcel_id: null,
+    parcel_data_source: null,
   };
 }
 
@@ -210,6 +243,19 @@ function mergeSupplemental(
     longitude: base.longitude ?? supplement.longitude,
     countyFips: base.countyFips ?? supplement.countyFips,
     countyName: base.countyName ?? supplement.countyName,
+    // Regrid parcel fields — supplement fills gaps
+    parcel_boundary_geojson: base.parcel_boundary_geojson ?? supplement.parcel_boundary_geojson,
+    lot_frontage_ft: base.lot_frontage_ft ?? supplement.lot_frontage_ft,
+    lot_depth_ft: base.lot_depth_ft ?? supplement.lot_depth_ft,
+    lot_shape_description: base.lot_shape_description ?? supplement.lot_shape_description,
+    legal_description: base.legal_description ?? supplement.legal_description,
+    owner_name: base.owner_name ?? supplement.owner_name,
+    owner_mailing_address: base.owner_mailing_address ?? supplement.owner_mailing_address,
+    zoning_description: base.zoning_description ?? supplement.zoning_description,
+    zoning_overlay_district: base.zoning_overlay_district ?? supplement.zoning_overlay_district,
+    apn: base.apn ?? supplement.apn,
+    regrid_parcel_id: base.regrid_parcel_id ?? supplement.regrid_parcel_id,
+    parcel_data_source: base.parcel_data_source ?? supplement.parcel_data_source,
     data_source_map: mergedSourceMap,
     data_collection_notes: notes,
   };
@@ -281,6 +327,20 @@ function lightboxToCollected(detail: LightboxParcelDetail): CollectedPropertyDat
     longitude: detail.location.longitude ?? null,
     countyFips: detail.address.fips ?? null,
     countyName: detail.address.county ?? null,
+
+    // Regrid fields — not populated from Lightbox
+    parcel_boundary_geojson: null,
+    lot_frontage_ft: null,
+    lot_depth_ft: null,
+    lot_shape_description: null,
+    legal_description: null,
+    owner_name: null,
+    owner_mailing_address: null,
+    zoning_description: null,
+    zoning_overlay_district: null,
+    apn: detail.apn ?? null,  // Lightbox does have APN
+    regrid_parcel_id: null,
+    parcel_data_source: null,
   };
 }
 
@@ -380,6 +440,53 @@ export async function collectPropertyData(
     } else {
       notes.push(`Lightbox: ${lightboxResult.error ?? 'no data found'}`);
       console.warn(`[data-router] Lightbox also failed for "${params.address}": ${lightboxResult.error}`);
+    }
+  }
+
+  // ── Source 4: Regrid (parcel boundaries, zoning detail, legal description) ──
+  // Regrid provides UNIQUE data no other source has (geometry, frontage/depth,
+  // legal descriptions, zoning detail). Always called when configured.
+  if (collected && process.env.REGRID_API_KEY) {
+    console.log(`[data-router] Enriching with Regrid parcel data for "${params.address}"...`);
+    const regridResult = await getParcelByAddress(params.address, params.city, params.state);
+
+    if (regridResult.data) {
+      const parcel = regridResult.data;
+      collected.parcel_boundary_geojson = parcel.parcel.boundaryGeoJSON;
+      collected.lot_frontage_ft = parcel.parcel.frontageFt;
+      collected.lot_depth_ft = parcel.parcel.depthFt;
+      collected.lot_shape_description = parcel.parcel.shapeDescription;
+      collected.legal_description = parcel.parcel.legalDescription;
+      collected.owner_name = parcel.owner.name;
+      collected.owner_mailing_address = parcel.owner.mailingAddress;
+      collected.zoning_description = parcel.zoning.description;
+      collected.apn = collected.apn ?? parcel.apn;
+      collected.regrid_parcel_id = parcel.parcelId;
+      collected.parcel_data_source = 'regrid';
+
+      // Regrid's GIS-computed lot sqft is geometrically authoritative
+      if (!collected.lot_size_sqft && parcel.parcel.gisSqft) {
+        collected.lot_size_sqft = parcel.parcel.gisSqft;
+        collected.data_source_map.lot_size_sqft = {
+          source: 'regrid',
+          confidence: 'independently_verified',
+        };
+      }
+
+      // Supplement zoning designation if missing
+      if (!collected.zoning_designation && parcel.zoning.code) {
+        collected.zoning_designation = parcel.zoning.code;
+      }
+
+      notes.push('Regrid: parcel boundary, zoning detail, and legal description enriched');
+      console.log(
+        `[data-router] Regrid enriched "${params.address}": ` +
+        `APN=${parcel.apn}, frontage=${parcel.parcel.frontageFt}ft, ` +
+        `zoning=${parcel.zoning.code}`
+      );
+    } else {
+      notes.push(`Regrid: ${regridResult.error ?? 'no parcel found'}`);
+      console.log(`[data-router] Regrid: ${regridResult.error} for "${params.address}"`);
     }
   }
 

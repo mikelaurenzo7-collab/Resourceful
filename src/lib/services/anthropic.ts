@@ -60,6 +60,14 @@ export interface NarrativePayload {
     // Data provenance — which source supplied each key field
     data_source_notes?: string | null;
     assessed_value_source?: string | null;
+    // Regrid parcel intelligence — site description, HBU, and cost approach
+    lot_frontage_ft?: number | null;
+    lot_depth_ft?: number | null;
+    lot_shape_description?: string | null;
+    legal_description?: string | null;
+    zoning_description?: string | null;
+    owner_name?: string | null;
+    apn?: string | null;
   };
   comparableSales: Array<{
     address: string;
@@ -836,6 +844,17 @@ function buildNarrativeSystemPrompt(payload: NarrativePayload): string {
     dataProvenance.push(payload.propertyData.data_source_notes);
   }
 
+  // Parcel intelligence context — if Regrid data is available
+  const hasParcelData = payload.propertyData.lot_frontage_ft || payload.propertyData.legal_description || payload.propertyData.zoning_description;
+  const parcelContext = hasParcelData ? `
+PARCEL INTELLIGENCE (independent data from Regrid — use in site_description_narrative and highest_best_use_narrative):
+${payload.propertyData.lot_frontage_ft ? `- Lot frontage: ${payload.propertyData.lot_frontage_ft} ft, depth: ${payload.propertyData.lot_depth_ft} ft, shape: ${payload.propertyData.lot_shape_description}` : ''}
+${payload.propertyData.legal_description ? `- Legal description: ${payload.propertyData.legal_description}` : ''}
+${payload.propertyData.zoning_description ? `- Zoning detail: ${payload.propertyData.zoning_description}` : ''}
+${payload.propertyData.apn ? `- APN: ${payload.propertyData.apn}` : ''}
+${payload.propertyData.owner_name ? `- Owner of record: ${payload.propertyData.owner_name}` : ''}
+Use this parcel data to write a substantive site description with actual dimensions, shape, and zoning analysis. For HBU, reference actual zoning restrictions. This is independently-sourced data that strengthens the report's credibility.` : '';
+
   // Service-type-specific framing
   const serviceFraming = payload.serviceType === 'pre_listing'
     ? `You are an expert property valuation analyst preparing a pre-listing analysis for ${county} County, ${state}. Your client is SELLING this property and wants to understand its true market value to price competitively. Your mission is to build an accurate, favorable market position — highlight strengths, acknowledge weaknesses honestly, and conclude at a defensible value that helps the seller maximize their outcome. You work FOR the seller.`
@@ -868,6 +887,7 @@ DATA SOURCE CONFIDENCE — CRITICAL FOR FRAMING:
 ${dataProvenance.map(d => `- ${d}`).join('\n')}
 
 When property data was AI-extracted from county assessor web pages (vs. coming directly from ATTOM or a user-provided tax bill), treat those values as estimates. Use hedging language like "per county assessor records" or "according to publicly available assessment data" rather than stating them as absolute fact. When photo evidence contradicts extracted data (e.g., condition is worse than records suggest), lead with the photo evidence — it is OUR firsthand observation and outranks desk-based records.` : ''}
+${parcelContext}
 ${payload.valueDetractors && payload.valueDetractors.detractors.length > 0 ? `
 ═══════════════════════════════════════════════════════════════════════
 PROXIMITY ANALYSIS — VALUE-SUPPRESSING FACTORS THE ASSESSOR MISSED
