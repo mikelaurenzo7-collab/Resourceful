@@ -288,7 +288,8 @@ function lightboxToCollected(detail: LightboxParcelDetail): CollectedPropertyDat
 
 function hasMinimumData(data: CollectedPropertyData): boolean {
   // We need at least assessed value + building sqft to run a useful analysis
-  return !!(data.assessed_value && data.building_sqft_gross);
+  // Explicit > 0 checks: falsy 0 values must not pass
+  return !!(data.assessed_value && data.assessed_value > 0 && data.building_sqft_gross && data.building_sqft_gross > 0);
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────

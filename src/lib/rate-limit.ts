@@ -29,6 +29,7 @@ export interface RateLimitResult {
 // Less accurate than distributed (each serverless instance tracks separately),
 // but prevents wide-open abuse during outages.
 const memoryStore = new Map<string, { count: number; expiresAt: number }>();
+const MAX_MEMORY_ENTRIES = 50_000; // Hard cap to prevent OOM under attack
 let dbFailureCount = 0;
 const DB_FAILURE_THRESHOLD = 3; // Switch to memory after 3 consecutive DB failures
 let lastCleanup = 0;
@@ -41,11 +42,21 @@ function checkMemoryRateLimit(
   const now = Date.now();
 
   // Periodically prune expired entries to prevent unbounded memory growth
-  if (now - lastCleanup > CLEANUP_INTERVAL_MS) {
+  if (now - lastCleanup > CLEANUP_INTERVAL_MS || memoryStore.size >= MAX_MEMORY_ENTRIES) {
     lastCleanup = now;
     memoryStore.forEach((v, k) => {
       if (now >= v.expiresAt) memoryStore.delete(k);
     });
+    // If still at cap after pruning expired, evict oldest entries
+    if (memoryStore.size >= MAX_MEMORY_ENTRIES) {
+      const toDelete = memoryStore.size - Math.floor(MAX_MEMORY_ENTRIES * 0.8);
+      let deleted = 0;
+      const keys = Array.from(memoryStore.keys());
+      for (let i = 0; i < keys.length && deleted < toDelete; i++) {
+        memoryStore.delete(keys[i]);
+        deleted++;
+      }
+    }
   }
 
   const windowMs = config.windowSeconds * 1000;

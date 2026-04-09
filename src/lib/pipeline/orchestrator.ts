@@ -245,7 +245,14 @@ export async function runPipeline(
     return { success: true };
   } finally {
     // ALWAYS release the pipeline lock, even on unexpected errors
-    await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+    try {
+      await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+    } catch (lockErr) {
+      console.error(
+        `[pipeline] CRITICAL: Failed to release pipeline lock for report ${reportId}. ` +
+        `Report may be permanently stuck. Manual DB cleanup required. Error: ${lockErr}`
+      );
+    }
   }
 }
 

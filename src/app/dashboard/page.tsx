@@ -8,6 +8,8 @@ import PipelineProgress from '@/components/dashboard/PipelineProgress';
 import ReportDownload from '@/components/dashboard/ReportDownload';
 import AppealJourney from '@/components/dashboard/AppealJourney';
 import DashboardAutoRefresh from '@/components/dashboard/DashboardAutoRefresh';
+import ValueInsights from '@/components/dashboard/ValueInsights';
+import OutcomeReporter from '@/components/dashboard/OutcomeReporter';
 import { ScrollAnimations } from '@/components/ui/ScrollAnimations';
 import Wordmark from '@/components/ui/Wordmark';
 
@@ -116,7 +118,8 @@ export default async function DashboardPage() {
       'id, status, service_type, property_type, property_address, city, state, county, ' +
       'pipeline_last_completed_stage, report_pdf_storage_path, created_at, client_email, ' +
       'delivered_at, filing_status, filed_at, filing_method, ' +
-      'appeal_outcome, actual_savings_cents, outcome_reported_at, case_value_at_stake'
+      'appeal_outcome, actual_savings_cents, outcome_reported_at, case_value_at_stake, ' +
+      'case_strength_score'
     )
     .or(`user_id.eq.${user.id},client_email.eq.${userEmail.toLowerCase()}`)
     .order('created_at', { ascending: false })
@@ -155,6 +158,33 @@ export default async function DashboardPage() {
   const daysSinceDelivery = activeReport?.delivered_at
     ? Math.floor((Date.now() - new Date(activeReport.delivered_at).getTime()) / 86_400_000)
     : 0;
+
+  // ── Property data for delivered active report (value insights) ──────────
+  let assessedValue: number | null = null;
+  let concludedValue: number | null = null;
+  let potentialSavings: number | null = null;
+
+  if (activeReport?.status === 'delivered') {
+    try {
+      const { createAdminClient } = await import('@/lib/supabase/admin');
+      const admin = createAdminClient();
+      const { data: pd } = await admin
+        .from('property_data')
+        .select('assessed_value, concluded_value')
+        .eq('report_id', activeReport.id)
+        .maybeSingle();
+
+      assessedValue = pd?.assessed_value ?? null;
+      concludedValue = pd?.concluded_value ?? null;
+
+      if (assessedValue && concludedValue && assessedValue > concludedValue) {
+        // Rough savings: (assessed - concluded) × typical tax rate ~1.1%
+        potentialSavings = Math.round((assessedValue - concludedValue) * 0.011);
+      }
+    } catch {
+      // Non-fatal — dashboard still works without value insights
+    }
+  }
 
   return (
     <div className="min-h-screen bg-pattern">
@@ -262,6 +292,50 @@ export default async function DashboardPage() {
           </div>
         </div>
 
+        {/* ── Quick Stats ─────────────────────────────────────────── */}
+        {userReports.length > 1 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8 animate-fade-in">
+            {[
+              {
+                label: 'Total Reports',
+                value: String(userReports.length),
+                sub: null,
+              },
+              {
+                label: 'Delivered',
+                value: String(userReports.filter((r) => r.status === 'delivered').length),
+                sub: null,
+              },
+              {
+                label: 'Win Rate',
+                value: (() => {
+                  const withOutcome = userReports.filter((r) => r.appeal_outcome && r.appeal_outcome !== 'pending');
+                  if (withOutcome.length === 0) return '—';
+                  const wins = withOutcome.filter((r) => r.appeal_outcome === 'won').length;
+                  return Math.round((wins / withOutcome.length) * 100) + '%';
+                })(),
+                sub: (() => {
+                  const withOutcome = userReports.filter((r) => r.appeal_outcome && r.appeal_outcome !== 'pending');
+                  return withOutcome.length > 0 ? `${withOutcome.length} decided` : null;
+                })(),
+              },
+              {
+                label: 'Total Savings',
+                value: totalSavingsCents > 0
+                  ? `$${(totalSavingsCents / 100).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+                  : '—',
+                sub: wonReports.length > 0 ? `${wonReports.length} won` : null,
+              },
+            ].map((stat) => (
+              <div key={stat.label} className="card-premium rounded-xl px-4 py-3.5">
+                <p className="text-[10px] uppercase tracking-widest text-cream/25 mb-1">{stat.label}</p>
+                <p className="font-display text-lg text-cream">{stat.value}</p>
+                {stat.sub && <p className="text-[10px] text-cream/20 mt-0.5">{stat.sub}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* ── Lifetime savings banner ───────────────────────────────── */}
         {showSavingsBanner && (
           <div className="mb-8 rounded-xl border border-emerald-500/20 bg-emerald-950/10 px-5 py-4 flex items-center gap-4 animate-fade-in">
@@ -367,6 +441,20 @@ export default async function DashboardPage() {
                   </Link>
                 </div>
 
+                {/* Value insights card */}
+                {(assessedValue || concludedValue) && (
+                  <div data-animate data-delay="25">
+                    <ValueInsights
+                      assessedValue={assessedValue}
+                      concludedValue={concludedValue}
+                      potentialSavings={potentialSavings}
+                      caseStrength={activeReport.case_strength_score ?? null}
+                      propertyType={activeReport.property_type}
+                      serviceType={activeReport.service_type}
+                    />
+                  </div>
+                )}
+
                 {/* Appeal journey tracker (tax appeals only) */}
                 {activeReport.service_type === 'tax_appeal' && (
                   <div data-animate data-delay="50">
@@ -379,6 +467,19 @@ export default async function DashboardPage() {
                       outcomeReportedAt={activeReport.outcome_reported_at ?? null}
                       deliveredAt={activeReport.delivered_at ?? null}
                       daysSinceDelivery={daysSinceDelivery}
+                    />
+                  </div>
+                )}
+
+                {/* Outcome reporter (tax appeals, 30+ days post-delivery, no outcome yet) */}
+                {activeReport.service_type === 'tax_appeal' &&
+                 daysSinceDelivery >= 30 &&
+                 !activeReport.appeal_outcome && (
+                  <div data-animate data-delay="75">
+                    <OutcomeReporter
+                      reportId={activeReport.id}
+                      currentOutcome={activeReport.appeal_outcome ?? null}
+                      assessedValue={assessedValue}
                     />
                   </div>
                 )}
