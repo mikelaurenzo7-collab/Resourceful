@@ -67,7 +67,7 @@ export default function SituationPage() {
                 </button>
               ))}
             </div>
-            {state.ownerOccupied !== undefined && (
+            {state.ownerOccupied !== null && (
               <p className="text-xs text-cream/30 mt-2">
                 {state.ownerOccupied
                   ? 'Owner-occupied homes often qualify for homestead exemptions that strengthen appeal arguments.'

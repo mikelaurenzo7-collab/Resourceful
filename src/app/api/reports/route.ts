@@ -178,6 +178,12 @@ export async function POST(request: NextRequest) {
 
     if (paymentError || !payment) {
       console.error('[api/reports] Failed to create payment intent:', paymentError);
+      // Clean up orphaned report to prevent blocking the per-email concurrency limit
+      try {
+        await createAdminClient().from('reports').delete().eq('id', report.id).eq('status', 'intake');
+      } catch (cleanupErr) {
+        console.error('[api/reports] Failed to clean up orphaned report:', cleanupErr);
+      }
       return NextResponse.json(
         { error: 'Failed to create payment intent' },
         { status: 500 }

@@ -5,7 +5,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
 import type { StageResult } from '../orchestrator';
-import { sendAdminNotification } from '@/lib/services/resend-email';
 import { generateReportPDF } from '@/lib/pdf';
 import { fetchReportTemplateData } from '@/lib/pdf/fetch-report-data';
 
@@ -72,20 +71,8 @@ export async function runPdfAssembly(
     return { success: false, error: `Failed to update report after PDF upload: ${reportUpdateError.message}` };
   }
 
-  // ── Send admin notification ───────────────────────────────────────────
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
-  const reviewUrl = `${appUrl}/admin/reports/${reportId}`;
-
-  const notifResult = await sendAdminNotification({
-    reportId,
-    propertyAddress,
-    propertyType: report.property_type ?? 'residential',
-    reviewUrl,
-  });
-
-  if (notifResult.error) {
-    console.warn(`[stage7] Admin notification failed: ${notifResult.error}`);
-  }
+  // Admin notification is sent by the orchestrator after all stages complete.
+  // Removed from stage7 to prevent duplicate emails.
 
   console.log(
     `[stage7] PDF assembled and uploaded for report ${reportId}. Size: ${(pdfBuffer.length / 1024).toFixed(0)}KB`

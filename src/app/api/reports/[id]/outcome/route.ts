@@ -105,8 +105,11 @@ export async function POST(
     // Check if authenticated user owns this report
     const userSupabase = await createClient();
     const { data: { user } } = await userSupabase.auth.getUser();
-    if (user && report.user_id === user.id) {
-      authorized = true;
+    if (user) {
+      const isOwner = report.user_id
+        ? report.user_id === user.id
+        : report.client_email === user.email;
+      if (isOwner) authorized = true;
     }
   }
 

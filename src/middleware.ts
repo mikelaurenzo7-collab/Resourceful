@@ -7,7 +7,7 @@ export async function middleware(request: NextRequest) {
 
   // Routes that require authentication
   // /start is public (no account needed). /admin and /dashboard require auth.
-  const protectedPaths = ['/admin', '/dashboard'];
+  const protectedPaths = ['/admin', '/dashboard', '/api/admin'];
   const isProtected = protectedPaths.some((p) => pathname.startsWith(p));
 
   if (isProtected && !user) {

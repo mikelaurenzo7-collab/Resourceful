@@ -1,10 +1,11 @@
 // ─── GET /api/reports/[id]/viewer ─────────────────────────────────────────────
 // Returns report data for the in-app viewer. Includes PDF URL, filing guide,
 // property data, and county filing info — everything the user needs in one call.
-// No auth required — keyed by report UUID (unguessable).
+// Auth required: user must own the report (by user_id or email match).
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report, PropertyData, CountyRule, ReportNarrative } from '@/types/database';
 
@@ -42,6 +43,22 @@ export async function GET(
   }
 
   const report = reportData as Report;
+
+  // ── Authenticate + verify ownership ────────────────────────────────────
+  const userSupabase = await createClient();
+  const { data: { user } } = await userSupabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
+  const isOwner = report.user_id
+    ? report.user_id === user.id
+    : report.client_email === user.email;
+
+  if (!isOwner) {
+    return NextResponse.json({ error: 'Not authorized to view this report' }, { status: 403 });
+  }
 
   // Only show reports that have been delivered or are in the delivery pipeline
   if (!['delivered', 'approved', 'pending_approval', 'delivering'].includes(report.status)) {

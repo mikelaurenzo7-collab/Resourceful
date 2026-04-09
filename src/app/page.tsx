@@ -11,7 +11,7 @@ import Wordmark from '@/components/ui/Wordmark';
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen">
+    <div className="min-h-screen">
       <ScrollAnimations />
       <ServiceJsonLd />
       <FAQJsonLd />
@@ -206,6 +206,6 @@ export default function HomePage() {
 
       {/* Footer */}
       <Footer />
-    </main>
+    </div>
   );
 }

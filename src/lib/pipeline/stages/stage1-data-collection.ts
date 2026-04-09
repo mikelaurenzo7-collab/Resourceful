@@ -102,11 +102,12 @@ async function findCountyRule(
     // Try partial match (handles "X County" matching "X", etc.)
     const stripped = countyName.replace(/\s*(county|parish|borough)\s*/i, '').trim();
     if (stripped) {
+      const escaped = stripped.replace(/%/g, '\\%').replace(/_/g, '\\_');
       const { data: partial } = await supabase
         .from('county_rules')
         .select('*')
         .eq('state_abbreviation', state.toUpperCase())
-        .ilike('county_name', `%${stripped}%`)
+        .ilike('county_name', `%${escaped}%`)
         .limit(1);
       if (partial?.[0]) return partial[0] as CountyRule;
     }

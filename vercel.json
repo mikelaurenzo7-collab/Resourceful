@@ -14,6 +14,12 @@
     },
     "src/app/api/cron/calibration/route.ts": {
       "maxDuration": 120
+    },
+    "src/app/api/admin/reports/[id]/rerun/route.ts": {
+      "maxDuration": 300
+    },
+    "src/app/api/admin/reports/[id]/regenerate/route.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [

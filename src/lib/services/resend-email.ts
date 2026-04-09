@@ -66,19 +66,6 @@ async function sendWithRetry(params: Parameters<Resend['emails']['send']>[0]) {
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-export interface ReportDeliveryParams {
-  to: string;
-  reportId: string;
-  propertyAddress: string;
-  concludedValue: number;
-  assessedValue: number;
-  potentialSavings: number;
-  pdfUrl: string;
-  filingGuide: string;
-  filingDeadline?: string | null;
-  countyName?: string | null;
-}
-
 export interface ReportReadyNotificationParams {
   to: string;
   reportId: string;
@@ -141,78 +128,12 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;');
 }
 
-// ─── Public API ──────────────────────────────────────────────────────────────
-
-/**
- * Send the completed report to the customer with PDF attachment link
- * and filing guide.
- */
-export async function sendReportDeliveryEmail(
-  params: ReportDeliveryParams
-): Promise<ServiceResult<EmailResult>> {
-  try {
-    const result = await sendWithRetry({
-      from: FROM_ADDRESS_LAZY(),
-      to: params.to,
-      subject: params.potentialSavings > 0
-        ? `You could save ${escapeHtml(formatDollarValue(params.potentialSavings))} — Your Report is Ready`
-        : `Your Property Assessment Report — ${escapeHtml(params.propertyAddress)}`,
-      html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #1a1a1a; font-size: 24px;">Your Report is Ready</h1>
-          <p>Your property assessment report for <strong>${escapeHtml(params.propertyAddress)}</strong> is complete.</p>
-
-          <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px 0; color: #666;">Concluded Market Value</td>
-                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${escapeHtml(formatDollarValue(params.concludedValue))}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #666;">Current Assessed Value</td>
-                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${escapeHtml(formatDollarValue(params.assessedValue))}</td>
-              </tr>
-              <tr style="border-top: 1px solid #ddd;">
-                <td style="padding: 8px 0; color: #1a8a1a; font-weight: 600;">Potential Over-Assessment</td>
-                <td style="padding: 8px 0; text-align: right; color: #1a8a1a; font-weight: 600;">${escapeHtml(formatDollarValue(params.potentialSavings))}</td>
-              </tr>
-            </table>
-          </div>
-
-          ${params.filingDeadline ? `
-          <div style="background: #fff7ed; border-left: 4px solid #f97316; padding: 16px; margin: 0 0 24px 0;">
-            <strong style="color: #9a3412;">Filing Deadline${params.countyName ? ` (${escapeHtml(params.countyName)})` : ''}:</strong>
-            <span style="color: #9a3412;"> ${escapeHtml(params.filingDeadline)}</span>
-            <p style="margin: 4px 0 0 0; font-size: 13px; color: #c2410c;">Don't miss your window — late filings are not accepted.</p>
-          </div>
-          ` : ''}
-
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app'}/report/${params.reportId}" style="display: inline-block; background: #2563eb; color: #fff; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px;">
-            View Report &amp; Start Your Appeal
-          </a>
-
-          <p style="margin-top: 16px; font-size: 13px; color: #666;">
-            Your report page includes your full PDF, county-specific filing instructions, required forms, and step-by-step guidance.
-          </p>
-
-          <p style="margin-top: 12px; font-size: 13px; color: #666;">
-            Your PDF is always available for download from your report page.
-          </p>
-
-          <p style="margin-top: 32px; font-size: 12px; color: #999;">
-            This market value analysis was prepared for property tax assessment purposes. It is not a certified appraisal or legal advice. You are responsible for verifying all data and meeting filing deadlines.
-          </p>
-        </div>
-      `,
-    });
-
-    return { data: { id: result.data?.id ?? '' }, error: null };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`[resend] sendReportDeliveryEmail error: ${message}`);
-    return { data: null, error: `Email send failed: ${message}` };
-  }
+/** Wrap email body in proper HTML document structure for Outlook/enterprise clients */
+function wrapHtml(body: string): string {
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body style="margin:0; padding:16px; background:#ffffff;">${body}</body></html>`;
 }
+
+// ─── Public API ──────────────────────────────────────────────────────────────
 
 /**
  * Notify admin that a report is ready for review/approval.
@@ -225,9 +146,9 @@ export async function sendAdminNotification(
       from: FROM_ADDRESS_LAZY(),
       to: ADMIN_EMAIL_LAZY(),
       subject: params.potentialSavings && params.potentialSavings > 0
-        ? `[Review] ${escapeHtml(formatDollarValue(params.potentialSavings))} savings — ${escapeHtml(params.propertyAddress)}`
-        : `[Review Needed] Report ${params.reportId.slice(0, 8)} — ${escapeHtml(params.propertyAddress)}`,
-      html: `
+        ? `[Review] ${formatDollarValue(params.potentialSavings)} savings — ${params.propertyAddress}`
+        : `[Review Needed] Report ${params.reportId.slice(0, 8)} — ${params.propertyAddress}`,
+      html: wrapHtml(`
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #1a1a1a; font-size: 24px;">Report Ready for Review</h1>
           <p>A new report has been generated and needs approval before delivery.</p>
@@ -262,7 +183,7 @@ export async function sendAdminNotification(
           </a>
           <p style="margin-top: 12px; font-size: 12px; color: #999;">Report ID: ${params.reportId}</p>
         </div>
-      `,
+      `),
     });
 
     return { data: { id: result.data?.id ?? '' }, error: null };
@@ -284,7 +205,7 @@ export async function sendReportRejectionAlert(
       from: FROM_ADDRESS_LAZY(),
       to: ADMIN_EMAIL_LAZY(),
       subject: `[Rejected] Report ${params.reportId.slice(0, 8)} — ${params.propertyAddress}`,
-      html: `
+      html: wrapHtml(`
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #dc2626; font-size: 24px;">Report Rejected</h1>
           <p>A report has been rejected during the approval process.</p>
@@ -307,7 +228,7 @@ export async function sendReportRejectionAlert(
             <p style="margin: 8px 0 0 0; white-space: pre-wrap;">${escapeHtml(params.notes)}</p>
           </div>
         </div>
-      `,
+      `),
     });
 
     return { data: { id: result.data?.id ?? '' }, error: null };
@@ -332,9 +253,9 @@ export async function sendReportReadyNotification(
       from: FROM_ADDRESS_LAZY(),
       to: params.to,
       subject: params.potentialSavings > 0
-        ? `You could save ${escapeHtml(formatDollarValue(params.potentialSavings))} — Your Report is Ready`
+        ? `You could save ${formatDollarValue(params.potentialSavings)} — Your Report is Ready`
         : `Your Property Assessment Report is Ready`,
-      html: `
+      html: wrapHtml(`
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #1a1a1a; font-size: 24px;">Your Report is Ready</h1>
           <p>Your property assessment report for <strong>${escapeHtml(params.propertyAddress)}</strong> has been reviewed and approved by our team.</p>
@@ -376,7 +297,7 @@ export async function sendReportReadyNotification(
             This market value analysis was prepared for property tax assessment purposes. It is not a certified appraisal or legal advice.
           </p>
         </div>
-      `,
+      `),
     });
 
     return { data: { id: result.data?.id ?? '' }, error: null };
@@ -404,7 +325,7 @@ export async function sendOutcomeFollowupEmail(
       from: FROM_ADDRESS_LAZY(),
       to: params.to,
       subject: 'How Did Your Property Tax Appeal Go?',
-      html: `
+      html: wrapHtml(`
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #1a1a1a; font-size: 24px;">How Did Your Appeal Go?</h1>
           <p>${greeting},</p>
@@ -427,7 +348,7 @@ export async function sendOutcomeFollowupEmail(
             <br>Your report is always available at <a href="${appUrl}/report/${params.reportId}" style="color: #2563eb;">${appUrl}/report/${params.reportId}</a>.
           </p>
         </div>
-      `,
+      `),
     });
 
     return { data: { id: result.data?.id ?? '' }, error: null };

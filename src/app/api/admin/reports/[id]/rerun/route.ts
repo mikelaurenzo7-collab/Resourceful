@@ -46,6 +46,15 @@ export async function POST(
       );
     }
 
+    // ── Guard: only allow rerun from terminal or reviewable states ─────────
+    const rerunnableStatuses = ['failed', 'rejected', 'pending_approval'];
+    if (!rerunnableStatuses.includes(report.status)) {
+      return NextResponse.json(
+        { error: `Cannot rerun a report in '${report.status}' status. Allowed: ${rerunnableStatuses.join(', ')}` },
+        { status: 409 }
+      );
+    }
+
     // ── Reset report to 'paid' status ──────────────────────────────────────
     await updateReport(reportId, {
       status: 'paid',

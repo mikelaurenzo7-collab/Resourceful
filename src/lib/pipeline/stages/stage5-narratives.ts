@@ -405,21 +405,23 @@ export async function runNarratives(
             };
           }
         }
+      } else {
+        // armLengthSales has data — extrapolate from most recent arm's-length sale
+        const lastSale = armLengthSales[0]!;
+        const yearsElapsed = (Date.now() - new Date(lastSale.recordingDate).getTime()) / (365.25 * 24 * 3600 * 1000);
+        const priorSaleExtrapolated = Math.round(
+          lastSale.salePrice! * Math.pow(1 + appreciationRate, yearsElapsed) / 1000
+        ) * 1000;
+        console.warn(
+          `[stage5] 0 comps, no income, cost approach unusable — extrapolating from prior sale ` +
+          `($${lastSale.salePrice!.toLocaleString()} on ${lastSale.recordingDate}, ` +
+          `${yearsElapsed.toFixed(1)} yrs @ ${(appreciationRate * 100).toFixed(1)}%/yr → $${priorSaleExtrapolated.toLocaleString()})`
+        );
+        // Store the prior sale metadata for later use in concludedValue assignment.
+        (propertyData as Record<string, unknown>)['_priorSaleExtrapolated'] = priorSaleExtrapolated;
+        (propertyData as Record<string, unknown>)['_priorSaleDate'] = lastSale.recordingDate;
+        (propertyData as Record<string, unknown>)['_priorSalePrice'] = lastSale.salePrice;
       }
-      const lastSale = armLengthSales[0]!;
-      const yearsElapsed = (Date.now() - new Date(lastSale.recordingDate).getTime()) / (365.25 * 24 * 3600 * 1000);
-      const priorSaleExtrapolated = Math.round(
-        lastSale.salePrice! * Math.pow(1 + appreciationRate, yearsElapsed) / 1000
-      ) * 1000;
-      console.warn(
-        `[stage5] 0 comps, no income, cost approach unusable — extrapolating from prior sale ` +
-        `($${lastSale.salePrice!.toLocaleString()} on ${lastSale.recordingDate}, ` +
-        `${yearsElapsed.toFixed(1)} yrs @ ${(appreciationRate * 100).toFixed(1)}%/yr → $${priorSaleExtrapolated.toLocaleString()})`
-      );
-      // Store the prior sale metadata for later use in concludedValue assignment.
-      (propertyData as Record<string, unknown>)['_priorSaleExtrapolated'] = priorSaleExtrapolated;
-      (propertyData as Record<string, unknown>)['_priorSaleDate'] = lastSale.recordingDate;
-      (propertyData as Record<string, unknown>)['_priorSalePrice'] = lastSale.salePrice;
     } else {
       console.warn(
         `[stage5] 0 comps and no income data — falling back to cost approach only ` +
@@ -466,7 +468,21 @@ export async function runNarratives(
       landValue
     );
     concludedValue = costApproachValue!;
+    if (!concludedValue || concludedValue <= 0) {
+      return {
+        success: false,
+        error: 'Cost approach returned invalid value — insufficient data for valuation',
+      };
+    }
     console.warn(`[stage5] 0 comps, no income — using cost approach as primary value: $${concludedValue.toLocaleString()}`);
+  }
+
+  // Guard: concludedValue must be positive
+  if (concludedValue <= 0) {
+    return {
+      success: false,
+      error: `Concluded value is $${concludedValue} — insufficient comparable data for valuation`,
+    };
   }
 
   // ── Value WITHOUT photo condition adjustments (market data only) ───────
@@ -560,7 +576,7 @@ export async function runNarratives(
 
   // ── Apply calibration value bias correction ───────────────────────────
   // value_bias_pct > 0 means system historically overvalues; apply downward correction
-  if (cal.value_bias_pct !== 0 && cal.sample_count > 0) {
+  if (cal.value_bias_pct !== 0 && cal.sample_count >= 10) {
     const biasFactor = 1 - (cal.value_bias_pct / 100);
     concludedValue = Math.round((concludedValue * biasFactor) / 1000) * 1000;
     concludedValueWithoutPhotos = Math.round((concludedValueWithoutPhotos * biasFactor) / 1000) * 1000;
