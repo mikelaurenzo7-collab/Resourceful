@@ -78,8 +78,8 @@ export default async function ReviewPage({
 
   if (!report) notFound();
 
-  // Compute concluded value from income analysis or comps
-  const concludedValue = incomeAnalysis?.concluded_value_income_approach ?? null;
+  // Compute concluded value: prefer property_data (set by Stage 5), fall back to income analysis
+  const concludedValue = propertyData?.concluded_value ?? incomeAnalysis?.concluded_value_income_approach ?? null;
   const assessedValue = propertyData?.assessed_value ?? null;
 
   const conditionRatingMap: Record<string, number> = { excellent: 9, good: 7, average: 5, fair: 3, poor: 1 };

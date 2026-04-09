@@ -260,7 +260,7 @@ export async function runFilingGuide(
       report_id: reportId,
       section_name: sectionName,
       content: guide,
-      model_used: AI_MODELS.FAST,
+      model_used: AI_MODELS.PRIMARY,
       prompt_tokens,
       completion_tokens,
       generation_duration_ms,

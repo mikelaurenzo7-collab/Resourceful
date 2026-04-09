@@ -88,6 +88,9 @@ export function needsEnrichment(countyRule: CountyRule): boolean {
   if (!countyRule.portal_url && !countyRule.appeal_board_phone) return true;
   if (!countyRule.pro_se_tips) return true;
 
+  // Stale deadline — if next_appeal_deadline is in the past, re-enrich
+  if (countyRule.next_appeal_deadline && new Date(countyRule.next_appeal_deadline) < new Date()) return true;
+
   return false;
 }
 

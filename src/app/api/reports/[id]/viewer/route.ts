@@ -78,27 +78,42 @@ export async function GET(
     });
   }
 
-  // Fetch in parallel: property data, filing guide, county rules, comps, photos
-  const [propertyResult, filingGuideResult, countyResult, compsResult, photosResult] = await Promise.all([
+  // Fetch in parallel: property data, narratives (all), county rules, comps (full), photos
+  const [propertyResult, narrativesResult, countyResult, compsResult, photosResult] = await Promise.all([
     supabase.from('property_data').select('*').eq('report_id', reportId).single(),
-    supabase.from('report_narratives').select('content').eq('report_id', reportId).eq('section_name', 'pro_se_filing_guide').single(),
+    supabase.from('report_narratives').select('section_name, content').eq('report_id', reportId),
     report.county_fips
       ? supabase.from('county_rules').select('*').eq('county_fips', report.county_fips).single()
       : report.county && report.state
         ? supabase.from('county_rules').select('*').eq('county_name', report.county).eq('state_abbreviation', report.state).single()
         : Promise.resolve({ data: null, error: null }),
-    supabase.from('comparable_sales').select('adjusted_price_per_sqft, sale_price').eq('report_id', reportId),
+    supabase.from('comparable_sales')
+      .select('address, sale_price, sale_date, building_sqft, adjusted_price_per_sqft, distance_miles, net_adjustment_pct, is_distressed_sale, is_weak_comparable')
+      .eq('report_id', reportId)
+      .order('distance_miles', { ascending: true }),
     supabase.from('photos').select('id').eq('report_id', reportId),
   ]);
 
   const propertyData = propertyResult.data as PropertyData | null;
-  const filingGuide = (filingGuideResult.data as Pick<ReportNarrative, 'content'> | null)?.content ?? null;
+  const narrativeRows = (narrativesResult.data ?? []) as { section_name: string; content: string }[];
+  const filingGuide = narrativeRows.find(n => n.section_name === 'pro_se_filing_guide')?.content ?? null;
   const countyRule = countyResult.data as CountyRule | null;
 
   // Concluded value — prefer the pipeline-stored value (includes photo adjustments,
   // cost approach, income approach as applicable). Fall back to recalculating the
   // median adjusted $/sqft × GBA from comps if the stored value is missing.
-  const comps = (compsResult.data ?? []) as { adjusted_price_per_sqft: number | null; sale_price: number | null }[];
+  interface CompRow {
+    address: string | null;
+    sale_price: number | null;
+    sale_date: string | null;
+    building_sqft: number | null;
+    adjusted_price_per_sqft: number | null;
+    distance_miles: number | null;
+    net_adjustment_pct: number | null;
+    is_distressed_sale: boolean | null;
+    is_weak_comparable: boolean | null;
+  }
+  const comps = (compsResult.data ?? []) as CompRow[];
   let concludedValue = propertyData?.concluded_value ?? 0;
 
   if (concludedValue === 0 && comps.length > 0 && propertyData?.building_sqft_gross) {
@@ -144,7 +159,7 @@ export async function GET(
     reviewTier: report.review_tier ?? 'auto',
     assessedValue: propertyData?.assessed_value ?? 0,
     concludedValue,
-    potentialSavings: Math.max(0, (propertyData?.assessed_value ?? 0) - concludedValue),
+    potentialSavings: (report as unknown as Record<string, unknown>).case_value_at_stake as number ?? Math.max(0, (propertyData?.assessed_value ?? 0) - concludedValue),
     pdfUrl,
     filingGuide,
     deliveredAt: report.delivered_at,
@@ -156,6 +171,22 @@ export async function GET(
     photoImpactDollars,
     photoImpactPct,
     valuationMethod,
+    // Comparable sales (full data for web viewer)
+    comparableSales: comps.map(c => ({
+      address: c.address,
+      salePrice: c.sale_price,
+      saleDate: c.sale_date,
+      buildingSqft: c.building_sqft,
+      adjustedPricePerSqft: c.adjusted_price_per_sqft,
+      distanceMiles: c.distance_miles,
+      netAdjustmentPct: c.net_adjustment_pct,
+      isDistressedSale: c.is_distressed_sale,
+      isWeakComparable: c.is_weak_comparable,
+    })),
+    // Narrative sections (all except filing guide, which is separate)
+    narratives: narrativeRows
+      .filter(n => n.section_name !== 'pro_se_filing_guide')
+      .map(n => ({ sectionName: n.section_name, content: n.content })),
     // County filing info
     outcomeReportedAt: report.outcome_reported_at ?? null,
     appealOutcome: report.appeal_outcome ?? null,

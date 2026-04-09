@@ -21,6 +21,46 @@ export async function runPdfAssembly(
     return { success: false, error: `Failed to fetch report data for PDF assembly` };
   }
 
+  // ── QA Pre-flight Checks ──────────────────────────────────────────────
+  const qaIssues: string[] = [];
+
+  if (!templateData.comparableSales || templateData.comparableSales.length === 0) {
+    qaIssues.push('No comparable sales found');
+  } else if (templateData.comparableSales.length < 3) {
+    qaIssues.push(`Only ${templateData.comparableSales.length} comparable sales (minimum 3 recommended)`);
+  }
+
+  if (!templateData.concludedValue || templateData.concludedValue <= 0) {
+    qaIssues.push('Concluded value is missing or zero');
+  }
+
+  const criticalSections = ['executive_summary', 'appeal_argument_summary'] as const;
+  const existingSections = new Set(templateData.narratives.map(n => n.section_name));
+  for (const section of criticalSections) {
+    if (!existingSections.has(section)) {
+      qaIssues.push(`Missing critical narrative: ${section}`);
+    }
+  }
+
+  if (!templateData.filingGuide) {
+    qaIssues.push('Filing guide not generated or failed to parse');
+  }
+
+  if (!templateData.property.building_sqft_living_area && !templateData.property.lot_size_sqft) {
+    qaIssues.push('No square footage data (building or lot)');
+  }
+
+  if (qaIssues.length > 0) {
+    console.warn(`[stage7] QA pre-flight warnings for report ${reportId}:`, qaIssues);
+    // Hard-fail on critical issues (no comps, no concluded value)
+    const hardFails = qaIssues.filter(
+      i => i.includes('No comparable sales') || i.includes('Concluded value')
+    );
+    if (hardFails.length > 0) {
+      return { success: false, error: `QA pre-flight failed: ${hardFails.join('; ')}` };
+    }
+  }
+
   const report = templateData.report;
   const propertyAddress = [
     report.property_address,

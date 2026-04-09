@@ -595,7 +595,7 @@ export async function generateFilingGuide(
 
   try {
     const response = await createWithRetry({
-      model: AI_MODELS.FAST, // Filing guide is formulaic — doesn't need the primary model
+      model: AI_MODELS.PRIMARY, // Filing guide is the user's most actionable deliverable
       max_tokens: AI_CONFIG.maxTokens.filingGuide,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],

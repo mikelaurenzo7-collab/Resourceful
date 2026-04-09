@@ -113,6 +113,12 @@ export interface CollectedPropertyData {
   countyFips: string | null;
   countyName: string | null;
 
+  // Building details 
+  bedroom_count: number | null;
+  full_bath_count: number | null;
+  half_bath_count: number | null;
+  number_of_stories: number | null;
+
   // Regrid parcel intelligence (unique data not available from other sources)
   parcel_boundary_geojson: Record<string, unknown> | null;
   lot_frontage_ft: number | null;
@@ -188,6 +194,12 @@ function attomToCollected(detail: AttomPropertyDetail, source: string): Collecte
     countyFips: detail.location.countyFips || null,
     countyName: detail.location.countyName || null,
 
+    // Building details from ATTOM
+    bedroom_count: detail.summary.bedrooms || null,
+    full_bath_count: detail.summary.bathrooms ? Math.floor(detail.summary.bathrooms) : null,
+    half_bath_count: detail.summary.bathrooms ? (detail.summary.bathrooms % 1 >= 0.5 ? 1 : 0) : null,
+    number_of_stories: detail.summary.stories || null,
+
     // Regrid fields — not populated from ATTOM
     parcel_boundary_geojson: null,
     lot_frontage_ft: null,
@@ -256,6 +268,11 @@ function mergeSupplemental(
     apn: base.apn ?? supplement.apn,
     regrid_parcel_id: base.regrid_parcel_id ?? supplement.regrid_parcel_id,
     parcel_data_source: base.parcel_data_source ?? supplement.parcel_data_source,
+    // Building details
+    bedroom_count: base.bedroom_count ?? supplement.bedroom_count,
+    full_bath_count: base.full_bath_count ?? supplement.full_bath_count,
+    half_bath_count: base.half_bath_count ?? supplement.half_bath_count,
+    number_of_stories: base.number_of_stories ?? supplement.number_of_stories,
     data_source_map: mergedSourceMap,
     data_collection_notes: notes,
   };
@@ -327,6 +344,12 @@ function lightboxToCollected(detail: LightboxParcelDetail): CollectedPropertyDat
     longitude: detail.location.longitude ?? null,
     countyFips: detail.address.fips ?? null,
     countyName: detail.address.county ?? null,
+
+    // Building details — not available from Lightbox basic
+    bedroom_count: null,
+    full_bath_count: null,
+    half_bath_count: null,
+    number_of_stories: null,
 
     // Regrid fields — not populated from Lightbox
     parcel_boundary_geojson: null,

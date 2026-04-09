@@ -63,6 +63,21 @@ interface ReportData {
   photoImpactDollars: number | null;
   photoImpactPct: number | null;
   valuationMethod: string | null;
+  comparableSales: {
+    address: string | null;
+    salePrice: number | null;
+    saleDate: string | null;
+    buildingSqft: number | null;
+    adjustedPricePerSqft: number | null;
+    distanceMiles: number | null;
+    netAdjustmentPct: number | null;
+    isDistressedSale: boolean | null;
+    isWeakComparable: boolean | null;
+  }[];
+  narratives: {
+    sectionName: string;
+    content: string;
+  }[];
 }
 
 function formatDollar(value: number): string {
@@ -73,6 +88,28 @@ function formatFee(cents: number): string {
   if (cents === 0) return 'Waived';
   return `$${(cents / 100).toFixed(2)}`;
 }
+
+const NARRATIVE_DISPLAY_NAMES: Record<string, string> = {
+  executive_summary: 'Executive Summary',
+  condition_assessment: 'Condition Assessment',
+  appeal_argument_summary: 'Appeal Argument Summary',
+  hearing_script: 'Hearing Presentation Script',
+  sales_comparison_narrative: 'Sales Comparison Analysis',
+  adjustment_grid_narrative: 'Adjustment Grid Analysis',
+  income_approach_narrative: 'Income Approach',
+  cost_approach_narrative: 'Cost Approach',
+  reconciliation_narrative: 'Value Reconciliation',
+  market_analysis: 'Market Analysis',
+  assessment_equity: 'Assessment Equity Analysis',
+  area_analysis_county: 'County Area Analysis',
+  area_analysis_city: 'City Area Analysis',
+  area_analysis_neighborhood: 'Neighborhood Analysis',
+  hbu_as_vacant: 'Highest & Best Use (Vacant)',
+  hbu_as_improved: 'Highest & Best Use (Improved)',
+};
+
+/** Priority narratives shown expanded in overview tab */
+const PRIORITY_NARRATIVES = ['executive_summary', 'appeal_argument_summary', 'hearing_script'];
 
 export default function ReportViewerPage() {
   const params = useParams();
@@ -432,6 +469,116 @@ export default function ReportViewerPage() {
                 Download PDF
               </a>
             </div>
+
+            {/* ── Comparable Sales Grid ──────────────────────────── */}
+            {data.comparableSales && data.comparableSales.length > 0 && (
+              <div className="card-premium rounded-xl overflow-hidden">
+                <div className="border-b border-gold/10 px-6 py-4 bg-gold/5">
+                  <p className="text-xs uppercase tracking-widest text-gold/70">Comparable Sales Analysis</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/[0.06]">
+                        <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-cream/40 font-medium">#</th>
+                        <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-cream/40 font-medium">Address</th>
+                        <th className="text-right px-4 py-3 text-[10px] uppercase tracking-wider text-cream/40 font-medium">Sale Price</th>
+                        <th className="text-right px-4 py-3 text-[10px] uppercase tracking-wider text-cream/40 font-medium hidden md:table-cell">Date</th>
+                        <th className="text-right px-4 py-3 text-[10px] uppercase tracking-wider text-cream/40 font-medium hidden md:table-cell">Sq Ft</th>
+                        <th className="text-right px-4 py-3 text-[10px] uppercase tracking-wider text-cream/40 font-medium">Adj $/SF</th>
+                        <th className="text-right px-4 py-3 text-[10px] uppercase tracking-wider text-cream/40 font-medium hidden sm:table-cell">Net Adj</th>
+                        <th className="text-right px-4 py-3 text-[10px] uppercase tracking-wider text-cream/40 font-medium hidden sm:table-cell">Distance</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.comparableSales.map((comp, i) => (
+                        <tr key={i} className={`border-b border-white/[0.03] ${comp.isWeakComparable ? 'opacity-50' : ''}`}>
+                          <td className="px-4 py-3 text-cream/50">{i + 1}</td>
+                          <td className="px-4 py-3 text-cream max-w-[200px] truncate">
+                            {comp.address || 'Address withheld'}
+                            {comp.isDistressedSale && (
+                              <span className="ml-1.5 text-[9px] uppercase bg-amber-500/15 text-amber-400/70 px-1.5 py-0.5 rounded">Distressed</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-right text-cream font-medium">
+                            {comp.salePrice ? formatDollar(comp.salePrice) : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right text-cream/50 hidden md:table-cell">
+                            {comp.saleDate ? new Date(comp.saleDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right text-cream/50 hidden md:table-cell">
+                            {comp.buildingSqft ? comp.buildingSqft.toLocaleString() : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium text-gold">
+                            {comp.adjustedPricePerSqft ? `$${comp.adjustedPricePerSqft.toFixed(0)}` : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right hidden sm:table-cell">
+                            {comp.netAdjustmentPct != null ? (
+                              <span className={`${Math.abs(comp.netAdjustmentPct) > 25 ? 'text-amber-400/70' : 'text-cream/50'}`}>
+                                {comp.netAdjustmentPct > 0 ? '+' : ''}{comp.netAdjustmentPct.toFixed(1)}%
+                              </span>
+                            ) : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-right text-cream/40 hidden sm:table-cell">
+                            {comp.distanceMiles != null ? `${comp.distanceMiles.toFixed(1)} mi` : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ── Key Narrative Sections ─────────────────────────── */}
+            {data.narratives && data.narratives.length > 0 && (() => {
+              const priority = data.narratives.filter(n => PRIORITY_NARRATIVES.includes(n.sectionName));
+              const other = data.narratives.filter(n => !PRIORITY_NARRATIVES.includes(n.sectionName));
+              if (priority.length === 0 && other.length === 0) return null;
+              return (
+                <div className="space-y-4">
+                  {/* Priority narratives shown expanded */}
+                  {priority.map(n => (
+                    <div key={n.sectionName} className="card-premium rounded-xl overflow-hidden">
+                      <div className="border-b border-gold/10 px-6 py-4 bg-gold/5">
+                        <p className="text-xs uppercase tracking-widest text-gold/70">
+                          {NARRATIVE_DISPLAY_NAMES[n.sectionName] ?? n.sectionName.replace(/_/g, ' ')}
+                        </p>
+                      </div>
+                      <div className="px-6 py-5 text-sm text-cream/70 leading-relaxed whitespace-pre-wrap">
+                        {n.content}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Other narratives as collapsible sections */}
+                  {other.length > 0 && (
+                    <details className="card-premium rounded-xl overflow-hidden group">
+                      <summary className="border-b border-white/[0.04] px-6 py-4 bg-white/[0.02] cursor-pointer flex items-center justify-between list-none">
+                        <p className="text-xs uppercase tracking-widest text-cream/40">
+                          {other.length} Additional Analysis Section{other.length !== 1 ? 's' : ''}
+                        </p>
+                        <svg className="w-4 h-4 text-cream/30 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </summary>
+                      <div className="divide-y divide-white/[0.04]">
+                        {other.map(n => (
+                          <div key={n.sectionName} className="px-6 py-5">
+                            <p className="text-xs uppercase tracking-widest text-cream/35 mb-3">
+                              {NARRATIVE_DISPLAY_NAMES[n.sectionName] ?? n.sectionName.replace(/_/g, ' ')}
+                            </p>
+                            <div className="text-sm text-cream/60 leading-relaxed whitespace-pre-wrap">
+                              {n.content}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Quick filing summary for tax appeals */}
             {isTaxAppeal && county && (
