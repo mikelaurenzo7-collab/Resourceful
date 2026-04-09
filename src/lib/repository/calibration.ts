@@ -28,6 +28,7 @@ const NEUTRAL: CalibrationMultipliers = {
 
 // calibration_params is defined in migration 005 but not in the generated
 // Database type yet. We cast the row to this internal shape.
+// Column names match migration 005 exactly.
 interface CalibrationParamsRow {
   size_multiplier: number;
   condition_multiplier: number;
@@ -35,7 +36,7 @@ interface CalibrationParamsRow {
   land_ratio_multiplier: number;
   value_bias_pct: number;
   sqft_correction_factor: number;
-  sample_count: number;
+  sample_size: number;  // migration column name
 }
 
 function rowToMultipliers(row: CalibrationParamsRow): CalibrationMultipliers {
@@ -46,7 +47,7 @@ function rowToMultipliers(row: CalibrationParamsRow): CalibrationMultipliers {
     land_ratio_multiplier: Number(row.land_ratio_multiplier) || 1.0,
     value_bias_pct: Number(row.value_bias_pct) || 0.0,
     sqft_correction_factor: Number(row.sqft_correction_factor) || 1.0,
-    sample_count: Number(row.sample_count) || 0,
+    sample_count: Number(row.sample_size) || 0,
   };
 }
 

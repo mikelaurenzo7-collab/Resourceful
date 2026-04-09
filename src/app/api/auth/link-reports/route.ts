@@ -9,8 +9,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { applyRateLimit } from '@/lib/rate-limit';
 
-export async function POST(_request: NextRequest) {
+export async function POST(request: NextRequest) {
+  // Rate limit: 10 link attempts per 15 minutes per IP
+  const rateLimitResponse = await applyRateLimit(request, {
+    prefix: 'link-reports',
+    limit: 10,
+    windowSeconds: 900,
+  });
+  if (rateLimitResponse) return rateLimitResponse;
   try {
     // Get the authenticated user from the session
     const supabase = await createClient();

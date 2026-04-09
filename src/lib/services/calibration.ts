@@ -68,23 +68,32 @@ export async function createCalibrationEntry(
   }
 
   // Insert calibration entry
+  // Column names must match migration 005 + 021 schema exactly
   const { error } = await supabase
     .from('calibration_entries' as never)
     .insert({
-      report_id: reportId,
+      // Migration 005 columns
+      source_report_id: reportId,
       county_fips: report.county_fips,
       property_type: report.property_type,
-      service_type: report.service_type,
-      predicted_value: propertyData.concluded_value,
+      property_address: report.property_address ?? null,
+      city: report.city ?? null,
+      state: report.state ?? null,
+      county: report.county ?? null,
+      system_concluded_value: propertyData.concluded_value,
+      actual_appraised_value: actualValue,
+      variance_pct: predictionError,
+      variance_dollars: actualValue != null ? (actualValue - propertyData.concluded_value) : null,
+      building_sqft: propertyData.building_sqft_gross,
+      status: 'completed',
+      // Migration 021 columns (outcome-based)
       assessed_value: propertyData.assessed_value,
       actual_outcome: report.appeal_outcome,
-      actual_board_value: actualValue,
-      prediction_error_pct: predictionError,
       photo_count: propertyData.photo_count ?? 0,
       photo_defect_count: propertyData.photo_defect_count ?? 0,
       case_strength_score: report.case_strength_score,
-      building_sqft: propertyData.building_sqft_gross,
       created_at: new Date().toISOString(),
+      completed_at: new Date().toISOString(),
     } as never);
 
   if (error) {

@@ -88,6 +88,18 @@ export async function POST(
   let authorized = false;
 
   if (token && report.outcome_followup_token === token) {
+    // Token-based auth: verify token hasn't expired (30 days after followup email)
+    const TOKEN_EXPIRY_DAYS = 30;
+    if (report.outcome_followup_sent_at) {
+      const sentAt = new Date(report.outcome_followup_sent_at).getTime();
+      const expiresAt = sentAt + TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+      if (Date.now() > expiresAt) {
+        return NextResponse.json(
+          { error: 'This link has expired. Please log in to report your outcome.' },
+          { status: 401 }
+        );
+      }
+    }
     authorized = true;
   } else {
     // Check if authenticated user owns this report

@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getReportWithDetails } from '@/lib/repository/reports';
+import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report } from '@/types/database';
 
 export async function GET(
@@ -79,6 +80,14 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Rate limit: 20 updates per 15 minutes per IP
+  const rateLimitResponse = await applyRateLimit(request, {
+    prefix: 'report-update',
+    limit: 20,
+    windowSeconds: 900,
+  });
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const { id } = await params;
 
