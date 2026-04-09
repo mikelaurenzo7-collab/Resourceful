@@ -15,6 +15,9 @@
     "src/app/api/cron/calibration/route.ts": {
       "maxDuration": 120
     },
+    "src/app/api/cron/notification-retry/route.ts": {
+      "maxDuration": 60
+    },
     "src/app/api/admin/reports/[id]/rerun/route.ts": {
       "maxDuration": 300
     },
@@ -38,6 +41,10 @@
     {
       "path": "/api/cron/calibration",
       "schedule": "0 4 * * 0"
+    },
+    {
+      "path": "/api/cron/notification-retry",
+      "schedule": "0 * * * *"
     }
   ]
 }

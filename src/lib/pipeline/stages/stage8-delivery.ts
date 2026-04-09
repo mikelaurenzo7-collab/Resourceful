@@ -145,10 +145,16 @@ export async function runDelivery(
     if (emailResult.error) {
       // Dashboard-first: report is already delivered and accessible.
       // Email failure is non-fatal — log it but don't roll back.
+      // The notification-retry cron will pick this up (notification_sent_at stays null).
       console.error(
         `[stage8] Notification email failed for report ${reportId} (report still delivered via dashboard): ${emailResult.error}`
       );
     } else {
+      // Stamp successful notification — prevents retry cron from re-sending
+      await supabase
+        .from('reports')
+        .update({ notification_sent_at: new Date().toISOString() } as Record<string, unknown>)
+        .eq('id', reportId);
       console.log(
         `[stage8] Report ${reportId} delivered. Notification sent to ${clientEmail}. Email ID: ${emailResult.data?.id}`
       );

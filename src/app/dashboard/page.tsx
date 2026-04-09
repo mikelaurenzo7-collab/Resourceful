@@ -116,7 +116,7 @@ export default async function DashboardPage() {
   const { data: reports, error } = await supabase
     .from('reports')
     .select(
-      'id, status, service_type, property_type, property_address, city, state, county, ' +
+      'id, status, service_type, property_type, property_address, city, state, county, county_fips, ' +
       'pipeline_last_completed_stage, report_pdf_storage_path, created_at, client_email, ' +
       'delivered_at, filing_status, filed_at, filing_method, ' +
       'appeal_outcome, actual_savings_cents, outcome_reported_at, case_value_at_stake, ' +
@@ -185,6 +185,41 @@ export default async function DashboardPage() {
     } catch {
       // Non-fatal — dashboard still works without value insights
     }
+  }
+
+  // ── Filing deadline for delivered tax_appeal reports ───────────────────
+  let filingDeadlineDate: string | null = null;
+  let filingDeadlineRule: string | null = null;
+
+  if (activeReport?.status === 'delivered' && activeReport.service_type === 'tax_appeal' && activeReport.county_fips) {
+    try {
+      const { createAdminClient } = await import('@/lib/supabase/admin');
+      const admin = createAdminClient();
+      const { data: cr } = await admin
+        .from('county_rules')
+        .select('next_appeal_deadline, appeal_deadline_rule')
+        .eq('county_fips', activeReport.county_fips)
+        .limit(1);
+
+      if (cr?.[0]) {
+        filingDeadlineDate = (cr[0] as { next_appeal_deadline: string | null }).next_appeal_deadline;
+        filingDeadlineRule = (cr[0] as { appeal_deadline_rule: string | null }).appeal_deadline_rule;
+      }
+    } catch {
+      // Non-fatal
+    }
+  }
+
+  // Compute urgency for filing deadline
+  let deadlineDaysAway: number | null = null;
+  let deadlineUrgency: 'overdue' | 'urgent' | 'soon' | 'ok' | null = null;
+  if (filingDeadlineDate) {
+    const deadlineMs = new Date(filingDeadlineDate).getTime();
+    deadlineDaysAway = Math.ceil((deadlineMs - Date.now()) / 86_400_000);
+    if (deadlineDaysAway < 0) deadlineUrgency = 'overdue';
+    else if (deadlineDaysAway <= 7) deadlineUrgency = 'urgent';
+    else if (deadlineDaysAway <= 30) deadlineUrgency = 'soon';
+    else deadlineUrgency = 'ok';
   }
 
   return (
@@ -391,6 +426,73 @@ export default async function DashboardPage() {
                     </svg>
                   </Link>
                 </div>
+
+                {/* Filing deadline banner (tax appeals with known deadline) */}
+                {deadlineUrgency && activeReport.service_type === 'tax_appeal' && (
+                  <div
+                    data-animate
+                    className={`rounded-xl px-5 py-4 flex items-start gap-3 ${
+                      deadlineUrgency === 'overdue'
+                        ? 'border border-red-500/20 bg-red-950/15'
+                        : deadlineUrgency === 'urgent'
+                        ? 'border border-orange-500/20 bg-orange-950/15'
+                        : deadlineUrgency === 'soon'
+                        ? 'border border-amber-500/15 bg-amber-950/10'
+                        : 'border border-emerald-500/10 bg-emerald-950/5'
+                    }`}
+                  >
+                    <svg
+                      className={`w-5 h-5 flex-shrink-0 mt-0.5 ${
+                        deadlineUrgency === 'overdue' ? 'text-red-400'
+                        : deadlineUrgency === 'urgent' ? 'text-orange-400'
+                        : deadlineUrgency === 'soon' ? 'text-amber-400'
+                        : 'text-emerald-400/60'
+                      }`}
+                      fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium ${
+                        deadlineUrgency === 'overdue' ? 'text-red-400'
+                        : deadlineUrgency === 'urgent' ? 'text-orange-400'
+                        : deadlineUrgency === 'soon' ? 'text-amber-400/90'
+                        : 'text-emerald-400/70'
+                      }`}>
+                        {deadlineUrgency === 'overdue'
+                          ? `Filing Deadline Passed${activeReport.county ? ` (${activeReport.county})` : ''}`
+                          : deadlineUrgency === 'urgent'
+                          ? `${deadlineDaysAway} Day${deadlineDaysAway !== 1 ? 's' : ''} Until Filing Deadline`
+                          : deadlineUrgency === 'soon'
+                          ? `Filing Deadline: ${new Date(filingDeadlineDate!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                          : `Filing Deadline: ${new Date(filingDeadlineDate!).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
+                        }
+                      </p>
+                      <p className={`text-xs mt-1 ${
+                        deadlineUrgency === 'overdue' ? 'text-red-400/60'
+                        : deadlineUrgency === 'urgent' ? 'text-orange-400/60'
+                        : 'text-cream/40'
+                      }`}>
+                        {deadlineUrgency === 'overdue'
+                          ? 'Late filings are typically not accepted. Check your report for alternative appeal options.'
+                          : deadlineUrgency === 'urgent'
+                          ? "Don't miss your window — view your report for filing instructions and required forms."
+                          : filingDeadlineRule ?? 'View your report for county-specific filing instructions.'
+                        }
+                      </p>
+                    </div>
+                    <Link
+                      href={`/report/${activeReport.id}`}
+                      className={`text-xs font-medium px-3 py-1.5 rounded-md flex-shrink-0 transition-colors ${
+                        deadlineUrgency === 'overdue' || deadlineUrgency === 'urgent'
+                          ? 'bg-white/10 text-cream hover:bg-white/15'
+                          : 'bg-white/5 text-cream/60 hover:bg-white/10'
+                      }`}
+                    >
+                      Filing Guide →
+                    </Link>
+                  </div>
+                )}
 
                 {/* Value insights card */}
                 {(assessedValue || concludedValue) && (
