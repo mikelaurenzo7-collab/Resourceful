@@ -7,12 +7,17 @@ import { theme } from './styles/theme';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { PageFooter, SectionHeader, NarrativeBlock, PhotoGrid } from './components/shared';
 
+import LetterOfTransmittal from './components/LetterOfTransmittal';
 import CoverPage from './components/CoverPage';
+import TableOfContents from './components/TableOfContents';
 import ExecutiveSummary from './components/ExecutiveSummary';
+import PropertyDetails from './components/PropertyDetails';
 import CompsGrid from './components/CompsGrid';
 import AdjustmentReconciliation from './components/AdjustmentReconciliation';
-import ConditionSection from './components/ConditionSection';
 import AssessmentRatioAnalysis from './components/AssessmentRatioAnalysis';
+import CostApproachTable from './components/CostApproachTable';
+import IncomeApproachTable from './components/IncomeApproachTable';
+import ConditionSection from './components/ConditionSection';
 import FilingGuide from './components/FilingGuide';
 import Disclaimer from './components/Disclaimer';
 
@@ -47,17 +52,31 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
       author="Resourceful"
       subject="Property Tax Assessment Report"
     >
+      {/* Letter of Transmittal — professional cover letter */}
+      <LetterOfTransmittal data={data} />
+
       {/* Cover page — no footer */}
       <CoverPage data={data} />
 
-      {/* Main content pages with footer */}
+      {/* Table of Contents */}
+      <TableOfContents data={data} />
+
+      {/* Property Identification + Executive Summary */}
+      <Page size="LETTER" style={theme.page}>
+        <PageFooter />
+
+        {/* Property Identification Summary (structured grid) */}
+        <PropertyDetails data={data} />
+      </Page>
+
+      {/* Executive Summary + Maps + Photos */}
       <Page size="LETTER" style={theme.page}>
         <PageFooter />
 
         {/* Executive Summary */}
         <ExecutiveSummary data={data} />
 
-        {/* Maps */}
+        {/* Regional location map */}
         {data.maps.regional && (
           <View style={{ marginVertical: 8 }} wrap={false}>
             <Image src={data.maps.regional.url} style={{ width: '100%', height: 200 }} />
@@ -83,10 +102,18 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         })}
       </Page>
 
-      {/* Comparable Sales */}
+      {/* Comparable Sales + Comps Map */}
       <Page size="LETTER" style={theme.page}>
         <PageFooter />
         <CompsGrid data={data} />
+
+        {/* Comparable Sales Location Map */}
+        {data.maps.neighborhood && (
+          <View style={{ marginVertical: 8 }} wrap={false}>
+            <Image src={data.maps.neighborhood.url} style={{ width: '100%', height: 220 }} />
+          </View>
+        )}
+
         <AdjustmentReconciliation data={data} />
       </Page>
 
@@ -95,6 +122,22 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
           <AssessmentRatioAnalysis data={data} />
+        </Page>
+      )}
+
+      {/* Cost Approach (conditional) */}
+      {data.property.cost_approach_value != null && data.property.cost_approach_value > 0 && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <CostApproachTable data={data} />
+        </Page>
+      )}
+
+      {/* Income Approach (conditional) */}
+      {data.incomeAnalysis != null && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <IncomeApproachTable data={data} />
         </Page>
       )}
 

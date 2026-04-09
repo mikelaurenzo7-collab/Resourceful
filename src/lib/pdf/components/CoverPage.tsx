@@ -1,13 +1,13 @@
 // ─── Cover Page ──────────────────────────────────────────────────────────────
 
 import React from 'react';
-import { Page, View, Text, StyleSheet } from '@react-pdf/renderer';
+import { Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
 import { theme, colors } from '../styles/theme';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { formatCurrency, formatDate } from '@/lib/templates/helpers';
 
 export default function CoverPage({ data }: { data: ReportTemplateData }) {
-  const { report, property, concludedValue } = data;
+  const { report, property, concludedValue, photos } = data;
   const address = [report.property_address, report.city, report.state].filter(Boolean).join(', ');
   const assessedValue = property.assessed_value ?? 0;
   const overpayment = Math.max(0, assessedValue - concludedValue);
@@ -16,6 +16,13 @@ export default function CoverPage({ data }: { data: ReportTemplateData }) {
     report.service_type === 'tax_appeal' ? 'Property Tax Appeal Report'
     : report.service_type === 'pre_purchase' ? 'Pre-Purchase Analysis Report'
     : 'Pre-Listing Analysis Report';
+
+  // Find the best subject photo for cover
+  const subjectPhoto = photos.find(
+    p => p.storage_path && (p.photo_type === 'exterior_front' || p.photo_type === 'aerial')
+  ) ?? photos.find(p => p.storage_path);
+
+  const clientName = report.client_name ?? report.client_email ?? 'Property Owner';
 
   return (
     <Page size="LETTER" style={theme.coverPage}>
@@ -30,8 +37,18 @@ export default function CoverPage({ data }: { data: ReportTemplateData }) {
         {serviceLabel}
       </Text>
 
+      {/* Subject photo */}
+      {subjectPhoto?.storage_path && (
+        <View style={styles.photoContainer}>
+          <Image src={subjectPhoto.storage_path} style={styles.subjectPhoto} />
+          <Text style={[theme.caption, { textAlign: 'center', marginTop: 3 }]}>
+            {subjectPhoto.ai_analysis?.professional_caption ?? 'Subject Property'}
+          </Text>
+        </View>
+      )}
+
       {/* Property address */}
-      <Text style={[theme.headingXL, { fontSize: 22, textAlign: 'center', marginTop: 48 }]}>
+      <Text style={[theme.headingXL, { fontSize: 22, textAlign: 'center', marginTop: subjectPhoto ? 16 : 48 }]}>
         {address}
       </Text>
 
@@ -39,7 +56,7 @@ export default function CoverPage({ data }: { data: ReportTemplateData }) {
       <Text style={[theme.label, { textAlign: 'center', marginTop: 8 }]}>
         {[
           report.pin ? `Parcel: ${report.pin}` : null,
-          report.county,
+          report.county ? `${report.county} County` : null,
           report.state,
         ].filter(Boolean).join('  ·  ')}
       </Text>
@@ -64,9 +81,10 @@ export default function CoverPage({ data }: { data: ReportTemplateData }) {
 
       {/* Footer info */}
       <View style={styles.coverFooter}>
-        <Text style={theme.caption}>Report Prepared: {formatDate(data.reportDate)}</Text>
+        <Text style={[theme.caption, { fontWeight: 500 }]}>Prepared for: {clientName}</Text>
+        <Text style={theme.caption}>Report Date: {formatDate(data.reportDate)}</Text>
         <Text style={theme.caption}>Report ID: {report.id}</Text>
-        <Text style={[theme.caption, { marginTop: 4 }]}>resourceful.app</Text>
+        <Text style={[theme.caption, { marginTop: 6, fontWeight: 500 }]}>resourceful.app</Text>
       </View>
     </Page>
   );
@@ -90,7 +108,7 @@ const styles = StyleSheet.create({
   valueBlock: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 60,
+    marginTop: 28,
     paddingHorizontal: 20,
   },
   valueCol: {
@@ -112,5 +130,15 @@ const styles = StyleSheet.create({
   coverFooter: {
     marginTop: 'auto',
     alignItems: 'center',
+  },
+  photoContainer: {
+    marginTop: 24,
+    alignItems: 'center',
+  },
+  subjectPhoto: {
+    width: 420,
+    height: 240,
+    objectFit: 'cover',
+    borderRadius: 2,
   },
 });
