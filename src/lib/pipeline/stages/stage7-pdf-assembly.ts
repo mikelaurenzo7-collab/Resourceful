@@ -35,7 +35,11 @@ export async function runPdfAssembly(
     qaIssues.push('Concluded value is missing or zero');
   }
 
-  const criticalSections = ['executive_summary', 'appeal_argument_summary'] as const;
+  // appeal_argument_summary and filingGuide are only required for tax_appeal reports
+  const isTaxAppeal = templateData.report.service_type === 'tax_appeal';
+  const criticalSections = isTaxAppeal
+    ? ['executive_summary', 'appeal_argument_summary']
+    : ['executive_summary'];
   const existingSections = new Set(templateData.narratives.map(n => n.section_name));
   for (const section of criticalSections) {
     if (!existingSections.has(section)) {
@@ -43,7 +47,7 @@ export async function runPdfAssembly(
     }
   }
 
-  if (!templateData.filingGuide) {
+  if (isTaxAppeal && !templateData.filingGuide) {
     qaIssues.push('Filing guide not generated or failed to parse');
   }
 
@@ -53,9 +57,9 @@ export async function runPdfAssembly(
 
   if (qaIssues.length > 0) {
     pipelineLogger.warn({ reportId, qaIssues }, '[stage7] QA pre-flight warnings');
-    // Hard-fail on critical issues (no comps, no concluded value)
+    // Hard-fail on critical issues (no comps, no concluded value, no executive summary)
     const hardFails = qaIssues.filter(
-      i => i.includes('No comparable sales') || i.includes('Concluded value')
+      i => i.includes('No comparable sales') || i.includes('Concluded value') || i.includes('Missing critical narrative: executive_summary')
     );
     if (hardFails.length > 0) {
       return { success: false, error: `QA pre-flight failed: ${hardFails.join('; ')}` };

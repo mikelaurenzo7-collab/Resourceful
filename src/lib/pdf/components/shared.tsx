@@ -18,20 +18,107 @@ export function SectionHeader({ number, title }: { number: string; title: string
 }
 
 // ─── Narrative Block (Source Serif 4 body text) ─────────────────────────────
+// Parses the AI-generated markdown into properly styled PDF primitives.
+// Inter SemiBold/Bold for headings, Source Serif 4 for body, bullet/numbered lists.
+
+function stripInline(text: string): string {
+  return text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1');
+}
 
 export function NarrativeBlock({ content }: { content: string }) {
   if (!content) return null;
-  // Split on double newlines for paragraphs
-  const paragraphs = content.split(/\n\n+/).filter(Boolean);
-  return (
-    <View style={{ marginVertical: 4 }}>
-      {paragraphs.map((p, i) => (
-        <Text key={i} style={[theme.bodyText, { marginBottom: 6 }]}>
-          {p.replace(/\n/g, ' ').trim()}
+  const lines = content.split('\n');
+  const elements: React.ReactElement[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i].trim();
+
+    // Skip blank lines, horizontal rules, table separator rows
+    if (!line || /^-{3,}$/.test(line) || /^[\|\s\-:]+$/.test(line)) {
+      i++;
+      continue;
+    }
+
+    // Table rows — strip pipe chars and render as plain text
+    if (/^\|.+\|/.test(line)) {
+      const cells = line.split('|').slice(1, -1).map(c => c.trim()).filter(Boolean).join('  ');
+      if (cells) {
+        elements.push(
+          <Text key={i} style={[theme.bodyText, { marginBottom: 3, color: colors.inkMuted }]}>
+            {stripInline(cells)}
+          </Text>
+        );
+      }
+      i++;
+      continue;
+    }
+
+    // H1 / H2 headings
+    if (line.startsWith('# ') || line.startsWith('## ')) {
+      const text = line.startsWith('## ') ? line.slice(3) : line.slice(2);
+      elements.push(
+        <Text key={i} style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 11, color: colors.inkPrimary, marginTop: 8, marginBottom: 3 }}>
+          {stripInline(text)}
         </Text>
-      ))}
-    </View>
-  );
+      );
+      i++;
+      continue;
+    }
+
+    // H3 headings
+    if (line.startsWith('### ')) {
+      elements.push(
+        <Text key={i} style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 10, color: colors.inkPrimary, marginTop: 6, marginBottom: 2 }}>
+          {stripInline(line.slice(4))}
+        </Text>
+      );
+      i++;
+      continue;
+    }
+
+    // Bullet list
+    if (/^[-*] /.test(line)) {
+      while (i < lines.length && /^[-*] /.test(lines[i].trim())) {
+        const bulletText = lines[i].trim().slice(2);
+        elements.push(
+          <View key={i} style={{ flexDirection: 'row', marginBottom: 2, paddingLeft: 10 }}>
+            <Text style={[theme.bodyText, { width: 10, marginBottom: 0 }]}>{'\u2022'}</Text>
+            <Text style={[theme.bodyText, { flex: 1, marginBottom: 0 }]}>{stripInline(bulletText)}</Text>
+          </View>
+        );
+        i++;
+      }
+      continue;
+    }
+
+    // Numbered list
+    if (/^\d+\.\s/.test(line)) {
+      let num = 1;
+      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
+        const itemText = lines[i].trim().replace(/^\d+\.\s*/, '');
+        elements.push(
+          <View key={i} style={{ flexDirection: 'row', marginBottom: 2, paddingLeft: 10 }}>
+            <Text style={[theme.bodyText, { width: 16, marginBottom: 0 }]}>{num}.</Text>
+            <Text style={[theme.bodyText, { flex: 1, marginBottom: 0 }]}>{stripInline(itemText)}</Text>
+          </View>
+        );
+        i++;
+        num++;
+      }
+      continue;
+    }
+
+    // Regular paragraph
+    elements.push(
+      <Text key={i} style={[theme.bodyText, { marginBottom: 5 }]}>
+        {stripInline(line)}
+      </Text>
+    );
+    i++;
+  }
+
+  return <View style={{ marginVertical: 4 }}>{elements}</View>;
 }
 
 // ─── Data Table ─────────────────────────────────────────────────────────────
@@ -121,6 +208,7 @@ export function PhotoGrid({ photos }: { photos: PhotoItem[] }) {
         <View key={ri} style={styles.photoRow} wrap={false}>
           {row.map((photo, pi) => (
             <View key={pi} style={styles.photoCell}>
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
               <Image src={photo.url} style={styles.photoImage} />
               <Text style={[theme.caption, { textAlign: 'center', marginTop: 2 }]}>
                 {photo.caption}

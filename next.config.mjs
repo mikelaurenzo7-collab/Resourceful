@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 import { withSentryConfig } from '@sentry/nextjs';
 
+const isDev = process.env.NODE_ENV !== 'production';
+
 const nextConfig = {
   experimental: {
     instrumentationHook: true,
@@ -33,11 +35,15 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' https://js.stripe.com https://va.vercel-scripts.com",
+              isDev
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://va.vercel-scripts.com"
+                : "script-src 'self' 'unsafe-inline' https://js.stripe.com https://va.vercel-scripts.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://atlas.microsoft.com https://graph.mapillary.com https://*.supabase.co",
-              "connect-src 'self' https://*.supabase.co https://api.stripe.com https://atlas.microsoft.com https://graph.mapillary.com https://va.vercel-scripts.com https://vitals.vercel-insights.com https://*.ingest.sentry.io",
+              isDev
+                ? "connect-src 'self' http://127.0.0.1:* http://localhost:* https://*.supabase.co https://api.stripe.com https://atlas.microsoft.com https://graph.mapillary.com https://va.vercel-scripts.com https://vitals.vercel-insights.com https://*.ingest.sentry.io"
+                : "connect-src 'self' https://*.supabase.co https://api.stripe.com https://atlas.microsoft.com https://graph.mapillary.com https://va.vercel-scripts.com https://vitals.vercel-insights.com https://*.ingest.sentry.io",
               "frame-src 'self' https://js.stripe.com",
               "object-src 'none'",
               "base-uri 'self'",

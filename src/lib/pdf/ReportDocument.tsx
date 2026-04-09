@@ -79,6 +79,7 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         {/* Regional location map */}
         {data.maps.regional && (
           <View style={{ marginVertical: 8 }} wrap={false}>
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}
             <Image src={data.maps.regional.url} style={{ width: '100%', height: 200 }} />
           </View>
         )}
@@ -110,6 +111,7 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         {/* Comparable Sales Location Map */}
         {data.maps.neighborhood && (
           <View style={{ marginVertical: 8 }} wrap={false}>
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}
             <Image src={data.maps.neighborhood.url} style={{ width: '100%', height: 220 }} />
           </View>
         )}
@@ -154,6 +156,24 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
           <FilingGuide guide={data.filingGuide} />
+        </Page>
+      )}
+
+      {/* Pricing Strategy Guide (pre_listing only) */}
+      {data.report.service_type === 'pre_listing' && narrativeMap.get('pricing_strategy_guide') && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <SectionHeader number="Addendum A" title="Pricing Strategy Guide" />
+          <NarrativeBlock content={narrativeMap.get('pricing_strategy_guide')!} />
+        </Page>
+      )}
+
+      {/* Negotiation Guide (pre_purchase only) */}
+      {data.report.service_type === 'pre_purchase' && narrativeMap.get('negotiation_guide') && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <SectionHeader number="Addendum A" title="Negotiation Strategy Guide" />
+          <NarrativeBlock content={narrativeMap.get('negotiation_guide')!} />
         </Page>
       )}
 

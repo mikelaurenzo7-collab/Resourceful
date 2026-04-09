@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -106,10 +107,108 @@ const NARRATIVE_DISPLAY_NAMES: Record<string, string> = {
   area_analysis_neighborhood: 'Neighborhood Analysis',
   hbu_as_vacant: 'Highest & Best Use (Vacant)',
   hbu_as_improved: 'Highest & Best Use (Improved)',
+  pricing_strategy_guide: 'Pricing Strategy Guide',
+  negotiation_guide: 'Negotiation Guide',
+  property_description: 'Property Description',
+  site_description_narrative: 'Site Description',
+  improvement_description_narrative: 'Improvement Description',
 };
 
-/** Priority narratives shown expanded in overview tab */
-const PRIORITY_NARRATIVES = ['executive_summary', 'appeal_argument_summary', 'hearing_script'];
+/** Priority narratives shown expanded per service type */
+function getPriorityNarratives(serviceType: string): string[] {
+  if (serviceType === 'pre_listing') return ['executive_summary', 'pricing_strategy_guide'];
+  if (serviceType === 'pre_purchase') return ['executive_summary', 'negotiation_guide'];
+  return ['executive_summary', 'appeal_argument_summary', 'hearing_script'];
+}
+
+/** Render inline markdown: **bold** and *italic* */
+function renderInline(text: string): React.ReactNode {
+  const parts: React.ReactNode[] = [];
+  const regex = /\*\*([^*]+)\*\*|\*([^*]+)\*/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = regex.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    if (m[1] !== undefined) parts.push(<strong key={m.index} className="font-semibold text-cream/90">{m[1]}</strong>);
+    else parts.push(<em key={m.index} className="italic">{m[2]}</em>);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts.length === 1 ? parts[0] : <>{parts}</>;
+}
+
+/** Convert markdown text to React nodes for display in the report viewer */
+function renderMarkdown(content: string): React.ReactNode[] {
+  const lines = content.split('\n');
+  const nodes: React.ReactNode[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    if (line.startsWith('### ')) {
+      nodes.push(<p key={i} className="font-semibold text-cream/85 mt-3 mb-0.5">{renderInline(line.slice(4))}</p>);
+    } else if (line.startsWith('## ')) {
+      nodes.push(<p key={i} className="font-bold text-cream/90 text-base mt-4 mb-1">{renderInline(line.slice(3))}</p>);
+    } else if (line.startsWith('# ')) {
+      nodes.push(<p key={i} className="font-bold text-cream/95 text-base mt-4 mb-1">{renderInline(line.slice(2))}</p>);
+    } else if (/^[-*] /.test(line)) {
+      const items: React.ReactNode[] = [];
+      while (i < lines.length && /^[-*] /.test(lines[i])) {
+        items.push(<li key={i}>{renderInline(lines[i].slice(2))}</li>);
+        i++;
+      }
+      nodes.push(<ul key={`ul-${i}`} className="list-disc list-inside space-y-0.5 my-1.5 pl-1">{items}</ul>);
+      continue;
+    } else if (/^\d+\. /.test(line)) {
+      const items: React.ReactNode[] = [];
+      while (i < lines.length && /^\d+\. /.test(lines[i])) {
+        items.push(<li key={i}>{renderInline(lines[i].replace(/^\d+\. /, ''))}</li>);
+        i++;
+      }
+      nodes.push(<ol key={`ol-${i}`} className="list-decimal list-inside space-y-0.5 my-1.5 pl-1">{items}</ol>);
+      continue;
+    } else if (/^\|.+\|/.test(line)) {
+      // Collect markdown table rows
+      const tableLines: string[] = [];
+      while (i < lines.length && /^\|.+\|/.test(lines[i])) {
+        if (!/^[\|\s\-:]+$/.test(lines[i])) tableLines.push(lines[i]);
+        i++;
+      }
+      if (tableLines.length > 0) {
+        const parseRow = (row: string) => row.split('|').slice(1, -1).map(c => c.trim());
+        const [header, ...body] = tableLines;
+        nodes.push(
+          <div key={`tbl-${i}`} className="overflow-x-auto my-3">
+            <table className="text-xs w-full border-collapse">
+              <thead>
+                <tr>
+                  {parseRow(header).map((h, ci) => (
+                    <th key={ci} className="text-left px-3 py-1.5 border-b border-white/10 text-cream/60 font-semibold uppercase tracking-wide">{renderInline(h)}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {body.map((row, ri) => (
+                  <tr key={ri} className={ri % 2 === 0 ? 'bg-white/[0.02]' : ''}>
+                    {parseRow(row).map((cell, ci) => (
+                      <td key={ci} className="px-3 py-1.5 text-cream/70 border-b border-white/[0.04]">{renderInline(cell)}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      }
+      continue;
+    } else if (/^-{3,}$/.test(line.trim())) {
+      // skip horizontal rules
+    } else if (line.trim() !== '') {
+      nodes.push(<p key={i} className="mb-1.5">{renderInline(line)}</p>);
+    }
+    i++;
+  }
+  return nodes;
+}
 
 export default function ReportViewerPage() {
   const params = useParams();
@@ -556,8 +655,9 @@ export default function ReportViewerPage() {
 
             {/* ── Key Narrative Sections ─────────────────────────── */}
             {data.narratives && data.narratives.length > 0 && (() => {
-              const priority = data.narratives.filter(n => PRIORITY_NARRATIVES.includes(n.sectionName));
-              const other = data.narratives.filter(n => !PRIORITY_NARRATIVES.includes(n.sectionName));
+              const priorityKeys = getPriorityNarratives(data.serviceType);
+              const priority = data.narratives.filter(n => priorityKeys.includes(n.sectionName));
+              const other = data.narratives.filter(n => !priorityKeys.includes(n.sectionName));
               if (priority.length === 0 && other.length === 0) return null;
               return (
                 <div className="space-y-4">
@@ -569,8 +669,8 @@ export default function ReportViewerPage() {
                           {NARRATIVE_DISPLAY_NAMES[n.sectionName] ?? n.sectionName.replace(/_/g, ' ')}
                         </p>
                       </div>
-                      <div className="px-6 py-5 text-sm text-cream/70 leading-relaxed whitespace-pre-wrap">
-                        {n.content}
+                      <div className="px-6 py-5 text-sm text-cream/70 leading-relaxed">
+                        {renderMarkdown(n.content)}
                       </div>
                     </div>
                   ))}
@@ -592,8 +692,8 @@ export default function ReportViewerPage() {
                             <p className="text-xs uppercase tracking-widest text-cream/35 mb-3">
                               {NARRATIVE_DISPLAY_NAMES[n.sectionName] ?? n.sectionName.replace(/_/g, ' ')}
                             </p>
-                            <div className="text-sm text-cream/60 leading-relaxed whitespace-pre-wrap">
-                              {n.content}
+                            <div className="text-sm text-cream/60 leading-relaxed">
+                              {renderMarkdown(n.content)}
                             </div>
                           </div>
                         ))}

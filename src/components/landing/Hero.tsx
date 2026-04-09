@@ -247,12 +247,13 @@ export default function Hero() {
                 autoComplete="off"
                 role="combobox"
                 aria-expanded={showSuggestions && suggestions.length > 0}
+                aria-controls="hero-address-listbox"
                 aria-autocomplete="list"
                 aria-activedescendant={activeIndex >= 0 ? `hero-suggestion-${activeIndex}` : undefined}
               />
               {/* Autocomplete dropdown */}
               {showSuggestions && suggestions.length > 0 && (
-                <ul className="absolute z-50 mt-1 w-full rounded-xl border border-gold/20 bg-navy-deep/95 backdrop-blur-sm shadow-xl overflow-hidden" role="listbox">
+                <ul id="hero-address-listbox" className="absolute z-50 mt-1 w-full rounded-xl border border-gold/20 bg-navy-deep/95 backdrop-blur-sm shadow-xl overflow-hidden" role="listbox">
                   {suggestions.map((s, i) => (
                     <li key={i}>
                       <button
