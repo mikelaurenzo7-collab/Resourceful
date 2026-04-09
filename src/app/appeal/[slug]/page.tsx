@@ -439,6 +439,68 @@ export default async function CountyAppealPage({
         </>
       )}
 
+      {/* ── County-Specific Content (SEO depth) ─────────────────────────── */}
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
+      </div>
+      <section className="mx-auto max-w-6xl px-6 py-24">
+        <div className="text-center mb-16">
+          <span className="text-sm font-medium tracking-widest text-gold uppercase">
+            Understanding Your Assessment
+          </span>
+          <h2 className="font-display text-3xl md:text-4xl text-cream mt-3">
+            Property Tax Appeals in {displayName}, {stateName}
+          </h2>
+        </div>
+
+        <div className="prose-section max-w-3xl mx-auto space-y-8">
+          <div>
+            <h3 className="font-display text-xl text-cream mb-3">How {displayName} Assesses Property Taxes</h3>
+            <p className="text-sm text-cream/50 leading-relaxed">
+              In {displayName}, {stateName}, residential properties are assessed at {ratioPercent}% of their estimated market value.
+              {county.assessment_methodology ? ` The county uses a ${county.assessment_methodology.toLowerCase()} methodology to determine assessed values.` : ''}
+              {county.assessment_cycle ? ` Assessments are conducted on a ${county.assessment_cycle.toLowerCase()} cycle.` : ''} If your property is assessed higher than its true market value, you may be paying more in property taxes than you should.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-display text-xl text-cream mb-3">When and How to File</h3>
+            <p className="text-sm text-cream/50 leading-relaxed">
+              {displayName} property owners can file appeals {filingMethod}.
+              {county.appeal_deadline_rule ? ` The appeal deadline is ${county.appeal_deadline_rule.toLowerCase()}.` : ''} Appeals are heard by the {county.appeal_board_name}.
+              {county.hearing_format ? ` Hearings are conducted ${county.hearing_format.toLowerCase()}.` : ''}
+              {county.filing_fee_cents === 0 ? ' There is no filing fee to appeal in this county.' : ` A filing fee of $${(county.filing_fee_cents / 100).toFixed(2)} is required.`}
+              {county.informal_review_available ? ' An informal review process is available before a formal hearing, which may resolve your case without a full hearing.' : ''}
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-display text-xl text-cream mb-3">What Evidence Boards Want to See</h3>
+            <p className="text-sm text-cream/50 leading-relaxed">
+              The most persuasive evidence in a {displayName} appeal includes recent comparable sales (properties similar to yours that sold for less than your assessed value), photographs documenting condition issues the assessor may have missed, and an assessment ratio analysis showing your property is over-assessed relative to the county&apos;s {ratioPercent}% target ratio.
+              {county.appeal_form_name ? ` Present your evidence using the ${county.appeal_form_name} form required by ${county.appeal_board_name}.` : ''}
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-display text-xl text-cream mb-3">Common Reasons Assessments Are Too High</h3>
+            <p className="text-sm text-cream/50 leading-relaxed">
+              Property assessments in {displayName} can be inaccurate for several reasons: the assessor may not have inspected your property recently, condition issues like deferred maintenance or foundation problems may not be reflected, improvements may be over-valued, or the comparable sales used by the assessor may not accurately reflect your neighborhood. A professional analysis identifies which factors apply to your property and quantifies the over-assessment.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-display text-xl text-cream mb-3">What Happens If You Win</h3>
+            <p className="text-sm text-cream/50 leading-relaxed">
+              A successful appeal in {displayName} results in a reduced assessed value, which directly lowers your annual property tax bill. The reduction typically takes effect for the current tax year and can save homeowners hundreds to thousands of dollars annually.
+              {avgSavingsCents && avgSavingsCents > 0
+                ? ` Our customers in ${displayName} who won their appeals saved an average of $${Math.round(avgSavingsCents / 100).toLocaleString()} per year.`
+                : ''} There is no penalty for filing — your assessment cannot be increased as a result of an appeal.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Final CTA */}
       <div className="mx-auto max-w-6xl px-6">
         <div className="h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />

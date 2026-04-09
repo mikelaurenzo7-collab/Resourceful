@@ -425,3 +425,96 @@ export async function sendDisputeAlert(
     return { data: null, error: `Dispute alert failed: ${message}` };
   }
 }
+
+// ─── Payment Receipt Email ───────────────────────────────────────────────────
+
+export interface PaymentReceiptParams {
+  to: string;
+  clientName: string | null;
+  reportId: string;
+  propertyAddress: string;
+  amountCents: number;
+  serviceName: string;
+  tierName: string;
+  discountApplied: boolean;
+}
+
+/**
+ * Send a branded payment receipt after successful payment.
+ * Stripe sends its own receipt, but a branded one builds trust
+ * and sets expectations for what happens next.
+ */
+export async function sendPaymentReceipt(
+  params: PaymentReceiptParams
+): Promise<ServiceResult<EmailResult>> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app';
+  const greeting = params.clientName ? `Hi ${escapeHtml(params.clientName)}` : 'Hi there';
+  const amount = `$${(params.amountCents / 100).toFixed(2)}`;
+
+  try {
+    const result = await sendWithRetry({
+      from: FROM_ADDRESS_LAZY(),
+      to: params.to,
+      subject: `Payment Confirmed — ${escapeHtml(params.propertyAddress)}`,
+      html: wrapHtml(`
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #1a1a1a; font-size: 24px;">Payment Confirmed</h1>
+          <p>${greeting},</p>
+          <p>Thank you for your order. We've received your payment and your report is now being generated.</p>
+
+          <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Property</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${escapeHtml(params.propertyAddress)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Report Type</td>
+                <td style="padding: 8px 0; text-align: right;">${escapeHtml(params.serviceName)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Tier</td>
+                <td style="padding: 8px 0; text-align: right;">${escapeHtml(params.tierName)}</td>
+              </tr>
+              ${params.discountApplied ? `<tr>
+                <td style="padding: 8px 0; color: #666;">Tax Bill Discount</td>
+                <td style="padding: 8px 0; text-align: right; color: #1a8a1a;">15% applied</td>
+              </tr>` : ''}
+              <tr style="border-top: 1px solid #ddd;">
+                <td style="padding: 8px 0; font-weight: 600;">Total Charged</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${amount}</td>
+              </tr>
+            </table>
+          </div>
+
+          <h2 style="color: #1a1a1a; font-size: 18px; margin-top: 24px;">What Happens Next</h2>
+          <ol style="color: #444; padding-left: 20px; line-height: 1.8;">
+            <li>Our system pulls property records, comparable sales, and county data</li>
+            <li>AI analysis generates your evidence package</li>
+            <li>Our team reviews the report for accuracy</li>
+            <li>You receive an email when it's ready (most within 48 hours)</li>
+          </ol>
+
+          <a href="${appUrl}/dashboard" style="display: inline-block; background: #2563eb; color: #fff; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px; margin-top: 16px;">
+            Track Progress on Dashboard
+          </a>
+
+          <p style="margin-top: 24px; font-size: 13px; color: #666;">
+            <strong>Tip:</strong> Upload photos of your property's condition from your dashboard. Photos showing deferred maintenance or issues can strengthen your case.
+          </p>
+
+          <p style="margin-top: 32px; font-size: 12px; color: #999;">
+            Report ID: ${params.reportId}<br>
+            Questions? Reply to this email or contact support@resourceful.app
+          </p>
+        </div>
+      `),
+    });
+
+    return { data: { id: result.data?.id ?? '' }, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[resend] sendPaymentReceipt error: ${message}`);
+    return { data: null, error: `Payment receipt email failed: ${message}` };
+  }
+}

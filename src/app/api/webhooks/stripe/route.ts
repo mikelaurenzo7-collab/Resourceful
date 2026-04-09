@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { constructWebhookEvent } from '@/lib/services/stripe-service';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
-import { sendDisputeAlert } from '@/lib/services/resend-email';
+import { sendDisputeAlert, sendPaymentReceipt } from '@/lib/services/resend-email';
 import type Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
@@ -124,6 +124,43 @@ async function handlePaymentIntentSucceeded(
       `[webhook/stripe] Failed to update report ${reportId}: ${updateError.message}`
     );
     throw new Error(`Failed to update report: ${updateError.message}`);
+  }
+
+  // ── Send payment receipt email (non-blocking) ───────────────────────
+  try {
+    const { data: reportDetails } = await supabase
+      .from('reports')
+      .select('client_email, client_name, property_address, service_type, review_tier, has_tax_bill')
+      .eq('id', reportId)
+      .single();
+
+    if (reportDetails?.client_email) {
+      const SERVICE_NAMES: Record<string, string> = {
+        tax_appeal: 'Tax Appeal Report',
+        pre_purchase: 'Pre-Purchase Analysis',
+        pre_listing: 'Pre-Listing Report',
+      };
+
+      const TIER_NAMES: Record<string, string> = {
+        auto: 'Auto Report',
+        expert_reviewed: 'Expert Reviewed',
+        guided_filing: 'Guided Filing',
+        full_representation: 'Full Representation',
+      };
+
+      sendPaymentReceipt({
+        to: reportDetails.client_email,
+        clientName: reportDetails.client_name ?? null,
+        reportId,
+        propertyAddress: reportDetails.property_address ?? 'Your property',
+        amountCents: paymentIntent.amount,
+        serviceName: SERVICE_NAMES[reportDetails.service_type ?? ''] ?? 'Property Report',
+        tierName: TIER_NAMES[reportDetails.review_tier ?? 'auto'] ?? 'Auto Report',
+        discountApplied: !!reportDetails.has_tax_bill,
+      }).catch((e) => console.warn(`[webhook/stripe] Receipt email failed (non-fatal): ${e}`));
+    }
+  } catch (e) {
+    console.warn(`[webhook/stripe] Receipt email lookup failed (non-fatal): ${e}`);
   }
 
   // ── Trigger the report generation pipeline ──────────────────────────

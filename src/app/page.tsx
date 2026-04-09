@@ -4,6 +4,9 @@ import HowItWorks from '@/components/landing/HowItWorks';
 import PropertyIntelligence from '@/components/landing/PropertyIntelligence';
 import FAQ from '@/components/landing/FAQ';
 import Footer from '@/components/landing/Footer';
+import PricingTable from '@/components/landing/PricingTable';
+import Testimonials from '@/components/landing/Testimonials';
+import SampleReport from '@/components/landing/SampleReport';
 import { ServiceJsonLd, FAQJsonLd } from '@/components/seo/JsonLd';
 import { ScrollAnimations } from '@/components/ui/ScrollAnimations';
 import Link from 'next/link';
@@ -126,8 +129,32 @@ export default function HomePage() {
         <div className="divider-glow" />
       </div>
 
+      {/* What you'll receive */}
+      <SampleReport />
+
+      {/* Divider */}
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="divider-glow" />
+      </div>
+
       {/* Property Intelligence */}
       <PropertyIntelligence />
+
+      {/* Divider */}
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="divider-glow" />
+      </div>
+
+      {/* Testimonials */}
+      <Testimonials />
+
+      {/* Divider */}
+      <div className="mx-auto max-w-6xl px-6">
+        <div className="divider-glow" />
+      </div>
+
+      {/* Pricing */}
+      <PricingTable />
 
       {/* Divider */}
       <div className="mx-auto max-w-6xl px-6">

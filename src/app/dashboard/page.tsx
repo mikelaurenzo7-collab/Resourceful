@@ -11,6 +11,7 @@ import DashboardAutoRefresh from '@/components/dashboard/DashboardAutoRefresh';
 import ValueInsights from '@/components/dashboard/ValueInsights';
 import OutcomeReporter from '@/components/dashboard/OutcomeReporter';
 import AccountMenu from '@/components/dashboard/AccountMenu';
+import ReferralWidget from '@/components/dashboard/ReferralWidget';
 import { ScrollAnimations } from '@/components/ui/ScrollAnimations';
 import Wordmark from '@/components/ui/Wordmark';
 
@@ -568,6 +569,15 @@ export default async function DashboardPage() {
                     reportType={activeReport.service_type}
                     propertyAddress={activeReport.property_address}
                     countyName={activeReport.county ?? undefined}
+                  />
+                </div>
+
+                {/* Referral widget */}
+                <div data-animate data-delay="125">
+                  <ReferralWidget
+                    userEmail={userEmail}
+                    userName={null}
+                    hasWonAppeal={wonReports.length > 0}
                   />
                 </div>
               </>
