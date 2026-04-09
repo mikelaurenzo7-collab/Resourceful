@@ -1100,14 +1100,14 @@ export default function ReportViewerPage() {
               <div className="flex-1">
                 <h3 className="text-cream font-medium">Know someone who&apos;s overpaying on property taxes?</h3>
                 <p className="text-sm text-cream/40 mt-1">
-                  Share Resourceful with a neighbor or friend. They&apos;ll get 10% off their report, and you&apos;ll earn a $5 credit toward your next analysis.
+                  Tell a neighbor or friend about REsourceful. Help them challenge their assessment with the same professional analysis you received.
                 </p>
               </div>
               <Link
-                href="/start"
+                href="/dashboard"
                 className="text-sm font-medium bg-gold/10 text-gold border border-gold/20 px-5 py-2.5 rounded-lg hover:bg-gold/20 transition-all whitespace-nowrap"
               >
-                Share &amp; Earn
+                My Dashboard
               </Link>
             </div>
           </div>
@@ -1125,7 +1125,7 @@ export default function ReportViewerPage() {
               <div className="flex-1">
                 <h3 className="text-cream font-medium">Want help filing your appeal?</h3>
                 <p className="text-sm text-cream/40 mt-1">
-                  Upgrade to <strong className="text-cream/60">Guided Filing</strong> for a live coaching session, or let us handle everything with <strong className="text-cream/60">Full Representation</strong>.
+                  Get <strong className="text-cream/60">Guided Filing</strong> for a live coaching session on your next report, or let us handle everything with <strong className="text-cream/60">Full Representation</strong>.
                 </p>
               </div>
               <Link

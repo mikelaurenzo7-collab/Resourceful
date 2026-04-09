@@ -47,10 +47,12 @@ export default function Hero() {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const [address, setAddress] = useState<ParsedAddress | null>(null);
   const [valuation, setValuation] = useState<ValuationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [hasResult, setHasResult] = useState(false);
+  const [lookupFailed, setLookupFailed] = useState(false);
 
   // Static fallback values
   const staticValues = { assessed: 320000, market: 265000, overpayment: 1180 };
@@ -69,6 +71,7 @@ export default function Hero() {
 
   const fetchValuation = useCallback(async (addr: ParsedAddress) => {
     setLoading(true);
+    setLookupFailed(false);
     try {
       const res = await fetch('/api/valuation', {
         method: 'POST',
@@ -92,6 +95,7 @@ export default function Hero() {
       setHasResult(true);
     } catch {
       setHasResult(false);
+      setLookupFailed(true);
     } finally {
       setLoading(false);
     }
@@ -144,8 +148,26 @@ export default function Hero() {
     setQuery(s.formattedAddress);
     setShowSuggestions(false);
     setSuggestions([]);
+    setActiveIndex(-1);
     setAddress(parsed);
     fetchValuation(parsed);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev + 1) % suggestions.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
+    } else if (e.key === 'Enter' && activeIndex >= 0) {
+      e.preventDefault();
+      handleSelect(suggestions[activeIndex]);
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      setActiveIndex(-1);
+    }
   };
 
   return (
@@ -209,14 +231,16 @@ export default function Hero() {
                 ref={inputRef}
                 type="text"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => { setQuery(e.target.value); setActiveIndex(-1); }}
                 onFocus={() => { if (suggestions.length) setShowSuggestions(true); }}
+                onKeyDown={handleKeyDown}
                 placeholder="Enter your property address..."
                 className="w-full bg-navy-light/50 border border-cream/[0.08] rounded-xl pl-12 pr-4 py-4 text-cream placeholder:text-cream/25 focus:border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold/20 focus:bg-navy-light/70 transition-all text-base"
                 autoComplete="off"
                 role="combobox"
                 aria-expanded={showSuggestions && suggestions.length > 0}
                 aria-autocomplete="list"
+                aria-activedescendant={activeIndex >= 0 ? `hero-suggestion-${activeIndex}` : undefined}
               />
               {/* Autocomplete dropdown */}
               {showSuggestions && suggestions.length > 0 && (
@@ -224,10 +248,15 @@ export default function Hero() {
                   {suggestions.map((s, i) => (
                     <li key={i}>
                       <button
+                        id={`hero-suggestion-${i}`}
                         type="button"
-                        className="w-full text-left px-4 py-3 text-sm text-cream hover:bg-gold/10 transition-colors border-b border-gold/5 last:border-0"
+                        className={`w-full text-left px-4 py-3 text-sm text-cream transition-colors border-b border-gold/5 last:border-0 ${
+                          i === activeIndex ? 'bg-gold/15' : 'hover:bg-gold/10'
+                        }`}
                         onMouseDown={() => handleSelect(s)}
+                        onMouseEnter={() => setActiveIndex(i)}
                         role="option"
+                        aria-selected={i === activeIndex}
                       >
                         {s.formattedAddress}
                       </button>
@@ -286,6 +315,11 @@ export default function Hero() {
               </div>
             </div>
           </div>
+          {lookupFailed && address && (
+            <p className="mt-3 text-xs text-cream/30 text-center animate-fade-in">
+              We&apos;ll look up your exact numbers during report generation
+            </p>
+          )}
 
           {/* CTA */}
           <div className="mt-10 animate-fade-in" style={{ animationDelay: '0.9s' }}>

@@ -176,7 +176,7 @@ function SuccessContent() {
                   <p className="text-xs text-cream/40 mt-1 leading-relaxed">{item.desc}</p>
                 </div>
                 {i < 2 && (
-                  <div className="absolute ml-3 mt-8 w-px h-5 bg-gold/10 hidden" />
+                  <div className="absolute ml-3 mt-8 w-px h-5 bg-gold/10" />
                 )}
               </div>
             ))}
@@ -226,7 +226,7 @@ function SuccessContent() {
                 }`}
               >
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full transition-all ${
-                  emailPref ? 'left-5.5 bg-gold' : 'left-0.5 bg-cream/30'
+                  emailPref ? 'bg-gold' : 'bg-cream/30'
                 }`} style={{ left: emailPref ? '22px' : '2px' }} />
               </button>
             </div>

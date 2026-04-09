@@ -719,7 +719,7 @@ export default function PaymentPage() {
           )}
 
           <div className="flex gap-4">
-            <Button variant="secondary" size="lg" onClick={() => router.push('/start/photos')}>
+            <Button variant="secondary" size="lg" onClick={() => router.push('/start/situation')}>
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
               </svg>
@@ -758,7 +758,7 @@ export default function PaymentPage() {
     <main className="max-w-2xl mx-auto px-6 py-12">
       <div className="text-center mb-10 animate-fade-in">
         <span className="inline-block text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase mb-3">
-          Final Step — Payment
+          Step 4 — Payment
         </span>
         <h1 className="font-display text-3xl text-cream mb-3">Complete Your Order</h1>
         <p className="text-cream/50">
