@@ -64,10 +64,16 @@ export async function GET(
   }
 }
 
+const VALID_FILING_STATUSES = ['not_started', 'ready_to_file', 'guided_ready', 'filed', 'hearing_scheduled', 'decision_pending', 'closed'] as const;
+const VALID_FILING_METHODS = ['online', 'email', 'mail', 'in_person'] as const;
+
 /**
  * PATCH /api/reports/[id]
- * Update user-editable report fields. Currently supports:
+ * Update user-editable report fields. Supports:
  * - email_delivery_preference (boolean)
+ * - filing_status (string — user-settable post-delivery values: filed, hearing_scheduled, decision_pending, closed)
+ * - filed_at (ISO date string or null)
+ * - filing_method ('online' | 'email' | 'mail' | 'in_person' | null)
  */
 export async function PATCH(
   request: NextRequest,
@@ -91,15 +97,44 @@ export async function PATCH(
     }
 
     const body = await request.json();
-
-    // Only allow updating specific fields
-    const allowedFields: (keyof Report)[] = ['email_delivery_preference'];
     const updates: Record<string, unknown> = {};
 
-    for (const field of allowedFields) {
-      if (field in body) {
-        updates[field] = body[field];
+    // email_delivery_preference: boolean
+    if ('email_delivery_preference' in body) {
+      if (typeof body.email_delivery_preference !== 'boolean') {
+        return NextResponse.json({ error: 'email_delivery_preference must be a boolean' }, { status: 400 });
       }
+      updates.email_delivery_preference = body.email_delivery_preference;
+    }
+
+    // filing_status: validated enum
+    if ('filing_status' in body) {
+      if (!VALID_FILING_STATUSES.includes(body.filing_status)) {
+        return NextResponse.json(
+          { error: `Invalid filing_status. Must be one of: ${VALID_FILING_STATUSES.join(', ')}` },
+          { status: 400 }
+        );
+      }
+      updates.filing_status = body.filing_status;
+    }
+
+    // filed_at: ISO date string or null
+    if ('filed_at' in body) {
+      if (body.filed_at !== null && (typeof body.filed_at !== 'string' || isNaN(Date.parse(body.filed_at)))) {
+        return NextResponse.json({ error: 'filed_at must be a valid ISO date string or null' }, { status: 400 });
+      }
+      updates.filed_at = body.filed_at;
+    }
+
+    // filing_method: validated enum or null
+    if ('filing_method' in body) {
+      if (body.filing_method !== null && !VALID_FILING_METHODS.includes(body.filing_method)) {
+        return NextResponse.json(
+          { error: `Invalid filing_method. Must be one of: ${VALID_FILING_METHODS.join(', ')}` },
+          { status: 400 }
+        );
+      }
+      updates.filing_method = body.filing_method;
     }
 
     if (Object.keys(updates).length === 0) {
