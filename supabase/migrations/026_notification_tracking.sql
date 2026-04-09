@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration 022: Notification Delivery Tracking + Retry Support
+-- Migration 026: Notification Delivery Tracking + Retry Support
 -- ============================================================================
 -- Tracks whether the delivery notification email was successfully sent.
 -- Enables a retry cron to catch failed sends — currently, if the email 

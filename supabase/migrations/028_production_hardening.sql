@@ -1,4 +1,4 @@
--- ─── Migration 022: Production Hardening ─────────────────────────────────────
+-- ─── Migration 028: Production Hardening ─────────────────────────────────────
 -- Fixes identified during production readiness audit:
 -- 1. Composite index for dashboard queries (client_email, status)
 -- 2. Composite index for calibration params lookups

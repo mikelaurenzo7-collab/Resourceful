@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration 021: Performance Indexes
+-- Migration 022: Performance Indexes
 -- ============================================================================
 -- Adds indexes for common query patterns identified during audit.
 

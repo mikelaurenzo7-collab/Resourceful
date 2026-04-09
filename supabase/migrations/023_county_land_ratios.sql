@@ -1,4 +1,4 @@
--- Migration 021: Per-county land ratio overrides
+-- Migration 023: Per-county land ratio overrides
 -- The global LAND_RATIO_BY_SUBTYPE constants in valuation.ts are national
 -- medians and are wrong for high-density urban markets. Dense urban counties
 -- (e.g. Cook County IL) typically have land at 40-60% of total value vs the

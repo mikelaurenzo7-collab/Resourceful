@@ -32,6 +32,9 @@
     },
     "src/app/api/admin/reports/[id]/regenerate/route.ts": {
       "maxDuration": 120
+    },
+    "src/app/api/cron/stale-pipeline/route.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
@@ -58,6 +61,10 @@
     {
       "path": "/api/cron/cart-recovery",
       "schedule": "30 * * * *"
+    },
+    {
+      "path": "/api/cron/stale-pipeline",
+      "schedule": "15 * * * *"
     }
   ]
 }

@@ -27,7 +27,6 @@ import {
 
 import {
   getParcelByAddress,
-  type RegridParcelData,
 } from './regrid';
 
 import {

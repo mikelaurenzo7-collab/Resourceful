@@ -7,6 +7,10 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
+  /* Font families — loaded via <link> in layout.tsx, with system fallbacks */
+  --font-inter: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-playfair: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  /* Brand colors */
   --navy: #1a2744;
   --navy-deep: #0f1419;
   --navy-light: #1e3055;

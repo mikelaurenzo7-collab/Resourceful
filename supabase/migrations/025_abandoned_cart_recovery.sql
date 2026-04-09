@@ -1,4 +1,4 @@
--- ─── Migration 021: Abandoned Cart Recovery ──────────────────────────────────
+-- ─── Migration 025: Abandoned Cart Recovery ──────────────────────────────────
 -- Adds a column to track when recovery emails were sent for abandoned carts.
 -- Reports with status='intake' and a stripe_payment_intent_id represent users
 -- who started checkout but never completed payment — the recovery target.
