@@ -13,6 +13,7 @@ import type { Database, Report, PropertyData } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { sendReportReadyNotification } from '@/lib/services/resend-email';
 import { subscribeToReminders } from '@/lib/services/reminder-service';
+import { pipelineLogger } from '@/lib/logger';
 
 // ─── Public API ─────────────────────────────────────────────────────────────
 
@@ -93,7 +94,7 @@ export async function runDelivery(
   try {
     await subscribeToReminders(reportId);
   } catch (err) {
-    console.warn(`[stage8] Failed to subscribe to reminders:`, err);
+    pipelineLogger.warn({ err: err }, `Failed to subscribe to reminders`);
   }
 
   // ── Send email notification (if user opted in) ────────────────────────
@@ -131,7 +132,7 @@ export async function runDelivery(
       }
     }
 
-    console.log(`[stage8] Sending report-ready notification to ${clientEmail}`);
+    pipelineLogger.info(`[stage8] Sending report-ready notification to ${clientEmail}`);
     const emailResult = await sendReportReadyNotification({
       to: clientEmail,
       reportId,
@@ -146,7 +147,7 @@ export async function runDelivery(
       // Dashboard-first: report is already delivered and accessible.
       // Email failure is non-fatal — log it but don't roll back.
       // The notification-retry cron will pick this up (notification_sent_at stays null).
-      console.error(
+      pipelineLogger.error(
         `[stage8] Notification email failed for report ${reportId} (report still delivered via dashboard): ${emailResult.error}`
       );
     } else {
@@ -155,12 +156,12 @@ export async function runDelivery(
         .from('reports')
         .update({ notification_sent_at: new Date().toISOString() } as Record<string, unknown>)
         .eq('id', reportId);
-      console.log(
+      pipelineLogger.info(
         `[stage8] Report ${reportId} delivered. Notification sent to ${clientEmail}. Email ID: ${emailResult.data?.id}`
       );
     }
   } else {
-    console.log(`[stage8] Report ${reportId} delivered (email notification opted out by user)`);
+    pipelineLogger.info(`[stage8] Report ${reportId} delivered (email notification opted out by user)`);
   }
 
   return { success: true };

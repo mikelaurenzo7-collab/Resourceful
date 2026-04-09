@@ -31,6 +31,7 @@ import {
   RESIDENTIAL_SUBTYPES_FOR_ROOM_ADJ,
 } from '@/config/valuation';
 import { getCalibrationParams, type CalibrationMultipliers } from '@/lib/repository/calibration';
+import { pipelineLogger } from '@/lib/logger';
 
 // ─── Search Tiers by Property Type ──────────────────────────────────────────
 
@@ -328,7 +329,7 @@ export async function runComparables(
   // ── Load calibration params (learned from blind-test feedback) ────────
   const cal = await getCalibrationParams(supabase, propertyType, report.county_fips ?? null);
   if (cal.sample_count > 0) {
-    console.log(`[stage2] Using calibration params (n=${cal.sample_count}) for ${propertyType}/${report.county_fips}`);
+    pipelineLogger.info(`[stage2] Using calibration params (n=${cal.sample_count}) for ${propertyType}/${report.county_fips}`);
   }
 
   // Apply sqft correction factor from calibration (e.g. 1.04 means ATTOM overreports by 4%)
@@ -380,7 +381,7 @@ export async function runComparables(
 
     // Stop expanding if we have enough comps
     if (allComps.length >= MIN_COMPS) {
-      console.log(
+      pipelineLogger.info(
         `[stage2] Found ${allComps.length} comps at ${tier.radiusMiles}mi / ${tier.monthsBack}mo`
       );
       break;
@@ -393,7 +394,7 @@ export async function runComparables(
   // where the local market has few sales of similar size but many that are
   // nearby and otherwise comparable (e.g. mixed condo sizes in a building).
   if (allComps.length === 0 && sqftKnown) {
-    console.warn(`[stage2] All sqft-filtered tiers returned 0 comps — retrying without size constraint`);
+    pipelineLogger.warn(`[stage2] All sqft-filtered tiers returned 0 comps — retrying without size constraint`);
     const noSizeResult = await getSalesComparables({
       latitude,
       longitude,
@@ -405,7 +406,7 @@ export async function runComparables(
     });
     if (noSizeResult.data && noSizeResult.data.length > 0) {
       allComps = noSizeResult.data;
-      console.log(`[stage2] No-size fallback found ${allComps.length} comps`);
+      pipelineLogger.info(`[stage2] No-size fallback found ${allComps.length} comps`);
     }
   }
 
@@ -447,14 +448,14 @@ export async function runComparables(
           },
         })
         .eq('report_id', reportId);
-      console.log(
+      pipelineLogger.info(
         `[stage2] Equity snapshot stored: ${equityResult.data.neighborCount} neighbors, ` +
         `subject=$${equityResult.data.subjectAssessedPerSqft}/sqft, ` +
         `median=$${equityResult.data.medianNeighborAssessedPerSqft}/sqft, ` +
         `ratio=${equityResult.data.equityRatioPct}%`
       );
     } else {
-      console.log(`[stage2] No equity snapshot data (${equityResult.error ?? 'empty response'})`);
+      pipelineLogger.info(`[stage2] No equity snapshot data (${equityResult.error ?? 'empty response'})`);
     }
   }
 
@@ -463,7 +464,7 @@ export async function runComparables(
     // ATTOM found nothing — try Serper + Claude to locate comps from real
     // estate portals (Redfin, Zillow, county records). Returns [] gracefully
     // if SERPER_API_KEY is absent or no results are found.
-    console.log(`[stage2] ATTOM returned 0 comps — attempting web search fallback for ${reportId}`);
+    pipelineLogger.info(`[stage2] ATTOM returned 0 comps — attempting web search fallback for ${reportId}`);
     const webComps = await findCompsViaWeb({
       address: report.property_address,
       city: report.city ?? '',
@@ -474,10 +475,10 @@ export async function runComparables(
 
     if (webComps.length > 0) {
       allComps = webComps;
-      console.log(`[stage2] Web fallback found ${webComps.length} comps — resuming adjustment pipeline`);
+      pipelineLogger.info(`[stage2] Web fallback found ${webComps.length} comps — resuming adjustment pipeline`);
     } else {
       // Still 0 comps — graceful degradation: equity + cost approach will carry Stage 5.
-      console.warn(
+      pipelineLogger.warn(
         `[stage2] No comparable sales from ATTOM or web search for report ${reportId}. ` +
         `Pipeline will continue with equity, cost, and/or income approach if available.`
       );
@@ -590,7 +591,7 @@ export async function runComparables(
 
   const weakCount = compInserts.filter((c) => c.is_weak_comparable).length;
 
-  console.log(
+  pipelineLogger.info(
     `[stage2] Wrote ${compInserts.length} comps (${weakCount} flagged as weak) for report ${reportId}`
   );
 

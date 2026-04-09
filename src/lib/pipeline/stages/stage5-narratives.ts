@@ -28,6 +28,7 @@ import { getCalibrationParams } from '@/lib/repository/calibration';
 import { getDeedHistory } from '@/lib/services/attom';
 import { findSubjectPriorSaleViaWeb, estimateValueViaAI } from '@/lib/services/web-comps';
 import { researchMarketData } from '@/lib/services/web-market-data';
+import { pipelineLogger } from '@/lib/logger';
 // Attorney referral system removed — all filing handled in-house or guided pro se.
 
 // Assumed annual appreciation rate for prior-sale extrapolation (conservative FHFA long-run average).
@@ -310,7 +311,7 @@ export async function runNarratives(
       ? marketDataForCost.appreciationPctAnnual / 100
       : PRIOR_SALE_ANNUAL_APPRECIATION;
     if (marketDataForCost.appreciationPctAnnual != null) {
-      console.log(`[stage5] Using web-researched appreciation: ${marketDataForCost.appreciationPctAnnual}%/yr (${marketDataForCost.appreciationSource})`);
+      pipelineLogger.info(`[stage5] Using web-researched appreciation: ${marketDataForCost.appreciationPctAnnual}%/yr (${marketDataForCost.appreciationSource})`);
     }
 
     let landValue = propertyData.land_value ?? null;
@@ -330,7 +331,7 @@ export async function runNarratives(
       if (base > 0) {
         landValue = Math.round(base * ratio);
         landValueEstimated = true;
-        console.warn(
+        pipelineLogger.warn(
           `[stage5] land_value missing — estimating as $${landValue.toLocaleString()} ` +
           `(${(ratio * 100).toFixed(0)}% of market-implied $${base.toLocaleString()} [assessed $${assessedBase.toLocaleString()} / ratio ${assessmentRatio ?? 1.0}] per IAAO ${subtype} ratio)`
         );
@@ -363,7 +364,7 @@ export async function runNarratives(
         .sort((a, b) => new Date(b.recordingDate).getTime() - new Date(a.recordingDate).getTime());
       if (armLengthSales.length === 0) {
         // ATTOM has no sale history either — try web search as absolute last resort
-        console.warn('[stage5] ATTOM deed history empty — trying web search for subject prior sale');
+        pipelineLogger.warn('[stage5] ATTOM deed history empty — trying web search for subject prior sale');
         const webSale = await findSubjectPriorSaleViaWeb(
           report.property_address ?? '',
           report.city ?? '',
@@ -374,7 +375,7 @@ export async function runNarratives(
           const priorSaleExtrapolated = Math.round(
             webSale.salePrice * Math.pow(1 + appreciationRate, yearsElapsed) / 1000
           ) * 1000;
-          console.warn(
+          pipelineLogger.warn(
             `[stage5] Web sale found: $${webSale.salePrice.toLocaleString()} on ${webSale.saleDate} ` +
             `→ extrapolated $${priorSaleExtrapolated.toLocaleString()} (source: ${webSale.source})`
           );
@@ -383,7 +384,7 @@ export async function runNarratives(
           (propertyData as Record<string, unknown>)['_priorSalePrice'] = webSale.salePrice;
         } else {
           // Absolute last resort: Claude knows neighborhood values from training data
-          console.warn('[stage5] Web prior sale search returned nothing — falling back to AI knowledge-based estimate');
+          pipelineLogger.warn('[stage5] Web prior sale search returned nothing — falling back to AI knowledge-based estimate');
           const aiEst = await estimateValueViaAI(
             report.property_address ?? '',
             report.city ?? '',
@@ -412,7 +413,7 @@ export async function runNarratives(
         const priorSaleExtrapolated = Math.round(
           lastSale.salePrice! * Math.pow(1 + appreciationRate, yearsElapsed) / 1000
         ) * 1000;
-        console.warn(
+        pipelineLogger.warn(
           `[stage5] 0 comps, no income, cost approach unusable — extrapolating from prior sale ` +
           `($${lastSale.salePrice!.toLocaleString()} on ${lastSale.recordingDate}, ` +
           `${yearsElapsed.toFixed(1)} yrs @ ${(appreciationRate * 100).toFixed(1)}%/yr → $${priorSaleExtrapolated.toLocaleString()})`
@@ -423,7 +424,7 @@ export async function runNarratives(
         (propertyData as Record<string, unknown>)['_priorSalePrice'] = lastSale.salePrice;
       }
     } else {
-      console.warn(
+      pipelineLogger.warn(
         `[stage5] 0 comps and no income data — falling back to cost approach only ` +
         `($${costApproachValue.toLocaleString()})${landValueEstimated ? ' [land value estimated]' : ''}`
       );
@@ -437,11 +438,11 @@ export async function runNarratives(
   } else if (incomeData?.concluded_value_income_approach) {
     // No comps but income approach available — use income as primary
     concludedValue = incomeData.concluded_value_income_approach;
-    console.warn(`[stage5] 0 comps — using income approach as primary value: $${concludedValue.toLocaleString()}`);
+    pipelineLogger.warn(`[stage5] 0 comps — using income approach as primary value: $${concludedValue.toLocaleString()}`);
   } else if (_priorSaleExtrapolated) {
     // Prior sale extrapolated to current market (last resort)
     concludedValue = _priorSaleExtrapolated;
-    console.warn(`[stage5] using prior-sale extrapolated value as concluded value: $${concludedValue.toLocaleString()}`);
+    pipelineLogger.warn(`[stage5] using prior-sale extrapolated value as concluded value: $${concludedValue.toLocaleString()}`);
   } else {
     // Cost approach only (validated above)
     // Re-run with the same estimated land value logic used in the guard above.
@@ -474,7 +475,7 @@ export async function runNarratives(
         error: 'Cost approach returned invalid value — insufficient data for valuation',
       };
     }
-    console.warn(`[stage5] 0 comps, no income — using cost approach as primary value: $${concludedValue.toLocaleString()}`);
+    pipelineLogger.warn(`[stage5] 0 comps, no income — using cost approach as primary value: $${concludedValue.toLocaleString()}`);
   }
 
   // Guard: concludedValue must be positive
@@ -580,7 +581,7 @@ export async function runNarratives(
     const biasFactor = 1 - (cal.value_bias_pct / 100);
     concludedValue = Math.round((concludedValue * biasFactor) / 1000) * 1000;
     concludedValueWithoutPhotos = Math.round((concludedValueWithoutPhotos * biasFactor) / 1000) * 1000;
-    console.log(`[stage5] Applied calibration bias correction of ${cal.value_bias_pct}% (n=${cal.sample_count})`);
+    pipelineLogger.info(`[stage5] Applied calibration bias correction of ${cal.value_bias_pct}% (n=${cal.sample_count})`);
   }
 
   // ── Photo value attribution ────────────────────────────────────────────
@@ -619,11 +620,11 @@ export async function runNarratives(
     .eq('report_id', reportId);
 
   if (attrUpdateError) {
-    console.warn(`[stage5] Failed to store photo attribution: ${attrUpdateError.message}`);
+    pipelineLogger.warn(`[stage5] Failed to store photo attribution: ${attrUpdateError.message}`);
   }
 
   if (photoAnalyses.length > 0) {
-    console.log(
+    pipelineLogger.info(
       `[stage5] Photo value attribution: $${concludedValueWithoutPhotos.toLocaleString()} (market only) → $${concludedValue.toLocaleString()} (with photos) = $${photoImpactDollars.toLocaleString()} impact (${photoImpactPct}%), ${totalDefects} defects (${significantDefects} significant), condition adj: ${photoConditionAdjustmentPct}%`
     );
   }
@@ -689,10 +690,10 @@ export async function runNarratives(
     .eq('id', reportId);
 
   if (reportIntelError) {
-    console.warn(`[stage5] Failed to store case intelligence: ${reportIntelError.message}`);
+    pipelineLogger.warn(`[stage5] Failed to store case intelligence: ${reportIntelError.message}`);
   }
 
-  console.log(
+  pipelineLogger.info(
     `[stage5] Case intelligence: strength=${strengthScore}/100, ` +
     `value_at_stake=$${overassessmentDollars.toLocaleString()}, ` +
     `is_underassessed=${isUnderassessed}${isUnderassessed ? ` (${underassessmentPct}% under)` : ''}`
@@ -850,9 +851,9 @@ export async function runNarratives(
       .eq('report_id', reportId);
 
     if (costUpdateError) {
-      console.warn(`[stage5] Failed to persist cost approach: ${costUpdateError.message}`);
+      pipelineLogger.warn(`[stage5] Failed to persist cost approach: ${costUpdateError.message}`);
     } else {
-      console.log(
+      pipelineLogger.info(
         `[stage5] Cost approach: RCN=$${costApproachRcn?.toLocaleString()}, ` +
         `value=$${costApproachValue?.toLocaleString()}, ` +
         `functional obsolescence=${functionalObsolescencePct}%`
@@ -896,7 +897,7 @@ export async function runNarratives(
     distressedCompCount,
   };
 
-  console.log(
+  pipelineLogger.info(
     `[stage5] Overvaluation analysis: ${overvaluationPct != null ? `${overvaluationPct > 0 ? '+' : ''}${overvaluationPct}% vs comps` : 'N/A'}, ` +
     `ratio mismatch: ${assessmentRatioMismatch}, exceeds ATTOM: ${assessedExceedsAttomRange}, ` +
     `market trend: ${marketTrendPct != null ? `${marketTrendPct}%` : 'N/A'}, anomalies: ${dataAnomalies.length}`
@@ -983,9 +984,9 @@ export async function runNarratives(
       });
 
     if (formError) {
-      console.warn(`[stage5] Form prefill storage failed (non-fatal): ${formError.message}`);
+      pipelineLogger.warn(`[stage5] Form prefill storage failed (non-fatal): ${formError.message}`);
     } else {
-      console.log(`[stage5] Form prefill ready: ${submissionMethod} filing${countyRule.portal_url ? ` via ${countyRule.portal_url}` : ''}`);
+      pipelineLogger.info(`[stage5] Form prefill ready: ${submissionMethod} filing${countyRule.portal_url ? ` via ${countyRule.portal_url}` : ''}`);
     }
   }
 
@@ -1158,22 +1159,22 @@ export async function runNarratives(
       recentChanges: research.recentChanges,
       sources: research.sources,
     };
-    console.log(`[stage5] Research complete: ${research.searchesPerformed} searches, ${research.sources.length} sources`);
+    pipelineLogger.info(`[stage5] Research complete: ${research.searchesPerformed} searches, ${research.sources.length} sources`);
   } else if (researchResult.status === 'rejected') {
-    console.warn(`[stage5] Research agent failed (non-fatal): ${researchResult.reason}`);
+    pipelineLogger.warn(`[stage5] Research agent failed (non-fatal): ${researchResult.reason}`);
   }
 
   // Process detractor result
   if (detractorResult.status === 'fulfilled' && detractorResult.value) {
     detractorAnalysis = detractorResult.value;
     if (detractorAnalysis.detractors.length > 0) {
-      console.log(
+      pipelineLogger.info(
         `[stage5] Value detractors found: ${detractorAnalysis.detractors.length} factors, ` +
         `aggregate impact: ${detractorAnalysis.totalEstimatedImpactPct}%`
       );
     }
   } else if (detractorResult.status === 'rejected') {
-    console.warn(`[stage5] Value detractor detection failed (non-fatal): ${detractorResult.reason}`);
+    pipelineLogger.warn(`[stage5] Value detractor detection failed (non-fatal): ${detractorResult.reason}`);
   }
 
   payload.researchIntelligence = researchIntelligence;
@@ -1212,7 +1213,7 @@ export async function runNarratives(
           distanceMiles: n.distanceMiles as number | null,
         })) ?? [],
     };
-    console.log(
+    pipelineLogger.info(
       `[stage5] Equity data injected into payload: ` +
       `${equitySnap.neighborCount} neighbors, ratio=${equitySnap.equityRatioPct}%`
     );
@@ -1234,7 +1235,7 @@ export async function runNarratives(
   }
 
   // ── Call Anthropic to generate narratives ──────────────────────────────
-  console.log(`[stage5] Generating narratives for report ${reportId}...`);
+  pipelineLogger.info(`[stage5] Generating narratives for report ${reportId}...`);
   const narrativeResult = await generateNarratives(payload);
 
   if (narrativeResult.error || !narrativeResult.data) {
@@ -1280,7 +1281,7 @@ export async function runNarratives(
     };
   }
 
-  console.log(
+  pipelineLogger.info(
     `[stage5] Generated ${sections.length} narrative sections in ${generation_duration_ms}ms. Concluded value: $${concludedValue}`
   );
 

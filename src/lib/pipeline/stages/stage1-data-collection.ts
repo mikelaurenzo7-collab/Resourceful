@@ -27,6 +27,7 @@ import {
   computePhysicalDepreciation,
   ECONOMIC_LIFE,
 } from '@/config/valuation';
+import { pipelineLogger } from '@/lib/logger';
 
 // ─── FEMA Flood Zone API ────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ async function queryFemaFloodZone(lat: number, lng: number): Promise<FemaFloodRe
     const response = await fetch(url.toString(), { signal: controller.signal });
     clearTimeout(timeoutId);
     if (!response.ok) {
-      console.warn(`[stage1] FEMA API returned ${response.status}`);
+      pipelineLogger.warn(`[stage1] FEMA API returned ${response.status}`);
       return { floodZone: null, panelNumber: null };
     }
 
@@ -63,7 +64,7 @@ async function queryFemaFloodZone(lat: number, lng: number): Promise<FemaFloodRe
       panelNumber: feature?.FIRM_PAN ?? null,
     };
   } catch (err) {
-    console.warn(`[stage1] FEMA flood zone query failed: ${err}`);
+    pipelineLogger.warn(`[stage1] FEMA flood zone query failed: ${err}`);
     return { floodZone: null, panelNumber: null };
   }
 }
@@ -179,7 +180,7 @@ export async function runDataCollection(
     if (!hasTaxBill) {
       return { success: false, error: `Property data collection failed: ${dataResult.error}` };
     }
-    console.warn(
+    pipelineLogger.warn(
       `[stage1] Data collection failed but tax bill data available — continuing with partial data`
     );
   }
@@ -228,7 +229,7 @@ export async function runDataCollection(
   const resolvedCountyName = collected?.countyName || geo.county || report.county;
   const resolvedState = geo.state || report.state;
 
-  console.log(
+  pipelineLogger.info(
     `[stage1] County resolution: fips=${resolvedFips}, county="${resolvedCountyName}", state=${resolvedState} ` +
     `(sources: collected_fips=${collectedFips}, user_fips=${report.county_fips}, geocode_county=${geo.county})`
   );
@@ -241,19 +242,19 @@ export async function runDataCollection(
   // the county's appeal process using web search + AI. The enriched data persists
   // so subsequent reports get it instantly.
   if (countyRule && needsEnrichment(countyRule)) {
-    console.log(`[stage1] County ${countyRule.county_name} needs enrichment — auto-researching...`);
+    pipelineLogger.info(`[stage1] County ${countyRule.county_name} needs enrichment — auto-researching...`);
     const enrichResult = await enrichCounty(countyRule, supabase as never);
     if (enrichResult.enriched) {
       // Re-fetch the enriched county rule
       countyRule = await findCountyRule(supabase, resolvedFips, resolvedCountyName, resolvedState);
-      console.log(`[stage1] County enriched: ${enrichResult.fieldsUpdated.join(', ')}`);
+      pipelineLogger.info(`[stage1] County enriched: ${enrichResult.fieldsUpdated.join(', ')}`);
     }
   } else if (countyRule?.last_verified_date) {
     // ── 180-day stale data check — re-enrich if data is older than 6 months ──
     const lastVerified = new Date(countyRule.last_verified_date);
     const daysSinceVerified = Math.floor((Date.now() - lastVerified.getTime()) / (1000 * 60 * 60 * 24));
     if (daysSinceVerified > 180) {
-      console.log(`[stage1] County ${countyRule.county_name} data is ${daysSinceVerified} days old — re-enriching...`);
+      pipelineLogger.info(`[stage1] County ${countyRule.county_name} data is ${daysSinceVerified} days old — re-enriching...`);
       // Force re-enrichment by temporarily clearing pro_se_tips (triggers needsEnrichment)
       const enrichResult = await enrichCounty(
         { ...countyRule, pro_se_tips: null } as typeof countyRule,
@@ -261,7 +262,7 @@ export async function runDataCollection(
       );
       if (enrichResult.enriched) {
         countyRule = await findCountyRule(supabase, resolvedFips, resolvedCountyName, resolvedState);
-        console.log(`[stage1] County re-enriched after ${daysSinceVerified} days: ${enrichResult.fieldsUpdated.join(', ')}`);
+        pipelineLogger.info(`[stage1] County re-enriched after ${daysSinceVerified} days: ${enrichResult.fieldsUpdated.join(', ')}`);
       }
     }
   }
@@ -451,7 +452,7 @@ export async function runDataCollection(
     }
   }
 
-  console.log(
+  pipelineLogger.info(
     `[stage1] Data collection complete for report ${reportId}. ` +
     `County: ${countyRule?.county_name ?? resolvedCountyName ?? 'unknown'} (${resolvedFips ?? 'no FIPS'}). ` +
     `Subtype: ${propertySubtype}, effective age: ${baselineEffectiveAge}yr, depreciation: ${baselineDepreciationPct}%. ` +

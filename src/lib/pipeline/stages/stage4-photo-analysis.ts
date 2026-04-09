@@ -18,6 +18,7 @@ import {
   CONDITION_COMPLETENESS_MULTIPLIER,
 } from '@/config/valuation';
 import { buildPhotoIntelligenceContext } from '@/lib/services/photo-intelligence';
+import { pipelineLogger } from '@/lib/logger';
 
 // ─── Photo Analysis System Prompts by Service Type ──────────────────────────
 
@@ -195,7 +196,7 @@ export async function runPhotoAnalysis(
   const photos = (photosData ?? []) as Photo[];
 
   if (photos.length === 0) {
-    console.log('[stage4] No photos found for this report. Skipping photo analysis.');
+    pipelineLogger.info('[stage4] No photos found for this report. Skipping photo analysis.');
     return { success: true };
   }
 
@@ -210,14 +211,14 @@ export async function runPhotoAnalysis(
   // "Complete package" = all required types + descriptions on at least half of photos
   const hasCompletePackage = hasAllRequiredTypes && descriptionCoverage >= 0.5;
 
-  console.log(
+  pipelineLogger.info(
     `[stage4] Photo package: ${photos.length} photos, ` +
     `required types covered: ${hasAllRequiredTypes}, ` +
     `description coverage: ${Math.round(descriptionCoverage * 100)}%, ` +
     `complete package: ${hasCompletePackage}`
   );
 
-  console.log(`[stage4] Analyzing ${photos.length} photos for report ${reportId}`);
+  pipelineLogger.info(`[stage4] Analyzing ${photos.length} photos for report ${reportId}`);
 
   // ── Analyze photos in parallel batches of 3 ──────────────────────────
   const conditionRatings: string[] = [];
@@ -242,7 +243,7 @@ export async function runPhotoAnalysis(
         }
 
         if (!imageUrl) {
-          console.warn(`[stage4] No URL available for photo ${photo.id}, skipping`);
+          pipelineLogger.warn(`[stage4] No URL available for photo ${photo.id}, skipping`);
           return null;
         }
 
@@ -259,7 +260,7 @@ export async function runPhotoAnalysis(
         const result = await analyzePhoto(imageUrl, fullPrompt, userContext);
 
         if (result.error || !result.data) {
-          console.warn(`[stage4] Photo analysis failed for ${photo.id}: ${result.error}`);
+          pipelineLogger.warn(`[stage4] Photo analysis failed for ${photo.id}: ${result.error}`);
           return null;
         }
 
@@ -279,10 +280,10 @@ export async function runPhotoAnalysis(
           .eq('id', photo.id);
 
         if (photoUpdateError) {
-          console.warn(`[stage4] Failed to update photo ${photo.id}: ${photoUpdateError.message}`);
+          pipelineLogger.warn(`[stage4] Failed to update photo ${photo.id}: ${photoUpdateError.message}`);
         }
 
-        console.log(
+        pipelineLogger.info(
           `[stage4] Photo ${photo.id} (${photo.photo_type}): condition=${analysis.condition_rating}, defects=${analysis.defects.length}`
         );
 
@@ -301,7 +302,7 @@ export async function runPhotoAnalysis(
   // ── Compute overall condition ─────────────────────────────────────────
   const overallCondition = computeConditionMode(conditionRatings, serviceType);
 
-  console.log(
+  pipelineLogger.info(
     `[stage4] Overall condition: ${overallCondition} from ${conditionRatings.length} photos`
   );
 
@@ -331,9 +332,9 @@ export async function runPhotoAnalysis(
       .eq('report_id', reportId);
 
     if (ageUpdateError) {
-      console.warn(`[stage4] Failed to update effective age: ${ageUpdateError.message}`);
+      pipelineLogger.warn(`[stage4] Failed to update effective age: ${ageUpdateError.message}`);
     } else {
-      console.log(
+      pipelineLogger.info(
         `[stage4] Effective age updated: ${propertyDataForAge.year_built} built, ` +
         `condition="${overallCondition}" → effective_age=${photoAdjustedEffectiveAge}yr, ` +
         `depreciation=${updatedDepreciationPct}%, remaining_life=${updatedRemainingLife}yr`
@@ -377,7 +378,7 @@ export async function runPhotoAnalysis(
 
   const cappedAdjustment = Math.max(totalConditionAdjustment, -CONDITION_ADJ_MAX_PCT);
 
-  console.log(
+  pipelineLogger.info(
     `[stage4] Condition adjustment: ${cappedAdjustment}% ` +
     `(${allDefects.length} defects: ${defectBasedAdjustment}% × ${completenessMultiplier} completeness, ` +
     `base offset for "${overallCondition}": ${baseConditionOffset}%)`
@@ -422,11 +423,11 @@ export async function runPhotoAnalysis(
           .eq('id', comp.id);
 
         if (compUpdateError) {
-          console.warn(`[stage4] Failed to update comp ${comp.id}: ${compUpdateError.message}`);
+          pipelineLogger.warn(`[stage4] Failed to update comp ${comp.id}: ${compUpdateError.message}`);
         }
       }
 
-      console.log(
+      pipelineLogger.info(
         `[stage4] Applied ${cappedAdjustment}% condition adjustment to ${comps.length} comps`
       );
     }

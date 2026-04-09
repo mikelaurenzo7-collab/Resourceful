@@ -9,6 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getReportWithDetails } from '@/lib/repository/reports';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 export async function GET(
   _request: NextRequest,
@@ -57,7 +58,7 @@ export async function GET(
     return NextResponse.json({ report }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[api/reports/[id]] Unhandled error:', message);
+    apiLogger.error({ err: message }, '[api/reports/[id]] Unhandled error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -179,7 +180,7 @@ export async function PATCH(
       .eq('id', id);
 
     if (updateError) {
-      console.error(`[api/reports/[id]] PATCH error:`, updateError.message);
+      apiLogger.error({ err: updateError.message }, `[api/reports/[id]] PATCH error`);
       return NextResponse.json(
         { error: 'Failed to update report' },
         { status: 500 }
@@ -189,7 +190,7 @@ export async function PATCH(
     return NextResponse.json({ success: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[api/reports/[id]] PATCH unhandled error:', message);
+    apiLogger.error({ err: message }, '[api/reports/[id]] PATCH unhandled error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

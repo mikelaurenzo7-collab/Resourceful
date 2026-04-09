@@ -5,6 +5,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, PropertyType } from '@/types/database';
+import { logger } from '@/lib/logger';
 
 export interface CalibrationMultipliers {
   size_multiplier: number;
@@ -96,7 +97,7 @@ export async function getCalibrationParams(
 
     return NEUTRAL;
   } catch (err) {
-    console.warn(`[calibration] Failed to load params for ${propertyType}/${countyFips}: ${err instanceof Error ? err.message : err}`);
+    logger.warn({ err, propertyType, countyFips }, 'Failed to load calibration params');
     return NEUTRAL;
   }
 }

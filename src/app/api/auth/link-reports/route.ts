@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { authLogger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   // Rate limit: 10 link attempts per 15 minutes per IP
@@ -44,7 +45,7 @@ export async function POST(request: NextRequest) {
       .is('user_id', null);
 
     if (fetchError) {
-      console.error('[link-reports] Failed to find unlinked reports:', fetchError.message);
+      authLogger.error({ err: fetchError.message }, 'Failed to find unlinked reports');
       return NextResponse.json(
         { error: 'Failed to link reports' },
         { status: 500 }
@@ -64,21 +65,21 @@ export async function POST(request: NextRequest) {
       .is('user_id', null); // Safety: only claim unclaimed reports
 
     if (updateError) {
-      console.error('[link-reports] Failed to update reports:', updateError.message);
+      authLogger.error({ err: updateError.message }, 'Failed to update reports');
       return NextResponse.json(
         { error: 'Failed to link reports' },
         { status: 500 }
       );
     }
 
-    console.log(
+    authLogger.info(
       `[link-reports] Linked ${reportIds.length} reports to user ${user.id} (${user.email})`
     );
 
     return NextResponse.json({ linked: reportIds.length });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[link-reports] Unhandled error:', message);
+    authLogger.error({ err: message }, 'Unhandled error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

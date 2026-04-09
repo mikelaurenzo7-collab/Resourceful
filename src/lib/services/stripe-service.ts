@@ -2,6 +2,7 @@
 // Creates payment intents, verifies webhook signatures, and retrieves payments.
 
 import Stripe from 'stripe';
+import { apiLogger } from '@/lib/logger';
 
 // ─── Client ──────────────────────────────────────────────────────────────────
 
@@ -84,7 +85,7 @@ export async function createPaymentIntent(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[stripe] createPaymentIntent error: ${message}`);
+    apiLogger.error(`[stripe] createPaymentIntent error: ${message}`);
     return { data: null, error: `Stripe payment intent failed: ${message}` };
   }
 }
@@ -102,7 +103,7 @@ export function constructWebhookEvent(
     return { data: event, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[stripe] webhook verification failed: ${message}`);
+    apiLogger.error(`[stripe] webhook verification failed: ${message}`);
     return { data: null, error: `Webhook verification failed: ${message}` };
   }
 }
@@ -126,7 +127,7 @@ export async function getPaymentIntent(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[stripe] getPaymentIntent error: ${message}`);
+    apiLogger.error(`[stripe] getPaymentIntent error: ${message}`);
     return { data: null, error: `Stripe retrieve failed: ${message}` };
   }
 }

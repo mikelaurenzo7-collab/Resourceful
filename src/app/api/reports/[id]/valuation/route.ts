@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getPropertyDetail } from '@/lib/services/attom';
 import { getCountyByName } from '@/lib/repository/county-rules';
 import type { Report } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 export async function POST(
   _request: NextRequest,
@@ -140,7 +141,7 @@ export async function POST(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[api/reports/${reportId}/valuation] Error:`, message);
+    apiLogger.error({ err: message }, `[api/reports/${reportId}/valuation] Error`);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

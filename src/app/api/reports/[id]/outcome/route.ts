@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/server';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { createCalibrationEntry } from '@/lib/services/calibration';
 import type { Report, PropertyData } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 const VALID_OUTCOMES = ['won', 'lost', 'pending', 'withdrew', 'didnt_file'] as const;
 type AppealOutcome = typeof VALID_OUTCOMES[number];
@@ -154,7 +155,7 @@ export async function POST(
     .eq('id', reportId);
 
   if (updateError) {
-    console.error(`[outcome] Failed to update report ${reportId}:`, updateError.message);
+    apiLogger.error({ err: updateError.message }, `Failed to update report ${reportId}`);
     return NextResponse.json({ error: 'Failed to record outcome' }, { status: 500 });
   }
 
@@ -162,7 +163,7 @@ export async function POST(
   try {
     await createCalibrationEntry(reportId, adminSupabase);
   } catch (err) {
-    console.error(`[outcome] Calibration entry failed for ${reportId}:`, err);
+    apiLogger.error({ err: err }, `Calibration entry failed for ${reportId}`);
     // Don't fail the outcome recording if calibration fails
   }
 
@@ -222,11 +223,11 @@ export async function POST(
           .eq('county_fips', report.county_fips);
       }
     } catch (err) {
-      console.error(`[outcome] County stats update failed for ${report.county_fips}:`, err);
+      apiLogger.error({ err: err }, `County stats update failed for ${report.county_fips}`);
     }
   }
 
-  console.log(`[outcome] Recorded ${outcome} for report ${reportId}`);
+  apiLogger.info(`[outcome] Recorded ${outcome} for report ${reportId}`);
 
   return NextResponse.json({
     success: true,

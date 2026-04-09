@@ -3,6 +3,7 @@
 
 import { Resend } from 'resend';
 import { withRetry, isRetryableError } from '@/lib/utils/retry';
+import { emailLogger } from '@/lib/logger';
 
 // ─── Client ──────────────────────────────────────────────────────────────────
 
@@ -20,7 +21,7 @@ function getResend(): Resend {
 function getFromAddress(): string {
   const addr = process.env.RESEND_FROM_ADDRESS;
   if (!addr) {
-    console.warn('[resend] WARNING: RESEND_FROM_ADDRESS not set, using default: reports@resourceful.app');
+    emailLogger.warn('[resend] WARNING: RESEND_FROM_ADDRESS not set, using default: reports@resourceful.app');
     return 'reports@resourceful.app';
   }
   return addr;
@@ -29,7 +30,7 @@ function getFromAddress(): string {
 function getAdminEmail(): string {
   const addr = process.env.ADMIN_NOTIFICATION_EMAIL;
   if (!addr) {
-    console.warn('[resend] WARNING: ADMIN_NOTIFICATION_EMAIL not set, using default: admin@resourceful.app');
+    emailLogger.warn('[resend] WARNING: ADMIN_NOTIFICATION_EMAIL not set, using default: admin@resourceful.app');
     return 'admin@resourceful.app';
   }
   return addr;
@@ -189,7 +190,7 @@ export async function sendAdminNotification(
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[resend] sendAdminNotification error: ${message}`);
+    emailLogger.error(`[resend] sendAdminNotification error: ${message}`);
     return { data: null, error: `Admin notification failed: ${message}` };
   }
 }
@@ -234,7 +235,7 @@ export async function sendReportRejectionAlert(
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[resend] sendReportRejectionAlert error: ${message}`);
+    emailLogger.error(`[resend] sendReportRejectionAlert error: ${message}`);
     return { data: null, error: `Rejection alert failed: ${message}` };
   }
 }
@@ -303,7 +304,7 @@ export async function sendReportReadyNotification(
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[resend] sendReportReadyNotification error: ${message}`);
+    emailLogger.error(`[resend] sendReportReadyNotification error: ${message}`);
     return { data: null, error: `Notification email failed: ${message}` };
   }
 }
@@ -354,7 +355,7 @@ export async function sendOutcomeFollowupEmail(
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[resend] sendOutcomeFollowupEmail error: ${message}`);
+    emailLogger.error(`[resend] sendOutcomeFollowupEmail error: ${message}`);
     return { data: null, error: `Outcome follow-up email failed: ${message}` };
   }
 }
@@ -421,7 +422,7 @@ export async function sendDisputeAlert(
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[resend] sendDisputeAlert error: ${message}`);
+    emailLogger.error(`[resend] sendDisputeAlert error: ${message}`);
     return { data: null, error: `Dispute alert failed: ${message}` };
   }
 }
@@ -514,7 +515,7 @@ export async function sendPaymentReceipt(
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[resend] sendPaymentReceipt error: ${message}`);
+    emailLogger.error(`[resend] sendPaymentReceipt error: ${message}`);
     return { data: null, error: `Payment receipt email failed: ${message}` };
   }
 }
@@ -585,7 +586,7 @@ export async function sendAbandonedCartRecovery(
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[resend] sendAbandonedCartRecovery error: ${message}`);
+    emailLogger.error(`[resend] sendAbandonedCartRecovery error: ${message}`);
     return { data: null, error: `Cart recovery email failed: ${message}` };
   }
 }

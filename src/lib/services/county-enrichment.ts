@@ -12,6 +12,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODELS } from '@/config/ai';
 import { withRetry, isRetryableError } from '@/lib/utils/retry';
 import type { CountyRule } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 // ─── AI Client ───────────────────────────────────────────────────────────────
 
@@ -188,7 +189,7 @@ Return this exact JSON:
 
     return JSON.parse(jsonMatch[0]) as ExtractedCountyIntel;
   } catch (err) {
-    console.error(`[county-enrichment] AI extraction failed for ${countyName}, ${stateName}: ${err}`);
+    apiLogger.error(`[county-enrichment] AI extraction failed for ${countyName}, ${stateName}: ${err}`);
     return null;
   }
 }
@@ -211,7 +212,7 @@ export async function enrichCounty(
 ): Promise<EnrichmentResult> {
   const { county_name, state_name, county_fips } = countyRule;
 
-  console.log(`[county-enrichment] Researching ${county_name} County, ${state_name}...`);
+  apiLogger.info(`[county-enrichment] Researching ${county_name} County, ${state_name}...`);
 
   // Search for county appeal procedures
   const queries = [
@@ -226,7 +227,7 @@ export async function enrichCounty(
   }
 
   if (allUrls.size === 0) {
-    console.log(`[county-enrichment] No web results for ${county_name}, ${state_name}`);
+    apiLogger.info(`[county-enrichment] No web results for ${county_name}, ${state_name}`);
     return { enriched: false, fieldsUpdated: [], error: 'No web results found' };
   }
 
@@ -304,7 +305,7 @@ export async function enrichCounty(
   }
 
   if (fieldsUpdated.length === 0) {
-    console.log(`[county-enrichment] No new data to update for ${county_name}`);
+    apiLogger.info(`[county-enrichment] No new data to update for ${county_name}`);
     return { enriched: false, fieldsUpdated: [], error: null };
   }
 
@@ -319,11 +320,11 @@ export async function enrichCounty(
     .eq('county_fips', county_fips);
 
   if (error) {
-    console.error(`[county-enrichment] DB update failed for ${county_fips}: ${error.message}`);
+    apiLogger.error(`[county-enrichment] DB update failed for ${county_fips}: ${error.message}`);
     return { enriched: false, fieldsUpdated: [], error: error.message };
   }
 
-  console.log(
+  apiLogger.info(
     `[county-enrichment] Enriched ${county_name}, ${state_name}: ${fieldsUpdated.length} fields updated (${fieldsUpdated.join(', ')})`
   );
 

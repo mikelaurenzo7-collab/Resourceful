@@ -18,6 +18,7 @@ import { runPhotoAnalysis } from './stages/stage4-photo-analysis';
 import { runNarratives } from './stages/stage5-narratives';
 import { runFilingGuide } from './stages/stage6-filing-guide';
 import { runPdfAssembly } from './stages/stage7-pdf-assembly';
+import { pipelineLogger } from '@/lib/logger';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -102,7 +103,7 @@ export async function runPipeline(
   });
 
   if (!lockAcquired) {
-    console.warn(`[pipeline] Could not acquire lock for report ${reportId} — pipeline already running`);
+    pipelineLogger.warn({ reportId }, 'Could not acquire lock — pipeline already running');
     return { success: false, error: 'Pipeline already running for this report' };
   }
 
@@ -116,10 +117,10 @@ export async function runPipeline(
   const report = data as Report | null;
 
   if (fetchError || !report) {
-    const msg = `Failed to fetch report ${reportId}: ${fetchError?.message ?? 'not found'}`;
-    console.error(`[pipeline] ${msg}`);
+    const msg = fetchError?.message ?? 'not found';
+    pipelineLogger.error({ reportId, err: msg }, 'Failed to fetch report');
     await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
-    return { success: false, error: msg };
+    return { success: false, error: `Failed to fetch report ${reportId}: ${msg}` };
   }
 
   // ── Mark pipeline start ─────────────────────────────────────────────────
@@ -132,9 +133,7 @@ export async function runPipeline(
     })
     .eq('id', reportId);
 
-  console.log(
-    `[pipeline] Starting pipeline for report ${reportId} from stage ${startFromStage}`
-  );
+  pipelineLogger.info({ reportId, startFromStage }, 'Starting pipeline');
 
   // Wrap all stage execution in try-finally to GUARANTEE lock release.
   // Without this, an uncaught exception could leave the lock held forever.
@@ -143,19 +142,17 @@ export async function runPipeline(
     for (const stage of STAGES) {
       // Skip stages before our resume point
       if (stage.number < startFromStage) {
-        console.log(`[pipeline] Skipping stage ${stage.number} (${stage.name}) — already completed`);
+        pipelineLogger.info({ reportId, stage: stage.name, stageNumber: stage.number }, 'Skipping stage — already completed');
         continue;
       }
 
       // Skip stages that don't apply to this property/service type
       if (stage.skipWhen?.(report.property_type as PropertyType, report.service_type ?? 'tax_appeal')) {
-        console.log(
-          `[pipeline] Skipping stage ${stage.number} (${stage.name}) — not applicable for ${report.property_type}`
-        );
+        pipelineLogger.info({ reportId, stage: stage.name, propertyType: report.property_type }, 'Skipping stage — not applicable');
         continue;
       }
 
-      console.log(`[pipeline] Running stage ${stage.number}: ${stage.name}`);
+      pipelineLogger.info({ reportId, stage: stage.name, stageNumber: stage.number }, 'Running stage');
       const stageStart = Date.now();
       const STAGE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes per stage
 
@@ -173,9 +170,7 @@ export async function runPipeline(
         }
 
         const durationMs = Date.now() - stageStart;
-        console.log(
-          `[pipeline] Stage ${stage.number} (${stage.name}) completed in ${durationMs}ms`
-        );
+        pipelineLogger.info({ reportId, stage: stage.name, durationMs }, 'Stage completed');
 
         // Record stage completion
         await supabase
@@ -206,7 +201,7 @@ export async function runPipeline(
     // receives anything. Once real-appraisal training data is established,
     // high-confidence reports can be auto-delivered. Until then, every report
     // lands in the admin dashboard for a final human check.
-    console.log(`[pipeline] Stages 1-7 complete for report ${reportId}. Routing to admin for approval.`);
+    pipelineLogger.info({ reportId }, 'Stages 1-7 complete — routing to admin for approval');
     await supabase
       .from('reports')
       .update({ status: 'pending_approval' as const })
@@ -238,19 +233,19 @@ export async function runPipeline(
         county: report.county ?? undefined,
       });
     } catch (emailErr) {
-      console.error(`[pipeline] Failed to send admin notification email:`, emailErr);
+      pipelineLogger.error({ err: emailErr, reportId }, 'Failed to send admin notification email');
     }
 
-    console.log(`[pipeline] Pipeline complete and delivered for report ${reportId}`);
+    pipelineLogger.info({ reportId }, 'Pipeline complete — pending admin approval');
     return { success: true };
   } finally {
     // ALWAYS release the pipeline lock, even on unexpected errors
     try {
       await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
     } catch (lockErr) {
-      console.error(
-        `[pipeline] CRITICAL: Failed to release pipeline lock for report ${reportId}. ` +
-        `Report may be permanently stuck. Manual DB cleanup required. Error: ${lockErr}`
+      pipelineLogger.error(
+        { err: lockErr, reportId },
+        'CRITICAL: Failed to release pipeline lock — report may be permanently stuck'
       );
     }
   }
@@ -265,8 +260,9 @@ async function handleStageFailure(
   errorMessage: string,
   errorStack?: string
 ) {
-  console.error(
-    `[pipeline] Stage ${stage.number} (${stage.name}) failed: ${errorMessage}`
+  pipelineLogger.error(
+    { reportId, stage: stage.name, stageNumber: stage.number, err: errorMessage },
+    'Stage failed'
   );
 
   const errorLog = {

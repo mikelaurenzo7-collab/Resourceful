@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { sendCartRecoveryEmails } from '@/lib/services/cart-recovery';
+import { cronLogger } from '@/lib/logger';
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, ...result });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[cron/cart-recovery] Failed:', message);
+    cronLogger.error({ err: message }, 'Failed');
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

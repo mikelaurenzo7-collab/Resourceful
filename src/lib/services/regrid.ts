@@ -12,6 +12,7 @@
 // Auth: API token as query parameter or Bearer header
 
 import type { ServiceResult } from './data-router';
+import { apiLogger } from '@/lib/logger';
 
 const BASE_URL = 'https://app.regrid.com/api/v2';
 const FETCH_TIMEOUT_MS = 15_000;
@@ -204,14 +205,14 @@ export async function getParcelByAddress(
 
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      console.warn(`[regrid] API error ${res.status}: ${body.slice(0, 200)}`);
+      apiLogger.warn(`[regrid] API error ${res.status}: ${body.slice(0, 200)}`);
       return { data: null, error: `Regrid API error ${res.status}` };
     }
 
     const json = (await res.json()) as RegridSearchResponse;
 
     if (!json.features || json.features.length === 0) {
-      console.log(`[regrid] No parcels found for "${query}"`);
+      apiLogger.info(`[regrid] No parcels found for "${query}"`);
       return { data: null, error: 'No parcel found at this address' };
     }
 
@@ -261,7 +262,7 @@ export async function getParcelByAddress(
       },
     };
 
-    console.log(
+    apiLogger.info(
       `[regrid] Parcel found for "${query}": APN=${result.apn}, ` +
       `${result.parcel.gisAcreage?.toFixed(2) ?? '?'} acres, ` +
       `zoning=${result.zoning.code ?? 'N/A'}, ` +
@@ -271,10 +272,10 @@ export async function getParcelByAddress(
     return { data: result, error: null };
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
-      console.warn(`[regrid] Request timed out for "${query}"`);
+      apiLogger.warn(`[regrid] Request timed out for "${query}"`);
       return { data: null, error: 'Regrid request timed out' };
     }
-    console.warn('[regrid] Request failed:', err instanceof Error ? err.message : String(err));
+    apiLogger.warn({ err: err instanceof Error ? err.message : String(err) }, 'Request failed');
     return { data: null, error: `Regrid request failed: ${err instanceof Error ? err.message : 'unknown'}` };
   }
 }

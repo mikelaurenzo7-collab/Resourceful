@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateReferralCode } from '@/lib/services/referral-service';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { apiLogger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   // Rate limit: 20 validations per 5 minutes per IP (prevents enumeration)
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
       code: result.code?.code,
     });
   } catch (err) {
-    console.error('[referral/validate] Validation failed:', err instanceof Error ? err.message : err);
+    apiLogger.error({ err: err instanceof Error ? err.message : err }, 'Validation failed');
     return NextResponse.json({ error: 'Validation failed' }, { status: 500 });
   }
 }

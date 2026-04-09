@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { handleReminderCron } from '@/lib/services/reminder-service';
+import { cronLogger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   // Verify cron secret (Vercel sets this automatically for cron jobs)
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[cron/reminders] Error: ${message}`);
+    cronLogger.error(`[cron/reminders] Error: ${message}`);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

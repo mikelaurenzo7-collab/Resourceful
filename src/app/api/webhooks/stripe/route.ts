@@ -9,6 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
 import { sendDisputeAlert, sendPaymentReceipt } from '@/lib/services/resend-email';
 import type Stripe from 'stripe';
+import { paymentLogger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   // ── Read raw body for signature verification ────────────────────────────
@@ -16,7 +17,7 @@ export async function POST(request: NextRequest) {
   const signature = request.headers.get('stripe-signature');
 
   if (!signature) {
-    console.error('[webhook/stripe] Missing stripe-signature header');
+    paymentLogger.error('Missing stripe-signature header');
     return NextResponse.json(
       { error: 'Missing stripe-signature header' },
       { status: 400 }
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
   );
 
   if (verifyError || !event) {
-    console.error(`[webhook/stripe] Verification failed: ${verifyError}`);
+    paymentLogger.error({ err: verifyError }, 'Webhook signature verification failed');
     return NextResponse.json(
       { error: 'Webhook signature verification failed' },
       { status: 400 }
@@ -52,13 +53,13 @@ export async function POST(request: NextRequest) {
         break;
       }
       default:
-        console.log(`[webhook/stripe] Unhandled event type: ${event.type}`);
+        paymentLogger.info({ eventType: event.type }, 'Unhandled event type');
     }
 
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[webhook/stripe] Handler error: ${message}`);
+    paymentLogger.error({ err: message }, 'Webhook handler error');
     return NextResponse.json(
       { error: 'Webhook handler failed' },
       { status: 500 }
@@ -74,15 +75,11 @@ async function handlePaymentIntentSucceeded(
   const reportId = paymentIntent.metadata?.report_id;
 
   if (!reportId) {
-    console.error(
-      '[webhook/stripe] payment_intent.succeeded missing report_id in metadata'
-    );
+    paymentLogger.error({ paymentIntentId: paymentIntent.id }, 'payment_intent.succeeded missing report_id in metadata');
     return;
   }
 
-  console.log(
-    `[webhook/stripe] Payment succeeded for report ${reportId}. PI: ${paymentIntent.id}`
-  );
+  paymentLogger.info({ reportId, paymentIntentId: paymentIntent.id, amount: paymentIntent.amount }, 'Payment succeeded');
 
   const supabase = createAdminClient();
 
@@ -95,15 +92,13 @@ async function handlePaymentIntentSucceeded(
     .single();
 
   if (!existingReport) {
-    console.error(`[webhook/stripe] Report ${reportId} not found`);
+    paymentLogger.error({ reportId }, 'Report not found');
     return;
   }
 
   // If already paid/processing/delivered, this is a duplicate webhook — skip
   if (existingReport.status !== 'intake') {
-    console.log(
-      `[webhook/stripe] Duplicate webhook for report ${reportId} (status: ${existingReport.status}). Skipping.`
-    );
+    paymentLogger.info({ reportId, currentStatus: existingReport.status }, 'Duplicate webhook — skipping');
     return;
   }
 
@@ -120,9 +115,7 @@ async function handlePaymentIntentSucceeded(
     .eq('status', 'intake'); // Double-check with WHERE clause for atomicity
 
   if (updateError) {
-    console.error(
-      `[webhook/stripe] Failed to update report ${reportId}: ${updateError.message}`
-    );
+    paymentLogger.error({ reportId, err: updateError.message }, 'Failed to update report to paid');
     throw new Error(`Failed to update report: ${updateError.message}`);
   }
 
@@ -157,22 +150,22 @@ async function handlePaymentIntentSucceeded(
         serviceName: SERVICE_NAMES[reportDetails.service_type ?? ''] ?? 'Property Report',
         tierName: TIER_NAMES[reportDetails.review_tier ?? 'auto'] ?? 'Auto Report',
         discountApplied: !!reportDetails.has_tax_bill,
-      }).catch((e) => console.warn(`[webhook/stripe] Receipt email failed (non-fatal): ${e}`));
+      }).catch((e) => paymentLogger.warn({ reportId, err: e }, 'Receipt email failed (non-fatal)'));
     }
   } catch (e) {
-    console.warn(`[webhook/stripe] Receipt email lookup failed (non-fatal): ${e}`);
+    paymentLogger.warn({ reportId, err: e }, 'Receipt email lookup failed (non-fatal)');
   }
 
   // ── Trigger the report generation pipeline ──────────────────────────
   // This is the ONLY place the pipeline should be triggered.
-  console.log(`[webhook/stripe] Triggering pipeline for report ${reportId}`);
+  paymentLogger.info({ reportId }, 'Triggering pipeline');
 
   // Pipeline runs asynchronously. On failure, record error to database
   // so the report doesn't get stuck in 'paid' status forever.
   runPipeline(reportId).catch(async (err) => {
     const message = err instanceof Error ? err.message : String(err);
     const stack = err instanceof Error ? err.stack : undefined;
-    console.error(`[webhook/stripe] Pipeline failed for report ${reportId}: ${message}`, stack);
+    paymentLogger.error({ reportId, err: message, stack }, 'Pipeline failed');
 
     // Mark report as failed with error details — prevents stuck reports
     try {
@@ -190,15 +183,15 @@ async function handlePaymentIntentSucceeded(
         .eq('id', reportId);
 
       if (updateErr) {
-        console.error(
-          `[webhook/stripe] CRITICAL: Pipeline failed AND error recording failed for report ${reportId}. ` +
-          `Report may be stuck in 'paid' status. DB error: ${updateErr.message}. Pipeline error: ${message}`
+        paymentLogger.error(
+          { reportId, dbError: updateErr.message, pipelineError: message },
+          'CRITICAL: Pipeline failed AND error recording failed — report may be stuck in paid status'
         );
       }
     } catch (dbErr) {
-      console.error(
-        `[webhook/stripe] CRITICAL: Pipeline failed AND error recording threw for report ${reportId}. ` +
-        `Report may be stuck in 'paid' status. Exception: ${dbErr}. Pipeline error: ${message}`
+      paymentLogger.error(
+        { reportId, dbException: String(dbErr), pipelineError: message },
+        'CRITICAL: Pipeline failed AND error recording threw — report may be stuck in paid status'
       );
     }
   });
@@ -209,8 +202,9 @@ async function handleDispute(dispute: Stripe.Dispute) {
     ? dispute.payment_intent
     : dispute.payment_intent?.id ?? 'unknown';
 
-  console.log(
-    `[webhook/stripe] Dispute ${dispute.status}: ${dispute.id} (PI: ${paymentIntentId}, reason: ${dispute.reason})`
+  paymentLogger.info(
+    { disputeId: dispute.id, status: dispute.status, paymentIntentId, reason: dispute.reason, amount: dispute.amount },
+    'Dispute event received'
   );
 
   // Try to find the associated report

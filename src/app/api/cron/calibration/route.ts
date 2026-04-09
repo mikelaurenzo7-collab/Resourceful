@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runCalibrationBatch } from '@/lib/services/calibration-batch';
+import { cronLogger } from '@/lib/logger';
 
 export async function GET(req: NextRequest) {
   // Verify cron secret (Vercel sets this automatically for cron endpoints)
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[cron/calibration] Failed:', message);
+    cronLogger.error({ err: message }, 'Failed');
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

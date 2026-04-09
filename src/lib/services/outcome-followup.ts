@@ -16,6 +16,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { sendOutcomeFollowupEmail } from '@/lib/services/resend-email';
 import type { Report, PropertyData } from '@/types/database';
 import { randomUUID } from 'crypto';
+import { emailLogger } from '@/lib/logger';
 
 const FOLLOWUP_DELAY_DAYS = 60;
 
@@ -43,16 +44,16 @@ export async function sendOutcomeFollowups(): Promise<{ sent: number; errors: nu
     .limit(50); // Process in batches to avoid timeouts
 
   if (error) {
-    console.error('[outcome-followup] Query error:', error.message);
+    emailLogger.error({ err: error.message }, 'Query error');
     return { sent: 0, errors: 1 };
   }
 
   if (!reports || reports.length === 0) {
-    console.log('[outcome-followup] No reports due for follow-up');
+    emailLogger.info('[outcome-followup] No reports due for follow-up');
     return { sent: 0, errors: 0 };
   }
 
-  console.log(`[outcome-followup] ${reports.length} reports due for follow-up`);
+  emailLogger.info(`[outcome-followup] ${reports.length} reports due for follow-up`);
 
   let sent = 0;
   let errors = 0;
@@ -104,17 +105,17 @@ export async function sendOutcomeFollowups(): Promise<{ sent: number; errors: nu
 
       if (result.error) {
         errors++;
-        console.error(`[outcome-followup] Email failed for ${report.id}: ${result.error}`);
+        emailLogger.error(`[outcome-followup] Email failed for ${report.id}: ${result.error}`);
       } else {
         sent++;
-        console.log(`[outcome-followup] Sent follow-up for report ${report.id}`);
+        emailLogger.info(`[outcome-followup] Sent follow-up for report ${report.id}`);
       }
     } catch (err) {
       errors++;
-      console.error(`[outcome-followup] Error processing ${report.id}:`, err);
+      emailLogger.error({ err: err }, `Error processing ${report.id}`);
     }
   }
 
-  console.log(`[outcome-followup] Complete: ${sent} sent, ${errors} errors`);
+  emailLogger.info(`[outcome-followup] Complete: ${sent} sent, ${errors} errors`);
   return { sent, errors };
 }

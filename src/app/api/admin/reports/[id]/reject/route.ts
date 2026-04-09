@@ -8,6 +8,7 @@ import { isAdmin, createApprovalEvent } from '@/lib/repository/admin';
 import { getReportById, updateReportStatus } from '@/lib/repository/reports';
 import { adminRejectSchema } from '@/lib/validations/report';
 import { sendReportRejectionAlert } from '@/lib/services/resend-email';
+import { apiLogger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -94,7 +95,7 @@ export async function POST(
       propertyAddress,
       notes: parsed.data.notes,
     }).catch((err) => {
-      console.error('[api/admin/reject] Failed to send rejection alert:', err);
+      apiLogger.error({ err: err }, 'Failed to send rejection alert');
     });
 
     return NextResponse.json(
@@ -107,7 +108,7 @@ export async function POST(
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[api/admin/reject] Unhandled error:', message);
+    apiLogger.error({ err: message }, 'Unhandled error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

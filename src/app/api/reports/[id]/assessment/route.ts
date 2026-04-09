@@ -9,6 +9,7 @@ import { getReportById } from '@/lib/repository/reports';
 import { getPropertyDetail } from '@/lib/services/attom';
 import { getCountyByName } from '@/lib/repository/county-rules';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { apiLogger } from '@/lib/logger';
 
 export async function GET(
   _request: NextRequest,
@@ -68,7 +69,7 @@ export async function GET(
       await getPropertyDetail(fullAddress);
 
     if (attomError || !propertyDetail) {
-      console.error('[api/assessment] ATTOM lookup failed:', attomError);
+      apiLogger.error({ err: attomError }, 'ATTOM lookup failed');
       return NextResponse.json(
         { error: 'Unable to retrieve property assessment data' },
         { status: 502 }
@@ -128,7 +129,7 @@ export async function GET(
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[api/assessment] Unhandled error:', message);
+    apiLogger.error({ err: message }, 'Unhandled error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

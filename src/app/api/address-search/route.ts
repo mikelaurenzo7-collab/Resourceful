@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { searchAddresses } from '@/lib/services/azure-maps';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { apiLogger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   // Rate limit: 30 address lookups per minute per IP (each call costs Azure Maps credits)
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
     const suggestions = await searchAddresses(query.trim(), 5);
     return NextResponse.json({ suggestions });
   } catch (err) {
-    console.error('[address-search] Search failed:', err instanceof Error ? err.message : err);
+    apiLogger.error({ err: err instanceof Error ? err.message : err }, 'Search failed');
     return NextResponse.json({ suggestions: [] });
   }
 }

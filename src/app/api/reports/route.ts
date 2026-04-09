@@ -14,6 +14,7 @@ import { runPipeline } from '@/lib/pipeline/orchestrator';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { validateReferralCode, applyReferralCode } from '@/lib/services/referral-service';
 import type { Report } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -142,17 +143,17 @@ export async function POST(request: NextRequest) {
 
     // ── Founder bypass: skip Stripe, trigger pipeline directly ───────────
     if (founderAccess) {
-      console.log(`[api/reports] Founder access for report ${report.id} — skipping payment`);
+      apiLogger.info(`[api/reports] Founder access for report ${report.id} — skipping payment`);
       runPipeline(report.id).catch(async (err) => {
         const message = err instanceof Error ? err.message : String(err);
-        console.error(`[api/reports] Pipeline failed for founder report ${report.id}: ${message}`);
+        apiLogger.error(`[api/reports] Pipeline failed for founder report ${report.id}: ${message}`);
         try {
           await createAdminClient().from('reports').update({
             status: 'failed',
             pipeline_error_log: [{ stage: 'pipeline', error: message, timestamp: new Date().toISOString() }],
           } as never).eq('id', report.id);
         } catch (dbErr) {
-          console.error(`[api/reports] CRITICAL: Pipeline failed AND error recording failed for founder report ${report.id}. Exception: ${dbErr}. Pipeline error: ${message}`);
+          apiLogger.error(`[api/reports] CRITICAL: Pipeline failed AND error recording failed for founder report ${report.id}. Exception: ${dbErr}. Pipeline error: ${message}`);
         }
       });
       return NextResponse.json(
@@ -177,12 +178,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (paymentError || !payment) {
-      console.error('[api/reports] Failed to create payment intent:', paymentError);
+      apiLogger.error({ err: paymentError }, 'Failed to create payment intent');
       // Clean up orphaned report to prevent blocking the per-email concurrency limit
       try {
         await createAdminClient().from('reports').delete().eq('id', report.id).eq('status', 'intake');
       } catch (cleanupErr) {
-        console.error('[api/reports] Failed to clean up orphaned report:', cleanupErr);
+        apiLogger.error({ err: cleanupErr }, 'Failed to clean up orphaned report');
       }
       return NextResponse.json(
         { error: 'Failed to create payment intent' },
@@ -206,7 +207,7 @@ export async function POST(request: NextRequest) {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[api/reports] Unhandled error:', message, err instanceof Error ? err.stack : '');
+    apiLogger.error({ err: message, stack: err instanceof Error ? err.stack : undefined }, 'Unhandled error');
 
     // Surface database/Supabase errors for debugging (non-sensitive)
     const isDbError = message.includes('Failed to create report') || message.includes('violates');

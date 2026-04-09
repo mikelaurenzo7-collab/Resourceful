@@ -11,6 +11,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODELS } from '@/config/ai';
+import { apiLogger } from '@/lib/logger';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -67,7 +68,7 @@ async function serperSearch(
       body: JSON.stringify({ q: query, num: 8 }),
     });
     if (!res.ok) {
-      console.warn(`[web-market-data] Serper returned ${res.status}`);
+      apiLogger.warn(`[web-market-data] Serper returned ${res.status}`);
       return [];
     }
     const data = (await res.json()) as {
@@ -79,7 +80,7 @@ async function serperSearch(
       snippet: r.snippet ?? '',
     }));
   } catch (err) {
-    console.warn(
+    apiLogger.warn(
       '[web-market-data] Serper error:',
       err instanceof Error ? err.message : String(err),
     );
@@ -334,16 +335,16 @@ export async function researchMarketData(
   ctx: MarketDataContext,
 ): Promise<MarketDataOverrides> {
   if (!process.env.SERPER_API_KEY) {
-    console.log('[web-market-data] SERPER_API_KEY not configured — skipping');
+    apiLogger.info('[web-market-data] SERPER_API_KEY not configured — skipping');
     return { ...EMPTY_OVERRIDES };
   }
   if (!process.env.ANTHROPIC_API_KEY) {
-    console.log('[web-market-data] ANTHROPIC_API_KEY not configured — skipping');
+    apiLogger.info('[web-market-data] ANTHROPIC_API_KEY not configured — skipping');
     return { ...EMPTY_OVERRIDES };
   }
 
   try {
-    console.log(
+    apiLogger.info(
       `[web-market-data] Researching market data for ${ctx.subtype} in ${ctx.city}, ${ctx.state}...`,
     );
 
@@ -389,7 +390,7 @@ export async function researchMarketData(
       appreciationResults.length;
 
     if (totalResults === 0) {
-      console.log('[web-market-data] No search results returned');
+      apiLogger.info('[web-market-data] No search results returned');
       return { ...EMPTY_OVERRIDES };
     }
 
@@ -411,7 +412,7 @@ export async function researchMarketData(
       : null;
 
     if (pageContent) {
-      console.log(
+      apiLogger.info(
         `[web-market-data] Fetched page content from ${promisingResult!.link} (${pageContent.length} chars)`,
       );
     }
@@ -429,34 +430,34 @@ export async function researchMarketData(
     const foundCount = Object.values(overrides).filter(
       (v) => v !== null,
     ).length;
-    console.log(
+    apiLogger.info(
       `[web-market-data] Extracted ${foundCount}/${Object.keys(overrides).length} market data points for ${ctx.city}, ${ctx.state}`,
     );
 
     if (overrides.capRate != null) {
-      console.log(
+      apiLogger.info(
         `[web-market-data] Cap rate: ${(overrides.capRate * 100).toFixed(2)}% (${overrides.capRateSurveySource})`,
       );
     }
     if (overrides.vacancyRatePct != null) {
-      console.log(
+      apiLogger.info(
         `[web-market-data] Vacancy: ${overrides.vacancyRatePct}% (${overrides.vacancySource})`,
       );
     }
     if (overrides.constructionCostPerSqFt != null) {
-      console.log(
+      apiLogger.info(
         `[web-market-data] Construction: $${overrides.constructionCostPerSqFt}/sqft (${overrides.constructionCostSource})`,
       );
     }
     if (overrides.appreciationPctAnnual != null) {
-      console.log(
+      apiLogger.info(
         `[web-market-data] Appreciation: ${overrides.appreciationPctAnnual}%/yr (${overrides.appreciationSource})`,
       );
     }
 
     return overrides;
   } catch (err) {
-    console.warn(
+    apiLogger.warn(
       '[web-market-data] Error:',
       err instanceof Error ? err.message : String(err),
     );

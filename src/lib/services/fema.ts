@@ -97,7 +97,7 @@ export async function getFloodZone(
 
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      console.error(
+      apiLogger.error(
         `[fema] identify responded ${response.status}: ${body.slice(0, 500)}`
       );
       return {
@@ -145,7 +145,7 @@ export async function getFloodZone(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[fema] identify error: ${message}`);
+    apiLogger.error(`[fema] identify error: ${message}`);
     return { data: null, error: `FEMA API request failed: ${message}` };
   }
 }

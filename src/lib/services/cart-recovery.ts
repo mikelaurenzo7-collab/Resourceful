@@ -14,6 +14,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendAbandonedCartRecovery } from '@/lib/services/resend-email';
 import type { Report } from '@/types/database';
+import { emailLogger } from '@/lib/logger';
 
 const MIN_AGE_HOURS = 2;
 const MAX_AGE_HOURS = 48;
@@ -50,16 +51,16 @@ export async function sendCartRecoveryEmails(): Promise<{ sent: number; errors: 
     .limit(50);
 
   if (error) {
-    console.error('[cart-recovery] Query error:', error.message);
+    emailLogger.error({ err: error.message }, 'Query error');
     return { sent: 0, errors: 1, skipped: 0 };
   }
 
   if (!reports || reports.length === 0) {
-    console.log('[cart-recovery] No abandoned carts in window');
+    emailLogger.info('[cart-recovery] No abandoned carts in window');
     return { sent: 0, errors: 0, skipped: 0 };
   }
 
-  console.log(`[cart-recovery] ${reports.length} abandoned carts found`);
+  emailLogger.info(`[cart-recovery] ${reports.length} abandoned carts found`);
 
   let sent = 0;
   let errors = 0;
@@ -93,17 +94,17 @@ export async function sendCartRecoveryEmails(): Promise<{ sent: number; errors: 
 
       if (result.error) {
         errors++;
-        console.error(`[cart-recovery] Email failed for ${report.id}: ${result.error}`);
+        emailLogger.error(`[cart-recovery] Email failed for ${report.id}: ${result.error}`);
       } else {
         sent++;
-        console.log(`[cart-recovery] Sent recovery email for report ${report.id}`);
+        emailLogger.info(`[cart-recovery] Sent recovery email for report ${report.id}`);
       }
     } catch (err) {
       errors++;
-      console.error(`[cart-recovery] Error processing ${report.id}:`, err);
+      emailLogger.error({ err: err }, `Error processing ${report.id}`);
     }
   }
 
-  console.log(`[cart-recovery] Complete: ${sent} sent, ${errors} errors, ${skipped} skipped`);
+  emailLogger.info(`[cart-recovery] Complete: ${sent} sent, ${errors} errors, ${skipped} skipped`);
   return { sent, errors, skipped };
 }

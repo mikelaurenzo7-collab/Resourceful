@@ -4,6 +4,7 @@
 
 import crypto from 'crypto';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { apiLogger } from '@/lib/logger';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -130,7 +131,7 @@ export async function trackApiUsage(
   } as never);
 
   if (partnerError) {
-    console.error(`[partner-api] Failed to track usage for partner ${partnerId}: ${partnerError.message}`);
+    apiLogger.error(`[partner-api] Failed to track usage for partner ${partnerId}: ${partnerError.message}`);
     throw new Error(`Partner usage tracking failed: ${partnerError.message}`);
   }
 

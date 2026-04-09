@@ -11,6 +11,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { Report, CountyRule } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -165,7 +166,7 @@ async function fileOnline(
   packet: FilingPacket,
   countyRule: CountyRule
 ): Promise<FilingResult> {
-  console.log(
+  apiLogger.info(
     `[filing] Online filing for ${packet.propertyAddress} via ${countyRule.portal_url}`
   );
 
@@ -203,7 +204,7 @@ async function fileByEmail(
   packet: FilingPacket,
   countyRule: CountyRule
 ): Promise<FilingResult> {
-  console.log(
+  apiLogger.info(
     `[filing] Email filing for ${packet.propertyAddress} to ${countyRule.filing_email}`
   );
 
@@ -240,7 +241,7 @@ async function fileByMail(
   packet: FilingPacket,
   countyRule: CountyRule
 ): Promise<FilingResult> {
-  console.log(
+  apiLogger.info(
     `[filing] Mail filing for ${packet.propertyAddress} to ${countyRule.appeal_board_address ?? 'address TBD'}`
   );
 
@@ -292,7 +293,7 @@ async function prepareGuidedFiling(
   packet: FilingPacket,
   countyRule: CountyRule | null
 ): Promise<FilingResult> {
-  console.log(`[filing] Preparing guided filing packet for ${packet.propertyAddress}`);
+  apiLogger.info(`[filing] Preparing guided filing packet for ${packet.propertyAddress}`);
 
   const supabase = createAdminClient();
   await supabase
@@ -353,7 +354,7 @@ export async function fileAppeal(reportId: string): Promise<FilingResult> {
 
   const method = resolveFilingMethod(countyRule, packet.reviewTier);
 
-  console.log(`[filing] Method resolved: ${method} for tier=${packet.reviewTier}, county=${packet.county}`);
+  apiLogger.info(`[filing] Method resolved: ${method} for tier=${packet.reviewTier}, county=${packet.county}`);
 
   switch (method) {
     case 'online':

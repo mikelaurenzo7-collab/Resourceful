@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+import { withSentryConfig } from '@sentry/nextjs';
+
 const nextConfig = {
   experimental: {
     instrumentationHook: true,
@@ -35,7 +37,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://atlas.microsoft.com https://graph.mapillary.com https://*.supabase.co",
-              "connect-src 'self' https://*.supabase.co https://api.stripe.com https://atlas.microsoft.com https://graph.mapillary.com https://va.vercel-scripts.com https://vitals.vercel-insights.com",
+              "connect-src 'self' https://*.supabase.co https://api.stripe.com https://atlas.microsoft.com https://graph.mapillary.com https://va.vercel-scripts.com https://vitals.vercel-insights.com https://*.ingest.sentry.io",
               "frame-src 'self' https://js.stripe.com",
               "object-src 'none'",
               "base-uri 'self'",
@@ -48,4 +50,18 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  // Suppress source map upload warnings when SENTRY_AUTH_TOKEN is not set
+  silent: !process.env.SENTRY_AUTH_TOKEN,
+  // Disable source map upload in dev and when no token is available
+  disableServerWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+  disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+  // Webpack-namespaced options (Sentry v10+)
+  webpack: {
+    // Tree-shake Sentry debug code in production
+    treeshake: { removeDebugLogging: true },
+    // Auto-instrument API routes and server components
+    autoInstrumentServerFunctions: true,
+    autoInstrumentMiddleware: true,
+  },
+});

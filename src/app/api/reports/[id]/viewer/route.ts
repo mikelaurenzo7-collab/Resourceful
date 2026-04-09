@@ -8,6 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { PropertyData, CountyRule } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 const SIGNED_URL_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
@@ -227,7 +228,7 @@ export async function GET(
     } : null,
   });
   } catch (err) {
-    console.error(`[viewer] Error for report ${reportId}:`, err instanceof Error ? err.message : err);
+    apiLogger.error({ err: err instanceof Error ? err.message : err }, `Error for report ${reportId}`);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

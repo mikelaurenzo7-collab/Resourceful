@@ -11,6 +11,7 @@ import type { StageResult } from '../orchestrator';
 import { generateFilingGuide, type FilingGuidePayload } from '@/lib/services/anthropic';
 import { AI_MODELS } from '@/config/ai';
 import { calculateDeadline } from '@/lib/utils/deadline-calculator';
+import { pipelineLogger } from '@/lib/logger';
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
 
@@ -126,7 +127,7 @@ export async function runFilingGuide(
   // Fallback: use the concluded_value saved by stage 5 (cost approach or income)
   if (concludedValue <= 0 && propertyData?.concluded_value && propertyData.concluded_value > 0) {
     concludedValue = propertyData.concluded_value;
-    console.log(`[stage6] No comps — using stage-5 concluded value as fallback: $${concludedValue.toLocaleString()}`);
+    pipelineLogger.info(`[stage6] No comps — using stage-5 concluded value as fallback: $${concludedValue.toLocaleString()}`);
   }
 
   if (concludedValue <= 0) {
@@ -142,7 +143,7 @@ export async function runFilingGuide(
     if (countyRule?.appeal_deadline_rule) {
       appealDeadline += ` — Rule: ${countyRule.appeal_deadline_rule}`;
     }
-    console.log(`[stage6] Auto-calculated deadline: ${deadlineInfo.displayText} (${deadlineInfo.urgencyLevel})`);
+    pipelineLogger.info(`[stage6] Auto-calculated deadline: ${deadlineInfo.displayText} (${deadlineInfo.urgencyLevel})`);
   } else if (countyRule?.appeal_deadline_rule) {
     appealDeadline = countyRule.appeal_deadline_rule;
   }
@@ -218,7 +219,7 @@ export async function runFilingGuide(
   };
 
   // ── Generate filing guide via AI ──────────────────────────────────────
-  console.log(`[stage6] Generating filing guide for ${report.county ?? 'unknown'}, ${report.state ?? 'unknown'}`);
+  pipelineLogger.info(`[stage6] Generating filing guide for ${report.county ?? 'unknown'}, ${report.state ?? 'unknown'}`);
   const guideResult = await generateFilingGuide(payload);
 
   if (guideResult.error || !guideResult.data) {
@@ -275,7 +276,7 @@ export async function runFilingGuide(
     };
   }
 
-  console.log(
+  pipelineLogger.info(
     `[stage6] Filing guide generated in ${generation_duration_ms}ms for report ${reportId}`
   );
 

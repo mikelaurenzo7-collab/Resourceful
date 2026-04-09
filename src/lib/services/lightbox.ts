@@ -29,7 +29,7 @@ async function getAccessToken(): Promise<string | null> {
     });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      console.warn(`[lightbox] Token request failed ${res.status}: ${body.slice(0, 200)}`);
+      apiLogger.warn(`[lightbox] Token request failed ${res.status}: ${body.slice(0, 200)}`);
       return null;
     }
     const json = (await res.json()) as { access_token: string; expires_in: number };
@@ -39,7 +39,7 @@ async function getAccessToken(): Promise<string | null> {
     };
     return tokenCache.token;
   } catch (err) {
-    console.warn('[lightbox] Token error:', err instanceof Error ? err.message : String(err));
+    apiLogger.warn({ err: err instanceof Error ? err.message : String(err) }, 'Token error');
     return null;
   }
 }
@@ -188,13 +188,13 @@ async function lightboxFetch<T>(
     clearTimeout(timeout);
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      console.error(`[lightbox] ${path} returned ${res.status}: ${body.slice(0, 300)}`);
+      apiLogger.error(`[lightbox] ${path} returned ${res.status}: ${body.slice(0, 300)}`);
       return { data: null, error: `Lightbox API returned ${res.status}` };
     }
     return { data: (await res.json()) as T, error: null };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[lightbox] ${path} error: ${msg}`);
+    apiLogger.warn(`[lightbox] ${path} error: ${msg}`);
     return { data: null, error: msg };
   }
 }
@@ -214,7 +214,7 @@ export async function getPropertyDetail(
   if (!token) return { data: null, error: 'Lightbox token acquisition failed' };
 
   const q = [address, city, state].filter(Boolean).join(', ');
-  console.log(`[lightbox] Searching address: "${q}"`);
+  apiLogger.info(`[lightbox] Searching address: "${q}"`);
 
   // ── Step 1: Resolve address → parcel ID ─────────────────────────────────
   const addrResult = await lightboxFetch<Record<string, unknown>>(token, '/v2/addresses', {
@@ -228,13 +228,13 @@ export async function getPropertyDetail(
 
   const addresses: any[] = (addrResult.data as any)?.addresses ?? [];
   if (!addresses.length) {
-    console.warn(`[lightbox] No address match for "${q}"`);
+    apiLogger.warn(`[lightbox] No address match for "${q}"`);
     return { data: null, error: 'No address match found in Lightbox' };
   }
 
   const parcelId: string | null = addresses[0]?.parcels?.[0]?.id ?? null;
   if (!parcelId) {
-    console.warn(`[lightbox] No parcel linked to address "${q}"`);
+    apiLogger.warn(`[lightbox] No parcel linked to address "${q}"`);
     return { data: null, error: 'No parcel found for address in Lightbox' };
   }
 
@@ -255,10 +255,10 @@ export async function getPropertyDetail(
     if (!detail.structure.yearBuilt) missing.push('yearBuilt');
     if (!detail.assessment.assessedValue) missing.push('assessedValue');
     if (missing.length) {
-      console.warn(`[lightbox] Missing fields for "${q}": ${missing.join(', ')}`);
+      apiLogger.warn(`[lightbox] Missing fields for "${q}": ${missing.join(', ')}`);
     }
 
-    console.log(
+    apiLogger.info(
       `[lightbox] Parcel data for "${q}": ` +
         `assessed=$${detail.assessment.assessedValue?.toLocaleString() ?? 'N/A'}, ` +
         `sqft=${detail.structure.grossSquareFeet ?? 'N/A'}, ` +
@@ -268,7 +268,7 @@ export async function getPropertyDetail(
     return { data: detail, error: null };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[lightbox] Failed to normalize parcel: ${msg}`);
+    apiLogger.error(`[lightbox] Failed to normalize parcel: ${msg}`);
     return { data: null, error: `Failed to parse Lightbox response: ${msg}` };
   }
 }

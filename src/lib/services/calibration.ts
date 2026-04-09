@@ -11,6 +11,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Report, PropertyData } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 /**
  * Create a calibration entry after a user reports their appeal outcome.
@@ -29,7 +30,7 @@ export async function createCalibrationEntry(
 
   const report = reportData as Report | null;
   if (!report || !report.appeal_outcome) {
-    console.warn(`[calibration] No report or outcome for ${reportId}`);
+    apiLogger.warn(`[calibration] No report or outcome for ${reportId}`);
     return;
   }
 
@@ -42,7 +43,7 @@ export async function createCalibrationEntry(
   const propertyData = pdData as Pick<PropertyData, 'assessed_value' | 'concluded_value' | 'photo_count' | 'photo_defect_count' | 'building_sqft_gross'> | null;
 
   if (!propertyData?.concluded_value) {
-    console.warn(`[calibration] No concluded value for report ${reportId}`);
+    apiLogger.warn(`[calibration] No concluded value for report ${reportId}`);
     return;
   }
 
@@ -97,11 +98,11 @@ export async function createCalibrationEntry(
     } as never);
 
   if (error) {
-    console.error(`[calibration] Failed to insert entry for ${reportId}:`, error.message);
+    apiLogger.error({ err: error.message }, `Failed to insert entry for ${reportId}`);
     return;
   }
 
-  console.log(
+  apiLogger.info(
     `[calibration] Entry created for report ${reportId}: ` +
     `outcome=${report.appeal_outcome}, ` +
     `predicted=${propertyData.concluded_value}, ` +

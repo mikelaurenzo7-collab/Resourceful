@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report, CountyRule } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 export async function GET(
   _req: NextRequest,
@@ -129,7 +130,7 @@ export async function GET(
     repRestrictionsNotes: countyRule.rep_restrictions_notes,
   });
   } catch (err) {
-    console.error(`[filing-info] Error for report ${reportId}:`, err instanceof Error ? err.message : err);
+    apiLogger.error({ err: err instanceof Error ? err.message : err }, `Error for report ${reportId}`);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

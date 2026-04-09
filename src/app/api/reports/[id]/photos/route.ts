@@ -9,6 +9,7 @@ import { photoUploadSchema } from '@/lib/validations/report';
 import { getReportById } from '@/lib/repository/reports';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { PhotoInsert } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -135,7 +136,7 @@ export async function POST(
       });
 
     if (uploadError) {
-      console.error('[api/photos] Upload error:', uploadError.message);
+      apiLogger.error({ err: uploadError.message }, 'Upload error');
       return NextResponse.json(
         { error: 'Failed to upload file' },
         { status: 500 }
@@ -159,7 +160,7 @@ export async function POST(
       .single();
 
     if (insertError || !photo) {
-      console.error('[api/photos] Insert error:', insertError?.message);
+      apiLogger.error({ err: insertError?.message }, 'Insert error');
       // Clean up uploaded file on DB insert failure
       await admin.storage.from('photos').remove([filename]);
       return NextResponse.json(
@@ -171,7 +172,7 @@ export async function POST(
     return NextResponse.json({ photo }, { status: 201 });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[api/photos] Unhandled error:', message);
+    apiLogger.error({ err: message }, 'Unhandled error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

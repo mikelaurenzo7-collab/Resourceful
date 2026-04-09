@@ -10,6 +10,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendReportReadyNotification } from '@/lib/services/resend-email';
 import type { Report, PropertyData } from '@/types/database';
+import { emailLogger } from '@/lib/logger';
 
 /** Only retry within 3 days of delivery — after that, assume user found it via dashboard */
 const RETRY_WINDOW_DAYS = 3;
@@ -34,7 +35,7 @@ export async function retryFailedNotifications(): Promise<{ sent: number; errors
     .limit(20);
 
   if (error) {
-    console.error('[notification-retry] Query error:', error.message);
+    emailLogger.error({ err: error.message }, 'Query error');
     return { sent: 0, errors: 1 };
   }
 
@@ -42,7 +43,7 @@ export async function retryFailedNotifications(): Promise<{ sent: number; errors
     return { sent: 0, errors: 0 };
   }
 
-  console.log(`[notification-retry] Found ${reports.length} reports needing notification retry`);
+  emailLogger.info(`[notification-retry] Found ${reports.length} reports needing notification retry`);
 
   let sent = 0;
   let errors = 0;
@@ -91,7 +92,7 @@ export async function retryFailedNotifications(): Promise<{ sent: number; errors
       });
 
       if (result.error) {
-        console.error(`[notification-retry] Failed for ${report.id}: ${result.error}`);
+        emailLogger.error(`[notification-retry] Failed for ${report.id}: ${result.error}`);
         errors++;
       } else {
         // Stamp success — won't be retried again
@@ -100,16 +101,16 @@ export async function retryFailedNotifications(): Promise<{ sent: number; errors
           .update({ notification_sent_at: new Date().toISOString() } as Record<string, unknown>)
           .eq('id', report.id);
 
-        console.log(`[notification-retry] Sent for report ${report.id}`);
+        emailLogger.info(`[notification-retry] Sent for report ${report.id}`);
         sent++;
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      console.error(`[notification-retry] Error for ${report.id}: ${message}`);
+      emailLogger.error(`[notification-retry] Error for ${report.id}: ${message}`);
       errors++;
     }
   }
 
-  console.log(`[notification-retry] Complete: ${sent} sent, ${errors} errors`);
+  emailLogger.info(`[notification-retry] Complete: ${sent} sent, ${errors} errors`);
   return { sent, errors };
 }

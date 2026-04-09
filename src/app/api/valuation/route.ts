@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPropertyDetail } from '@/lib/services/attom';
 import { getCountyByName } from '@/lib/repository/county-rules';
 import { applyRateLimit } from '@/lib/rate-limit';
+import { apiLogger } from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[api/valuation] Unhandled error:', message);
+    apiLogger.error({ err: message }, 'Unhandled error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

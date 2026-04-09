@@ -13,6 +13,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODELS } from '@/config/ai';
 import { withRetry, isRetryableError } from '@/lib/utils/retry';
+import { apiLogger } from '@/lib/logger';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -214,7 +215,7 @@ export async function researchAppealStrategy(
 ): Promise<ResearchResult> {
   const serperKey = process.env.SERPER_API_KEY;
   if (!serperKey) {
-    console.log('[research-agent] SERPER_API_KEY not set, skipping research');
+    apiLogger.info('[research-agent] SERPER_API_KEY not set, skipping research');
     return {
       strategyInsights: '',
       deadlineInfo: null,
@@ -271,7 +272,7 @@ export async function researchAppealStrategy(
 
           if (toolUse.name === 'web_search' && searchCount < MAX_SEARCHES) {
             searchCount++;
-            console.log(`[research-agent] Search ${searchCount}/${MAX_SEARCHES}: "${input.query}"`);
+            apiLogger.info(`[research-agent] Search ${searchCount}/${MAX_SEARCHES}: "${input.query}"`);
             const searchResult = await executeWebSearch(input.query);
 
             if (searchResult.error) {
@@ -292,7 +293,7 @@ export async function researchAppealStrategy(
               });
             }
           } else if (toolUse.name === 'read_page') {
-            console.log(`[research-agent] Reading: ${input.url}`);
+            apiLogger.info(`[research-agent] Reading: ${input.url}`);
             const pageText = await fetchPageContent(input.url);
             toolResults.push({
               type: 'tool_result',
@@ -323,7 +324,7 @@ export async function researchAppealStrategy(
         result.searchesPerformed = searchCount;
         result.sources = Array.from(new Set(sources)).slice(0, 10);
 
-        console.log(
+        apiLogger.info(
           `[research-agent] Research complete for ${context.countyName}, ${context.stateName}: ` +
           `${searchCount} searches, ${result.sources.length} sources`
         );
@@ -359,7 +360,7 @@ export async function researchAppealStrategy(
     return result;
 
   } catch (err) {
-    console.error(`[research-agent] Research failed: ${err instanceof Error ? err.message : err}`);
+    apiLogger.error(`[research-agent] Research failed: ${err instanceof Error ? err.message : err}`);
     return {
       strategyInsights: '',
       deadlineInfo: null,
@@ -386,13 +387,13 @@ function parseResearchOutput(text: string): ResearchResult {
     if (!content) return null;
     // Flag if the AI just repeated the section label with no substance
     if (content.length < 30) {
-      console.warn(`[research-agent] ${label} section too short (${content.length} chars) — discarding`);
+      apiLogger.warn(`[research-agent] ${label} section too short (${content.length} chars) — discarding`);
       return null;
     }
     // Detect boilerplate non-answers
     const boilerplate = /i (?:could not|couldn't|was unable to|did not|didn't) find/i;
     if (boilerplate.test(content) && content.length < 100) {
-      console.warn(`[research-agent] ${label} section is a non-answer — discarding`);
+      apiLogger.warn(`[research-agent] ${label} section is a non-answer — discarding`);
       return null;
     }
     // Cap at reasonable length to prevent prompt bloat

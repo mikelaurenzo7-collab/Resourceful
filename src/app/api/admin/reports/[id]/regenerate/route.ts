@@ -11,6 +11,7 @@ import { adminRegenerateSchema } from '@/lib/validations/report';
 import { runNarratives } from '@/lib/pipeline/stages/stage5-narratives';
 import { runPdfAssembly } from '@/lib/pipeline/stages/stage7-pdf-assembly';
 import type { ReportNarrative } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -126,7 +127,7 @@ export async function POST(
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[api/admin/regenerate] Unhandled error:', message);
+    apiLogger.error({ err: message }, 'Unhandled error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

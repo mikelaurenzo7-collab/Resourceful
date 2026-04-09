@@ -7,6 +7,7 @@ import type { Database } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { generateReportPDF } from '@/lib/pdf';
 import { fetchReportTemplateData } from '@/lib/pdf/fetch-report-data';
+import { pipelineLogger } from '@/lib/logger';
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ export async function runPdfAssembly(
   }
 
   if (qaIssues.length > 0) {
-    console.warn(`[stage7] QA pre-flight warnings for report ${reportId}:`, qaIssues);
+    pipelineLogger.warn({ err: qaIssues }, `QA pre-flight warnings for report ${reportId}`);
     // Hard-fail on critical issues (no comps, no concluded value)
     const hardFails = qaIssues.filter(
       i => i.includes('No comparable sales') || i.includes('Concluded value')
@@ -69,7 +70,7 @@ export async function runPdfAssembly(
   ].filter(Boolean).join(', ');
 
   // ── Generate PDF ─────────────────────────────────────────────────────
-  console.log(`[stage7] Rendering PDF for report ${reportId}...`);
+  pipelineLogger.info(`[stage7] Rendering PDF for report ${reportId}...`);
 
   let pdfBuffer: Buffer;
   try {
@@ -114,7 +115,7 @@ export async function runPdfAssembly(
   // Admin notification is sent by the orchestrator after all stages complete.
   // Removed from stage7 to prevent duplicate emails.
 
-  console.log(
+  pipelineLogger.info(
     `[stage7] PDF assembled and uploaded for report ${reportId}. Size: ${(pdfBuffer.length / 1024).toFixed(0)}KB`
   );
 

@@ -118,7 +118,7 @@ async function geocodeWithCensus(
 
     const addressComponents = match.addressComponents ?? {};
 
-    console.log(`[geocode] Census fallback succeeded for: ${address}`);
+    apiLogger.info(`[geocode] Census fallback succeeded for: ${address}`);
 
     return {
       data: {
@@ -139,7 +139,7 @@ async function geocodeWithCensus(
   } catch (err) {
     clearTimeout(timeout);
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[geocode] Census fallback error: ${message}`);
+    apiLogger.error(`[geocode] Census fallback error: ${message}`);
     return { data: null, error: `Census geocoding failed: ${message}` };
   }
 }
@@ -157,9 +157,9 @@ export async function geocodeAddress(
   if (AZURE_KEY) {
     const azureResult = await geocodeWithAzure(address);
     if (azureResult.data) return azureResult;
-    console.warn(`[geocode] Azure Maps failed, falling back to Census: ${azureResult.error}`);
+    apiLogger.warn(`[geocode] Azure Maps failed, falling back to Census: ${azureResult.error}`);
   } else {
-    console.log('[geocode] Azure Maps subscription key not configured, using Census geocoder');
+    apiLogger.info('[geocode] Azure Maps subscription key not configured, using Census geocoder');
   }
 
   return geocodeWithCensus(address);
@@ -226,7 +226,7 @@ async function geocodeWithAzure(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[azure-maps] geocode error: ${message}`);
+    apiLogger.error(`[azure-maps] geocode error: ${message}`);
     return { data: null, error: `Geocoding request failed: ${message}` };
   }
 }
@@ -272,7 +272,7 @@ export async function getMapillaryImageUrl(
   _height: number = 480
 ): Promise<string | null> {
   if (!MAPILLARY_TOKEN) {
-    console.log('[mapillary] Access token not configured');
+    apiLogger.info('[mapillary] Access token not configured');
     return null;
   }
 
@@ -289,7 +289,7 @@ export async function getMapillaryImageUrl(
     clearTimeout(timeout);
 
     if (!response.ok) {
-      console.warn(`[mapillary] API returned ${response.status}`);
+      apiLogger.warn(`[mapillary] API returned ${response.status}`);
       return null;
     }
 
@@ -311,7 +311,7 @@ export async function getMapillaryImageUrl(
     return images[0].thumb_2048_url ?? images[0].thumb_1024_url ?? null;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.warn(`[mapillary] image search error: ${message}`);
+    apiLogger.warn(`[mapillary] image search error: ${message}`);
     return null;
   }
 }
@@ -338,7 +338,7 @@ export async function searchAddresses(
   limit: number = 5
 ): Promise<AutocompleteSuggestion[]> {
   if (!AZURE_KEY) {
-    console.warn('[azure-maps] AZURE_MAPS_SUBSCRIPTION_KEY is not set — autocomplete disabled');
+    apiLogger.warn('[azure-maps] AZURE_MAPS_SUBSCRIPTION_KEY is not set — autocomplete disabled');
     return [];
   }
   if (!query.trim()) return [];
@@ -360,7 +360,7 @@ export async function searchAddresses(
 
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      console.error(`[azure-maps] Fuzzy search failed (${response.status}): ${body.slice(0, 300)}`);
+      apiLogger.error(`[azure-maps] Fuzzy search failed (${response.status}): ${body.slice(0, 300)}`);
       return [];
     }
 

@@ -15,6 +15,7 @@
 // ratio studies). Below this, the data is too noisy to be useful.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { apiLogger } from '@/lib/logger';
 
 const MIN_SAMPLE_SIZE = 5;
 
@@ -135,18 +136,18 @@ export async function runCalibrationBatch(
     .not('variance_pct', 'is', null);
 
   if (fetchError) {
-    console.error('[calibration-batch] Query failed:', fetchError.message);
+    apiLogger.error({ err: fetchError.message }, 'Query failed');
     return { upserted: 0, skipped: 0, errors: 1 };
   }
 
   const entries = (rawEntries ?? []) as unknown as CalibrationEntryRow[];
 
   if (entries.length === 0) {
-    console.log('[calibration-batch] No completed entries to aggregate');
+    apiLogger.info('[calibration-batch] No completed entries to aggregate');
     return { upserted: 0, skipped: 0, errors: 0 };
   }
 
-  console.log(`[calibration-batch] Processing ${entries.length} calibration entries`);
+  apiLogger.info(`[calibration-batch] Processing ${entries.length} calibration entries`);
 
   // Group entries by (property_type, county_fips)
   const groups = new Map<string, CalibrationEntryRow[]>();
@@ -203,7 +204,7 @@ export async function runCalibrationBatch(
     );
 
     if (upsertError) {
-      console.error(
+      apiLogger.error(
         `[calibration-batch] Upsert failed for ${params.property_type}/${params.county_fips}:`,
         upsertError.message
       );
@@ -211,7 +212,7 @@ export async function runCalibrationBatch(
       continue;
     }
 
-    console.log(
+    apiLogger.info(
       `[calibration-batch] Updated ${params.property_type}/${params.county_fips ?? 'global'}: ` +
       `bias=${params.value_bias_pct}%, MAE=${params.mean_absolute_error_pct}%, ` +
       `n=${params.sample_size}`
@@ -219,7 +220,7 @@ export async function runCalibrationBatch(
     upserted++;
   }
 
-  console.log(
+  apiLogger.info(
     `[calibration-batch] Complete: ${upserted} upserted, ${skipped} skipped (< ${MIN_SAMPLE_SIZE} samples), ${errors} errors`
   );
 

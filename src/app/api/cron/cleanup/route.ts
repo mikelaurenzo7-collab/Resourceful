@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { cronLogger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization');
@@ -31,10 +32,10 @@ export async function GET(request: NextRequest) {
         .select('id');
       staleIntakeCleaned = staleIntakes?.length ?? 0;
       if (staleIntakeCleaned > 0) {
-        console.log(`[cron/cleanup] Removed ${staleIntakeCleaned} stale intake reports (no payment)`);
+        cronLogger.info(`[cron/cleanup] Removed ${staleIntakeCleaned} stale intake reports (no payment)`);
       }
     } catch (intakeErr) {
-      console.warn('[cron/cleanup] Stale intake cleanup failed (non-fatal):', intakeErr);
+      cronLogger.warn({ err: intakeErr }, 'Stale intake cleanup failed (non-fatal)');
     }
 
     // Find failed reports older than 7 days
@@ -94,10 +95,10 @@ export async function GET(request: NextRequest) {
         .select('key');
       rateLimitCleaned = expired?.length ?? 0;
     } catch {
-      console.warn('[cron/cleanup] Rate limit cleanup failed (table may not exist yet)');
+      cronLogger.warn('[cron/cleanup] Rate limit cleanup failed (table may not exist yet)');
     }
 
-    console.log(
+    cronLogger.info(
       `[cron/cleanup] Cleaned ${failedReports.length} failed reports: ${photosDeleted} photos, ${pdfsDeleted} PDFs, ${rateLimitCleaned} rate limit entries`
     );
 
@@ -111,7 +112,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[cron/cleanup] Error: ${message}`);
+    cronLogger.error(`[cron/cleanup] Error: ${message}`);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

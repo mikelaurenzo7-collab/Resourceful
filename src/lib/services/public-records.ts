@@ -20,6 +20,7 @@ import type {
   AttomPropertyDetail,
   AttomSaleComp,
 } from './attom';
+import { apiLogger } from '@/lib/logger';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -76,7 +77,7 @@ async function webSearch(query: string): Promise<string[]> {
       }
     }
   } catch (err) {
-    console.warn(`[public-records] Search API failed: ${err}`);
+    apiLogger.warn(`[public-records] Search API failed: ${err}`);
   }
 
   return urls;
@@ -172,7 +173,7 @@ Return this exact JSON structure:
     if (parsed.year_built != null) {
       const yb = Number(parsed.year_built);
       if (isNaN(yb) || yb < 1700 || yb > currentYear + 1) {
-        console.warn(`[public-records] Invalid year_built ${parsed.year_built} — nulling`);
+        apiLogger.warn(`[public-records] Invalid year_built ${parsed.year_built} — nulling`);
         parsed.year_built = null;
       }
     }
@@ -181,7 +182,7 @@ Return this exact JSON structure:
     if (parsed.building_sqft != null) {
       const sqft = Number(parsed.building_sqft);
       if (isNaN(sqft) || sqft < 100 || sqft > 500_000) {
-        console.warn(`[public-records] Suspicious building_sqft ${parsed.building_sqft} — nulling`);
+        apiLogger.warn(`[public-records] Suspicious building_sqft ${parsed.building_sqft} — nulling`);
         parsed.building_sqft = null;
       }
     }
@@ -206,7 +207,7 @@ Return this exact JSON structure:
     if (parsed.assessed_value != null) {
       const val = Number(parsed.assessed_value);
       if (isNaN(val) || val < 1000 || val > 500_000_000) {
-        console.warn(`[public-records] Suspicious assessed_value ${parsed.assessed_value} — nulling`);
+        apiLogger.warn(`[public-records] Suspicious assessed_value ${parsed.assessed_value} — nulling`);
         parsed.assessed_value = null;
       }
     }
@@ -275,7 +276,7 @@ Return this exact JSON structure:
       },
     } as AttomPropertyDetail;
   } catch (err) {
-    console.error(`[public-records] AI extraction failed: ${err}`);
+    apiLogger.error(`[public-records] AI extraction failed: ${err}`);
     return null;
   }
 }
@@ -370,7 +371,7 @@ Return a JSON array of comparable sales:
       distanceMiles: comp.distance_miles ? Number(comp.distance_miles) : null,
     }));
   } catch (err) {
-    console.error(`[public-records] AI comp extraction failed: ${err}`);
+    apiLogger.error(`[public-records] AI comp extraction failed: ${err}`);
     return [];
   }
 }
@@ -426,7 +427,7 @@ export async function getPropertyDetailFromPublicRecords(
   const { address, city, state, county } = params;
   const fullAddress = `${address}, ${city}, ${state}`;
 
-  console.log(`[public-records] Searching for property data: ${fullAddress}`);
+  apiLogger.info(`[public-records] Searching for property data: ${fullAddress}`);
 
   // Build search queries
   const queries = [
@@ -449,11 +450,11 @@ export async function getPropertyDetailFromPublicRecords(
   }
 
   if (allUrls.size === 0) {
-    console.warn(`[public-records] No URLs found for ${fullAddress}`);
+    apiLogger.warn(`[public-records] No URLs found for ${fullAddress}`);
     return { data: null, error: 'No public records sources found for this address' };
   }
 
-  console.log(`[public-records] Found ${allUrls.size} potential sources, fetching...`);
+  apiLogger.info(`[public-records] Found ${allUrls.size} potential sources, fetching...`);
 
   // Fetch pages (limit to 5 to avoid excessive requests)
   const urlArray = Array.from(allUrls).slice(0, 5);
@@ -463,7 +464,7 @@ export async function getPropertyDetailFromPublicRecords(
     const text = await fetchPageText(url);
     if (text && text.length > 200) {
       pageTexts.push(text);
-      console.log(`[public-records] Fetched ${url.slice(0, 80)}... (${text.length} chars)`);
+      apiLogger.info(`[public-records] Fetched ${url.slice(0, 80)}... (${text.length} chars)`);
     }
   }
 
@@ -478,7 +479,7 @@ export async function getPropertyDetailFromPublicRecords(
     return { data: null, error: 'AI extraction returned no usable data' };
   }
 
-  console.log(
+  apiLogger.info(
     `[public-records] Extracted: assessed=$${extracted.assessment?.assessedValue}, ` +
     `sqft=${extracted.summary?.buildingSquareFeet}, year=${extracted.summary?.yearBuilt}`
   );
@@ -499,7 +500,7 @@ export async function getSalesCompsFromPublicRecords(
 ): Promise<ServiceResult<AttomSaleComp[]>> {
   const { address, city, state, county } = params;
 
-  console.log(`[public-records] Searching for comparable sales near: ${address}, ${city}, ${state}`);
+  apiLogger.info(`[public-records] Searching for comparable sales near: ${address}, ${city}, ${state}`);
 
   const queries = [
     `recently sold homes near ${address} ${city} ${state}`,
@@ -530,7 +531,7 @@ export async function getSalesCompsFromPublicRecords(
 
   const comps = await extractCompsFromText(pageTexts, address, city, state);
 
-  console.log(`[public-records] Found ${comps.length} comparable sales`);
+  apiLogger.info(`[public-records] Found ${comps.length} comparable sales`);
 
   return { data: comps, error: null };
 }

@@ -9,6 +9,7 @@ import { measurementSchema } from '@/lib/validations/report';
 import { getReportById } from '@/lib/repository/reports';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { MeasurementInsert } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 export async function POST(
   request: NextRequest,
@@ -92,7 +93,7 @@ export async function POST(
       .single();
 
     if (insertError || !measurement) {
-      console.error('[api/measurements] Insert error:', insertError?.message);
+      apiLogger.error({ err: insertError?.message }, 'Insert error');
       return NextResponse.json(
         { error: 'Failed to save measurement' },
         { status: 500 }
@@ -137,7 +138,7 @@ export async function POST(
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[api/measurements] Unhandled error:', message);
+    apiLogger.error({ err: message }, 'Unhandled error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

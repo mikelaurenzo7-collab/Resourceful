@@ -7,6 +7,7 @@
 
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { apiLogger } from '@/lib/logger';
 
 export interface RateLimitConfig {
   /** Unique prefix for this limiter (e.g. 'api-reports') */
@@ -108,7 +109,7 @@ export async function checkRateLimit(
 
     if (error) {
       dbFailureCount++;
-      console.error(`[rate-limit] DB error (${dbFailureCount}/${DB_FAILURE_THRESHOLD}), falling back to memory:`, error.message);
+      apiLogger.error({ err: error.message }, `DB error (${dbFailureCount}/${DB_FAILURE_THRESHOLD}), falling back to memory`);
       return checkMemoryRateLimit(key, config);
     }
 
@@ -129,7 +130,7 @@ export async function checkRateLimit(
     };
   } catch {
     dbFailureCount++;
-    console.error(`[rate-limit] Unexpected error (${dbFailureCount}/${DB_FAILURE_THRESHOLD}), falling back to memory`);
+    apiLogger.error(`[rate-limit] Unexpected error (${dbFailureCount}/${DB_FAILURE_THRESHOLD}), falling back to memory`);
     return checkMemoryRateLimit(key, config);
   }
 }
@@ -160,7 +161,7 @@ export async function applyRateLimit(
 
   if (!result.success) {
     const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
-    console.warn(`[rate-limit] ${config.prefix} exceeded by ${ip} (limit: ${config.limit}/${config.windowSeconds}s)`);
+    apiLogger.warn(`[rate-limit] ${config.prefix} exceeded by ${ip} (limit: ${config.limit}/${config.windowSeconds}s)`);
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
       {

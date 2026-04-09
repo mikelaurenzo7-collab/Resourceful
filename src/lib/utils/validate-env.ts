@@ -2,6 +2,8 @@
 // Import this in app/layout.tsx (or instrumentation.ts) to catch misconfigurations
 // at startup instead of at request time.
 
+import { logger } from '@/lib/logger';
+
 const REQUIRED_VARS = [
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
@@ -26,6 +28,8 @@ const RECOMMENDED_VARS = [
   'RESEND_FROM_ADDRESS',
   'ADMIN_NOTIFICATION_EMAIL',
   'FOUNDER_EMAILS',
+  'SENTRY_DSN',
+  'NEXT_PUBLIC_SENTRY_DSN',
 ] as const;
 
 /**
@@ -50,16 +54,17 @@ export function validateEnvironment(): void {
   }
 
   if (missingRecommended.length > 0) {
-    console.warn(
-      `[env] Recommended env vars not set: ${missingRecommended.join(', ')}. Some features will be degraded.`
+    logger.warn(
+      { vars: missingRecommended },
+      'Recommended env vars not set — some features will be degraded'
     );
   }
 
   if (missing.length > 0) {
-    const message = `[env] Required env vars not set: ${missing.join(', ')}`;
+    const message = `Required env vars not set: ${missing.join(', ')}`;
     if (isProduction) {
       throw new Error(message);
     }
-    console.warn(`${message}. This would fail in production.`);
+    logger.warn({ vars: missing }, `${message}. This would fail in production.`);
   }
 }

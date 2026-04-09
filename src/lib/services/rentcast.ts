@@ -76,13 +76,13 @@ async function rentcastFetch<T>(
 
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      console.error(`[rentcast] ${path} returned ${res.status}: ${body.slice(0, 300)}`);
+      apiLogger.error(`[rentcast] ${path} returned ${res.status}: ${body.slice(0, 300)}`);
       return { data: null, error: `RentCast API returned ${res.status}` };
     }
     return { data: (await res.json()) as T, error: null };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[rentcast] ${path} error: ${msg}`);
+    apiLogger.warn(`[rentcast] ${path} error: ${msg}`);
     return { data: null, error: msg };
   }
 }
@@ -109,7 +109,7 @@ export async function getRentEstimate(
   };
   if (squareFootage && squareFootage > 0) params.squareFootage = String(squareFootage);
 
-  console.log(`[rentcast] Rent estimate for "${fullAddress}" (${toRentcastPropertyType(propertySubtype)})`);
+  apiLogger.info(`[rentcast] Rent estimate for "${fullAddress}" (${toRentcastPropertyType(propertySubtype)})`);
   return rentcastFetch<RentcastRentEstimate>('/avm/rent/long-term', params);
 }
 
@@ -134,7 +134,7 @@ export async function getRentalListings(
     limit: String(limit),
   };
 
-  console.log(
+  apiLogger.info(
     `[rentcast] Rental listings at (${latitude}, ${longitude}) radius=${radiusMiles}mi ` +
       `type=${toRentcastPropertyType(propertySubtype)}`,
   );

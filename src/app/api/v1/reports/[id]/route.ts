@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { validateApiKey } from '@/lib/services/partner-api-service';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { Report } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 // ─── Extract Bearer Token ───────────────────────────────────────────────────
 
@@ -114,7 +115,7 @@ export async function GET(
     return NextResponse.json(response, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[partner-api] Status check error:', message);
+    apiLogger.error({ err: message }, 'Status check error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

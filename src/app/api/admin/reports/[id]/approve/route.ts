@@ -9,6 +9,7 @@ import { isAdmin } from '@/lib/repository/admin';
 import { createApprovalEvent } from '@/lib/repository/admin';
 import { getReportById } from '@/lib/repository/reports';
 import { runDelivery } from '@/lib/pipeline/stages/stage8-delivery';
+import { apiLogger } from '@/lib/logger';
 
 export async function POST(
   _request: NextRequest,
@@ -95,7 +96,7 @@ export async function POST(
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[api/admin/approve] Unhandled error:', message);
+    apiLogger.error({ err: message }, 'Unhandled error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

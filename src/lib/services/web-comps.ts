@@ -12,6 +12,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODELS } from '@/config/ai';
 import type { AttomSaleComp } from './attom';
+import { apiLogger } from '@/lib/logger';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -38,7 +39,7 @@ async function serperSearch(
       body: JSON.stringify({ q: query, num: 8 }),
     });
     if (!res.ok) {
-      console.warn(`[web-comps] Serper returned ${res.status} for query: ${query}`);
+      apiLogger.warn(`[web-comps] Serper returned ${res.status} for query: ${query}`);
       return [];
     }
     const data = await res.json() as { organic?: Array<{ title: string; link: string; snippet: string }> };
@@ -48,7 +49,7 @@ async function serperSearch(
       snippet: r.snippet ?? '',
     }));
   } catch (err) {
-    console.warn('[web-comps] Serper search error:', err instanceof Error ? err.message : String(err));
+    apiLogger.warn({ err: err instanceof Error ? err.message : String(err) }, 'Serper search error');
     return [];
   }
 }
@@ -210,7 +211,7 @@ Return ONLY the JSON array. No explanation, no markdown.`;
       if (conf === 'low' || price <= 0 || !hasDate || !hasAddress) return false;
       // Exclude the subject property — Claude sometimes returns it despite instructions
       if (isSubjectProperty(String(c.address), ctx.address)) {
-        console.log(`[web-comps] Filtered subject property from comps: ${c.address}`);
+        apiLogger.info(`[web-comps] Filtered subject property from comps: ${c.address}`);
         return false;
       }
       return true;
@@ -254,17 +255,17 @@ Return ONLY the JSON array. No explanation, no markdown.`;
  */
 export async function findCompsViaWeb(ctx: WebCompsContext): Promise<AttomSaleComp[]> {
   if (!process.env.SERPER_API_KEY) {
-    console.log('[web-comps] SERPER_API_KEY not configured — skipping web comp search');
+    apiLogger.info('[web-comps] SERPER_API_KEY not configured — skipping web comp search');
     return [];
   }
   if (!process.env.ANTHROPIC_API_KEY) {
-    console.log('[web-comps] ANTHROPIC_API_KEY not configured — skipping web comp search');
+    apiLogger.info('[web-comps] ANTHROPIC_API_KEY not configured — skipping web comp search');
     return [];
   }
 
   try {
     const [q1, q2] = buildSearchQueries(ctx);
-    console.log(`[web-comps] Searching web for comparable sales near ${ctx.address}, ${ctx.city}...`);
+    apiLogger.info(`[web-comps] Searching web for comparable sales near ${ctx.address}, ${ctx.city}...`);
 
     // Run both searches in parallel
     const [results1, results2] = await Promise.all([
@@ -281,7 +282,7 @@ export async function findCompsViaWeb(ctx: WebCompsContext): Promise<AttomSaleCo
     }).slice(0, 12);
 
     if (allResults.length === 0) {
-      console.log('[web-comps] No search results returned');
+      apiLogger.info('[web-comps] No search results returned');
       return [];
     }
 
@@ -298,24 +299,24 @@ export async function findCompsViaWeb(ctx: WebCompsContext): Promise<AttomSaleCo
       : null;
 
     if (pageContent) {
-      console.log(`[web-comps] Fetched page content from ${preferredResult.link} (${pageContent.length} chars)`);
+      apiLogger.info(`[web-comps] Fetched page content from ${preferredResult.link} (${pageContent.length} chars)`);
     }
 
     // Use Claude to extract structured comps from search snippets + page content
     const comps = await extractCompsFromSearchContent(ctx, allResults, pageContent);
 
     if (comps.length > 0) {
-      console.log(
+      apiLogger.info(
         `[web-comps] Extracted ${comps.length} web-sourced comps: ` +
         comps.map((c) => `${c.address} ($${c.salePrice.toLocaleString()})`).join(', ')
       );
     } else {
-      console.log('[web-comps] Claude found no confirmed sales in search results');
+      apiLogger.info('[web-comps] Claude found no confirmed sales in search results');
     }
 
     return comps;
   } catch (err) {
-    console.warn(
+    apiLogger.warn(
       '[web-comps] Fallback comp search failed:',
       err instanceof Error ? err.message : String(err)
     );
@@ -351,7 +352,7 @@ export async function findSubjectPriorSaleViaWeb(
       `${fullAddress} sale history property sold last sold`,
     ];
 
-    console.log(`[web-comps] Searching for prior sale of subject: ${fullAddress}`);
+    apiLogger.info(`[web-comps] Searching for prior sale of subject: ${fullAddress}`);
     const [r1, r2] = await Promise.all([serperSearch(queries[0]), serperSearch(queries[1])]);
 
     const seen = new Set<string>();
@@ -362,7 +363,7 @@ export async function findSubjectPriorSaleViaWeb(
     }).slice(0, 8);
 
     if (allResults.length === 0) {
-      console.log('[web-comps] No results for subject prior sale search');
+      apiLogger.info('[web-comps] No results for subject prior sale search');
       return null;
     }
 
@@ -413,12 +414,12 @@ Only return this exact JSON or the word null. No explanation.`;
 
     if (!parsed.salePrice || parsed.salePrice <= 0 || !parsed.saleDate) return null;
 
-    console.log(
+    apiLogger.info(
       `[web-comps] Found subject prior sale: $${parsed.salePrice.toLocaleString()} on ${parsed.saleDate} via ${parsed.source}`
     );
     return { salePrice: parsed.salePrice, saleDate: parsed.saleDate, source: parsed.source };
   } catch (err) {
-    console.warn('[web-comps] Subject prior sale web search failed:', err instanceof Error ? err.message : String(err));
+    apiLogger.warn({ err: err instanceof Error ? err.message : String(err) }, 'Subject prior sale web search failed');
     return null;
   }
 }
@@ -495,7 +496,7 @@ Rules:
 
     if (!parsed.estimatedValue || parsed.estimatedValue <= 0) return null;
 
-    console.warn(
+    apiLogger.warn(
       `[web-comps] AI knowledge-based estimate for ${address}: ` +
       `$${parsed.estimatedValue.toLocaleString()} (range $${parsed.rangeLow.toLocaleString()}–$${parsed.rangeHigh.toLocaleString()})`
     );
@@ -507,7 +508,7 @@ Rules:
       reasoning: parsed.reasoning ?? '',
     };
   } catch (err) {
-    console.warn('[web-comps] AI value estimate failed:', err instanceof Error ? err.message : String(err));
+    apiLogger.warn({ err: err instanceof Error ? err.message : String(err) }, 'AI value estimate failed');
     return null;
   }
 }

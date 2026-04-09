@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/server';
 import { isAdmin, createApprovalEvent } from '@/lib/repository/admin';
 import { getReportById, updateReport } from '@/lib/repository/reports';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
+import { apiLogger } from '@/lib/logger';
 
 export async function POST(
   _request: NextRequest,
@@ -75,12 +76,12 @@ export async function POST(
     });
 
     // ── Trigger full pipeline from stage 1 (fire-and-forget) ───────────────
-    console.log(`[api/admin/rerun] Triggering full pipeline rerun for report ${reportId}`);
+    apiLogger.info(`[api/admin/rerun] Triggering full pipeline rerun for report ${reportId}`);
 
     runPipeline(reportId, 1).catch(async (err) => {
       const errMessage = err instanceof Error ? err.message : String(err);
       const stack = err instanceof Error ? err.stack : undefined;
-      console.error(
+      apiLogger.error(
         `[api/admin/rerun] Pipeline failed for report ${reportId}: ${errMessage}`
       );
       // Update report status so it doesn't stay stuck in 'paid'
@@ -96,7 +97,7 @@ export async function POST(
           }],
         } as never).eq('id', reportId);
       } catch (dbErr) {
-        console.error(
+        apiLogger.error(
           `[api/admin/rerun] CRITICAL: Pipeline failed AND status update failed for ${reportId}: ${dbErr}`
         );
       }
@@ -112,7 +113,7 @@ export async function POST(
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[api/admin/rerun] Unhandled error:', message);
+    apiLogger.error({ err: message }, 'Unhandled error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

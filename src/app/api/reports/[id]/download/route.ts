@@ -8,6 +8,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 const SIGNED_URL_EXPIRY_SECONDS = 60 * 60; // 1 hour
 
@@ -98,9 +99,9 @@ export async function GET(
 
       await supabase.from('reports').update({ report_pdf_storage_path: storagePath }).eq('id', reportId);
 
-      console.warn(`[PDF] Regenerated on demand for report ${reportId}`);
+      apiLogger.warn(`[PDF] Regenerated on demand for report ${reportId}`);
     } catch (err) {
-      console.error(`[download] On-demand PDF regeneration failed for ${reportId}:`, err);
+      apiLogger.error({ err: err }, `On-demand PDF regeneration failed for ${reportId}`);
       return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 });
     }
   }
@@ -112,7 +113,7 @@ export async function GET(
     .createSignedUrl(storagePath, SIGNED_URL_EXPIRY_SECONDS);
 
   if (signedUrlError || !signedUrlData?.signedUrl) {
-    console.error(`[download] Failed to create signed URL for report ${reportId}:`, signedUrlError?.message);
+    apiLogger.error({ err: signedUrlError?.message }, `Failed to create signed URL for report ${reportId}`);
     return NextResponse.json(
       { error: 'Failed to generate download link' },
       { status: 500 }

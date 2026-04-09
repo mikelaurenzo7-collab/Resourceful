@@ -16,6 +16,7 @@ import type {
 } from '@/types/database';
 import { getStaticMapUrl } from '@/lib/services/azure-maps';
 import type { ReportTemplateData, FilingGuide } from '@/lib/templates/report-template';
+import { logger } from '@/lib/logger';
 
 /**
  * Fetch all data needed to render a report PDF.
@@ -130,7 +131,7 @@ export async function fetchReportTemplateData(
       };
     } catch {
       // Filing guide parse failure is non-fatal for regeneration
-      console.warn(`[pdf] Failed to parse filing guide for report ${reportId}`);
+      logger.warn({ reportId }, 'Failed to parse filing guide');
     }
   }
 

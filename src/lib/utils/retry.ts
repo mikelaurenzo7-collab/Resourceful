@@ -2,6 +2,8 @@
 // Shared utility for retrying async operations with exponential backoff + jitter.
 // Used by: Anthropic API, Resend email, web fetches.
 
+import { logger } from '@/lib/logger';
+
 export interface RetryOptions {
   maxAttempts?: number;       // Default: 3
   baseDelayMs?: number;       // Default: 1000 (1s)
@@ -52,10 +54,9 @@ export async function withRetry<T>(
         delay += (Math.random() - 0.5) * jitterRange;
       }
 
-      console.warn(
-        `[retry] Attempt ${attempt}/${maxAttempts} failed, retrying in ${Math.round(delay)}ms: ${
-          error instanceof Error ? error.message : String(error)
-        }`
+      logger.warn(
+        { attempt, maxAttempts, delayMs: Math.round(delay), error: error instanceof Error ? error.message : String(error) },
+        'Retry attempt failed, scheduling retry'
       );
 
       await new Promise((resolve) => setTimeout(resolve, delay));

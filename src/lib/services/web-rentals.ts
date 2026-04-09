@@ -10,6 +10,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODELS } from '@/config/ai';
 import type { ComparableRentalInsert } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -51,7 +52,7 @@ async function serperSearch(
       body: JSON.stringify({ q: query, num: 10 }),
     });
     if (!res.ok) {
-      console.warn(`[web-rentals] Serper returned ${res.status}`);
+      apiLogger.warn(`[web-rentals] Serper returned ${res.status}`);
       return [];
     }
     const data = (await res.json()) as {
@@ -63,7 +64,7 @@ async function serperSearch(
       snippet: r.snippet ?? '',
     }));
   } catch (err) {
-    console.warn('[web-rentals] Serper error:', err instanceof Error ? err.message : String(err));
+    apiLogger.warn({ err: err instanceof Error ? err.message : String(err) }, 'Serper error');
     return [];
   }
 }
@@ -251,7 +252,7 @@ Return ONLY the JSON array. No explanation, no markdown.`;
         (typeof c.rentPerSqFtYear === 'number' && c.rentPerSqFtYear > 0);
       if (!hasAddress || !hasRent) return false;
       if (isSubjectProperty(String(c.address), ctx.address)) {
-        console.log(`[web-rentals] Filtered subject property: ${c.address}`);
+        apiLogger.info(`[web-rentals] Filtered subject property: ${c.address}`);
         return false;
       }
       return true;
@@ -323,17 +324,17 @@ export async function findRentalsViaWeb(
   const empty = { inserts: [], medianRentPerSqFtYr: 0 };
 
   if (!process.env.SERPER_API_KEY) {
-    console.log('[web-rentals] SERPER_API_KEY not configured — skipping');
+    apiLogger.info('[web-rentals] SERPER_API_KEY not configured — skipping');
     return empty;
   }
   if (!process.env.ANTHROPIC_API_KEY) {
-    console.log('[web-rentals] ANTHROPIC_API_KEY not configured — skipping');
+    apiLogger.info('[web-rentals] ANTHROPIC_API_KEY not configured — skipping');
     return empty;
   }
 
   try {
     const [q1, q2] = buildRentalSearchQueries(ctx);
-    console.log(
+    apiLogger.info(
       `[web-rentals] Searching for rental comps near ${ctx.address}, ${ctx.city}...`,
     );
 
@@ -354,7 +355,7 @@ export async function findRentalsViaWeb(
       .slice(0, 15);
 
     if (allResults.length === 0) {
-      console.log('[web-rentals] No search results returned');
+      apiLogger.info('[web-rentals] No search results returned');
       return empty;
     }
 
@@ -376,7 +377,7 @@ export async function findRentalsViaWeb(
       : null;
 
     if (pageContent) {
-      console.log(
+      apiLogger.info(
         `[web-rentals] Fetched page content from ${preferredResult.link} (${pageContent.length} chars)`,
       );
     }
@@ -389,7 +390,7 @@ export async function findRentalsViaWeb(
     );
 
     if (extracted.length === 0) {
-      console.log('[web-rentals] Claude extracted 0 rental comps from search results');
+      apiLogger.info('[web-rentals] Claude extracted 0 rental comps from search results');
       return empty;
     }
 
@@ -411,7 +412,7 @@ export async function findRentalsViaWeb(
           : rates[mid];
     }
 
-    console.log(
+    apiLogger.info(
       `[web-rentals] Found ${inserts.length} web rental comps, ` +
         `median $${medianRentPerSqFtYr.toFixed(2)}/sqft/yr: ` +
         inserts.map((i) => `${i.address} ($${i.rent_per_sqft_yr}/sf/yr)`).join(', '),
@@ -419,7 +420,7 @@ export async function findRentalsViaWeb(
 
     return { inserts, medianRentPerSqFtYr };
   } catch (err) {
-    console.warn(
+    apiLogger.warn(
       '[web-rentals] Error:',
       err instanceof Error ? err.message : String(err),
     );

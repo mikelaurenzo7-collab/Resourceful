@@ -5,6 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { apiLogger } from '@/lib/logger';
 
 export async function DELETE(
   _request: NextRequest,
@@ -65,7 +66,7 @@ export async function DELETE(
       .eq('id', reportId);
 
     if (updateError) {
-      console.error(`[api/reports/${reportId}/tax-bill-data] Update error:`, updateError.message);
+      apiLogger.error({ err: updateError.message }, `[api/reports/${reportId}/tax-bill-data] Update error`);
       return NextResponse.json(
         { error: 'Failed to delete tax bill data' },
         { status: 500 }
@@ -75,7 +76,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[api/reports/${reportId}/tax-bill-data] Error:`, message);
+    apiLogger.error({ err: message }, `[api/reports/${reportId}/tax-bill-data] Error`);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

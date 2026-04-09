@@ -69,7 +69,7 @@ async function searchNearbyDetractors(
   radiusMeters: number = 2000
 ): Promise<ValueDetractor[]> {
   if (!AZURE_KEY) {
-    console.log('[value-detractors] Azure Maps not configured — skipping POI search');
+    apiLogger.info('[value-detractors] Azure Maps not configured — skipping POI search');
     return [];
   }
 
@@ -101,7 +101,7 @@ async function searchNearbyDetractors(
       clearTimeout(timeout);
 
       if (!response.ok) {
-        console.warn(`[value-detractors] Azure POI search returned ${response.status}`);
+        apiLogger.warn(`[value-detractors] Azure POI search returned ${response.status}`);
         continue;
       }
 
@@ -130,7 +130,7 @@ async function searchNearbyDetractors(
         }
       }
     } catch (err) {
-      console.warn(`[value-detractors] POI search batch failed: ${err instanceof Error ? err.message : err}`);
+      apiLogger.warn(`[value-detractors] POI search batch failed: ${err instanceof Error ? err.message : err}`);
     }
   }
 
@@ -239,11 +239,11 @@ export async function detectValueDetractors(params: {
   // Run POI search and web search in parallel
   const [poiResults, webResults] = await Promise.all([
     searchNearbyDetractors(params.lat, params.lng).catch((err) => {
-      console.warn(`[value-detractors] POI search failed: ${err}`);
+      apiLogger.warn(`[value-detractors] POI search failed: ${err}`);
       return [] as ValueDetractor[];
     }),
     searchLocalIssues(params.address, params.city, params.state).catch((err) => {
-      console.warn(`[value-detractors] Web search failed: ${err}`);
+      apiLogger.warn(`[value-detractors] Web search failed: ${err}`);
       return [] as ValueDetractor[];
     }),
   ]);
@@ -284,7 +284,7 @@ export async function detectValueDetractors(params: {
   }
 
   if (allDetractors.length > 0) {
-    console.log(
+    apiLogger.info(
       `[value-detractors] Found ${allDetractors.length} detractors, ` +
       `aggregate impact: ${totalEstimatedImpactPct}%`
     );

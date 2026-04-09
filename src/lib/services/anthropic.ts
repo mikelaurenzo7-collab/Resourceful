@@ -5,6 +5,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { AI_MODELS, AI_CONFIG } from '@/config/ai';
 import type { PhotoAiAnalysis, PhotoDefect } from '@/types/database';
 import { withRetry, isRetryableError } from '@/lib/utils/retry';
+import { apiLogger } from '@/lib/logger';
 
 /**
  * Wrapper for Anthropic API calls with retry logic.
@@ -383,7 +384,7 @@ export async function generateNarratives(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[anthropic] generateNarratives error: ${message}`);
+    apiLogger.error(`[anthropic] generateNarratives error: ${message}`);
     return { data: null, error: `AI narrative generation failed: ${message}` };
   }
 }
@@ -618,7 +619,7 @@ export async function generateFilingGuide(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[anthropic] generateFilingGuide error: ${message}`);
+    apiLogger.error(`[anthropic] generateFilingGuide error: ${message}`);
     return { data: null, error: `AI filing guide generation failed: ${message}` };
   }
 }
@@ -697,7 +698,7 @@ Return a JSON object with:
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error(`[anthropic] analyzePhoto error: ${message}`);
+    apiLogger.error(`[anthropic] analyzePhoto error: ${message}`);
     return { data: null, error: `AI photo analysis failed: ${message}` };
   }
 }
@@ -1118,13 +1119,13 @@ function parseNarrativeJson(text: string): NarrativeSection[] | null {
       const closed = truncated.replace(/,\s*$/, '') + ']';
       const r2 = tryParse(closed);
       if (r2 && r2.length > 0) {
-        console.warn(`[anthropic] Narrative response was truncated — recovered ${r2.length} sections from partial JSON`);
+        apiLogger.warn(`[anthropic] Narrative response was truncated — recovered ${r2.length} sections from partial JSON`);
         return r2;
       }
     }
   }
 
-  console.error('[anthropic] Could not parse narrative JSON from response. First 500 chars:', text.slice(0, 500));
+  apiLogger.error({ err: text.slice(0, 500) }, 'Could not parse narrative JSON from response. First 500 chars');
   return null;
 }
 
@@ -1168,6 +1169,6 @@ function parsePhotoAnalysisJson(text: string): PhotoAiAnalysis | null {
       }
     }
   }
-  console.error('[anthropic] Could not parse photo analysis JSON from response');
+  apiLogger.error('[anthropic] Could not parse photo analysis JSON from response');
   return null;
 }

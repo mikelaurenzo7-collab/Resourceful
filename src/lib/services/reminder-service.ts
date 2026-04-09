@@ -9,6 +9,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { Report, CountyRule } from '@/types/database';
+import { emailLogger } from '@/lib/logger';
 
 /**
  * Subscribe a customer to annual assessment reminders after report delivery.
@@ -79,7 +80,7 @@ export async function subscribeToReminders(reportId: string): Promise<void> {
       onConflict: 'email,property_address',
     });
 
-  console.log(
+  emailLogger.info(
     `[reminders] Subscribed ${report.client_email} for ${report.property_address} — ` +
     `remind in month ${remindMonth}`
   );
@@ -104,11 +105,11 @@ export async function sendDueReminders(): Promise<{ sent: number; errors: number
     .or(`last_reminded_year.is.null,last_reminded_year.lt.${currentYear}`);
 
   if (!dueReminders || dueReminders.length === 0) {
-    console.log(`[reminders] No reminders due for month ${currentMonth}`);
+    emailLogger.info(`[reminders] No reminders due for month ${currentMonth}`);
     return { sent: 0, errors: 0 };
   }
 
-  console.log(`[reminders] ${dueReminders.length} reminders due for month ${currentMonth}`);
+  emailLogger.info(`[reminders] ${dueReminders.length} reminders due for month ${currentMonth}`);
 
   let sent = 0;
   let errors = 0;
@@ -117,7 +118,7 @@ export async function sendDueReminders(): Promise<{ sent: number; errors: number
     try {
       // Reminder email — uses same Resend service as report delivery
       // Will be fully implemented when email templates are designed
-      console.log(`[reminders] Would send reminder for ${(reminder as { id: string }).id} (email sending pending template design)`);
+      emailLogger.info(`[reminders] Would send reminder for ${(reminder as { id: string }).id} (email sending pending template design)`);
 
       // Mark as sent
       await supabase
@@ -129,10 +130,10 @@ export async function sendDueReminders(): Promise<{ sent: number; errors: number
         .eq('id' as never, (reminder as { id: string }).id);
 
       sent++;
-      console.log(`[reminders] Sent reminder for ${(reminder as { id: string }).id}`);
+      emailLogger.info(`[reminders] Sent reminder for ${(reminder as { id: string }).id}`);
     } catch (err) {
       errors++;
-      console.error(`[reminders] Failed to send reminder: ${err}`);
+      emailLogger.error(`[reminders] Failed to send reminder: ${err}`);
     }
   }
 

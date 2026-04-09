@@ -10,6 +10,7 @@ import { createReport } from '@/lib/repository/reports';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
 
 // ─── Request Schema ─────────────────────────────────────────────────────────
 
@@ -134,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     // ── Trigger pipeline (non-blocking) ───────────────────────────────────
     runPipeline(report.id).catch((err) => {
-      console.error(
+      apiLogger.error(
         `[partner-api] Pipeline failed for report ${report.id} (partner: ${partner.firm_name}): ${err}`
       );
     });
@@ -150,7 +151,7 @@ export async function POST(request: NextRequest) {
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[partner-api] Unhandled error:', message);
+    apiLogger.error({ err: message }, 'Unhandled error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

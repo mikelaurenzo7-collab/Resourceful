@@ -9,6 +9,7 @@
 // This compounds — after 100+ filings in a county, we know EXACTLY what works.
 
 import { createAdminClient } from '@/lib/supabase/admin';
+import { apiLogger } from '@/lib/logger';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -155,7 +156,7 @@ export async function aggregateCountyIntelligence(
     .update(updates as never)
     .eq('county_fips', countyFips);
 
-  console.log(
+  apiLogger.info(
     `[filing-intel] Updated ${countyFips}: ${winRate}% win rate, ` +
     `$${avgSavings} avg savings, ${totalDecided} outcomes`
   );
