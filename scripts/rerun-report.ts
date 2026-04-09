@@ -30,9 +30,10 @@ if (!reportId) {
   process.exit(1);
 }
 
-import { runPipeline } from '../src/lib/pipeline/orchestrator';
-
 async function main() {
+  // Dynamic import ensures .env.local vars are set before any service module
+  // captures process.env values at its own module-level const declarations.
+  const { runPipeline } = await import('../src/lib/pipeline/orchestrator');
   console.log(`[rerun-report] Running pipeline for report ${reportId}...`);
   const result = await runPipeline(reportId, 1);
   if (result.success) {

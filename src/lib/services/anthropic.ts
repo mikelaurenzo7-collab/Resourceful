@@ -1060,25 +1060,51 @@ function buildNarrativeUserMessage(payload: NarrativePayload): string {
 // ─── JSON Parsers ────────────────────────────────────────────────────────────
 
 function parseNarrativeJson(text: string): NarrativeSection[] | null {
-  try {
-    // Try direct parse first
-    const parsed = JSON.parse(text);
-    if (Array.isArray(parsed)) return validateNarrativeSections(parsed);
-    if (parsed.sections && Array.isArray(parsed.sections)) return validateNarrativeSections(parsed.sections);
-  } catch {
-    // Try extracting JSON from markdown code block
-    const match = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (match) {
-      try {
-        const parsed = JSON.parse(match[1]);
-        if (Array.isArray(parsed)) return validateNarrativeSections(parsed);
-        if (parsed.sections && Array.isArray(parsed.sections)) return validateNarrativeSections(parsed.sections);
-      } catch {
-        // fall through
+  // Helper to attempt parse + validate
+  const tryParse = (s: string): NarrativeSection[] | null => {
+    try {
+      const parsed = JSON.parse(s);
+      if (Array.isArray(parsed)) return validateNarrativeSections(parsed);
+      if (parsed.sections && Array.isArray(parsed.sections)) return validateNarrativeSections(parsed.sections);
+    } catch {
+      // ignore
+    }
+    return null;
+  };
+
+  // 1. Direct parse
+  const direct = tryParse(text);
+  if (direct) return direct;
+
+  // 2. Closed code fence: ```json ... ```
+  const closedFence = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (closedFence) {
+    const r = tryParse(closedFence[1].trim());
+    if (r) return r;
+  }
+
+  // 3. Open/unclosed code fence — response was truncated at max_tokens.
+  //    Strip the opening fence and try to recover as much valid JSON as possible.
+  const openFence = text.match(/```(?:json)?\s*([\s\S]*)$/);
+  if (openFence) {
+    const inner = openFence[1].trim();
+    const r = tryParse(inner);
+    if (r) return r;
+    // Attempt to close the truncated array by finding the last complete object
+    const lastBrace = inner.lastIndexOf('}');
+    if (lastBrace !== -1) {
+      const truncated = inner.slice(0, lastBrace + 1);
+      // Remove trailing comma if present, then close the array
+      const closed = truncated.replace(/,\s*$/, '') + ']';
+      const r2 = tryParse(closed);
+      if (r2 && r2.length > 0) {
+        console.warn(`[anthropic] Narrative response was truncated — recovered ${r2.length} sections from partial JSON`);
+        return r2;
       }
     }
   }
-  console.error('[anthropic] Could not parse narrative JSON from response');
+
+  console.error('[anthropic] Could not parse narrative JSON from response. First 500 chars:', text.slice(0, 500));
   return null;
 }
 

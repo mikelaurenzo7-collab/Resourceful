@@ -126,8 +126,8 @@ export interface SalesCompParams {
   latitude: number;
   longitude: number;
   propertyType: string;
-  minSqft: number;
-  maxSqft: number;
+  minSqft: number | null;  // null = omit size constraint entirely
+  maxSqft: number | null;  // null = omit size constraint entirely
   radiusMiles: number;
   monthsBack: number;
 }
@@ -136,8 +136,8 @@ export interface RentalCompParams {
   latitude: number;
   longitude: number;
   propertyType: string;
-  minSqft: number;
-  maxSqft: number;
+  minSqft: number | null;  // null = omit size constraint entirely
+  maxSqft: number | null;  // null = omit size constraint entirely
   radiusMiles: number;
   monthsBack: number;
 }
@@ -398,15 +398,17 @@ function normalizeSaleComps(raw: Record<string, unknown>): AttomSaleComp[] {
     city: s.address?.locality ?? '',
     state: s.address?.countrySubd ?? '',
     zip: s.address?.postal1 ?? '',
-    salePrice: s.sale?.amount?.saleAmt ?? 0,
-    saleDate: s.sale?.amount?.saleRecDate ?? '',
-    pricePerSqFt: s.sale?.calculation?.pricePerSqFt ?? null,
-    yearBuilt: s.summary?.yearBuilt ?? null,
-    buildingSquareFeet: s.summary?.buildingSqFt ?? null,
-    lotSquareFeet: s.summary?.lotSqFt ?? null,
-    bedrooms: s.summary?.bedrooms ?? null,
-    bathrooms: s.summary?.bathrooms ?? null,
-    stories: s.summary?.stories ?? null,
+    // ATTOM /sale/snapshot returns all-lowercase field names inside nested objects
+    salePrice: s.sale?.amount?.saleamt ?? 0,
+    saleDate: s.sale?.amount?.salerecdate ?? '',
+    pricePerSqFt: s.sale?.calculation?.pricepersizeunit ?? null,
+    yearBuilt: s.summary?.yearbuilt ?? null,
+    buildingSquareFeet: s.building?.size?.universalsize ?? null,
+    // lotSize1 is in acres — convert to sqft
+    lotSquareFeet: s.lot?.lotSize1 != null ? Math.round(s.lot.lotSize1 * 43560) : null,
+    bedrooms: s.building?.rooms?.beds ?? null,
+    bathrooms: s.building?.rooms?.bathstotal ?? null,
+    stories: s.building?.interior?.stories ?? null,
     garageSpaces: s.building?.parking?.prkgSpaces ?? null,
     basementSquareFeet: s.building?.interior?.bsmtSqFt ?? null,
     propertyType: s.summary?.propertyType ?? null,
@@ -451,19 +453,17 @@ function normalizeDeedHistory(raw: Record<string, unknown>): AttomDeedRecord[] {
 // ─── Property Type Mapping ────────────────────────────────────────────────────
 // Maps our internal property type/subtype strings to the codes ATTOM's
 // /sale/snapshot and /rental/snapshot endpoints accept.
-// 'RESIDENTIAL' is NOT a valid ATTOM code — omitting the filter for broad
-// residential causes ATTOM to return all types within the radius, which is
-// fine because minUniversalSize/maxUniversalSize already narrow the pool.
+// Never filter by residential property type in ATTOM queries.
+// Dense urban markets (condos, townhouses, lofts, mixed-use) have virtually
+// zero SFR sales — passing propertytype=SFR silently returns 0 results.
+// sqft variance in the caller already controls comparability within a tier.
 function mapToAttomPropertyType(propertyType: string): string | null {
   const t = propertyType.toLowerCase().replace(/_/g, '');
   if (t === 'land' || t === 'vacant' || t === 'agricultural') return 'VACANT';
   if (t === 'commercial') return 'COMMERCIAL';
   if (t === 'industrial') return 'COMMERCIAL'; // ATTOM lumps most non-resi into COMMERCIAL
-  if (t.includes('sfr') || t.includes('singlefamily')) return 'SFR';
-  if (t.includes('condo') || t.includes('condominium')) return 'CONDOMINIUM';
-  if (t.includes('townhouse') || t.includes('townhome')) return 'TOWNHOUSE';
-  if (t.includes('multifamily') || t.includes('mfr')) return 'MULTIFAMILY';
-  // Generic 'residential' or anything else — omit the filter entirely
+  // All residential subtypes (sfr, condo, townhouse, multifamily, generic):
+  // omit the filter — let ATTOM return all residential sales in the area.
   return null;
 }
 
@@ -531,12 +531,19 @@ export async function getSalesComparables(
     latitude: String(params.latitude),
     longitude: String(params.longitude),
     radius: String(params.radiusMiles),
-    minUniversalSize: String(params.minSqft),
-    maxUniversalSize: String(params.maxSqft),
     startSaleSearchDate: formatDate(startDate),
     endSaleSearchDate: formatDate(endDate),
     orderby: 'distance',
   };
+  // Only add size filters when we have real sqft data — omitting them is safer
+  // than sending minUniversalSize=0/maxUniversalSize=0 which may cause ATTOM to
+  // return nothing or behave unexpectedly.
+  if (params.minSqft != null && params.minSqft > 0) {
+    saleSearchParams.minUniversalSize = String(params.minSqft);
+  }
+  if (params.maxSqft != null && params.maxSqft > 0) {
+    saleSearchParams.maxUniversalSize = String(params.maxSqft);
+  }
   if (attomType) saleSearchParams.propertytype = attomType;
 
   const result = await attomFetch<Record<string, unknown>>(
@@ -578,10 +585,14 @@ export async function getRentalComparables(
     latitude: String(params.latitude),
     longitude: String(params.longitude),
     radius: String(params.radiusMiles),
-    minUniversalSize: String(params.minSqft),
-    maxUniversalSize: String(params.maxSqft),
     orderby: 'distance',
   };
+  if (params.minSqft != null && params.minSqft > 0) {
+    rentalSearchParams.minUniversalSize = String(params.minSqft);
+  }
+  if (params.maxSqft != null && params.maxSqft > 0) {
+    rentalSearchParams.maxUniversalSize = String(params.maxSqft);
+  }
   if (rentalAttomType) rentalSearchParams.propertytype = rentalAttomType;
 
   const result = await attomFetch<Record<string, unknown>>(

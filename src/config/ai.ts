@@ -18,7 +18,7 @@ export const AI_MODELS = {
 
 // Token limits cap API costs and prevent runaway bills.
 export const AI_TOKEN_LIMITS = {
-  REPORT_NARRATIVES: 8000,
+  REPORT_NARRATIVES: 16000,
   VISION_ANALYSIS: 1000,
   FILING_GUIDE: 3000,
   CLASSIFICATION: 300,

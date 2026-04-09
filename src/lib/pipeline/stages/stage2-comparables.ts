@@ -42,9 +42,10 @@ interface SearchTier {
 
 const SEARCH_TIERS: Record<string, SearchTier[]> = {
   residential: [
-    { radiusMiles: 0.5, monthsBack: 18, gbaVariance: 0.25 },
-    { radiusMiles: 1, monthsBack: 18, gbaVariance: 0.25 },
-    { radiusMiles: 2, monthsBack: 30, gbaVariance: 0.25 },
+    { radiusMiles: 0.5, monthsBack: 18, gbaVariance: 0.30 },
+    { radiusMiles: 1,   monthsBack: 24, gbaVariance: 0.35 },
+    { radiusMiles: 2,   monthsBack: 30, gbaVariance: 0.40 },
+    { radiusMiles: 3,   monthsBack: 36, gbaVariance: 0.50 },
   ],
   commercial: [
     { radiusMiles: 3, monthsBack: 30, gbaVariance: 0.40 },
@@ -353,16 +354,22 @@ export async function runComparables(
   // ── Progressive radius/time expansion ─────────────────────────────────
   let allComps: AttomSaleComp[] = [];
 
+  const sqftKnown = subject.buildingSqFt > 0;
+
   for (const tier of tiers) {
-    const minSqft = Math.round(subject.buildingSqFt * (1 - tier.gbaVariance));
-    const maxSqft = Math.round(subject.buildingSqFt * (1 + tier.gbaVariance));
+    const minSqft = sqftKnown
+      ? Math.max(Math.round(subject.buildingSqFt * (1 - tier.gbaVariance)), 0)
+      : null;
+    const maxSqft = sqftKnown
+      ? Math.round(subject.buildingSqFt * (1 + tier.gbaVariance))
+      : null;
 
     const result = await getSalesComparables({
       latitude,
       longitude,
       propertyType: propertyData.property_subtype ?? propertyType,
-      minSqft: Math.max(minSqft, 0),
-      maxSqft: maxSqft || 99999,
+      minSqft,
+      maxSqft,
       radiusMiles: tier.radiusMiles,
       monthsBack: tier.monthsBack,
     });
@@ -377,6 +384,28 @@ export async function runComparables(
         `[stage2] Found ${allComps.length} comps at ${tier.radiusMiles}mi / ${tier.monthsBack}mo`
       );
       break;
+    }
+  }
+
+  // ── No-sqft fallback ──────────────────────────────────────────────────
+  // All tiers failed. Retry once with the sqft constraint removed entirely.
+  // This handles properties where ATTOM's reported sqft is inaccurate, or
+  // where the local market has few sales of similar size but many that are
+  // nearby and otherwise comparable (e.g. mixed condo sizes in a building).
+  if (allComps.length === 0 && sqftKnown) {
+    console.warn(`[stage2] All sqft-filtered tiers returned 0 comps — retrying without size constraint`);
+    const noSizeResult = await getSalesComparables({
+      latitude,
+      longitude,
+      propertyType: propertyData.property_subtype ?? propertyType,
+      minSqft: null,
+      maxSqft: null,
+      radiusMiles: 2,
+      monthsBack: 36,
+    });
+    if (noSizeResult.data && noSizeResult.data.length > 0) {
+      allComps = noSizeResult.data;
+      console.log(`[stage2] No-size fallback found ${allComps.length} comps`);
     }
   }
 
