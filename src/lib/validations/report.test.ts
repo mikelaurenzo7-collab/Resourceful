@@ -195,6 +195,16 @@ describe('adminRegenerateSchema', () => {
     const result = adminRegenerateSchema.safeParse({ section_name: '' });
     expect(result.success).toBe(false);
   });
+
+  it('rejects section name over 100 characters', () => {
+    const result = adminRegenerateSchema.safeParse({ section_name: 'a'.repeat(101) });
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts section name at exactly 100 characters', () => {
+    const result = adminRegenerateSchema.safeParse({ section_name: 'a'.repeat(100) });
+    expect(result.success).toBe(true);
+  });
 });
 
 // ─── countyRuleSchema ──────────────────────────────────────────────────────

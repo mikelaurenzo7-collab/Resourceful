@@ -61,6 +61,14 @@ export async function POST(
     );
   }
 
+  // Validate notes max length
+  if (notes !== undefined && notes !== null && (typeof notes !== 'string' || notes.length > 5000)) {
+    return NextResponse.json(
+      { error: 'Notes must be a string of 5000 characters or less.' },
+      { status: 400 }
+    );
+  }
+
   // Validate new_assessed_value if provided
   if (new_assessed_value !== undefined && new_assessed_value !== null) {
     if (typeof new_assessed_value !== 'number' || !isFinite(new_assessed_value) || new_assessed_value < 0 || new_assessed_value > 100_000_000_00) {

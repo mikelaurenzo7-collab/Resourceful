@@ -5,12 +5,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { applyRateLimit } from '@/lib/rate-limit';
 import { apiLogger } from '@/lib/logger';
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Rate limit: 10 deletions per 15 minutes per IP
+  const rateLimitResponse = await applyRateLimit(request, {
+    prefix: 'tax-bill-delete',
+    limit: 10,
+    windowSeconds: 900,
+  });
+  if (rateLimitResponse) return rateLimitResponse;
+
   const { id: reportId } = await params;
 
   try {

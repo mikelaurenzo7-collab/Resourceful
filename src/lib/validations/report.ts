@@ -98,7 +98,7 @@ export type AdminRejectInput = z.infer<typeof adminRejectSchema>;
 // ─── Admin Regenerate ───────────────────────────────────────────────────────
 
 export const adminRegenerateSchema = z.object({
-  section_name: z.string().min(1, 'Section name is required'),
+  section_name: z.string().min(1, 'Section name is required').max(100, 'Section name too long'),
 });
 
 export type AdminRegenerateInput = z.infer<typeof adminRegenerateSchema>;
