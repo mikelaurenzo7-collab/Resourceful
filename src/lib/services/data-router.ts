@@ -421,10 +421,13 @@ export async function collectPropertyData(
     console.log(`[data-router] ATTOM not configured — using public records only`);
   }
 
-  // ── Source 3: Lightbox (fills critical gaps when ATTOM returns zero fields) ──
+  // ── Source 3: Lightbox (absolute last resort — only when both public records AND ATTOM failed) ──
+  // Lightbox is a paid API that sources from the same county records as ATTOM.
+  // Only called if we have critical missing fields AND no primary source succeeded.
   const hasCriticalGaps = !collected?.building_sqft_gross || !collected?.assessed_value;
-  if (hasCriticalGaps && process.env.LIGHTBOX_API_KEY && process.env.LIGHTBOX_API_SECRET) {
-    console.log(`[data-router] Critical data gaps detected — trying Lightbox for "${params.address}"...`);
+  const primarySourcesFailed = !collected?.assessed_value_source || collected.assessed_value_source === 'none';
+  if (hasCriticalGaps && primarySourcesFailed && process.env.LIGHTBOX_API_KEY && process.env.LIGHTBOX_API_SECRET) {
+    console.log(`[data-router] Critical data gaps + primary sources failed — trying Lightbox for "${params.address}"...`);
     const lightboxResult = await lightboxGetPropertyDetail(params.address, params.city, params.state);
 
     if (lightboxResult.data) {

@@ -1,13 +1,24 @@
 // ─── Stage 3: Income Analysis (Commercial/Industrial Only) ──────────────────
-// Queries ATTOM for rental comparables, builds a pro forma income statement,
-// selects a cap rate from comparable sales implied rates, and calculates
+// Builds a pro forma income statement, selects a cap rate, and calculates
 // income approach value. Writes to income_analysis and comparable_rentals.
+//
+// Rental comp cascade:
+//   1. ATTOM rental comps (paid, county-sourced)
+//   2. Web search + Claude extraction (free — Serper + Anthropic)
+//   3. RentCast active listings (paid, last resort)
+//   4. RentCast AVM estimate (paid, last resort)
+//   5. Hardcoded fallback from valuation.ts
+//
+// Market data (cap rates, vacancy, appreciation) is web-researched via
+// Serper + Claude to override hardcoded valuation.ts constants.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, ComparableRentalInsert, Report, PropertyData, ComparableSale } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { getRentalComparables } from '@/lib/services/attom';
 import { getRentalListings, getRentEstimate } from '@/lib/services/rentcast';
+import { findRentalsViaWeb } from '@/lib/services/web-rentals';
+import { researchMarketData } from '@/lib/services/web-market-data';
 import { INCOME_PARAMS, resolvePropertySubtype } from '@/config/valuation';
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
@@ -140,61 +151,86 @@ export async function runIncomeAnalysis(
       `[stage3] Found ${rentalResult.data.length} rental comps, median rent/sqft/yr: $${concludedMarketRentPerSqFtYr}`
     );
   } else {
-    // ATTOM returned no rental comps — try RentCast before hardcoded fallback
-    console.warn(`[stage3] ATTOM returned 0 rental comps — trying RentCast`);
+    // ATTOM returned no rental comps — try web search, then RentCast, then fallback
+    console.warn(`[stage3] ATTOM returned 0 rental comps — trying web search`);
 
-    // Try RentCast active rental listings first
-    const rcListingsResult = await getRentalListings(latitude, longitude, 5, subtype, 20);
-    const rcListings = (rcListingsResult.data ?? [])
-      .filter((l) => l.price > 0 && l.squareFootage && l.squareFootage > 0);
+    // Try web search first (free, powered by Serper + Claude)
+    const webRentalResult = await findRentalsViaWeb({
+      reportId,
+      address: report.property_address ?? '',
+      city: report.city ?? '',
+      state: report.state ?? '',
+      propertyType: report.property_type ?? 'commercial',
+      subtype,
+      buildingSqFt,
+      latitude,
+      longitude,
+    });
 
-    if (rcListings.length > 0) {
-      const rcInserts: ComparableRentalInsert[] = rcListings.map((l) => ({
-        report_id: reportId,
-        address: l.formattedAddress,
-        lease_date: l.listedDate ?? null,
-        pin: null,
-        building_sqft_leased: l.squareFootage ?? null,
-        rent_per_sqft_yr: l.squareFootage
-          ? Math.round((l.price * 12 / l.squareFootage) * 100) / 100
-          : null,
-        lease_type: null,
-        tenant_pays_description: null,
-        adjustment_notes: `RentCast listing (${l.status ?? 'Active'})`,
-        effective_net_rent_per_sqft: l.squareFootage
-          ? Math.round((l.price * 12 / l.squareFootage) * 100) / 100
-          : null,
-      }));
-      await supabase.from('comparable_rentals').insert(rcInserts);
-
-      const rates = rcListings
-        .map((l) => (l.price * 12) / l.squareFootage!)
-        .sort((a, b) => a - b);
-      const mid = Math.floor(rates.length / 2);
-      concludedMarketRentPerSqFtYr =
-        rates.length % 2 === 0 ? (rates[mid - 1] + rates[mid]) / 2 : rates[mid];
-      rentcastCompCount = rcListings.length;
+    if (webRentalResult.inserts.length > 0 && webRentalResult.medianRentPerSqFtYr > 0) {
+      await supabase.from('comparable_rentals').insert(webRentalResult.inserts);
+      concludedMarketRentPerSqFtYr = webRentalResult.medianRentPerSqFtYr;
+      rentcastCompCount = webRentalResult.inserts.length;
       console.log(
-        `[stage3] RentCast: ${rcListings.length} listings, median $${concludedMarketRentPerSqFtYr.toFixed(2)}/sqft/yr`,
+        `[stage3] Web search: ${webRentalResult.inserts.length} rental comps, median $${concludedMarketRentPerSqFtYr.toFixed(2)}/sqft/yr`,
       );
     }
 
-    // If still no rate, try RentCast AVM estimate
+    // If web search didn't find enough, try RentCast as paid fallback
     if (concludedMarketRentPerSqFtYr === 0) {
-      const rcAvm = await getRentEstimate(
-        report.property_address ?? '',
-        report.city ?? '',
-        report.state ?? '',
-        subtype,
-        buildingSqFt > 0 ? buildingSqFt : null,
-      );
-      if (rcAvm.data && rcAvm.data.rent > 0 && buildingSqFt > 0) {
-        concludedMarketRentPerSqFtYr = (rcAvm.data.rent * 12) / buildingSqFt;
+      console.warn(`[stage3] Web search found 0 rental comps — trying RentCast`);
+      const rcListingsResult = await getRentalListings(latitude, longitude, 5, subtype, 20);
+      const rcListings = (rcListingsResult.data ?? [])
+        .filter((l) => l.price > 0 && l.squareFootage && l.squareFootage > 0);
+
+      if (rcListings.length > 0) {
+        const rcInserts: ComparableRentalInsert[] = rcListings.map((l) => ({
+          report_id: reportId,
+          address: l.formattedAddress,
+          lease_date: l.listedDate ?? null,
+          pin: null,
+          building_sqft_leased: l.squareFootage ?? null,
+          rent_per_sqft_yr: l.squareFootage
+            ? Math.round((l.price * 12 / l.squareFootage) * 100) / 100
+            : null,
+          lease_type: null,
+          tenant_pays_description: null,
+          adjustment_notes: `RentCast listing (${l.status ?? 'Active'})`,
+          effective_net_rent_per_sqft: l.squareFootage
+            ? Math.round((l.price * 12 / l.squareFootage) * 100) / 100
+            : null,
+        }));
+        await supabase.from('comparable_rentals').insert(rcInserts);
+
+        const rates = rcListings
+          .map((l) => (l.price * 12) / l.squareFootage!)
+          .sort((a, b) => a - b);
+        const mid = Math.floor(rates.length / 2);
+        concludedMarketRentPerSqFtYr =
+          rates.length % 2 === 0 ? (rates[mid - 1] + rates[mid]) / 2 : rates[mid];
+        rentcastCompCount = rcListings.length;
         console.log(
-          `[stage3] RentCast AVM: $${rcAvm.data.rent}/mo → $${concludedMarketRentPerSqFtYr.toFixed(2)}/sqft/yr`,
+          `[stage3] RentCast: ${rcListings.length} listings, median $${concludedMarketRentPerSqFtYr.toFixed(2)}/sqft/yr`,
         );
       }
-    }
+
+      // If still no rate, try RentCast AVM estimate
+      if (concludedMarketRentPerSqFtYr === 0) {
+        const rcAvm = await getRentEstimate(
+          report.property_address ?? '',
+          report.city ?? '',
+          report.state ?? '',
+          subtype,
+          buildingSqFt > 0 ? buildingSqFt : null,
+        );
+        if (rcAvm.data && rcAvm.data.rent > 0 && buildingSqFt > 0) {
+          concludedMarketRentPerSqFtYr = (rcAvm.data.rent * 12) / buildingSqFt;
+          console.log(
+            `[stage3] RentCast AVM: $${rcAvm.data.rent}/mo → $${concludedMarketRentPerSqFtYr.toFixed(2)}/sqft/yr`,
+          );
+        }
+      }
+    } // end RentCast fallback
 
     // Final hardcoded fallback
     if (concludedMarketRentPerSqFtYr === 0) {
@@ -213,10 +249,32 @@ export async function runIncomeAnalysis(
     rentalCompCount === 1 ? 'low' :
     'none';
 
+  // ── Research real-time market data (cap rates, vacancy, etc.) ─────────
+  const marketData = await researchMarketData({
+    city: report.city ?? '',
+    state: report.state ?? '',
+    county: report.county ?? null,
+    propertyType: report.property_type ?? 'commercial',
+    subtype,
+  });
+
+  // Override hardcoded defaults with web-researched data when available
+  const effectiveVacancyRate = marketData.vacancyRatePct != null
+    ? marketData.vacancyRatePct / 100
+    : DEFAULT_VACANCY_RATE;
+  const marketVacancySource = marketData.vacancySource
+    ?? (rentalResult.data?.length ? 'Derived from rental comparables' : 'Market default assumption');
+
+  // If web research found market rent and we're using a fallback, prefer it
+  if (concludedMarketRentPerSqFtYr === FALLBACK_RENT && marketData.marketRentPerSqFtYr != null) {
+    concludedMarketRentPerSqFtYr = marketData.marketRentPerSqFtYr;
+    console.log(`[stage3] Overriding fallback rent with web research: $${concludedMarketRentPerSqFtYr}/sqft/yr (${marketData.marketRentSource})`);
+  }
+
   // ── Build pro forma ───────────────────────────────────────────────────
   const potentialGrossIncome = Math.round(buildingSqFt * concludedMarketRentPerSqFtYr);
-  const vacancyRatePct = DEFAULT_VACANCY_RATE * 100; // store as percentage
-  const vacancyAmount = Math.round(potentialGrossIncome * DEFAULT_VACANCY_RATE);
+  const vacancyRatePct = effectiveVacancyRate * 100; // store as percentage
+  const vacancyAmount = Math.round(potentialGrossIncome * effectiveVacancyRate);
   const effectiveGrossIncome = potentialGrossIncome - vacancyAmount;
 
   // Calculate individual expense line items
@@ -247,8 +305,15 @@ export async function runIncomeAnalysis(
   const salesComps = (salesCompsData ?? []) as ComparableSale[];
 
   let concludedCapRate = DEFAULT_CAP_RATE; // subtype-specific default
-  let capRateMarketLow: number | null = null;
-  let capRateMarketHigh: number | null = null;
+  let capRateMarketLow: number | null = marketData.capRateLow;
+  let capRateMarketHigh: number | null = marketData.capRateHigh;
+  const investorSurveyRef: string | null = marketData.capRateSurveySource;
+
+  // Use web-researched cap rate as the default if available (better than hardcoded)
+  if (marketData.capRate != null) {
+    concludedCapRate = marketData.capRate;
+    console.log(`[stage3] Using web-researched cap rate: ${(concludedCapRate * 100).toFixed(2)}% (${marketData.capRateSurveySource})`);
+  }
 
   if (salesComps && salesComps.length > 0) {
     // Derive implied cap rates from sale prices and estimated NOI
@@ -310,16 +375,14 @@ export async function runIncomeAnalysis(
       total_expenses: totalExpenses,
       net_operating_income: netOperatingIncome,
       expense_ratio_pct: expenseRatioPct,
-      market_vacancy_rate_source: rentalResult.data?.length
-        ? 'Derived from rental comparables'
-        : 'Market default assumption',
+      market_vacancy_rate_source: marketVacancySource,
       cap_rate_market_low: capRateMarketLow,
       cap_rate_market_high: capRateMarketHigh,
-      cap_rate_investor_survey_avg: null,
+      cap_rate_investor_survey_avg: marketData.capRate,
       concluded_cap_rate: concludedCapRate,
       capitalized_value: capitalizedValue,
       concluded_value_income_approach: concludedValueIncomeApproach,
-      investor_survey_reference: null,
+      investor_survey_reference: investorSurveyRef,
       rental_comp_confidence: rentalCompConfidence,
     });
 

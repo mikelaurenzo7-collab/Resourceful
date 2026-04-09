@@ -27,6 +27,7 @@ import {
 import { getCalibrationParams } from '@/lib/repository/calibration';
 import { getDeedHistory } from '@/lib/services/attom';
 import { findSubjectPriorSaleViaWeb, estimateValueViaAI } from '@/lib/services/web-comps';
+import { researchMarketData } from '@/lib/services/web-market-data';
 // Attorney referral system removed — all filing handled in-house or guided pro se.
 
 // Assumed annual appreciation rate for prior-sale extrapolation (conservative FHFA long-run average).
@@ -82,14 +83,16 @@ function computeCostApproach(
   buildingSqft: number | null,
   physicalDepreciationPct: number | null,
   functionalObsolescencePct: number,
-  landValue: number | null
+  landValue: number | null,
+  constructionCostOverride?: number | null,
 ): CostApproachResult {
   if (!subtype || !buildingSqft || buildingSqft <= 0) return { rcn: null, costApproachValue: null };
   const costTable = REPLACEMENT_COST_PER_SQFT[subtype];
-  if (!costTable) return { rcn: null, costApproachValue: null };
+  if (!costTable && !constructionCostOverride) return { rcn: null, costApproachValue: null };
 
   const grade = (qualityGrade as QualityGrade | null) ?? 'average';
-  const costPerSqft = costTable[grade] ?? costTable.average;
+  const costPerSqft = constructionCostOverride ?? costTable?.[grade] ?? costTable?.average ?? 0;
+  if (costPerSqft <= 0) return { rcn: null, costApproachValue: null };
   const rcn = Math.round(costPerSqft * buildingSqft);
 
   // Require a credible land value to produce a valid cost approach.
@@ -285,12 +288,31 @@ export async function runNarratives(
 
   // ── Value WITH photo condition adjustments (the real concluded value) ──
   // When 0 comps are available (thin rural markets), fall back to cost/income approach.
+  let appreciationRate = PRIOR_SALE_ANNUAL_APPRECIATION;
   if (comps.length === 0 && !incomeData?.concluded_value_income_approach) {
     // Attempt cost approach.
     // If ATTOM didn't supply a split land value, estimate it using IAAO
     // land ratio benchmarks. This keeps the cost approach viable in thin
     // markets and for accounts where ATTOM omits land value.
     const subtype = propertyData.property_subtype ?? 'residential_sfr';
+
+    // Research real-time construction costs and appreciation for this market
+    const marketDataForCost = await researchMarketData({
+      city: report.city ?? '',
+      state: report.state ?? '',
+      county: report.county ?? null,
+      propertyType: report.property_type ?? 'residential',
+      subtype,
+    });
+
+    // Use web-researched appreciation if available, otherwise hardcoded 4%
+    appreciationRate = marketDataForCost.appreciationPctAnnual != null
+      ? marketDataForCost.appreciationPctAnnual / 100
+      : PRIOR_SALE_ANNUAL_APPRECIATION;
+    if (marketDataForCost.appreciationPctAnnual != null) {
+      console.log(`[stage5] Using web-researched appreciation: ${marketDataForCost.appreciationPctAnnual}%/yr (${marketDataForCost.appreciationSource})`);
+    }
+
     let landValue = propertyData.land_value ?? null;
     let landValueEstimated = false;
     if (!landValue || landValue <= 0) {
@@ -321,7 +343,8 @@ export async function runNarratives(
       propertyData.building_sqft_gross,
       propertyData.physical_depreciation_pct,
       0, // no functional obsolescence without comps
-      landValue
+      landValue,
+      marketDataForCost.constructionCostPerSqFt,
     );
     if (!costApproachValue) {
       // Last resort: fetch the subject's own sale history and extrapolate to present.
@@ -349,7 +372,7 @@ export async function runNarratives(
         if (webSale && webSale.salePrice > 0) {
           const yearsElapsed = (Date.now() - new Date(webSale.saleDate).getTime()) / (365.25 * 24 * 3600 * 1000);
           const priorSaleExtrapolated = Math.round(
-            webSale.salePrice * Math.pow(1 + PRIOR_SALE_ANNUAL_APPRECIATION, yearsElapsed) / 1000
+            webSale.salePrice * Math.pow(1 + appreciationRate, yearsElapsed) / 1000
           ) * 1000;
           console.warn(
             `[stage5] Web sale found: $${webSale.salePrice.toLocaleString()} on ${webSale.saleDate} ` +
@@ -386,12 +409,12 @@ export async function runNarratives(
       const lastSale = armLengthSales[0]!;
       const yearsElapsed = (Date.now() - new Date(lastSale.recordingDate).getTime()) / (365.25 * 24 * 3600 * 1000);
       const priorSaleExtrapolated = Math.round(
-        lastSale.salePrice! * Math.pow(1 + PRIOR_SALE_ANNUAL_APPRECIATION, yearsElapsed) / 1000
+        lastSale.salePrice! * Math.pow(1 + appreciationRate, yearsElapsed) / 1000
       ) * 1000;
       console.warn(
         `[stage5] 0 comps, no income, cost approach unusable — extrapolating from prior sale ` +
         `($${lastSale.salePrice!.toLocaleString()} on ${lastSale.recordingDate}, ` +
-        `${yearsElapsed.toFixed(1)} yrs @ ${(PRIOR_SALE_ANNUAL_APPRECIATION * 100).toFixed(0)}%/yr → $${priorSaleExtrapolated.toLocaleString()})`
+        `${yearsElapsed.toFixed(1)} yrs @ ${(appreciationRate * 100).toFixed(1)}%/yr → $${priorSaleExtrapolated.toLocaleString()})`
       );
       // Store the prior sale metadata for later use in concludedValue assignment.
       (propertyData as Record<string, unknown>)['_priorSaleExtrapolated'] = priorSaleExtrapolated;
@@ -1189,7 +1212,7 @@ export async function runNarratives(
       lastSalePrice: _psp,
       lastSaleDate: _psd,
       yearsElapsed: Math.round(yearsElapsed * 10) / 10,
-      annualAppreciationPct: PRIOR_SALE_ANNUAL_APPRECIATION * 100,
+      annualAppreciationPct: appreciationRate * 100,
       extrapolatedValue: _pse,
     };
   }
