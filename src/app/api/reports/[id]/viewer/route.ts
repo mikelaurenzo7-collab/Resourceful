@@ -46,10 +46,13 @@ export async function GET(
   // Only show reports that have been delivered or are in the delivery pipeline
   if (!['delivered', 'approved', 'pending_approval', 'delivering'].includes(report.status)) {
     const statusMessages: Record<string, string> = {
-      intake: 'Your report is being prepared. We\'ll email you when it\'s ready.',
-      paid: 'Payment confirmed. Your report is being generated now.',
-      processing: 'Our team is building your report with comparable sales and market analysis.',
-      failed: 'We ran into an issue generating your report. Our team has been notified and will reach out shortly.',
+      intake:        "Your report is being prepared. We'll email you when it's ready.",
+      paid:          'Payment confirmed. Your report is being generated now.',
+      data_pull:     'Collecting property records, comparable sales, and assessment data.',
+      photo_pending: 'Your photos are being analyzed for condition assessment and documentation.',
+      processing:    'Our team is building your report with comparable sales and market analysis.',
+      failed:        'We ran into an issue generating your report. Our team has been notified and will reach out shortly.',
+      rejected:      'This report was not approved for delivery. Please contact support.',
     };
     return NextResponse.json({
       status: report.status,
@@ -75,20 +78,23 @@ export async function GET(
   const filingGuide = (filingGuideResult.data as Pick<ReportNarrative, 'content'> | null)?.content ?? null;
   const countyRule = countyResult.data as CountyRule | null;
 
-  // Calculate concluded value from comps; fall back to property_data.concluded_value
-  // (set by stage 5 when cost/income approach is used with 0 comps)
+  // Concluded value — prefer the pipeline-stored value (includes photo adjustments,
+  // cost approach, income approach as applicable). Fall back to recalculating the
+  // median adjusted $/sqft × GBA from comps if the stored value is missing.
   const comps = (compsResult.data ?? []) as { adjusted_price_per_sqft: number | null; sale_price: number | null }[];
-  let concludedValue = (propertyData as unknown as Record<string, unknown>)?.concluded_value as number | null ?? 0;
-  if (comps.length > 0 && propertyData?.building_sqft_gross) {
+  let concludedValue = propertyData?.concluded_value ?? 0;
+
+  if (concludedValue === 0 && comps.length > 0 && propertyData?.building_sqft_gross) {
     const adjustedPrices = comps
       .map((c) => c.adjusted_price_per_sqft)
       .filter((p): p is number => p != null && p > 0)
       .sort((a, b) => a - b);
     if (adjustedPrices.length > 0) {
       const mid = Math.floor(adjustedPrices.length / 2);
-      const median = adjustedPrices.length % 2 === 0
-        ? (adjustedPrices[mid - 1] + adjustedPrices[mid]) / 2
-        : adjustedPrices[mid];
+      const median =
+        adjustedPrices.length % 2 === 0
+          ? (adjustedPrices[mid - 1] + adjustedPrices[mid]) / 2
+          : adjustedPrices[mid];
       concludedValue = Math.round((median * propertyData.building_sqft_gross) / 1000) * 1000;
     }
   }
@@ -107,7 +113,9 @@ export async function GET(
   const caseStrengthScore = (report as unknown as Record<string, unknown>).case_strength_score as number | null ?? null;
   const photoCount = (photosResult.data ?? []).length;
   const compCount = comps.length;
-  const photoDefectCount = (propertyData as unknown as Record<string, unknown>)?.photo_defect_count as number | null ?? null;
+  const photoDefectCount = propertyData?.photo_defect_count ?? null;
+  const photoImpactDollars = propertyData?.photo_impact_dollars ?? null;
+  const photoImpactPct = propertyData?.photo_impact_pct ?? null;
 
   return NextResponse.json({
     ready: true,
@@ -126,6 +134,8 @@ export async function GET(
     compCount,
     photoCount,
     photoDefectCount,
+    photoImpactDollars,
+    photoImpactPct,
     // County filing info
     outcomeReportedAt: report.outcome_reported_at ?? null,
     appealOutcome: report.appeal_outcome ?? null,

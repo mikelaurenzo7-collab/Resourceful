@@ -159,7 +159,6 @@ export default async function DashboardPage() {
   return (
     <div className="min-h-screen bg-pattern">
       <ScrollAnimations />
-      <DashboardAutoRefresh hasActiveReport={!!isInProgress} />
 
       {/* ─── Header ───────────────────────────────────────────────────── */}
       <header className="bg-navy-deep/80 backdrop-blur-xl nav-shadow sticky top-0 z-50">
@@ -259,7 +258,7 @@ export default async function DashboardPage() {
           </div>
           <div className="flex items-center justify-between mt-2 flex-wrap gap-2">
             <p className="text-cream/40 text-sm">Track your reports, download completed analyses, and file your appeal.</p>
-            {/* Live indicator rendered by client island */}
+            <DashboardAutoRefresh hasActiveReport={!!isInProgress} />
           </div>
         </div>
 

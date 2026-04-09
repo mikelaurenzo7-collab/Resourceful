@@ -59,6 +59,8 @@ interface ReportData {
   compCount: number;
   photoCount: number;
   photoDefectCount: number | null;
+  photoImpactDollars: number | null;
+  photoImpactPct: number | null;
 }
 
 function formatDollar(value: number): string {
@@ -284,14 +286,22 @@ export default function ReportViewerPage() {
             <div className="grid md:grid-cols-3 gap-4">
               <div className="card-premium rounded-xl p-6">
                 <p className="text-[10px] uppercase tracking-widest text-cream/35 mb-2">County Assessed Value</p>
-                <p className="font-display text-3xl text-cream">{formatDollar(data.assessedValue)}</p>
+                <p className="font-display text-3xl text-cream">
+                  {data.assessedValue > 0 ? formatDollar(data.assessedValue) : '—'}
+                </p>
                 <p className="text-xs text-cream/25 mt-1.5">Per county records</p>
               </div>
-              <div className="card-premium rounded-xl p-6 ring-1 ring-gold/20">
-                <p className="text-[10px] uppercase tracking-widest text-gold/60 mb-2">Our Concluded Value</p>
-                <p className="font-display text-3xl text-gold">{formatDollar(data.concludedValue)}</p>
-                <p className="text-xs text-cream/25 mt-1.5">Based on comparable sales</p>
-              </div>
+              {data.concludedValue > 0 && (
+                <div className="card-premium rounded-xl p-6 ring-1 ring-gold/20">
+                  <p className="text-[10px] uppercase tracking-widest text-gold/60 mb-2">Our Concluded Value</p>
+                  <p className="font-display text-3xl text-gold">{formatDollar(data.concludedValue)}</p>
+                  <p className="text-xs text-cream/25 mt-1.5">
+                    {data.photoImpactDollars && Math.abs(data.photoImpactDollars) >= 1000
+                      ? `Includes ${formatDollar(Math.abs(data.photoImpactDollars))} photo adjustment`
+                      : 'Based on independent analysis'}
+                  </p>
+                </div>
+              )}
               {isTaxAppeal && data.potentialSavings > 0 && (
                 <div className="card-premium rounded-xl p-6 border border-emerald-500/25 bg-emerald-500/[0.04]">
                   <p className="text-[10px] uppercase tracking-widest text-emerald-400/60 mb-2">Potential Annual Savings</p>
