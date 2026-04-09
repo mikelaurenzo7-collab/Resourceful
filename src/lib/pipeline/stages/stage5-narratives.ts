@@ -42,35 +42,6 @@ const NON_ARMS_LENGTH_KEYWORDS = [
 
 // ─── Section Mapping ────────────────────────────────────────────────────────
 
-const _SECTION_SORT_ORDER: Record<string, { title: string; order: number }> = {
-  executive_summary: { title: 'Executive Summary', order: 1 },
-  property_description: { title: 'Property Description', order: 2 },
-  site_description_narrative: { title: 'Site Description', order: 3 },
-  improvement_description_narrative: { title: 'Improvement Description', order: 4 },
-  condition_assessment: { title: 'Property Condition Evidence', order: 5 },
-  area_analysis_county: { title: 'County Area Analysis', order: 6 },
-  area_analysis_city: { title: 'City Area Analysis', order: 7 },
-  area_analysis_neighborhood: { title: 'Neighborhood Analysis', order: 8 },
-  market_analysis: { title: 'Market Analysis', order: 9 },
-  hbu_as_vacant: { title: 'Highest & Best Use — As Vacant', order: 10 },
-  hbu_as_improved: { title: 'Highest & Best Use — As Improved', order: 11 },
-  sales_comparison_narrative: { title: 'Sales Comparison Approach', order: 12 },
-  adjustment_grid_narrative: { title: 'Adjustment Grid Analysis', order: 13 },
-  income_approach_narrative: { title: 'Income Approach', order: 14 },
-  cost_approach_narrative: { title: 'Cost Approach', order: 15 },
-  reconciliation_narrative: { title: 'Reconciliation & Final Value', order: 16 },
-  appeal_argument_summary: { title: 'Appeal Argument Summary', order: 17 },
-  hearing_script: { title: 'Hearing Rehearsal Script', order: 17.5 },
-  // Service-type-specific action guides (Stage 6)
-  pro_se_filing_guide: { title: 'Pro Se Filing Guide', order: 18 },
-  negotiation_guide: { title: 'Negotiation Strategy Guide', order: 18 },
-  pricing_strategy_guide: { title: 'Pricing Strategy Guide', order: 18 },
-  // legacy aliases
-  neighborhood_analysis: { title: 'Neighborhood Analysis', order: 8 },
-  value_conclusion: { title: 'Reconciliation & Final Value', order: 15 },
-  assessment_equity: { title: 'Assessment Equity Analysis', order: 16 },
-};
-
 // ─── Cost Approach Helpers ───────────────────────────────────────────────────
 
 interface CostApproachResult {
@@ -1062,6 +1033,7 @@ export async function runNarratives(
       ? {
           countyName: countyRule.county_name,
           state: countyRule.state_name,
+          stateAbbreviation: countyRule.state_abbreviation,
           assessmentMethodology: countyRule.assessment_methodology ?? 'full_value',
           assessmentRatio,
           appealBoardName: countyRule.appeal_board_name,
@@ -1074,10 +1046,13 @@ export async function runNarratives(
           winningArgumentPatterns: countyRule.winning_argument_patterns ?? null,
           commonAssessorErrors: countyRule.common_assessor_errors ?? null,
           successRatePct: countyRule.success_rate_pct ?? null,
+          costApproachDisfavored: countyRule.cost_approach_disfavored ?? null,
+          fairCashValueSynonym: countyRule.fair_cash_value_synonym ?? null,
         }
       : {
           countyName: report.county ?? '',
           state: report.state ?? '',
+          stateAbbreviation: report.state ?? null,
           assessmentMethodology: 'full_value',
           assessmentRatio: null,
           appealBoardName: null,
@@ -1090,6 +1065,8 @@ export async function runNarratives(
           winningArgumentPatterns: null,
           commonAssessorErrors: null,
           successRatePct: null,
+          costApproachDisfavored: null,
+          fairCashValueSynonym: null,
         },
     concludedValue,
     photoAnalyses: photoAnalyses.length > 0 ? photoAnalyses : undefined,

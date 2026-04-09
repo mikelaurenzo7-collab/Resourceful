@@ -246,8 +246,8 @@ export default function Hero() {
                 className="w-full bg-navy-light/50 border border-cream/[0.08] rounded-xl pl-12 pr-4 py-4 text-cream placeholder:text-cream/40 focus:border-gold/40 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:bg-navy-light/70 transition-all text-base"
                 autoComplete="off"
                 role="combobox"
+                aria-controls={showSuggestions && suggestions.length > 0 ? 'hero-address-listbox' : undefined}
                 aria-expanded={showSuggestions && suggestions.length > 0}
-                aria-controls="hero-address-listbox"
                 aria-autocomplete="list"
                 aria-activedescendant={activeIndex >= 0 ? `hero-suggestion-${activeIndex}` : undefined}
               />

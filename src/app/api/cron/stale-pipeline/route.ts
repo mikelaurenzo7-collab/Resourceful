@@ -16,6 +16,7 @@ import { runPipeline } from '@/lib/pipeline/orchestrator';
 import { sendAdminNotification } from '@/lib/services/resend-email';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { cronLogger } from '@/lib/logger';
+import { releasePipelineLock } from '@/lib/supabase/rpc';
 
 const PAID_STALE_THRESHOLD_MS = 60 * 60 * 1000;       // 1 hour
 const PROCESSING_STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
@@ -124,7 +125,10 @@ export async function GET(req: NextRequest) {
 
       // Release any held pipeline lock
       try {
-        await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: report.id });
+        const { error: lockError } = await releasePipelineLock(supabase, report.id);
+        if (lockError) {
+          throw new Error(lockError.message);
+        }
       } catch {
         // Lock may not exist — that's fine
       }

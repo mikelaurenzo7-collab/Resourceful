@@ -2,7 +2,7 @@
 // Tests for the payment → pipeline → delivery → outcome flow.
 // These test business logic and invariants without hitting real services.
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // ─── Webhook Idempotency ────────────────────────────────────────────────────
 
@@ -169,7 +169,6 @@ describe('email delivery preference', () => {
     // Dashboard-first: report is marked delivered BEFORE email is attempted.
     // If email fails, report status remains 'delivered' — never rolls back.
     const reportDelivered = true;
-    const emailFailed = true;
     // Report should still be delivered regardless of email status
     expect(reportDelivered).toBe(true);
   });

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet } from '@react-pdf/renderer';
-import { theme, colors } from '../styles/theme';
+import { theme } from '../styles/theme';
 import { SectionHeader, NarrativeBlock, PhotoGrid } from './shared';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { getConditionColor } from '@/lib/templates/helpers';
@@ -39,7 +39,7 @@ export default function ConditionSection({ data }: { data: ReportTemplateData })
 
   return (
     <View break>
-      <SectionHeader number="XI" title="Property Condition Documentation" />
+      <SectionHeader number="XIII" title="Property Condition Documentation" />
 
       {/* Condition badge */}
       <View style={styles.badgeRow} wrap={false}>

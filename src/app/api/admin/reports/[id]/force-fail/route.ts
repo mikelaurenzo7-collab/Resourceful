@@ -9,6 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { isAdmin, createApprovalEvent } from '@/lib/repository/admin';
 import { getReportById } from '@/lib/repository/reports';
 import { apiLogger } from '@/lib/logger';
+import { releasePipelineLock } from '@/lib/supabase/rpc';
 
 export async function POST(
   _request: NextRequest,
@@ -65,7 +66,10 @@ export async function POST(
 
     // Release any held pipeline lock
     try {
-      await (admin.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+      const { error: lockError } = await releasePipelineLock(admin, reportId);
+      if (lockError) {
+        throw new Error(lockError.message);
+      }
     } catch {
       // Lock may not exist
     }

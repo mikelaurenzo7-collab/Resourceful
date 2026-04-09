@@ -122,6 +122,135 @@ export interface ServiceResult<T> {
   error: string | null;
 }
 
+interface AttomApiPropertyEnvelope {
+  property?: AttomApiProperty[];
+}
+
+interface AttomApiProperty {
+  identifier?: {
+    attomId?: number;
+  };
+  address?: {
+    line1?: string;
+    line2?: string;
+    locality?: string;
+    countrySubd?: string;
+    postal1?: string;
+    postal2?: string;
+  };
+  location?: {
+    latitude?: number | string | null;
+    longitude?: number | string | null;
+    countyFips?: string;
+    countyName?: string;
+    distance?: number | null;
+  };
+  summary?: {
+    propertyType?: string | null;
+    propertyClass?: string | null;
+    propertyClassDescription?: string | null;
+    yearBuilt?: number | null;
+    yearbuilt?: number | null;
+    buildingSqFt?: number | null;
+    livingSquareFeet?: number | null;
+    lotSqFt?: number | null;
+    bedrooms?: number | null;
+    bathrooms?: number | null;
+    stories?: number | null;
+  };
+  assessment?: {
+    assessed?: {
+      assdTtlValue?: number | null;
+      assdLandValue?: number | null;
+      assdImprValue?: number | null;
+    };
+    market?: {
+      mktTtlValue?: number | null;
+      mktLandValue?: number | null;
+      mktImprValue?: number | null;
+    };
+    tax?: {
+      taxYear?: number | null;
+      taxAmt?: number | null;
+    };
+  };
+  building?: {
+    parking?: {
+      garageType?: string | null;
+      prkgSpaces?: number | null;
+    };
+    interior?: {
+      bsmtType?: string | null;
+      bsmtSqFt?: number | null;
+      fplcCount?: number | null;
+      stories?: number | null;
+    };
+    construction?: {
+      wallType?: string | null;
+      roofCover?: string | null;
+    };
+    utility?: {
+      heatingType?: string | null;
+      coolingType?: string | null;
+    };
+    summary?: {
+      pool?: boolean | string | null;
+    };
+    size?: {
+      universalsize?: number | null;
+    };
+    rooms?: {
+      beds?: number | null;
+      bathstotal?: number | null;
+    };
+  };
+  lot?: {
+    lotSize1?: number | null;
+    zoningType?: string | null;
+    legalDesc?: string | null;
+  };
+  sale?: {
+    amount?: {
+      saleamt?: number | null;
+      salerecdate?: string | null;
+    };
+    calculation?: {
+      pricepersizeunit?: number | null;
+    };
+  };
+  rental?: {
+    rentalAmount?: number | null;
+    rentalDate?: string | null;
+    rentPerSqFt?: number | null;
+  };
+  saleHistory?: AttomApiDeedRecord[];
+}
+
+interface AttomApiDeedRecord {
+  documentType?: string;
+  recordingDate?: string;
+  amount?: {
+    saleAmt?: number | null;
+  };
+  seller?: {
+    name?: string | null;
+  };
+  buyer?: {
+    name?: string | null;
+  };
+  documentNumber?: string | null;
+  deedType?: string | null;
+}
+
+function parseNullableNumber(value: number | string | null | undefined): number | null {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 // ─── Comparables Search Params ───────────────────────────────────────────────
 
 export interface SalesCompParams {
@@ -331,7 +460,7 @@ async function attomFetch<T>(
 // ─── Normalizers ─────────────────────────────────────────────────────────────
 
 function normalizePropertyDetail(raw: Record<string, unknown>): AttomPropertyDetail {
-  const property = (raw as any)?.property?.[0] ?? {};
+  const property = ((raw as AttomApiPropertyEnvelope).property ?? [])[0] ?? {};
   const addr = property.address ?? {};
   const loc = property.location ?? {};
   const summary = property.summary ?? {};
@@ -351,8 +480,8 @@ function normalizePropertyDetail(raw: Record<string, unknown>): AttomPropertyDet
       postal2: addr.postal2 ?? '',
     },
     location: {
-      latitude: parseFloat(loc.latitude) || null,
-      longitude: parseFloat(loc.longitude) || null,
+      latitude: parseNullableNumber(loc.latitude),
+      longitude: parseNullableNumber(loc.longitude),
       countyFips: loc.countyFips ?? '',
       countyName: loc.countyName ?? '',
     },
@@ -397,8 +526,8 @@ function normalizePropertyDetail(raw: Record<string, unknown>): AttomPropertyDet
 }
 
 function normalizeSaleComps(raw: Record<string, unknown>): AttomSaleComp[] {
-  const sales = (raw as any)?.property ?? [];
-  return sales.map((s: any) => ({
+  const sales = (raw as AttomApiPropertyEnvelope).property ?? [];
+  return sales.map((s) => ({
     attomId: s.identifier?.attomId ?? 0,
     address: s.address?.line1 ?? '',
     city: s.address?.locality ?? '',
@@ -423,8 +552,8 @@ function normalizeSaleComps(raw: Record<string, unknown>): AttomSaleComp[] {
 }
 
 function normalizeRentalComps(raw: Record<string, unknown>): AttomRentalComp[] {
-  const rentals = (raw as any)?.property ?? [];
-  return rentals.map((r: any) => ({
+  const rentals = (raw as AttomApiPropertyEnvelope).property ?? [];
+  return rentals.map((r) => ({
     attomId: r.identifier?.attomId ?? 0,
     address: r.address?.line1 ?? '',
     city: r.address?.locality ?? '',
@@ -444,8 +573,8 @@ function normalizeRentalComps(raw: Record<string, unknown>): AttomRentalComp[] {
 }
 
 function normalizeDeedHistory(raw: Record<string, unknown>): AttomDeedRecord[] {
-  const deeds = (raw as any)?.property?.[0]?.saleHistory ?? [];
-  return deeds.map((d: any) => ({
+  const deeds = ((raw as AttomApiPropertyEnvelope).property ?? [])[0]?.saleHistory ?? [];
+  return deeds.map((d) => ({
     documentType: d.documentType ?? '',
     recordingDate: d.recordingDate ?? '',
     salePrice: d.amount?.saleAmt ?? null,
@@ -673,9 +802,9 @@ export interface AssessmentEquityResult {
 }
 
 function normalizePropertySnapshot(raw: Record<string, unknown>): AssessmentEquityProperty[] {
-  const properties = (raw as any)?.property ?? [];
-  return (properties as any[])
-    .map((p: any) => {
+  const properties = (raw as AttomApiPropertyEnvelope).property ?? [];
+  return properties
+    .map((p) => {
       const sqft: number = p.summary?.buildingSqFt ?? 0;
       const assessed: number = p.assessment?.assessed?.assdTtlValue ?? 0;
       if (!sqft || sqft <= 0 || !assessed || assessed <= 0) return null;

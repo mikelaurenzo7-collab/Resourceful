@@ -13,17 +13,41 @@ interface TocEntry {
 }
 
 export default function TableOfContents({ data }: { data: ReportTemplateData }) {
-  const { property, comparableSales, incomeAnalysis, report, photos, filingGuide } = data;
+  const { property, comparableSales, incomeAnalysis, report, photos, filingGuide, narratives } = data;
 
-  const hasIncome = incomeAnalysis != null &&
-    (report.property_type === 'commercial' || report.property_type === 'industrial');
+  const narrativeSections = new Set(narratives.map((n) => n.section_name));
+
+  const hasIncome = incomeAnalysis != null;
   const hasCostApproach = property.cost_approach_value != null && property.cost_approach_value > 0;
   const hasPhotoDefects = photos.some(p => (p.ai_analysis?.defects?.length ?? 0) > 0);
+  const hasAddendumA =
+    (report.service_type === 'tax_appeal' && filingGuide != null) ||
+    (report.service_type === 'pre_listing' && narrativeSections.has('pricing_strategy_guide')) ||
+    (report.service_type === 'pre_purchase' && narrativeSections.has('negotiation_guide'));
+
+  const addendumATitle =
+    report.service_type === 'pre_listing'
+      ? 'Pricing Strategy Guide'
+      : report.service_type === 'pre_purchase'
+        ? 'Negotiation Strategy Guide'
+        : 'County Filing Instructions';
 
   // Build section list dynamically
   const sections: TocEntry[] = [
     { number: '', title: 'Letter of Transmittal' },
     { number: '', title: 'Property Identification Summary' },
+    ...(narrativeSections.has('assignment_and_scope')
+      ? [{ number: 'A', title: 'Assignment & Scope' }]
+      : []),
+    ...(narrativeSections.has('summary_of_salient_facts')
+      ? [{ number: 'B', title: 'Summary of Salient Facts' }]
+      : []),
+    ...(narrativeSections.has('property_history')
+      ? [{ number: 'C', title: 'Property History' }]
+      : []),
+    ...(narrativeSections.has('assessment_data')
+      ? [{ number: 'D', title: 'Assessment Data' }]
+      : []),
     { number: 'I', title: 'Executive Summary' },
     { number: 'II', title: 'Property Description' },
     { number: 'III', title: 'Site Description' },
@@ -56,7 +80,9 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
 
   // Addenda
   sections.push({ number: '', title: '' }); // spacer
-  sections.push({ number: 'ADD-A', title: 'County Filing Instructions' });
+  if (hasAddendumA) {
+    sections.push({ number: 'ADD-A', title: addendumATitle });
+  }
   sections.push({ number: 'ADD-B', title: 'Certification & Limiting Conditions' });
 
   return (

@@ -103,18 +103,112 @@ export interface ServiceResult<T> {
   error: string | null;
 }
 
+interface LightboxParcelRaw {
+  parcel?: LightboxParcelRaw;
+  property?: LightboxParcelRaw;
+  id?: string | number | null;
+  parcelId?: string | number | null;
+  apn?: string | null;
+  address?: {
+    full?: string | null;
+    city?: string | null;
+    stateAbbreviation?: string | null;
+    state?: string | null;
+    zip?: string | null;
+    postalCode?: string | null;
+    county?: string | null;
+    fips?: string | null;
+    countyFips?: string | null;
+  };
+  location?: {
+    latitude?: number | string | null;
+    longitude?: number | string | null;
+  };
+  assessment?: {
+    assessedValue?: number | null;
+    assessedLandValue?: number | null;
+    landValue?: number | null;
+    assessedImprovementValue?: number | null;
+    improvementValue?: number | null;
+    marketValue?: number | null;
+    taxAmount?: number | null;
+    assessmentYear?: number | null;
+    taxYear?: number | null;
+  };
+  structure?: {
+    yearBuilt?: number | null;
+    grossSquareFeet?: number | null;
+    buildingSquareFeet?: number | null;
+    livableSquareFeet?: number | null;
+    livingSquareFeet?: number | null;
+    bedrooms?: number | null;
+    bathroomsTotal?: number | null;
+    bathrooms?: number | null;
+    floorCount?: number | null;
+    stories?: number | null;
+    pool?: boolean | null;
+  };
+  area?: {
+    lotSquareFeet?: number | null;
+    zoning?: string | null;
+  };
+  lot?: {
+    squareFeet?: number | null;
+    zoning?: string | null;
+  };
+  propertyUse?: {
+    standardizedCode?: string | null;
+    description?: string | null;
+    detail?: {
+      code?: string | null;
+      description?: string | null;
+    };
+  };
+  saleHistory?: LightboxSaleHistoryRaw[];
+}
+
+interface LightboxSaleHistoryRaw {
+  date?: string;
+  saleDate?: string;
+  amount?: number | null;
+  salePrice?: number | null;
+  documentType?: string | null;
+  armsLength?: boolean | null;
+  buyerNames?: string[];
+  sellerNames?: string[];
+}
+
+interface LightboxAddressSearchResponse {
+  addresses?: Array<{
+    parcels?: Array<{
+      id?: string | null;
+    } | null> | null;
+  }>;
+}
+
+function parseNullableNumber(value: number | string | null | undefined): number | null {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 // ─── Internal Helpers ─────────────────────────────────────────────────────────
 
 function normalizeParcel(raw: Record<string, unknown>): LightboxParcelDetail {
   // Lightbox wraps in a "parcel" or "property" envelope depending on endpoint
-  const p = (raw as any)?.parcel ?? (raw as any)?.property ?? raw;
+  const envelope = raw as LightboxParcelRaw;
+  const p = envelope.parcel ?? envelope.property ?? envelope;
   const addr = p.address ?? {};
   const loc = p.location ?? {};
   const assessment = p.assessment ?? {};
   const structure = p.structure ?? {};
   const area = p.area ?? {};
   const use = p.propertyUse ?? {};
-  const saleHistory: unknown[] = Array.isArray(p.saleHistory) ? p.saleHistory : [];
+  const lot = p.lot ?? {};
+  const saleHistory = Array.isArray(p.saleHistory) ? p.saleHistory : [];
 
   return {
     parcelId: String(p.id ?? p.parcelId ?? ''),
@@ -128,12 +222,8 @@ function normalizeParcel(raw: Record<string, unknown>): LightboxParcelDetail {
       fips: addr.fips ?? addr.countyFips ?? null,
     },
     location: {
-      latitude: typeof loc.latitude === 'number'
-        ? loc.latitude
-        : (parseFloat(loc.latitude) || null),
-      longitude: typeof loc.longitude === 'number'
-        ? loc.longitude
-        : (parseFloat(loc.longitude) || null),
+      latitude: parseNullableNumber(loc.latitude),
+      longitude: parseNullableNumber(loc.longitude),
     },
     assessment: {
       assessedValue: assessment.assessedValue ?? null,
@@ -153,20 +243,20 @@ function normalizeParcel(raw: Record<string, unknown>): LightboxParcelDetail {
       pool: structure.pool === true,
     },
     lot: {
-      squareFeet: area.lotSquareFeet ?? p.lot?.squareFeet ?? null,
-      zoning: area.zoning ?? p.lot?.zoning ?? null,
+      squareFeet: area.lotSquareFeet ?? lot.squareFeet ?? null,
+      zoning: area.zoning ?? lot.zoning ?? null,
     },
     propertyUse: {
       code: use.standardizedCode ?? use.detail?.code ?? null,
       description: use.detail?.description ?? use.description ?? null,
     },
-    saleHistory: saleHistory.map((s: any) => ({
-      date: s.date ?? s.saleDate ?? '',
-      amount: s.amount ?? s.salePrice ?? null,
-      documentType: s.documentType ?? null,
-      armsLength: s.armsLength ?? null,
-      buyerNames: Array.isArray(s.buyerNames) ? s.buyerNames : [],
-      sellerNames: Array.isArray(s.sellerNames) ? s.sellerNames : [],
+    saleHistory: saleHistory.map((sale) => ({
+      date: sale.date ?? sale.saleDate ?? '',
+      amount: sale.amount ?? sale.salePrice ?? null,
+      documentType: sale.documentType ?? null,
+      armsLength: sale.armsLength ?? null,
+      buyerNames: Array.isArray(sale.buyerNames) ? sale.buyerNames : [],
+      sellerNames: Array.isArray(sale.sellerNames) ? sale.sellerNames : [],
     })),
   };
 }
@@ -228,7 +318,8 @@ export async function getPropertyDetail(
     return { data: null, error: addrResult.error ?? 'No address results from Lightbox' };
   }
 
-  const addresses: any[] = (addrResult.data as any)?.addresses ?? [];
+  const addressData = addrResult.data as LightboxAddressSearchResponse;
+  const addresses = addressData.addresses ?? [];
   if (!addresses.length) {
     apiLogger.warn({ q }, '[lightbox] No address match for ""');
     return { data: null, error: 'No address match found in Lightbox' };

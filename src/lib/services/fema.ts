@@ -42,6 +42,12 @@ export interface ServiceResult<T> {
   error: string | null;
 }
 
+interface FemaIdentifyResponse {
+  results?: Array<{
+    attributes?: Record<string, unknown>;
+  }>;
+}
+
 // ─── Internal Helpers ────────────────────────────────────────────────────────
 
 function parseArcGISDate(epoch: number | null | undefined): string | null {
@@ -51,6 +57,21 @@ function parseArcGISDate(epoch: number | null | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+function readString(record: Record<string, unknown>, key: string): string | null {
+  const value = record[key];
+  return typeof value === 'string' && value.trim() !== '' ? value : null;
+}
+
+function readNumber(record: Record<string, unknown>, key: string): number | null {
+  const value = record[key];
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -109,7 +130,7 @@ export async function getFloodZone(
       };
     }
 
-    const json = (await response.json()) as any;
+    const json = (await response.json()) as FemaIdentifyResponse;
 
     // The identify endpoint returns { results: [...] }
     if (!json.results || json.results.length === 0) {
@@ -124,7 +145,7 @@ export async function getFloodZone(
           community_name: null,
           static_bfe: null,
           source_description: 'No FEMA NFHL data at this location',
-          raw_response: json,
+          raw_response: json as unknown as Record<string, unknown>,
         },
         error: null,
       };
@@ -135,14 +156,17 @@ export async function getFloodZone(
 
     return {
       data: {
-        flood_zone_designation: attrs.FLD_ZONE ?? attrs.ZONE_SUBTY ?? 'UNKNOWN',
-        flood_zone_subtype: attrs.ZONE_SUBTY ?? null,
-        flood_map_panel_number: attrs.FIRM_PAN ?? attrs.DFIRM_ID ?? null,
-        flood_map_panel_date: parseArcGISDate(attrs.EFF_DATE ?? attrs.PANEL_DATE ?? attrs.PRE_DATE),
-        community_name: attrs.COMM_NAME ?? attrs.CO_FIPS ?? null,
-        static_bfe: attrs.STATIC_BFE != null ? Number(attrs.STATIC_BFE) : null,
-        source_description: attrs.SOURCE_CIT ?? null,
-        raw_response: json,
+        flood_zone_designation: readString(attrs, 'FLD_ZONE') ?? readString(attrs, 'ZONE_SUBTY') ?? 'UNKNOWN',
+        flood_zone_subtype: readString(attrs, 'ZONE_SUBTY'),
+        flood_map_panel_number: readString(attrs, 'FIRM_PAN') ?? readString(attrs, 'DFIRM_ID'),
+        flood_map_panel_date:
+          parseArcGISDate(readNumber(attrs, 'EFF_DATE')) ??
+          parseArcGISDate(readNumber(attrs, 'PANEL_DATE')) ??
+          parseArcGISDate(readNumber(attrs, 'PRE_DATE')),
+        community_name: readString(attrs, 'COMM_NAME') ?? readString(attrs, 'CO_FIPS'),
+        static_bfe: readNumber(attrs, 'STATIC_BFE'),
+        source_description: readString(attrs, 'SOURCE_CIT'),
+        raw_response: json as unknown as Record<string, unknown>,
       },
       error: null,
     };

@@ -195,6 +195,82 @@ export default function CountyEditForm({ county, isNew }: CountyEditFormProps) {
         </div>
       </fieldset>
 
+      {/* Cook County Enrichment Fields */}
+      <fieldset className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 shadow-sm">
+        <legend className="px-2 text-sm font-semibold text-gray-100">Cook County Enrichment</legend>
+        <div className="grid grid-cols-3 gap-6 mt-4">
+          <div>
+            <label htmlFor="level_of_assessment_commercial" className="block text-sm font-medium text-gray-300">
+              Level of Assessment (Commercial)
+            </label>
+            <input
+              id="level_of_assessment_commercial"
+              name="level_of_assessment_commercial"
+              type="number"
+              step="0.01"
+              min="0"
+              max="1"
+              defaultValue={county?.level_of_assessment_commercial ?? ''}
+              placeholder="0.25"
+              className="mt-1 block w-full rounded-lg border border-white/10 px-3 py-2 text-sm shadow-sm focus:border-amber-400/30 focus:outline-none focus:ring-1 focus:ring-amber-400/20"
+            />
+          </div>
+          <div>
+            <label htmlFor="level_of_assessment_residential" className="block text-sm font-medium text-gray-300">
+              Level of Assessment (Residential)
+            </label>
+            <input
+              id="level_of_assessment_residential"
+              name="level_of_assessment_residential"
+              type="number"
+              step="0.01"
+              min="0"
+              max="1"
+              defaultValue={county?.level_of_assessment_residential ?? ''}
+              placeholder="0.10"
+              className="mt-1 block w-full rounded-lg border border-white/10 px-3 py-2 text-sm shadow-sm focus:border-amber-400/30 focus:outline-none focus:ring-1 focus:ring-amber-400/20"
+            />
+          </div>
+          <div>
+            <label htmlFor="cost_approach_disfavored" className="block text-sm font-medium text-gray-300">
+              Cost Approach Disfavored
+            </label>
+            <input
+              id="cost_approach_disfavored"
+              name="cost_approach_disfavored"
+              type="checkbox"
+              defaultChecked={county?.cost_approach_disfavored ?? false}
+              className="h-4 w-4 rounded border-white/10 text-amber-300 focus:ring-amber-400/20"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-6 mt-4">
+          <div>
+            <label htmlFor="valuation_date_convention" className="block text-sm font-medium text-gray-300">
+              Valuation Date Convention
+            </label>
+            <input
+              id="valuation_date_convention"
+              name="valuation_date_convention"
+              type="text"
+              defaultValue={county?.valuation_date_convention ?? ''}
+              placeholder="january_1_tax_year"
+              className="mt-1 block w-full rounded-lg border border-white/10 px-3 py-2 text-sm shadow-sm focus:border-amber-400/30 focus:outline-none focus:ring-1 focus:ring-amber-400/20"
+            />
+          </div>
+          <div className="flex items-center gap-2 mt-8">
+            <input
+              id="fair_cash_value_synonym"
+              name="fair_cash_value_synonym"
+              type="checkbox"
+              defaultChecked={county?.fair_cash_value_synonym ?? false}
+              className="h-4 w-4 rounded border-white/10 text-amber-300 focus:ring-amber-400/20"
+            />
+            <label htmlFor="fair_cash_value_synonym" className="text-sm text-gray-300">Fair Cash Value = Market Value</label>
+          </div>
+        </div>
+      </fieldset>
+
       {/* Appeal Information */}
       <fieldset className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 shadow-sm">
         <legend className="px-2 text-sm font-semibold text-gray-100">Appeal Information</legend>

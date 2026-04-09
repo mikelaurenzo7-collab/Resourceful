@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { apiLogger } from '@/lib/logger';
+import { incrementRateLimit } from '@/lib/supabase/rpc';
 
 export interface RateLimitConfig {
   /** Unique prefix for this limiter (e.g. 'api-reports') */
@@ -101,11 +102,11 @@ export async function checkRateLimit(
     const supabase = createAdminClient();
 
     // Atomic upsert + increment using Postgres ON CONFLICT
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (supabase.rpc as any)('increment_rate_limit', {
-      p_key: windowKey,
-      p_window_expires: new Date(resetAt).toISOString(),
-    });
+    const { data, error } = await incrementRateLimit(
+      supabase,
+      windowKey,
+      new Date(resetAt).toISOString()
+    );
 
     if (error) {
       dbFailureCount++;

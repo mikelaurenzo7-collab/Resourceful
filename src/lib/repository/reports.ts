@@ -4,8 +4,14 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import type {
+  ComparableSale,
+  IncomeAnalysis,
+  Measurement,
+  Photo,
+  PropertyData,
   Report,
   ReportInsert,
+  ReportNarrative,
   ReportUpdate,
   ReportStatus,
 } from '@/types/database';
@@ -15,13 +21,22 @@ type SupabaseAdmin = ReturnType<typeof createAdminClient>;
 // ─── Report with joined relations ───────────────────────────────────────────
 
 export interface ReportWithDetails extends Report {
-  property_data: import('@/types/database').PropertyData | null;
-  photos: import('@/types/database').Photo[];
-  report_narratives: import('@/types/database').ReportNarrative[];
-  comparable_sales: import('@/types/database').ComparableSale[];
-  income_analysis: import('@/types/database').IncomeAnalysis | null;
-  measurements: import('@/types/database').Measurement[];
+  property_data: PropertyData | null;
+  photos: Photo[];
+  report_narratives: ReportNarrative[];
+  comparable_sales: ComparableSale[];
+  income_analysis: IncomeAnalysis | null;
+  measurements: Measurement[];
 }
+
+type JoinedReportWithDetails = Report & {
+  property_data: PropertyData | PropertyData[] | null;
+  photos: Photo[] | null;
+  report_narratives: ReportNarrative[] | null;
+  comparable_sales: ComparableSale[] | null;
+  income_analysis: IncomeAnalysis | IncomeAnalysis[] | null;
+  measurements: Measurement[] | null;
+};
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -91,7 +106,7 @@ export async function getReportWithDetails(
   }
 
   // Normalize joined data — Supabase returns arrays for one-to-many, objects for one-to-one
-  const d = data as any;
+  const d = data as JoinedReportWithDetails;
   return {
     ...d,
     property_data: Array.isArray(d.property_data)

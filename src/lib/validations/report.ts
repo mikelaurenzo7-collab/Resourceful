@@ -22,6 +22,17 @@ const measurementSourceEnum = z.enum(['google_earth', 'user_submitted', 'attom',
 const assessmentMethodologyEnum = z.enum(['fractional', 'full_value']);
 const hearingFormatEnum = z.enum(['in_person', 'virtual', 'both', 'written_only']);
 
+const nullableRatioSchema = z.number().min(0).max(1).nullable().optional();
+const nullableUrlSchema = z.string().url().nullable().optional();
+const nullableEmailSchema = z.string().email().nullable().optional();
+const nullablePositiveIntSchema = z.number().int().min(0).nullable().optional();
+const nullablePercentSchema = z.number().min(0).max(100).nullable().optional();
+const nullableDateStringSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must use YYYY-MM-DD format')
+  .nullable()
+  .optional();
+
 // ─── Report Creation ────────────────────────────────────────────────────────
 
 export const reportCreateSchema = z.object({
@@ -112,43 +123,93 @@ export const countyRuleSchema = z.object({
   state_abbreviation: z.string().length(2, 'State abbreviation must be a 2-letter code'),
 
   assessment_methodology: assessmentMethodologyEnum.nullable().optional(),
-  assessment_ratio_residential: z.number().min(0).max(1).nullable().optional(),
-  assessment_ratio_commercial: z.number().min(0).max(1).nullable().optional(),
-  assessment_ratio_industrial: z.number().min(0).max(1).nullable().optional(),
+  assessment_ratio_residential: nullableRatioSchema,
+  assessment_ratio_commercial: nullableRatioSchema,
+  assessment_ratio_industrial: nullableRatioSchema,
+  level_of_assessment_commercial: nullableRatioSchema,
+  level_of_assessment_residential: nullableRatioSchema,
+  cost_approach_disfavored: z.boolean().optional().default(false),
+  valuation_date_convention: z.string().nullable().optional(),
+  fair_cash_value_synonym: z.boolean().optional().default(false),
 
   appeal_board_name: z.string().nullable().optional(),
   appeal_board_address: z.string().nullable().optional(),
   appeal_board_phone: z.string().nullable().optional(),
-  portal_url: z.string().url().nullable().optional(),
-  filing_email: z.string().email().nullable().optional(),
+  portal_url: nullableUrlSchema,
+  filing_email: nullableEmailSchema,
   accepts_online_filing: z.boolean().optional().default(false),
   accepts_email_filing: z.boolean().optional().default(false),
   requires_mail_filing: z.boolean().optional().default(false),
 
   state_appeal_board_name: z.string().nullable().optional(),
-  state_appeal_board_url: z.string().url().nullable().optional(),
+  state_appeal_board_url: nullableUrlSchema,
   appeal_deadline_rule: z.string().nullable().optional(),
   tax_year_appeal_window: z.string().nullable().optional(),
-  typical_resolution_weeks_min: z.number().int().positive().nullable().optional(),
-  typical_resolution_weeks_max: z.number().int().positive().nullable().optional(),
+  typical_resolution_weeks_min: nullablePositiveIntSchema,
+  typical_resolution_weeks_max: nullablePositiveIntSchema,
   hearing_typically_required: z.boolean().optional().default(false),
   hearing_format: hearingFormatEnum.nullable().optional(),
 
   appeal_form_name: z.string().nullable().optional(),
-  form_download_url: z.string().url().nullable().optional(),
+  form_download_url: nullableUrlSchema,
   evidence_requirements: z.array(z.string()).nullable().optional(),
   filing_fee_cents: z.number().int().min(0).optional().default(0),
   filing_fee_notes: z.string().nullable().optional(),
 
-  assessor_api_url: z.string().url().nullable().optional(),
-  assessor_api_documentation_url: z.string().url().nullable().optional(),
+  assessor_api_url: nullableUrlSchema,
+  assessor_api_documentation_url: nullableUrlSchema,
   assessor_api_notes: z.string().nullable().optional(),
 
   pro_se_tips: z.string().nullable().optional(),
   is_active: z.boolean().optional().default(true),
-  last_verified_date: z.string().nullable().optional(),
+  last_verified_date: nullableDateStringSchema,
   verified_by: z.string().nullable().optional(),
   notes: z.string().nullable().optional(),
 });
 
 export type CountyRuleInput = z.infer<typeof countyRuleSchema>;
+
+export const countyAdminSchema = countyRuleSchema.extend({
+  county_fips: z.string().regex(/^\d{5}$/, 'County FIPS code must be 5 digits'),
+  assessment_methodology_notes: z.string().nullable().optional(),
+  assessment_cycle: z.string().nullable().optional(),
+  current_tax_year: z.number().int().min(2000).max(2100).nullable().optional(),
+  next_appeal_deadline: nullableDateStringSchema,
+  appeal_window_days: nullablePositiveIntSchema,
+  assessment_notices_mailed: z.string().nullable().optional(),
+  required_documents: z.array(z.string()).nullable().optional(),
+  informal_review_available: z.boolean().optional().default(false),
+  informal_review_notes: z.string().nullable().optional(),
+  hearing_duration_minutes: nullablePositiveIntSchema,
+  virtual_hearing_available: z.boolean().optional().default(false),
+  virtual_hearing_platform: z.string().nullable().optional(),
+  hearing_scheduling_notes: z.string().nullable().optional(),
+  board_personality_notes: z.string().nullable().optional(),
+  winning_argument_patterns: z.string().nullable().optional(),
+  common_assessor_errors: z.string().nullable().optional(),
+  success_rate_pct: nullablePercentSchema,
+  success_rate_source: z.string().nullable().optional(),
+  avg_savings_pct: nullablePercentSchema,
+  authorized_rep_allowed: z.boolean().nullable().optional(),
+  authorized_rep_form_url: nullableUrlSchema,
+  authorized_rep_types: z.array(z.string()).nullable().optional(),
+  rep_restrictions_notes: z.string().nullable().optional(),
+  further_appeal_body: z.string().nullable().optional(),
+  further_appeal_url: nullableUrlSchema,
+  further_appeal_deadline_rule: z.string().nullable().optional(),
+  further_appeal_fee_cents: z.number().int().min(0).optional().default(0),
+}).superRefine((data, ctx) => {
+  if (
+    data.typical_resolution_weeks_min != null &&
+    data.typical_resolution_weeks_max != null &&
+    data.typical_resolution_weeks_min > data.typical_resolution_weeks_max
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Resolution timeline max must be greater than or equal to min',
+      path: ['typical_resolution_weeks_max'],
+    });
+  }
+});
+
+export type CountyAdminInput = z.infer<typeof countyAdminSchema>;

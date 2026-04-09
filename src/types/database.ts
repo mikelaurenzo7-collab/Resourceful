@@ -439,6 +439,14 @@ export type CountyRule = {
   land_ratio_residential: number | null;
   land_ratio_commercial: number | null;
   land_ratio_industrial: number | null;
+
+  // Cook County enrichment fields
+  level_of_assessment_commercial?: number | null;
+  level_of_assessment_residential?: number | null;
+  cost_approach_disfavored?: boolean | null;
+  valuation_date_convention?: string | null;
+  fair_cash_value_synonym?: boolean | null;
+
   // Standard fields
   is_active: boolean;
   last_verified_date: string | null;

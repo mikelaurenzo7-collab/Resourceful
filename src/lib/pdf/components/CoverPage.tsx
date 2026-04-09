@@ -40,8 +40,8 @@ export default function CoverPage({ data }: { data: ReportTemplateData }) {
       {/* Subject photo */}
       {subjectPhoto?.storage_path && (
         <View style={styles.photoContainer}>
-              {/* eslint-disable-next-line jsx-a11y/alt-text */}
-              <Image src={subjectPhoto.storage_path} style={styles.subjectPhoto} />
+          {/* eslint-disable-next-line jsx-a11y/alt-text */}
+          <Image src={subjectPhoto.storage_path} style={styles.subjectPhoto} />
           <Text style={[theme.caption, { textAlign: 'center', marginTop: 3 }]}>
             {subjectPhoto.ai_analysis?.professional_caption ?? 'Subject Property'}
           </Text>

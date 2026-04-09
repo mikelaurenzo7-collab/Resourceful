@@ -19,6 +19,7 @@ import { runNarratives } from './stages/stage5-narratives';
 import { runFilingGuide } from './stages/stage6-filing-guide';
 import { runPdfAssembly } from './stages/stage7-pdf-assembly';
 import { pipelineLogger } from '@/lib/logger';
+import { acquirePipelineLock, releasePipelineLock } from '@/lib/supabase/rpc';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -98,9 +99,12 @@ export async function runPipeline(
   const supabase = createAdminClient();
 
   // ── Acquire pipeline lock (prevents concurrent runs for same report) ──
-  const { data: lockAcquired } = await (supabase.rpc as any)('acquire_pipeline_lock', {
-    p_report_id: reportId,
-  });
+  const { data: lockAcquired, error: lockError } = await acquirePipelineLock(supabase, reportId);
+
+  if (lockError) {
+    pipelineLogger.error({ reportId, err: lockError.message }, 'Failed to acquire pipeline lock');
+    return { success: false, error: `Failed to acquire pipeline lock: ${lockError.message}` };
+  }
 
   if (!lockAcquired) {
     pipelineLogger.warn({ reportId }, 'Could not acquire lock — pipeline already running');
@@ -119,7 +123,7 @@ export async function runPipeline(
   if (fetchError || !report) {
     const msg = fetchError?.message ?? 'not found';
     pipelineLogger.error({ reportId, err: msg }, 'Failed to fetch report');
-    await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+    await releasePipelineLock(supabase, reportId);
     return { success: false, error: `Failed to fetch report ${reportId}: ${msg}` };
   }
 
@@ -241,7 +245,10 @@ export async function runPipeline(
   } finally {
     // ALWAYS release the pipeline lock, even on unexpected errors
     try {
-      await (supabase.rpc as any)('release_pipeline_lock', { p_report_id: reportId });
+      const { error: lockError } = await releasePipelineLock(supabase, reportId);
+      if (lockError) {
+        throw new Error(lockError.message);
+      }
     } catch (lockErr) {
       pipelineLogger.error(
         { err: lockErr, reportId },

@@ -3,7 +3,7 @@
 import React from 'react';
 import { View, Text } from '@react-pdf/renderer';
 import { theme, colors } from '../styles/theme';
-import { SectionHeader, NarrativeBlock, ValueCallout } from './shared';
+import { SectionHeader, NarrativeBlock } from './shared';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { formatCurrency } from '@/lib/templates/helpers';
 

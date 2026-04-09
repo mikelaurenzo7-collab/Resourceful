@@ -3,19 +3,18 @@
 
 import React from 'react';
 import { View, Text } from '@react-pdf/renderer';
-import { theme, colors } from '../styles/theme';
+import { theme } from '../styles/theme';
 import { SectionHeader, NarrativeBlock, DataTable } from './shared';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { formatPercent } from '@/lib/templates/helpers';
 
 export default function AssessmentRatioAnalysis({ data }: { data: ReportTemplateData }) {
-  const { property, countyRule, concludedValue, narratives } = data;
+  const { property, countyRule, narratives } = data;
 
   // Guard: only render if we have assessment ratio data
   if (!property.assessment_ratio) return null;
 
   const subjectRatio = property.assessment_ratio;
-  const assessedValue = property.assessed_value ?? 0;
 
   // County median ratio from county_rules
   const countyRatioField = property.property_class?.toLowerCase().includes('commercial')

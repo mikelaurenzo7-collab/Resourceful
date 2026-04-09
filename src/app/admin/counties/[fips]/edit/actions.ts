@@ -2,8 +2,8 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
+import { countyAdminSchema } from '@/lib/validations/report';
 import { revalidatePath } from 'next/cache';
-// County rules now use plain text for assessment_methodology and hearing_format
 
 function parseOptionalInt(val: FormDataEntryValue | null): number | null {
   if (!val || val === '') return null;
@@ -32,6 +32,13 @@ function parseStringArray(val: FormDataEntryValue | null): string[] | null {
 
 function parseCheckbox(form: FormData, name: string): boolean {
   return form.has(name);
+}
+
+function formatValidationMessage(fieldErrors: Record<string, string[] | undefined>): string {
+  const messages = Object.entries(fieldErrors)
+    .flatMap(([field, errors]) => (errors ?? []).map((error) => `${field.replace(/_/g, ' ')}: ${error}`));
+
+  return messages[0] ?? 'County rule validation failed.';
 }
 
 export async function saveCounty(existingFips: string | null, formData: FormData) {
@@ -68,6 +75,11 @@ export async function saveCounty(existingFips: string | null, formData: FormData
     assessment_ratio_residential: parseOptionalFloat(formData.get('assessment_ratio_residential')),
     assessment_ratio_commercial: parseOptionalFloat(formData.get('assessment_ratio_commercial')),
     assessment_ratio_industrial: parseOptionalFloat(formData.get('assessment_ratio_industrial')),
+    level_of_assessment_commercial: parseOptionalFloat(formData.get('level_of_assessment_commercial')),
+    level_of_assessment_residential: parseOptionalFloat(formData.get('level_of_assessment_residential')),
+    cost_approach_disfavored: parseCheckbox(formData, 'cost_approach_disfavored'),
+    valuation_date_convention: parseOptionalString(formData.get('valuation_date_convention')),
+    fair_cash_value_synonym: parseCheckbox(formData, 'fair_cash_value_synonym'),
     appeal_board_name: parseOptionalString(formData.get('appeal_board_name')),
     appeal_board_address: parseOptionalString(formData.get('appeal_board_address')),
     appeal_board_phone: parseOptionalString(formData.get('appeal_board_phone')),
@@ -127,15 +139,23 @@ export async function saveCounty(existingFips: string | null, formData: FormData
     verified_by: parseOptionalString(formData.get('verified_by')),
   };
 
+  const parsedRecord = countyAdminSchema.safeParse(record);
+
+  if (!parsedRecord.success) {
+    throw new Error(formatValidationMessage(parsedRecord.error.flatten().fieldErrors));
+  }
+
+  const validatedRecord = parsedRecord.data;
+
   if (existingFips) {
     const { error } = await supabase
       .from('county_rules')
-      .update(record as never)
+      .update(validatedRecord as never)
       .eq('county_fips', existingFips);
 
     if (error) throw new Error(`Failed to update county: ${error.message}`);
   } else {
-    const { error } = await supabase.from('county_rules').insert(record as never);
+    const { error } = await supabase.from('county_rules').insert(validatedRecord as never);
 
     if (error) throw new Error(`Failed to create county: ${error.message}`);
   }

@@ -66,13 +66,6 @@ export async function runPdfAssembly(
     }
   }
 
-  const report = templateData.report;
-  const propertyAddress = [
-    report.property_address,
-    report.city,
-    report.state,
-  ].filter(Boolean).join(', ');
-
   // ── Generate PDF ─────────────────────────────────────────────────────
   pipelineLogger.info({ reportId }, '[stage7] Rendering PDF for report ...');
 

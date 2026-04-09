@@ -31,7 +31,7 @@ export async function GET(request: Request) {
       const supabase = createClient(supabaseUrl, supabaseKey);
 
       // Test DB query
-      const { data, error } = await supabase.from('county_rules').select('county_fips').limit(1);
+      const { error } = await supabase.from('county_rules').select('county_fips').limit(1);
       const latency = Date.now() - start;
 
       if (error) {

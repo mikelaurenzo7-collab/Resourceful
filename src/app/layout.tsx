@@ -1,11 +1,26 @@
-import type { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+import type { Metadata } from 'next';
+import localFont from 'next/font/local';
+import { Playfair_Display } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
-import { OrganizationJsonLd, WebSiteJsonLd } from "@/components/seo/JsonLd";
-import "./globals.css";
+import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/seo/JsonLd';
+import './globals.css';
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://resourceful.app";
+const geistSans = localFont({
+  src: './fonts/GeistVF.woff',
+  variable: '--font-inter',
+  weight: '100 900',
+  display: 'swap',
+});
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-playfair',
+  display: 'swap',
+});
+
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app';
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
@@ -83,18 +98,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Runtime font loading — no build-time network dependency */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Playfair+Display:wght@400..900&display=swap"
-          rel="stylesheet"
-        />
         <OrganizationJsonLd />
         <WebSiteJsonLd />
       </head>
-      <body className="font-sans antialiased bg-[#0f1419] text-[#f5f0e8] min-h-screen">
+      <body className={`${geistSans.variable} ${playfair.variable} font-sans antialiased bg-[#0f1419] text-[#f5f0e8] min-h-screen`}>
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-gold focus:text-navy-deep focus:rounded-lg focus:font-medium focus:text-sm"
@@ -102,7 +109,7 @@ export default function RootLayout({
           Skip to main content
         </a>
         <main id="main-content">
-        {children}
+          {children}
         </main>
         <Analytics />
         <SpeedInsights />

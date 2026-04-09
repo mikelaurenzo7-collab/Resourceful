@@ -16,7 +16,7 @@
 // but are never required. See data-router.ts for the adapter pattern.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Report, PropertyData, CountyRule } from '@/types/database';
+import type { Database, Report, PropertyData, PropertyDataInsert, CountyRule } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { geocodeAddress } from '@/lib/services/azure-maps';
 import { collectPropertyData } from '@/lib/services/data-router';
@@ -34,6 +34,15 @@ import { pipelineLogger } from '@/lib/logger';
 interface FemaFloodResult {
   floodZone: string | null;
   panelNumber: string | null;
+}
+
+interface FemaFeatureResponse {
+  features?: Array<{
+    attributes?: {
+      FLD_ZONE?: string | null;
+      FIRM_PAN?: string | null;
+    };
+  }>;
 }
 
 async function queryFemaFloodZone(lat: number, lng: number): Promise<FemaFloodResult> {
@@ -56,7 +65,7 @@ async function queryFemaFloodZone(lat: number, lng: number): Promise<FemaFloodRe
       return { floodZone: null, panelNumber: null };
     }
 
-    const json = (await response.json()) as any;
+    const json = (await response.json()) as FemaFeatureResponse;
     const feature = json.features?.[0]?.attributes;
 
     return {
@@ -443,7 +452,7 @@ export async function runDataCollection(
   } else {
     const { error: insertError } = await supabase
       .from('property_data')
-      .insert(propertyDataPayload as any);
+      .insert(propertyDataPayload as PropertyDataInsert);
 
     if (insertError) {
       return { success: false, error: `Failed to insert property_data: ${insertError.message}` };

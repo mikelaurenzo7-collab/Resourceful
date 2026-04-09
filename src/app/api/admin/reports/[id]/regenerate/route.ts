@@ -89,7 +89,9 @@ export async function POST(
     if (!narrativeResult.success) {
       // Restore the old narrative if regeneration failed to prevent data loss
       if (existingNarrative) {
-        const { id: _id, ...restoreData } = existingNarrative;
+        const restoreData = Object.fromEntries(
+          Object.entries(existingNarrative).filter(([key]) => key !== 'id')
+        ) as Omit<ReportNarrative, 'id'>;
         await admin.from('report_narratives').insert(restoreData);
       }
       return NextResponse.json(

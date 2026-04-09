@@ -48,7 +48,6 @@ export default function AppealJourney({
   const hasFiled = filedAt != null || filingStatus === 'filed' || filingStatus === 'hearing_scheduled' || filingStatus === 'decision_pending' || filingStatus === 'closed';
   const hasOutcome = appealOutcome != null && appealOutcome !== 'pending';
 
-  const [localFilingStatus, setLocalFilingStatus] = useState(filingStatus);
   const [localFiledAt, setLocalFiledAt] = useState(filedAt);
   const [localFilingMethod, setLocalFilingMethod] = useState(filingMethod);
   const [localFiled, setLocalFiled] = useState(hasFiled);
@@ -75,7 +74,6 @@ export default function AppealJourney({
         const json = await res.json().catch(() => ({}));
         throw new Error(json.error ?? 'Failed to save');
       }
-      setLocalFilingStatus('filed');
       setLocalFiledAt(today);
       setLocalFilingMethod(method);
       setLocalFiled(true);

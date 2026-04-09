@@ -203,9 +203,13 @@ export async function runPhotoAnalysis(
   // ── Determine photo package completeness ─────────────────────────────
   // A "complete" package means the owner submitted all required photo types
   // AND provided descriptions for at least half of them.
-  const uploadedTypes = new Set(photos.map((p) => p.photo_type).filter(Boolean));
+  const uploadedTypes = new Set<string>(
+    photos
+      .map((photo) => photo.photo_type)
+      .filter((photoType): photoType is NonNullable<Photo['photo_type']> => photoType != null)
+  );
   const required = REQUIRED_PHOTO_TYPES[propertyType] ?? REQUIRED_PHOTO_TYPES.residential;
-  const hasAllRequiredTypes = required.every((t) => uploadedTypes.has(t as any));
+  const hasAllRequiredTypes = required.every((photoType) => uploadedTypes.has(photoType));
   const photosWithDescriptions = photos.filter((p) => p.caption && p.caption.trim().length > 10);
   const descriptionCoverage = photos.length > 0 ? photosWithDescriptions.length / photos.length : 0;
   // "Complete package" = all required types + descriptions on at least half of photos
@@ -270,7 +274,7 @@ export async function runPhotoAnalysis(
         const { error: photoUpdateError } = await supabase
           .from('photos')
           .update({
-            ai_analysis: analysis as any,
+            ai_analysis: analysis,
             // Keep owner's original description if meaningful; AI professional
             // caption is stored inside ai_analysis.professional_caption.
             caption: (photo.caption?.trim() || analysis.professional_caption),

@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Resourceful
 
-## Getting Started
+Resourceful is a nationwide property intelligence platform that generates professional property tax appeal reports, pre-purchase analyses, and pre-listing pricing reports. It combines structured public-record data, comparable sales, photo-based condition evidence, and AI-generated narratives into a deliverable that is reviewable in the admin workflow and accessible from the customer dashboard.
 
-First, run the development server:
+## Core Product Model
+
+- Dashboard-first delivery: reports are delivered to the user dashboard and report page, not as fragile expiring PDF links.
+- Payment before valuation: the customer pays before seeing the completed valuation output.
+- Nationwide coverage: county-specific behavior lives in `county_rules`; application code must not hardcode county logic.
+- Admin-gated delivery: stages 1 through 7 generate the report, then admin approval triggers final delivery and customer notification.
+- Outcome loop: delivered reports request follow-up outcomes later so calibration can improve over time.
+
+## Stack
+
+- Next.js 14 App Router
+- TypeScript strict mode
+- Supabase for Postgres, Auth, Storage, and RLS
+- Stripe for checkout and payment webhooks
+- Anthropic for narratives and image analysis
+- ATTOM plus supporting services for property data and comps
+- React PDF for the production report renderer
+- Vercel for deployment and cron execution
+
+## Important Paths
+
+- App routes: `src/app`
+- Report pipeline: `src/lib/pipeline`
+- PDF renderer: `src/lib/pdf`
+- HTML report template helpers: `src/lib/templates`
+- External integrations: `src/lib/services`
+- Repository data access: `src/lib/repository`
+- Database types: `src/types/database.ts`
+- Supabase migrations: `supabase/migrations`
+
+## Local Development
+
+1. Install dependencies.
+2. Create `.env.local` from `.env.example`.
+3. Start Supabase locally if needed.
+4. Run the app and supporting checks.
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
+pnpm lint
+pnpm build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Helpful scripts:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `scripts/setup-local.sh`
+- `scripts/seed-counties.ts`
+- `scripts/seed-top-counties.ts`
+- `scripts/rerun-report.ts`
+- `scripts/debug-lock.ts`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment
 
-## Learn More
+Required production variables include:
 
-To learn more about Next.js, take a look at the following resources:
+- `ANTHROPIC_API_KEY`
+- `AI_MODEL_PRIMARY`
+- `AI_MODEL_FAST`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_APP_URL`
+- `ATTOM_API_KEY`
+- `CRON_SECRET`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Recommended variables are documented in `.env.example` and validated at startup by `src/lib/utils/validate-env.ts`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Production Checklist
 
-## Deploy on Vercel
+Before shipping:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Run `pnpm lint` and `pnpm build` on the exact commit being deployed.
+2. Ensure the latest Supabase migrations have been applied.
+3. Verify Stripe webhook configuration points to `/api/webhooks/stripe` with the correct secret.
+4. Confirm `county_rules` contains the jurisdictions you intend to support.
+5. Verify at least one admin user can review and approve reports.
+6. Test the happy path end to end: intake, payment, pipeline, admin approval, delivery email, dashboard access.
+7. Verify cron authentication and scheduled routes in `vercel.json`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Operational Notes
+
+- Stage 7 PDF assembly is the live report generation path and must stay aligned with `ReportTemplateData`.
+- Report delivery is non-fatal for email; the dashboard remains the source of truth.
+- County enrichment must be stored in `county_rules` and referenced through typed data access, not hardcoded in route handlers.
+- Appraisal-style enhancements should be introduced through the live payload and narrative contracts, not placeholder props.
+
+## Deployment Runbook
+
+See `docs/production-runbook.md` for a practical deployment and incident checklist.

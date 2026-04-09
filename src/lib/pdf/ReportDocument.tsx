@@ -20,6 +20,11 @@ import IncomeApproachTable from './components/IncomeApproachTable';
 import ConditionSection from './components/ConditionSection';
 import FilingGuide from './components/FilingGuide';
 import Disclaimer from './components/Disclaimer';
+import AssignmentAndScope from './components/AssignmentAndScope';
+import SummaryOfSalientFacts from './components/SummaryOfSalientFacts';
+import PropertyHistory from './components/PropertyHistory';
+import AssessmentData from './components/AssessmentData';
+import CertificationAndLimitingConditions from './components/CertificationAndLimitingConditions';
 
 // Narrative section keys mapped to display titles
 const NARRATIVE_SECTIONS = [
@@ -61,30 +66,55 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
       {/* Table of Contents */}
       <TableOfContents data={data} />
 
+
+      {/* Assignment & Scope (J2C-style) */}
+      {narrativeMap.get('assignment_and_scope') && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <AssignmentAndScope content={narrativeMap.get('assignment_and_scope')!} />
+        </Page>
+      )}
+
+      {/* Summary of Salient Facts (J2C-style) */}
+      {narrativeMap.get('summary_of_salient_facts') && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <SummaryOfSalientFacts content={narrativeMap.get('summary_of_salient_facts')!} />
+        </Page>
+      )}
+
+      {/* Property History (J2C-style) */}
+      {narrativeMap.get('property_history') && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <PropertyHistory content={narrativeMap.get('property_history')!} />
+        </Page>
+      )}
+
+      {/* Assessment Data (J2C-style) */}
+      {narrativeMap.get('assessment_data') && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <AssessmentData content={narrativeMap.get('assessment_data')!} />
+        </Page>
+      )}
+
       {/* Property Identification + Executive Summary */}
       <Page size="LETTER" style={theme.page}>
         <PageFooter />
-
-        {/* Property Identification Summary (structured grid) */}
         <PropertyDetails data={data} />
       </Page>
 
       {/* Executive Summary + Maps + Photos */}
       <Page size="LETTER" style={theme.page}>
         <PageFooter />
-
-        {/* Executive Summary */}
         <ExecutiveSummary data={data} />
-
-        {/* Regional location map */}
         {data.maps.regional && (
           <View style={{ marginVertical: 8 }} wrap={false}>
             {/* eslint-disable-next-line jsx-a11y/alt-text */}
             <Image src={data.maps.regional.url} style={{ width: '100%', height: 200 }} />
           </View>
         )}
-
-        {/* Subject photos */}
         {summaryPhotos.length > 0 && <PhotoGrid photos={summaryPhotos} />}
       </Page>
 
@@ -107,15 +137,12 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
       <Page size="LETTER" style={theme.page}>
         <PageFooter />
         <CompsGrid data={data} />
-
-        {/* Comparable Sales Location Map */}
         {data.maps.neighborhood && (
           <View style={{ marginVertical: 8 }} wrap={false}>
             {/* eslint-disable-next-line jsx-a11y/alt-text */}
             <Image src={data.maps.neighborhood.url} style={{ width: '100%', height: 220 }} />
           </View>
         )}
-
         <AdjustmentReconciliation data={data} />
       </Page>
 
@@ -177,11 +204,18 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         </Page>
       )}
 
-      {/* Certification & Disclaimer */}
-      <Page size="LETTER" style={theme.page}>
-        <PageFooter />
-        <Disclaimer data={data} />
-      </Page>
+      {/* Certification & Limiting Conditions (J2C-style) */}
+      {narrativeMap.get('certification_and_limiting_conditions') ? (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <CertificationAndLimitingConditions content={narrativeMap.get('certification_and_limiting_conditions')!} />
+        </Page>
+      ) : (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <Disclaimer data={data} />
+        </Page>
+      )}
     </Document>
   );
 }

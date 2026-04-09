@@ -5,6 +5,7 @@ import {
   photoUploadSchema,
   adminRejectSchema,
   adminRegenerateSchema,
+  countyAdminSchema,
   countyRuleSchema,
 } from './report';
 
@@ -229,6 +230,11 @@ describe('countyRuleSchema', () => {
       assessment_ratio_residential: 0.33,
       assessment_ratio_commercial: 0.25,
       assessment_ratio_industrial: 0.25,
+      level_of_assessment_commercial: 0.25,
+      level_of_assessment_residential: 0.1,
+      cost_approach_disfavored: true,
+      valuation_date_convention: 'january_1_tax_year',
+      fair_cash_value_synonym: true,
       appeal_board_name: 'Cook County Board of Review',
       portal_url: 'https://www.cookcountyboardofreview.com',
       filing_email: 'appeals@cookcounty.gov',
@@ -261,6 +267,11 @@ describe('countyRuleSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('rejects Cook County enrichment ratios above 1', () => {
+    const result = countyRuleSchema.safeParse({ ...minimal, level_of_assessment_residential: 1.25 });
+    expect(result.success).toBe(false);
+  });
+
   it('validates URL fields when present', () => {
     expect(countyRuleSchema.safeParse({ ...minimal, portal_url: 'not-a-url' }).success).toBe(false);
     expect(countyRuleSchema.safeParse({ ...minimal, portal_url: 'https://example.com' }).success).toBe(true);
@@ -282,6 +293,42 @@ describe('countyRuleSchema', () => {
       expect(result.data.is_active).toBe(true);
       expect(result.data.accepts_online_filing).toBe(false);
     }
+  });
+});
+
+describe('countyAdminSchema', () => {
+  const base = {
+    county_fips: '17031',
+    county_name: 'Cook',
+    state_name: 'Illinois',
+    state_abbreviation: 'IL',
+    filing_fee_cents: 0,
+    further_appeal_fee_cents: 0,
+  };
+
+  it('accepts extended admin-only county fields', () => {
+    const result = countyAdminSchema.safeParse({
+      ...base,
+      assessment_methodology_notes: 'Fractional assessment county',
+      next_appeal_deadline: '2026-03-15',
+      required_documents: ['Appeal form', 'Comparable sales'],
+      success_rate_pct: 62.5,
+      avg_savings_pct: 11.2,
+      virtual_hearing_available: true,
+      authorized_rep_form_url: 'https://example.gov/rep-form',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an inverted resolution timeline', () => {
+    const result = countyAdminSchema.safeParse({
+      ...base,
+      typical_resolution_weeks_min: 10,
+      typical_resolution_weeks_max: 4,
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 

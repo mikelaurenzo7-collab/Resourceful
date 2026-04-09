@@ -94,6 +94,7 @@ export interface NarrativePayload {
   countyRules: {
     countyName: string;
     state: string;
+    stateAbbreviation?: string | null;
     assessmentMethodology: string;
     assessmentRatioResidential?: number | null;
     assessmentRatioCommercial?: number | null;
@@ -108,6 +109,8 @@ export interface NarrativePayload {
     winningArgumentPatterns?: string | null;
     commonAssessorErrors?: string | null;
     successRatePct?: number | null;
+    costApproachDisfavored?: boolean | null;
+    fairCashValueSynonym?: boolean | null;
   };
   concludedValue: number;
   photoAnalyses?: Array<{
@@ -281,6 +284,10 @@ export interface FilingGuidePayload {
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const NARRATIVE_SECTION_NAMES = [
+  'assignment_and_scope',
+  'summary_of_salient_facts',
+  'property_history',
+  'assessment_data',
   'executive_summary',
   'property_description',
   'site_description_narrative',
@@ -298,11 +305,13 @@ const NARRATIVE_SECTION_NAMES = [
   'cost_approach_narrative',
   'assessment_equity',
   'reconciliation_narrative',
+  'certification_and_limiting_conditions',
   'appeal_argument_summary',
   'hearing_script',
 ] as const;
 
 export type NarrativeSectionName = typeof NARRATIVE_SECTION_NAMES[number];
+const NARRATIVE_SECTION_NAME_SET = new Set<string>(NARRATIVE_SECTION_NAMES);
 
 // ─── Response Types ──────────────────────────────────────────────────────────
 
@@ -323,6 +332,27 @@ export interface FilingGuideResponse {
   prompt_tokens: number;
   completion_tokens: number;
   generation_duration_ms: number;
+}
+
+interface RawNarrativeSection {
+  section_name?: unknown;
+  content?: unknown;
+}
+
+interface RawPhotoDefect {
+  type?: unknown;
+  description?: unknown;
+  severity?: unknown;
+  value_impact?: unknown;
+  report_language?: unknown;
+}
+
+interface RawPhotoAnalysis {
+  condition_rating?: unknown;
+  defects?: unknown;
+  inferred_direction?: unknown;
+  professional_caption?: unknown;
+  comparable_adjustment_note?: unknown;
 }
 
 export interface PhotoAnalysisResponse {
@@ -787,6 +817,7 @@ function buildNarrativeSystemPrompt(payload: NarrativePayload): string {
   const county = payload.countyRules.countyName;
   const state = payload.countyRules.state;
 
+
   // Build county expertise context — everything we know about how this county operates
   const countyExpertise: string[] = [];
   countyExpertise.push(`Assessment methodology: ${payload.countyRules.assessmentMethodology}`);
@@ -825,6 +856,21 @@ function buildNarrativeSystemPrompt(payload: NarrativePayload): string {
   }
   if (payload.countyRules.successRatePct) {
     countyExpertise.push(`Historical appeal success rate: ${payload.countyRules.successRatePct}%`);
+  }
+
+  // Cook County/Illinois industrial narrative logic
+  const isIllinois = state.toLowerCase() === 'illinois' || payload.countyRules.stateAbbreviation === 'IL';
+  const isCook = county.toLowerCase().includes('cook');
+  const isIndustrial = payload.propertyType === 'industrial';
+  let cookCountyNarrative = '';
+  if (isIllinois && isIndustrial) {
+    cookCountyNarrative += '\nFor Illinois ad valorem appeals, always use the phrase "retrospective market value of the Fee Simple interest" when describing the subject property rights.\n';
+    if (payload.countyRules.fairCashValueSynonym) {
+      cookCountyNarrative += '\nIn Illinois, Fair Cash Value and Market Value are synonymous. Use this language explicitly in the narrative.\n';
+    }
+    if (isCook && payload.countyRules.costApproachDisfavored) {
+      cookCountyNarrative += '\nFor Cook County industrial properties, the cost approach is disfavored and should be omitted from the analysis unless specifically requested or required. Focus on the sales and income approaches.\n';
+    }
   }
 
   const hasPhotos = payload.photoAnalyses && payload.photoAnalyses.length > 0;
@@ -867,158 +913,95 @@ Use this parcel data to write a substantive site description with actual dimensi
     ? `\n\nCLIENT'S STATED GOAL: "${payload.desiredOutcome}"\nFactor this into your analysis. Align your conclusions and emphasis with what the client is trying to achieve, while keeping all numbers accurate and defensible.`
     : '';
 
-  return `${serviceFraming}
 
-You work FOR the property owner. You are thorough, aggressive in advocacy, and meticulous with data. You leave no stone unturned. If there is an angle that helps your client, you find it and you quantify it.
+    // ─── J2C-LEVEL PROFESSIONAL APPRAISAL STRUCTURE ─────────────────────────────
+    // Add Assignment & Scope, full salient facts, and all professional sections
+    // Use Appraisal Institute definitions and require explicit, tabular, and step-by-step math/rationale in all approaches
+    // Require full certification and limiting conditions
 
-You are NOT a neutral party. You are your client's expert witness. Every number you cite must be accurate and defensible, but your interpretation always favors the property owner within the bounds of professional ethics.${desiredOutcomeContext}
+    return `${serviceFraming}
 
-YOUR EXPERTISE IN ${county.toUpperCase()} COUNTY, ${state.toUpperCase()}:
-${countyExpertise.map(e => `- ${e}`).join('\n')}
-${payload.researchIntelligence?.strategyInsights ? `
-LIVE RESEARCH INTELLIGENCE (researched for this specific report — cite sources where relevant):
-${payload.researchIntelligence.strategyInsights}
-${payload.researchIntelligence.deadlineInfo ? `\nCURRENT DEADLINE INFO: ${payload.researchIntelligence.deadlineInfo}` : ''}
-${payload.researchIntelligence.boardIntelligence ? `\nBOARD INTELLIGENCE: ${payload.researchIntelligence.boardIntelligence}` : ''}
-${payload.researchIntelligence.recentChanges ? `\nRECENT CHANGES: ${payload.researchIntelligence.recentChanges}` : ''}
-${payload.researchIntelligence.sources?.length ? `\nSOURCES CONSULTED (cite these inline where relevant — e.g., "per ${county} County Assessor website" or "per local reporting"):\n${payload.researchIntelligence.sources.slice(0, 8).map((s, i) => `  ${i + 1}. ${s}`).join('\n')}` : ''}
-Use this research to make your analysis current and county-specific. Reference specific procedures, deadlines, or strategies where relevant. When citing information from these sources, use natural attribution (e.g., "according to the county assessor's office," "as reported by [source]") rather than bare URLs.` : ''}
-${dataProvenance.length > 0 ? `
-DATA SOURCE CONFIDENCE — CRITICAL FOR FRAMING:
-${dataProvenance.map(d => `- ${d}`).join('\n')}
+  You work FOR the property owner. You are thorough, aggressive in advocacy, and meticulous with data. You leave no stone unturned. If there is an angle that helps your client, you find it and you quantify it.
 
-When property data was AI-extracted from county assessor web pages (vs. coming directly from ATTOM or a user-provided tax bill), treat those values as estimates. Use hedging language like "per county assessor records" or "according to publicly available assessment data" rather than stating them as absolute fact. When photo evidence contradicts extracted data (e.g., condition is worse than records suggest), lead with the photo evidence — it is OUR firsthand observation and outranks desk-based records.` : ''}
-${parcelContext}
-${payload.valueDetractors && payload.valueDetractors.detractors.length > 0 ? `
-═══════════════════════════════════════════════════════════════════════
-PROXIMITY ANALYSIS — VALUE-SUPPRESSING FACTORS THE ASSESSOR MISSED
-This is intelligence gathered from mapping APIs and web research that
-competitors do NOT provide. The assessor valued this property from a
-spreadsheet — they never checked what's next door.
-═══════════════════════════════════════════════════════════════════════
+  You are NOT a neutral party. You are your client's expert witness. Every number you cite must be accurate and defensible, but your interpretation always favors the property owner within the bounds of professional ethics.${desiredOutcomeContext}
 
-${payload.valueDetractors.summary}
+  ${cookCountyNarrative}
 
-DETECTED FACTORS:
-${payload.valueDetractors.detractors.slice(0, 8).map((d, i) =>
-  `${i + 1}. [${d.type.toUpperCase()}] ${d.name}${d.distance_meters > 0 ? ` — ${d.distance_meters}m from subject` : ''}
-     Est. value impact: ${d.estimated_impact_pct}%
-     ${d.details}`
-).join('\n\n')}
+  YOUR EXPERTISE IN ${county.toUpperCase()} COUNTY, ${state.toUpperCase()}:
+  ${countyExpertise.map(e => `- ${e}`).join('\n')}
+  ${payload.researchIntelligence?.strategyInsights ? `
+  LIVE RESEARCH INTELLIGENCE (researched for this specific report — cite sources where relevant):
+  ${payload.researchIntelligence.strategyInsights}
+  ${payload.researchIntelligence.deadlineInfo ? `\nCURRENT DEADLINE INFO: ${payload.researchIntelligence.deadlineInfo}` : ''}
+  ${payload.researchIntelligence.boardIntelligence ? `\nBOARD INTELLIGENCE: ${payload.researchIntelligence.boardIntelligence}` : ''}
+  ${payload.researchIntelligence.recentChanges ? `\nRECENT CHANGES: ${payload.researchIntelligence.recentChanges}` : ''}
+  ${payload.researchIntelligence.sources?.length ? `\nSOURCES CONSULTED (cite these inline where relevant — e.g., "per ${county} County Assessor website" or "per local reporting"):\n${payload.researchIntelligence.sources.slice(0, 8).map((s, i) => `  ${i + 1}. ${s}`).join('\n')}` : ''}
+  Use this research to make your analysis current and county-specific. Reference specific procedures, deadlines, or strategies where relevant. When citing information from these sources, use natural attribution (e.g., "according to the county assessor's office," "as reported by [source]") rather than bare URLs.` : ''}
+  ${dataProvenance.length > 0 ? `
+  DATA SOURCE CONFIDENCE — CRITICAL FOR FRAMING:
+  ${dataProvenance.map(d => `- ${d}`).join('\n')}
 
-AGGREGATE ESTIMATED IMPACT: ${payload.valueDetractors.totalEstimatedImpactPct}%
+  When property data was AI-extracted from county assessor web pages (vs. coming directly from ATTOM or a user-provided tax bill), treat those values as estimates. Use hedging language like "per county assessor records" or "according to publicly available assessment data" rather than stating them as absolute fact. When photo evidence contradicts extracted data (e.g., condition is worse than records suggest), lead with the photo evidence — it is OUR firsthand observation and outranks desk-based records.` : ''}
+  ${parcelContext}
 
-HOW TO USE THIS INTELLIGENCE:
-1. SITE DESCRIPTION: Reference specific detractors discovered through proximity analysis. Name the facility/issue and its distance. "Within ${Math.min(...payload.valueDetractors.detractors.map(d => d.distance_meters).filter(d => d > 0), 9999)}m of the subject property..."
-2. NEIGHBORHOOD ANALYSIS: Frame these as negative externalities the assessor failed to account for.
-3. SALES COMPARISON: Argue that comparable properties may not share these adverse proximity factors, or if they do, it supports an overall lower market area value.
-4. APPEAL ARGUMENTS: "The assessor's records do not reflect the subject property's proximity to [detractor], which independent mapping analysis places ${payload.valueDetractors.detractors[0]?.distance_meters ?? 'nearby'}m from the property."
-5. RECONCILIATION: Factor the aggregate proximity impact into your value conclusion.
+  // ─── J2C-LEVEL STRUCTURE ─────────────────────────────────────────────
 
-This proximity intelligence is a proprietary competitive advantage — frame it professionally as "independent location analysis" or "geographic proximity assessment."` : ''}
-${payload.priorSaleAnalysis ? `
-═══════════════════════════════════════════════════════════════════════
-PRIOR SALE ANALYSIS — MARKET VALUE EXTRAPOLATED FROM SUBJECT'S OWN SALE
-═══════════════════════════════════════════════════════════════════════
+  You must return valid JSON — an array of objects with these keys:
+  - "section_name": one of the exact values listed below
+  - "content": the narrative text (may include Markdown)
 
-Comparable sales data is unavailable or insufficient for this property. The concluded value of $${payload.concludedValue.toLocaleString()} was derived from the subject property's own confirmed arm's-length sale history, extrapolated forward to current market conditions.
+  Required section_name values (generate ALL that apply, in this order):
+  1. "assignment_and_scope" — a full Assignment & Scope section, including:
+    - Intended Use
+    - Intended User
+    - Purpose of the Appraisal
+    - Definition of Market Value (verbatim from Appraisal Institute)
+    - Property Rights Appraised (verbatim from Appraisal Institute)
+    - Competency
+    - Assignment Conditions (Extraordinary Assumptions, Hypothetical Conditions)
+    - Scope of Work (verbatim from Appraisal Institute)
+    Use professional, formal language and cite definitions verbatim.
+  2. "summary_of_salient_facts" — a tabular summary of all key facts:
+    - Property type, address, PIN, zoning, land/building ratio, site area, parcel configuration, unit mix, year built, economic life, highest & best use (as vacant and as improved), valuation findings (per approach), concluded value, market value per unit, and any other salient facts.
+    Present as a table for clarity.
+  3. "property_history" — recent transactions, code violations, and marketing time.
+  4. "assessment_data" — official records, tax status, assessment ratios, and any relevant assessment details.
+  5. "property_description" — physical description emphasizing any characteristics that would LOWER value (age, deferred maintenance, functional obsolescence, layout inefficiencies)${hasPhotos ? '. Weave in specific observations from the photo evidence — reference individual photos by type (e.g., "as shown in the front elevation photograph") when describing condition.' : ''}
+  6. "site_description_narrative" — site description noting any adverse factors (flood zone, noise, traffic, easements, irregular lot shape, proximity to commercial/industrial)${hasPhotos ? '. Reference any site-level issues visible in exterior photos (drainage, grading, neighboring conditions).' : ''}
+  7. "improvement_description_narrative" — improvement description, emphasizing depreciation, outdated systems, and any features that don't add proportional value${hasPhotos ? '. Cite specific photo evidence of deterioration, deferred maintenance, and age-related wear documented in the condition analysis.' : ''}
+  ${hasPhotos ? `8. "condition_assessment" — THIS IS YOUR MOST POWERFUL SECTION. The assessor valued this property without setting foot inside or examining it up close. The homeowner's photographs tell the REAL story. For each photo submitted:
+    - State what the photo shows (type: front, rear, interior, roof, etc.)
+    - List every defect identified with severity and estimated value impact
+    - Explain in plain language why this condition reduces value below what the assessor assumed
+    - Quantify: "This level of [defect] typically warrants a [X-Y]% condition adjustment in comparable sales analysis"
+    - Reference the comparable_adjustment_note for each photo
 
-PRIOR SALE DATA:
-- Last arm's-length sale price: $${payload.priorSaleAnalysis.lastSalePrice.toLocaleString()}
-- Sale date: ${payload.priorSaleAnalysis.lastSaleDate}
-- Years elapsed since sale: ${payload.priorSaleAnalysis.yearsElapsed}
-- Applied annual appreciation rate: ${payload.priorSaleAnalysis.annualAppreciationPct}% (conservative FHFA long-run average)
-- Extrapolated current market value: $${payload.priorSaleAnalysis.extrapolatedValue.toLocaleString()}
+    End with a summary: total number of documented defects, overall condition rating, and the aggregate value impact. Frame this as: "The assessor's records assume [assumed condition]. Our on-site photographic evidence documents [actual condition]. This discrepancy alone accounts for approximately $[X] in overassessment."
 
-HOW TO PRESENT THIS IN THE NARRATIVES:
-- In "sales_comparison_narrative": Acknowledge that traditional comparable sales data is limited for this property. Then pivot to the prior sale approach: "The subject property's most recent arm's-length transaction provides the most reliable basis for market value determination. On [date], the property sold for $[X] in an arm's-length market transaction. Applying a conservative 4% annual appreciation rate consistent with the FHFA House Price Index for this market, the extrapolated current market value is $[Y]."
-- In "reconciliation_narrative": "In the absence of adequate comparable sales data, the concluded value of $[Y] is based on the subject property's own confirmed market transaction, adjusted for time elapsed since the sale date. This approach is recognized under USPAP as a valid value indicator when market data is limited."
-- If the concluded (extrapolated) value is BELOW the current assessed value: this is powerful evidence of overassessment — the county is assessing the property at more than its own documented market history supports.
-- Do NOT fabricate comps. Do NOT use the prior sale as a "comparable" — it IS the subject. Use first-person language about the property's own sale history.` : ''}
+    This section should be substantial — it is evidence the county does not have and cannot refute.` : ''}
+  ${hasPhotos ? '9' : '8'}. "area_analysis_county" — ${county} County market context, noting any factors that suppress values (tax burden, population trends, economic conditions, inventory levels)
+  ${hasPhotos ? '10' : '9'}. "area_analysis_city" — city-level analysis with focus on factors that limit appreciation
+  ${hasPhotos ? '11' : '10'}. "area_analysis_neighborhood" — hyperlocal neighborhood analysis — competing listings, days on market, any negative externalities
+  ${hasPhotos ? '12' : '11'}. "market_analysis" — market conditions and trends, emphasizing any softness, rising inventory, or declining price trends
+  ${hasPhotos ? '13' : '12'}. "hbu_as_vacant" — highest and best use as if vacant, with legal, physical, financial, and productivity tests (verbatim definitions)
+  ${hasPhotos ? '14' : '13'}. "hbu_as_improved" — highest and best use as improved, with legal, physical, financial, and productivity tests (verbatim definitions)
+  ${hasPhotos ? '15' : '14'}. "sales_comparison_narrative" — aggressive comparable sales analysis: explain why each comp supports a LOWER value than the assessor's, call out every adjustment that works in the homeowner's favor. Use a detailed adjustment grid and summarize per-unit and total value. Show all adjustment factors and net adjustments. Present as a table and narrative.
+  ${hasPhotos ? '16' : '15'}. "adjustment_grid_narrative" — methodical explanation of every adjustment, framed to support the lower concluded value. The condition adjustment line item should reference the photo evidence summary.
+  ${payload.comparableRentals?.length ? `${hasPhotos ? '17' : '16'}. "income_approach_narrative" — rental income analysis showing the income-derived value is below the assessed value. Present rental comp table, pro forma, cap rate derivation (market and survey), and loaded cap rate calculation. Show all math step by step.` : ''}
+  ${payload.overvaluationAnalysis?.costApproachValue != null ? `${hasPhotos ? '18' : '17'}. "cost_approach_narrative" — USPAP Cost Approach: present the replacement cost new (RCN), physical depreciation, ${payload.overvaluationAnalysis.functionalObsolescencePct ? 'functional obsolescence, ' : ''}and land value. Show the math step by step: "RCN of $[X] × (1 − [Y]% total depreciation) + land value of $[Z] = cost approach indicator of $[W]." If the cost approach value is BELOW the assessed value, this is a powerful third line of evidence converging with the sales comparison${payload.comparableRentals?.length ? ' and income approaches' : ''}. State explicitly: "Three independent valuation approaches all indicate a market value below the assessor's figure." If it exceeds the assessed value, address it honestly — explain why the cost approach may be less reliable here (e.g., land value uncertainty, market obsolescence) — do not suppress it.` : ''}
+  ${payload.assessmentEquity?.isOverAssessed ? `${hasPhotos ? '19' : '18'}. "assessment_equity" — HORIZONTAL UNIFORMITY / EQUITY ARGUMENT — this section is MANDATORY when equity data shows over-assessment. Structure it as follows:
+    **Opening**: State the legal principle — uniformity of assessment is required by state law. Properties of comparable type, size, and condition within the same jurisdiction must be assessed at comparable rates.
+    **The Math**: Present side-by-side: "The subject property is assessed at $${payload.assessmentEquity.subjectAssessedPerSqft?.toFixed(2) ?? '[X]'}/sqft. Analysis of ${payload.assessmentEquity.neighborCount} comparable neighboring properties within 0.5 miles reveals a median assessed value of $${payload.assessmentEquity.medianNeighborAssessedPerSqft?.toFixed(2) ?? '[Y]'}/sqft — ${payload.assessmentEquity.equityRatioPct?.toFixed(1) ?? '[Z]'}% lower than the subject's current assessment."
+    **The Evidence**: Cite 2-3 specific neighboring properties from the sample by address, with their assessed $/sqft, square footage, and year built. Example: "[Address], a [size] sqft [year] property assessed at $[X]/sqft." Show that these neighbors are reasonably comparable in type and vintage.
+    **The Ask**: "To achieve assessment equity consistent with ${payload.assessmentEquity.neighborCount} comparable neighboring properties, the subject's assessed value per sqft should be reduced from $${payload.assessmentEquity.subjectAssessedPerSqft?.toFixed(2) ?? '[X]'} to the neighborhood median of approximately $${payload.assessmentEquity.medianNeighborAssessedPerSqft?.toFixed(2) ?? '[Y]'}, implying a total assessed value of $[calculated]. This reduction requires no market sales evidence — only that the county apply its own assessment standards uniformly."
+    This argument is powerful precisely because it does NOT depend on market sales, appraisals, or opinions of value — it is purely a mathematical comparison of the county's own records.` : ''}
+  ${hasPhotos ? '20' : '19'}. "reconciliation_narrative" — final value reconciliation: state the concluded value with conviction, quantify the exact overassessment in dollars and percentage, and recommend the assessment be reduced. When cost approach data is present, state which approaches were used and how they were weighted. Explicitly state that the concluded value reflects documented property condition from firsthand photographic evidence — evidence the assessor did not have when setting the assessed value.
+  21. "certification_and_limiting_conditions" — full USPAP certification and limiting conditions, verbatim. Use the language from the Appraisal Institute and the J2C report. This section must be complete and professional.
 
-You must return valid JSON — an array of objects with these keys:
-- "section_name": one of the exact values listed below
-- "content": the narrative text (may include Markdown)
+  // All other instructions from the previous prompt (counter-argument preparation, investigative mandate, etc.) remain in effect below this line.
 
-Required section_name values (generate ALL that apply, in this order):
-1. "executive_summary" — lead with the dollar amount the homeowner is being overcharged, the concluded market value, and a confident summary of why the assessment is wrong${hasPhotos ? '. Mention that the analysis includes firsthand photographic evidence of property condition that the assessor never reviewed.' : ''}
-2. "property_description" — physical description emphasizing any characteristics that would LOWER value (age, deferred maintenance, functional obsolescence, layout inefficiencies)${hasPhotos ? '. Weave in specific observations from the photo evidence — reference individual photos by type (e.g., "as shown in the front elevation photograph") when describing condition.' : ''}
-3. "site_description_narrative" — site description noting any adverse factors (flood zone, noise, traffic, easements, irregular lot shape, proximity to commercial/industrial)${hasPhotos ? '. Reference any site-level issues visible in exterior photos (drainage, grading, neighboring conditions).' : ''}
-4. "improvement_description_narrative" — improvement description, emphasizing depreciation, outdated systems, and any features that don't add proportional value${hasPhotos ? '. Cite specific photo evidence of deterioration, deferred maintenance, and age-related wear documented in the condition analysis.' : ''}
-${hasPhotos ? `5. "condition_assessment" — THIS IS YOUR MOST POWERFUL SECTION. The assessor valued this property without setting foot inside or examining it up close. The homeowner's photographs tell the REAL story. For each photo submitted:
-   - State what the photo shows (type: front, rear, interior, roof, etc.)
-   - List every defect identified with severity and estimated value impact
-   - Explain in plain language why this condition reduces value below what the assessor assumed
-   - Quantify: "This level of [defect] typically warrants a [X-Y]% condition adjustment in comparable sales analysis"
-   - Reference the comparable_adjustment_note for each photo
-
-   End with a summary: total number of documented defects, overall condition rating, and the aggregate value impact. Frame this as: "The assessor's records assume [assumed condition]. Our on-site photographic evidence documents [actual condition]. This discrepancy alone accounts for approximately $[X] in overassessment."
-
-   This section should be substantial — it is evidence the county does not have and cannot refute.` : ''}
-${hasPhotos ? '6' : '5'}. "area_analysis_county" — ${county} County market context, noting any factors that suppress values (tax burden, population trends, economic conditions, inventory levels)
-${hasPhotos ? '7' : '6'}. "area_analysis_city" — city-level analysis with focus on factors that limit appreciation
-${hasPhotos ? '8' : '7'}. "area_analysis_neighborhood" — hyperlocal neighborhood analysis — competing listings, days on market, any negative externalities
-${hasPhotos ? '9' : '8'}. "market_analysis" — market conditions and trends, emphasizing any softness, rising inventory, or declining price trends
-${hasPhotos ? '10' : '9'}. "hbu_as_vacant" — highest and best use as if vacant
-${hasPhotos ? '11' : '10'}. "hbu_as_improved" — highest and best use as improved
-${hasPhotos ? '12' : '11'}. "sales_comparison_narrative" — aggressive comparable sales analysis: explain why each comp supports a LOWER value than the assessor's, call out every adjustment that works in the homeowner's favor${hasPhotos ? '. When discussing condition adjustments, explicitly tie them back to the photographic evidence: "Based on the documented [defect type] shown in the property photographs, a condition adjustment of [X]% is warranted when comparing to [comp address]."' : ''}
-${hasPhotos ? '13' : '12'}. "adjustment_grid_narrative" — methodical explanation of every adjustment, framed to support the lower concluded value${hasPhotos ? '. The condition adjustment line item should reference the photo evidence summary.' : ''}
-${payload.comparableRentals?.length ? `${hasPhotos ? '14' : '13'}. "income_approach_narrative" — rental income analysis showing the income-derived value is below the assessed value` : ''}
-${payload.overvaluationAnalysis?.costApproachValue != null ? `${hasPhotos ? '15' : '14'}. "cost_approach_narrative" — USPAP Cost Approach: present the replacement cost new (RCN), physical depreciation, ${payload.overvaluationAnalysis.functionalObsolescencePct ? 'functional obsolescence, ' : ''}and land value. Show the math step by step: "RCN of $[X] × (1 − [Y]% total depreciation) + land value of $[Z] = cost approach indicator of $[W]." If the cost approach value is BELOW the assessed value, this is a powerful third line of evidence converging with the sales comparison${payload.comparableRentals?.length ? ' and income approaches' : ''}. State explicitly: "Three independent valuation approaches all indicate a market value below the assessor's figure." If it exceeds the assessed value, address it honestly — explain why the cost approach may be less reliable here (e.g., land value uncertainty, market obsolescence) — do not suppress it.` : ''}
-${payload.assessmentEquity?.isOverAssessed ? `${hasPhotos ? '16' : '15'}. "assessment_equity" — HORIZONTAL UNIFORMITY / EQUITY ARGUMENT — this section is MANDATORY when equity data shows over-assessment. Structure it as follows:
-   **Opening**: State the legal principle — uniformity of assessment is required by state law. Properties of comparable type, size, and condition within the same jurisdiction must be assessed at comparable rates.
-   **The Math**: Present side-by-side: "The subject property is assessed at $${payload.assessmentEquity.subjectAssessedPerSqft?.toFixed(2) ?? '[X]'}/sqft. Analysis of ${payload.assessmentEquity.neighborCount} comparable neighboring properties within 0.5 miles reveals a median assessed value of $${payload.assessmentEquity.medianNeighborAssessedPerSqft?.toFixed(2) ?? '[Y]'}/sqft — ${payload.assessmentEquity.equityRatioPct?.toFixed(1) ?? '[Z]'}% lower than the subject's current assessment."
-   **The Evidence**: Cite 2-3 specific neighboring properties from the sample by address, with their assessed $/sqft, square footage, and year built. Example: "[Address], a [size] sqft [year] property assessed at $[X]/sqft." Show that these neighbors are reasonably comparable in type and vintage.
-   **The Ask**: "To achieve assessment equity consistent with ${payload.assessmentEquity.neighborCount} comparable neighboring properties, the subject's assessed value per sqft should be reduced from $${payload.assessmentEquity.subjectAssessedPerSqft?.toFixed(2) ?? '[X]'} to the neighborhood median of approximately $${payload.assessmentEquity.medianNeighborAssessedPerSqft?.toFixed(2) ?? '[Y]'}, implying a total assessed value of $[calculated]. This reduction requires no market sales evidence — only that the county apply its own assessment standards uniformly."
-   This argument is powerful precisely because it does NOT depend on market sales, appraisals, or opinions of value — it is purely a mathematical comparison of the county's own records.` : ''}
-${hasPhotos ? '17' : '16'}. "reconciliation_narrative" — final value reconciliation: state the concluded value with conviction, quantify the exact overassessment in dollars and percentage, and recommend the assessment be reduced. When cost approach data is present, state which approaches were used and how they were weighted. ${hasPhotos ? 'Explicitly state that the concluded value reflects documented property condition from firsthand photographic evidence — evidence the assessor did not have when setting the assessed value.' : ''}
-${payload.serviceType === 'tax_appeal' ? `${hasPhotos ? '17' : '16'}. "appeal_argument_summary" — the homeowner's battle plan: 5-7 numbered arguments, each a specific, quotable statement they can read to ${payload.countyRules.appealBoardName || 'the board'}. Lead with the strongest argument. Include exact dollar figures. End with a clear ask: "I respectfully request the assessed value be reduced from $X to $Y."${hasPhotos ? ' At least 2 of the arguments MUST reference the photographic evidence directly — these are your most persuasive points because the board can see the evidence with their own eyes.' : ''}` : ''}
-${payload.serviceType === 'tax_appeal' && payload.reviewTier !== 'full_representation' ? `${hasPhotos ? '18' : '17'}. "hearing_script" — A COMPLETE WORD-FOR-WORD HEARING SCRIPT the homeowner can literally read aloud at their hearing. This is their rehearsal guide. Structure it EXACTLY like this:
-
-**OPENING (30 seconds):**
-"Good morning/afternoon. My name is [leave blank for homeowner to fill in]. I'm here today regarding the assessment on [property address]. The current assessed value is $${payload.propertyData.assessed_value?.toLocaleString() ?? '[assessed]'}, but based on comprehensive market analysis including ${payload.comparableSales?.length ?? 0} comparable sales${hasPhotos ? ', independent photographic condition assessment,' : ''} and ${payload.countyRules.countyName} County market data, I believe the supported market value is $${payload.concludedValue?.toLocaleString() ?? '[concluded]'} — an overassessment of $[difference]. I have [X] pieces of evidence to present."
-
-**EVIDENCE PRESENTATION (3-5 minutes):**
-Walk through each piece of evidence in order. For each point, write the EXACT words:
-- "My first piece of evidence is... [comparable sale analysis — cite specific addresses and prices]"
-- "My second piece of evidence is... [condition documentation from photos, if applicable]"
-- "My third piece of evidence is... [assessment ratio analysis]"
-Number each evidence point. Use simple, declarative sentences. Avoid jargon.
-
-**CLOSING (30 seconds):**
-"In summary, [X] comparable sales, [market conditions], and [condition evidence if applicable] all support a market value of $[concluded]. The current assessment of $[assessed] exceeds this by $[difference], which represents a [X]% overassessment. I respectfully request the board reduce the assessed value to $[concluded]. Thank you for your time. I'm happy to answer any questions."
-
-**IF ASKED QUESTIONS:**
-Provide 3-4 likely questions the board may ask and suggested responses:
-- "Why did you choose these comparable sales?" → [suggested answer]
-- "How do you account for [difference between subject and comp]?" → [suggested answer]
-- "What is your relationship to this property?" → "I am the owner. I prepared this appeal using a professional market analysis."
-
-Make this script feel like a dress rehearsal. The homeowner should be able to print it, practice twice, and walk in feeling like a professional.` : ''}
-
-COUNTER-ARGUMENT PREPARATION — ANTICIPATE AND DEFEAT THE ASSESSOR'S RESPONSE:
-In the reconciliation_narrative, include a "Preemptive Rebuttals" subsection that addresses the 2-3 most likely assessor counter-arguments:
-- If you cite comparable sales below assessed value: address why the assessor might argue your comps are dissimilar, and preemptively explain why your adjustments account for those differences.
-- If you cite condition issues: address the assessor's likely claim that photos are selective or don't represent the full property. Counter with the breadth and specificity of your documentation.
-- If you cite assessment ratio violations: address whether the assessor might argue a different effective date or methodology. Counter with the statutory requirement.
-This transforms the report from one-sided advocacy into a document that has already anticipated and defeated the opposing position — exactly what board members want to see.
-
-INVESTIGATIVE MANDATE — LEAVE NO STONE UNTURNED:
-You are an investigator, not a reporter. Do not merely describe the data — interrogate it. For every data point, ask: "Does this help the homeowner's case?" If yes, amplify it with context. If no, explain why it's irrelevant or misleading.
-
-You MUST investigate ALL of the following angles and report findings in the reconciliation_narrative and appeal_argument_summary:
-
-1. PRICE PER SQUARE FOOT ANALYSIS: Calculate the assessor's implied $/sqft and compare it against every comparable sale's $/sqft. If the assessor's number is higher than even a single comp, call it out. If it's higher than the median, that's a headline finding.
-
-2. ASSESSMENT RATIO MATH: Calculate: assessed_value ÷ concluded_market_value. If this implied ratio exceeds ${county} County's statutory ratio by even 1%, the assessment is mathematically indefensible. Show the math step by step — appeal boards respond to clear arithmetic.
-
-3. COMP-BY-COMP DEMOLITION: For each comparable sale, explain exactly why it supports a value below the assessment. Don't just list adjustments — tell the story. "123 Oak St sold for $X, and it has [better feature] than the subject — meaning the subject is worth even less."
-
-4. TEMPORAL ANALYSIS: Sort comps by date. If more recent sales are lower, the assessor is using stale data. If the market is softening, say so explicitly and quantify the trend.
-
-5. ASSESSOR DATA AUDIT: Scrutinize every field in the assessor's records. Wrong square footage? Wrong year built? Missing depreciation? Incorrect property class? Each error is ammunition. Flag every discrepancy you find.
-
-6. INDEPENDENT VALUE RANGE CHECK: If the assessed value exceeds independent AVM estimates, that's powerful evidence. The assessor's own data source may contradict their conclusion.
+  COUNTER-ARGUMENT PREPARATION — ANTICIPATE AND DEFEAT THE ASSESSOR'S RESPONSE:
+  In the reconciliation_narrative, include a "Preemptive Rebuttals" subsection that addresses the 2-3 most likely assessor counter-arguments:
 
 7. DEPRECIATION ANALYSIS: Use the pre-computed depreciation facts provided in the property data — effective_age, physical_depreciation_pct, remaining_economic_life, and economic_life_years. These are IAAO-standard calculations based on the building category's total economic life. If the property data shows physical_depreciation_pct > 40%, the assessment MUST reflect this accumulated depreciation — if it doesn't, this is a major line of attack. State the numbers explicitly: "With an effective age of X years against a standard economic life of Y years for [building category], the subject has accumulated Z% physical depreciation. The assessor's failure to account for this depreciation results in a [dollar amount] overstatement of improvement value." If effective_age_source is "photo_adjusted", emphasize that the effective age reflects observed condition from firsthand photographic inspection — not a generic assumption.
 
@@ -1129,29 +1112,50 @@ function parseNarrativeJson(text: string): NarrativeSection[] | null {
   return null;
 }
 
-function validateNarrativeSections(raw: any[]): NarrativeSection[] {
+function validateNarrativeSections(raw: RawNarrativeSection[]): NarrativeSection[] {
   return raw
-    .filter((s) => s.section_name && s.content)
+    .filter(
+      (section): section is { section_name: string; content: string } =>
+        typeof section.section_name === 'string' &&
+        typeof section.content === 'string' &&
+        NARRATIVE_SECTION_NAME_SET.has(section.section_name)
+    )
     .map((s) => ({
       section_name: s.section_name as NarrativeSectionName,
-      content: s.content as string,
+      content: s.content,
     }));
 }
 
 function parsePhotoAnalysisJson(text: string): PhotoAiAnalysis | null {
-  function normalize(parsed: any): PhotoAiAnalysis {
+  function normalize(parsed: RawPhotoAnalysis): PhotoAiAnalysis {
+    const defects = Array.isArray(parsed.defects) ? parsed.defects as RawPhotoDefect[] : [];
+
     return {
-      condition_rating: parsed.condition_rating ?? 'average',
-      defects: (parsed.defects ?? []).map((d: any) => ({
-        type: d.type ?? '',
-        description: d.description ?? '',
-        severity: d.severity ?? 'minor',
-        value_impact: d.value_impact ?? 'low',
-        report_language: d.report_language ?? '',
+      condition_rating:
+        parsed.condition_rating === 'excellent' ||
+        parsed.condition_rating === 'good' ||
+        parsed.condition_rating === 'average' ||
+        parsed.condition_rating === 'fair' ||
+        parsed.condition_rating === 'poor'
+          ? parsed.condition_rating
+          : 'average',
+      defects: defects.map((defect) => ({
+        type: typeof defect.type === 'string' ? defect.type : '',
+        description: typeof defect.description === 'string' ? defect.description : '',
+        severity:
+          defect.severity === 'minor' || defect.severity === 'moderate' || defect.severity === 'significant'
+            ? defect.severity
+            : 'minor',
+        value_impact:
+          defect.value_impact === 'low' || defect.value_impact === 'medium' || defect.value_impact === 'high'
+            ? defect.value_impact
+            : 'low',
+        report_language: typeof defect.report_language === 'string' ? defect.report_language : '',
       })),
-      inferred_direction: parsed.inferred_direction ?? '',
-      professional_caption: parsed.professional_caption ?? '',
-      comparable_adjustment_note: parsed.comparable_adjustment_note ?? '',
+      inferred_direction: typeof parsed.inferred_direction === 'string' ? parsed.inferred_direction : '',
+      professional_caption: typeof parsed.professional_caption === 'string' ? parsed.professional_caption : '',
+      comparable_adjustment_note:
+        typeof parsed.comparable_adjustment_note === 'string' ? parsed.comparable_adjustment_note : '',
     };
   }
 

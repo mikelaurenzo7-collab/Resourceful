@@ -8,7 +8,6 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getReportWithDetails } from '@/lib/repository/reports';
 import { applyRateLimit } from '@/lib/rate-limit';
-import type { Report } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
 
 export async function GET(

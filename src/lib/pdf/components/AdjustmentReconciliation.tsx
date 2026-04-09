@@ -1,8 +1,8 @@
 // ─── Adjustment Reconciliation ───────────────────────────────────────────────
 
 import React from 'react';
-import { View, Text } from '@react-pdf/renderer';
-import { theme, colors } from '../styles/theme';
+import { View } from '@react-pdf/renderer';
+import { colors } from '../styles/theme';
 import { SectionHeader, NarrativeBlock, DataTable, ValueCallout } from './shared';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { formatCurrency, adjustmentLabel } from '@/lib/templates/helpers';
