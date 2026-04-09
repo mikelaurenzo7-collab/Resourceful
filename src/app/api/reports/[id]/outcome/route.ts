@@ -53,6 +53,16 @@ export async function POST(
     );
   }
 
+  // Validate new_assessed_value if provided
+  if (new_assessed_value !== undefined && new_assessed_value !== null) {
+    if (typeof new_assessed_value !== 'number' || !isFinite(new_assessed_value) || new_assessed_value < 0 || new_assessed_value > 100_000_000_00) {
+      return NextResponse.json(
+        { error: 'Invalid assessed value. Must be a positive number.' },
+        { status: 400 }
+      );
+    }
+  }
+
   const adminSupabase = createAdminClient();
 
   // Fetch report

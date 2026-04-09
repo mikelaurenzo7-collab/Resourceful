@@ -45,7 +45,10 @@ export async function GET(
       );
     }
 
-    if (report.user_id !== user.id) {
+    const isOwner = report.user_id
+      ? report.user_id === user.id
+      : report.client_email?.toLowerCase() === user.email?.toLowerCase();
+    if (!isOwner) {
       return NextResponse.json(
         { error: 'Not authorized to view this report' },
         { status: 403 }

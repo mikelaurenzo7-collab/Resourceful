@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 import { getPropertyDetail } from '@/lib/services/attom';
 import { getCountyByName } from '@/lib/repository/county-rules';
 import type { Report } from '@/types/database';
@@ -21,6 +22,20 @@ export async function POST(
   const { id: reportId } = await params;
 
   try {
+    // ── Authenticate user ──────────────────────────────────────────────────
+    const userSupabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await userSupabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const supabase = createAdminClient();
 
     // ── Fetch the report ───────────────────────────────────────────────────
@@ -36,6 +51,17 @@ export async function POST(
       return NextResponse.json(
         { error: 'Report not found' },
         { status: 404 }
+      );
+    }
+
+    // ── Verify ownership ───────────────────────────────────────────────────
+    const isOwner = report.user_id
+      ? report.user_id === user.id
+      : report.client_email?.toLowerCase() === user.email?.toLowerCase();
+    if (!isOwner) {
+      return NextResponse.json(
+        { error: 'Not authorized to view this report' },
+        { status: 403 }
       );
     }
 

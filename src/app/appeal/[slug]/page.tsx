@@ -70,7 +70,7 @@ export default async function CountyAppealPage({
   const supabase = createAdminClient();
   const { data: outcomeStats } = await supabase
     .from('reports')
-    .select('appeal_outcome, savings_amount_cents')
+    .select('appeal_outcome, actual_savings_cents')
     .eq('county', county.county_name)
     .eq('state', county.state_abbreviation)
     .not('appeal_outcome', 'is', null);
@@ -80,7 +80,7 @@ export default async function CountyAppealPage({
   const wins = outcomes.filter((o) => o.appeal_outcome === 'won');
   const winRate = totalAppeals >= 3 ? Math.round((wins.length / totalAppeals) * 100) : null;
   const avgSavingsCents = wins.length >= 2
-    ? Math.round(wins.reduce((sum, o) => sum + (o.savings_amount_cents ?? 0), 0) / wins.length)
+    ? Math.round(wins.reduce((sum, o) => sum + (o.actual_savings_cents ?? 0), 0) / wins.length)
     : null;
 
   const filingMethod = getFilingMethodText(county);

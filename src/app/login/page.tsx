@@ -9,10 +9,17 @@ import Wordmark from '@/components/ui/Wordmark';
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get('redirect') || '/dashboard';
+  const rawRedirect = searchParams.get('redirect') || '/dashboard';
+  // Prevent open redirect — only allow relative paths
+  const redirect = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/dashboard';
+  const callbackError = searchParams.get('error');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => {
+    if (callbackError === 'link_expired') return 'Your sign-in link has expired. Please request a new one or sign in with your password.';
+    if (callbackError === 'missing_code') return 'Invalid sign-in link. Please try again or sign in with your password.';
+    return '';
+  });
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {

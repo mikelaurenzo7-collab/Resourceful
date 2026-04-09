@@ -341,6 +341,30 @@ export default async function DashboardPage() {
           </div>
         )}
 
+        {/* ── Empty state for new users ───────────────────────────── */}
+        {userReports.length === 0 && (
+          <div className="text-center py-16 animate-fade-in">
+            <div className="w-16 h-16 rounded-2xl bg-gold/10 flex items-center justify-center mx-auto mb-6">
+              <svg className="w-8 h-8 text-gold/60" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h2 className="font-display text-2xl text-cream mb-3">No reports yet</h2>
+            <p className="text-cream/40 text-sm max-w-md mx-auto mb-8 leading-relaxed">
+              Enter your property address and let our AI analysis find potential assessment errors — backed by comparable sales data and county-specific filing guidance.
+            </p>
+            <Link
+              href="/start"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark px-6 py-3 rounded-lg shadow-gold hover:shadow-gold-lg hover:brightness-110 transition-all"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Start Your First Report
+            </Link>
+          </div>
+        )}
+
         {/* ── Active report ─────────────────────────────────────────── */}
         {activeReport && (
           <div className="space-y-4 mb-14 animate-slide-up">

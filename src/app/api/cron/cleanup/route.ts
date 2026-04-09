@@ -16,8 +16,27 @@ export async function GET(request: NextRequest) {
 
   const supabase = createAdminClient();
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
 
   try {
+    // ── Clean up stale intake reports (no payment, older than 1 hour) ────
+    let staleIntakeCleaned = 0;
+    try {
+      const { data: staleIntakes } = await supabase
+        .from('reports')
+        .delete()
+        .eq('status', 'intake')
+        .is('stripe_payment_intent_id', null)
+        .lt('created_at', oneHourAgo)
+        .select('id');
+      staleIntakeCleaned = staleIntakes?.length ?? 0;
+      if (staleIntakeCleaned > 0) {
+        console.log(`[cron/cleanup] Removed ${staleIntakeCleaned} stale intake reports (no payment)`);
+      }
+    } catch (intakeErr) {
+      console.warn('[cron/cleanup] Stale intake cleanup failed (non-fatal):', intakeErr);
+    }
+
     // Find failed reports older than 7 days
     const { data: failedReports } = await supabase
       .from('reports')
@@ -26,7 +45,7 @@ export async function GET(request: NextRequest) {
       .lt('created_at', sevenDaysAgo);
 
     if (!failedReports || failedReports.length === 0) {
-      return NextResponse.json({ cleaned: 0, message: 'No stale failed reports found' });
+      return NextResponse.json({ cleaned: 0, staleIntakeCleaned, message: 'No stale failed reports found' });
     }
 
     const reportIds = failedReports.map((r: { id: string; report_pdf_storage_path: string | null }) => r.id);
@@ -84,6 +103,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       cleaned: failedReports.length,
+      staleIntakeCleaned,
       photosDeleted,
       pdfsDeleted,
       rateLimitCleaned,

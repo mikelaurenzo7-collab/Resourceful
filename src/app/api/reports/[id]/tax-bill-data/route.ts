@@ -32,7 +32,7 @@ export async function DELETE(
     // ── Verify report exists and user owns it ───────────────────────────
     const { data: report, error: fetchError } = await admin
       .from('reports')
-      .select('id, user_id, has_tax_bill')
+      .select('id, user_id, client_email, has_tax_bill')
       .eq('id', reportId)
       .single();
 
@@ -43,7 +43,10 @@ export async function DELETE(
       );
     }
 
-    if (report.user_id !== user.id) {
+    const isOwner = report.user_id
+      ? report.user_id === user.id
+      : report.client_email?.toLowerCase() === user.email?.toLowerCase();
+    if (!isOwner) {
       return NextResponse.json(
         { error: 'Not authorized to modify this report' },
         { status: 403 }

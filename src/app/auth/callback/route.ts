@@ -47,5 +47,6 @@ export async function GET(request: NextRequest) {
   }
 
   // If code exchange fails or no code, redirect to login with error hint
-  return NextResponse.redirect(`${origin}/login`);
+  const errorParam = code ? 'error=link_expired' : 'error=missing_code';
+  return NextResponse.redirect(`${origin}/login?${errorParam}`);
 }

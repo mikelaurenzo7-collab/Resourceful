@@ -9,7 +9,8 @@ import { sendOutcomeFollowups } from '@/lib/services/outcome-followup';
 export async function GET(req: NextRequest) {
   // Verify cron secret (Vercel sets this automatically for cron endpoints)
   const authHeader = req.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

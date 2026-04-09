@@ -102,6 +102,12 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
 
   const handleManualSubmit = () => {
     if (!query.trim()) return;
+    // If suggestions exist, auto-select the first match instead of submitting a raw string
+    if (suggestions.length > 0) {
+      handleSelect(suggestions[0]);
+      return;
+    }
+    // No suggestions available — warn user but allow submission
     onAddressSelect({
       line1: query.trim(),
       city: '',
