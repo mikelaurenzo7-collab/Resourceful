@@ -277,7 +277,8 @@ export async function runFilingGuide(
   }
 
   pipelineLogger.info(
-    `[stage6] Filing guide generated in ${generation_duration_ms}ms for report ${reportId}`
+    { reportId, durationMs: generation_duration_ms },
+    '[stage6] Filing guide generated'
   );
 
   return { success: true };

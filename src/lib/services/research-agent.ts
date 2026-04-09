@@ -325,8 +325,8 @@ export async function researchAppealStrategy(
         result.sources = Array.from(new Set(sources)).slice(0, 10);
 
         apiLogger.info(
-          `[research-agent] Research complete for ${context.countyName}, ${context.stateName}: ` +
-          `${searchCount} searches, ${result.sources.length} sources`
+          { county: context.countyName, state: context.stateName, searchCount, sourceCount: result.sources.length },
+          '[research-agent] Research complete'
         );
 
         return result;

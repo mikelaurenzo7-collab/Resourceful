@@ -180,7 +180,7 @@ export async function PATCH(
       .eq('id', id);
 
     if (updateError) {
-      apiLogger.error({ err: updateError.message }, `[api/reports/[id]] PATCH error`);
+      apiLogger.error({ err: updateError.message }, '[api/reports/[id]] PATCH error');
       return NextResponse.json(
         { error: 'Failed to update report' },
         { status: 500 }

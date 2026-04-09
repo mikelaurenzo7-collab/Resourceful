@@ -48,6 +48,7 @@ export default function Hero() {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const valuationAbortRef = useRef<AbortController | null>(null);
   const [address, setAddress] = useState<ParsedAddress | null>(null);
   const [valuation, setValuation] = useState<ValuationResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -70,6 +71,11 @@ export default function Hero() {
     : '/start';
 
   const fetchValuation = useCallback(async (addr: ParsedAddress) => {
+    // Cancel any in-flight valuation request to prevent stale data
+    valuationAbortRef.current?.abort();
+    const controller = new AbortController();
+    valuationAbortRef.current = controller;
+
     setLoading(true);
     setLookupFailed(false);
     try {
@@ -82,6 +88,7 @@ export default function Hero() {
           state: addr.state,
           county: addr.county || undefined,
         }),
+        signal: controller.signal,
       });
 
       if (!res.ok) throw new Error('API error');
@@ -93,11 +100,12 @@ export default function Hero() {
         estimatedAnnualSavings: data.estimatedAnnualSavings,
       });
       setHasResult(true);
-    } catch {
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       setHasResult(false);
       setLookupFailed(true);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, []);
 

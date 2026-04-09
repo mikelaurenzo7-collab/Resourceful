@@ -98,15 +98,12 @@ export async function createCalibrationEntry(
     } as never);
 
   if (error) {
-    apiLogger.error({ err: error.message }, `Failed to insert entry for ${reportId}`);
+    apiLogger.error({ err: error.message, reportId }, 'Failed to insert calibration entry');
     return;
   }
 
   apiLogger.info(
-    `[calibration] Entry created for report ${reportId}: ` +
-    `outcome=${report.appeal_outcome}, ` +
-    `predicted=${propertyData.concluded_value}, ` +
-    `actual=${actualValue ?? 'N/A'}, ` +
-    `error=${predictionError != null ? predictionError.toFixed(1) + '%' : 'N/A'}`
+    { reportId, outcome: report.appeal_outcome, predicted: propertyData.concluded_value, actual: actualValue ?? null, errorPct: predictionError != null ? +predictionError.toFixed(1) : null },
+    '[calibration] Entry created'
   );
 }

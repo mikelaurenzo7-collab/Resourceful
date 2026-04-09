@@ -307,8 +307,8 @@ export async function findCompsViaWeb(ctx: WebCompsContext): Promise<AttomSaleCo
 
     if (comps.length > 0) {
       apiLogger.info(
-        `[web-comps] Extracted ${comps.length} web-sourced comps: ` +
-        comps.map((c) => `${c.address} ($${c.salePrice.toLocaleString()})`).join(', ')
+        { compCount: comps.length, comps: comps.map((c) => ({ address: c.address, salePrice: c.salePrice })) },
+        '[web-comps] Extracted web-sourced comps'
       );
     } else {
       apiLogger.info('[web-comps] Claude found no confirmed sales in search results');
@@ -415,7 +415,8 @@ Only return this exact JSON or the word null. No explanation.`;
     if (!parsed.salePrice || parsed.salePrice <= 0 || !parsed.saleDate) return null;
 
     apiLogger.info(
-      `[web-comps] Found subject prior sale: $${parsed.salePrice.toLocaleString()} on ${parsed.saleDate} via ${parsed.source}`
+      { salePrice: parsed.salePrice, saleDate: parsed.saleDate, source: parsed.source },
+      '[web-comps] Subject prior sale found'
     );
     return { salePrice: parsed.salePrice, saleDate: parsed.saleDate, source: parsed.source };
   } catch (err) {
@@ -497,8 +498,8 @@ Rules:
     if (!parsed.estimatedValue || parsed.estimatedValue <= 0) return null;
 
     apiLogger.warn(
-      `[web-comps] AI knowledge-based estimate for ${address}: ` +
-      `$${parsed.estimatedValue.toLocaleString()} (range $${parsed.rangeLow.toLocaleString()}–$${parsed.rangeHigh.toLocaleString()})`
+      { address, estimatedValue: parsed.estimatedValue, rangeLow: parsed.rangeLow, rangeHigh: parsed.rangeHigh },
+      '[web-comps] AI knowledge-based estimate'
     );
     return {
       estimatedValue: Math.round(parsed.estimatedValue / 1000) * 1000,

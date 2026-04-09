@@ -94,7 +94,7 @@ export async function runDelivery(
   try {
     await subscribeToReminders(reportId);
   } catch (err) {
-    pipelineLogger.warn({ err: err }, `Failed to subscribe to reminders`);
+    pipelineLogger.warn({ err: err }, 'Failed to subscribe to reminders');
   }
 
   // ── Send email notification (if user opted in) ────────────────────────
@@ -148,7 +148,8 @@ export async function runDelivery(
       // Email failure is non-fatal — log it but don't roll back.
       // The notification-retry cron will pick this up (notification_sent_at stays null).
       pipelineLogger.error(
-        `[stage8] Notification email failed for report ${reportId} (report still delivered via dashboard): ${emailResult.error}`
+        { reportId, err: emailResult.error },
+        '[stage8] Notification email failed (report still delivered via dashboard)'
       );
     } else {
       // Stamp successful notification — prevents retry cron from re-sending
@@ -157,7 +158,8 @@ export async function runDelivery(
         .update({ notification_sent_at: new Date().toISOString() } as Record<string, unknown>)
         .eq('id', reportId);
       pipelineLogger.info(
-        `[stage8] Report ${reportId} delivered. Notification sent to ${clientEmail}. Email ID: ${emailResult.data?.id}`
+        { reportId, clientEmail, emailId: emailResult.data?.id },
+        '[stage8] Report delivered with notification'
       );
     }
   } else {

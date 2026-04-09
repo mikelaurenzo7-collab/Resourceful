@@ -382,7 +382,8 @@ export async function runComparables(
     // Stop expanding if we have enough comps
     if (allComps.length >= MIN_COMPS) {
       pipelineLogger.info(
-        `[stage2] Found ${allComps.length} comps at ${tier.radiusMiles}mi / ${tier.monthsBack}mo`
+        { compCount: allComps.length, radiusMiles: tier.radiusMiles, monthsBack: tier.monthsBack },
+        '[stage2] Found comps at search tier'
       );
       break;
     }
@@ -425,7 +426,7 @@ export async function runComparables(
       // Store equity stats inside attom_raw_response under a dedicated key
       // so stage 5 can pass them to the AI without a schema migration.
       const existing = (propertyData.attom_raw_response as Record<string, unknown> | null) ?? {};
-      await supabase
+      const { error: equityUpdateError } = await supabase
         .from('property_data')
         .update({
           attom_raw_response: {
@@ -448,12 +449,20 @@ export async function runComparables(
           },
         })
         .eq('report_id', reportId);
-      pipelineLogger.info(
-        `[stage2] Equity snapshot stored: ${equityResult.data.neighborCount} neighbors, ` +
-        `subject=$${equityResult.data.subjectAssessedPerSqft}/sqft, ` +
-        `median=$${equityResult.data.medianNeighborAssessedPerSqft}/sqft, ` +
-        `ratio=${equityResult.data.equityRatioPct}%`
-      );
+      if (equityUpdateError) {
+        pipelineLogger.warn({ reportId, err: equityUpdateError.message }, '[stage2] Failed to persist equity snapshot (non-fatal)');
+      } else {
+        pipelineLogger.info(
+          {
+            reportId,
+            neighborCount: equityResult.data.neighborCount,
+            subjectPerSqft: equityResult.data.subjectAssessedPerSqft,
+            medianPerSqft: equityResult.data.medianNeighborAssessedPerSqft,
+            equityRatioPct: equityResult.data.equityRatioPct,
+          },
+          '[stage2] Equity snapshot stored'
+        );
+      }
     } else {
       pipelineLogger.info({ equityResult: equityResult.error ?? 'empty response' }, '[stage2] No equity snapshot data ()');
     }
@@ -479,8 +488,8 @@ export async function runComparables(
     } else {
       // Still 0 comps — graceful degradation: equity + cost approach will carry Stage 5.
       pipelineLogger.warn(
-        `[stage2] No comparable sales from ATTOM or web search for report ${reportId}. ` +
-        `Pipeline will continue with equity, cost, and/or income approach if available.`
+        { reportId },
+        '[stage2] No comparable sales from ATTOM or web search — pipeline will continue with equity, cost, and/or income approach'
       );
       await supabase.from('comparable_sales').delete().eq('report_id', reportId);
       return { success: true };
@@ -592,7 +601,8 @@ export async function runComparables(
   const weakCount = compInserts.filter((c) => c.is_weak_comparable).length;
 
   pipelineLogger.info(
-    `[stage2] Wrote ${compInserts.length} comps (${weakCount} flagged as weak) for report ${reportId}`
+    { reportId, compCount: compInserts.length, weakCount },
+    '[stage2] Wrote comps to database'
   );
 
   return { success: true };

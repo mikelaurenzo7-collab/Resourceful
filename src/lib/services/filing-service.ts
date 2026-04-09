@@ -167,7 +167,8 @@ async function fileOnline(
   countyRule: CountyRule
 ): Promise<FilingResult> {
   apiLogger.info(
-    `[filing] Online filing for ${packet.propertyAddress} via ${countyRule.portal_url}`
+    { address: packet.propertyAddress, portalUrl: countyRule.portal_url },
+    '[filing] Online filing initiated'
   );
 
   // ROADMAP: County-specific Playwright automation (Phase 3 enhancement)
@@ -205,7 +206,8 @@ async function fileByEmail(
   countyRule: CountyRule
 ): Promise<FilingResult> {
   apiLogger.info(
-    `[filing] Email filing for ${packet.propertyAddress} to ${countyRule.filing_email}`
+    { address: packet.propertyAddress, filingEmail: countyRule.filing_email },
+    '[filing] Email filing initiated'
   );
 
   // Prepare email with report PDF attached
@@ -242,7 +244,8 @@ async function fileByMail(
   countyRule: CountyRule
 ): Promise<FilingResult> {
   apiLogger.info(
-    `[filing] Mail filing for ${packet.propertyAddress} to ${countyRule.appeal_board_address ?? 'address TBD'}`
+    { address: packet.propertyAddress, mailingAddress: countyRule.appeal_board_address ?? 'address TBD' },
+    '[filing] Mail filing initiated'
   );
 
   const lobApiKey = process.env.LOB_API_KEY;

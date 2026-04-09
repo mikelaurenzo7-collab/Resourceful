@@ -66,7 +66,7 @@ export async function DELETE(
       .eq('id', reportId);
 
     if (updateError) {
-      apiLogger.error({ err: updateError.message }, `[api/reports/${reportId}/tax-bill-data] Update error`);
+      apiLogger.error({ err: updateError.message, reportId }, '[api/reports/tax-bill-data] Update error');
       return NextResponse.json(
         { error: 'Failed to delete tax bill data' },
         { status: 500 }
@@ -76,7 +76,7 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error({ err: message }, `[api/reports/${reportId}/tax-bill-data] Error`);
+    apiLogger.error({ err: message, reportId }, '[api/reports/tax-bill-data] Error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

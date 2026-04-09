@@ -507,9 +507,8 @@ export async function collectPropertyData(
 
       notes.push('Regrid: parcel boundary, zoning detail, and legal description enriched');
       apiLogger.info(
-        `[data-router] Regrid enriched "${params.address}": ` +
-        `APN=${parcel.apn}, frontage=${parcel.parcel.frontageFt}ft, ` +
-        `zoning=${parcel.zoning.code}`
+        { address: params.address, apn: parcel.apn, frontageFt: parcel.parcel.frontageFt, zoningCode: parcel.zoning.code },
+        '[data-router] Regrid enrichment complete'
       );
     } else {
       notes.push(`Regrid: ${regridResult.error ?? 'no parcel found'}`);

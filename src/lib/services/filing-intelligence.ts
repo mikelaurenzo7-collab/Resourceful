@@ -157,8 +157,8 @@ export async function aggregateCountyIntelligence(
     .eq('county_fips', countyFips);
 
   apiLogger.info(
-    `[filing-intel] Updated ${countyFips}: ${winRate}% win rate, ` +
-    `$${avgSavings} avg savings, ${totalDecided} outcomes`
+    { countyFips, winRate, avgSavings, totalDecided },
+    '[filing-intel] County stats updated'
   );
 
   return intel;

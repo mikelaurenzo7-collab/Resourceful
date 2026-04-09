@@ -96,7 +96,8 @@ export async function GET(request: NextRequest) {
     }
 
     cronLogger.info(
-      `[cron/cleanup] Cleaned ${failedReports.length} failed reports: ${photosDeleted} photos, ${pdfsDeleted} PDFs, ${rateLimitCleaned} rate limit entries`
+      { failedCount: failedReports.length, photosDeleted, pdfsDeleted, rateLimitCleaned },
+      '[cron/cleanup] Cleanup complete'
     );
 
     return NextResponse.json({

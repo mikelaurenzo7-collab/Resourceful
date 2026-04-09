@@ -82,7 +82,8 @@ export async function POST(
       const errMessage = err instanceof Error ? err.message : String(err);
       const stack = err instanceof Error ? err.stack : undefined;
       apiLogger.error(
-        `[api/admin/rerun] Pipeline failed for report ${reportId}: ${errMessage}`
+        { reportId, err: errMessage, stack },
+        '[api/admin/rerun] Pipeline failed'
       );
       // Update report status so it doesn't stay stuck in 'paid'
       try {
@@ -98,7 +99,8 @@ export async function POST(
         } as never).eq('id', reportId);
       } catch (dbErr) {
         apiLogger.error(
-          `[api/admin/rerun] CRITICAL: Pipeline failed AND status update failed for ${reportId}: ${dbErr}`
+          { reportId, dbErr: String(dbErr), pipelineError: errMessage },
+          '[api/admin/rerun] CRITICAL: Pipeline failed AND status update failed'
         );
       }
     });

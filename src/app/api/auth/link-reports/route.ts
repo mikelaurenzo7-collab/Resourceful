@@ -73,7 +73,8 @@ export async function POST(request: NextRequest) {
     }
 
     authLogger.info(
-      `[link-reports] Linked ${reportIds.length} reports to user ${user.id} (${user.email})`
+      { linkedCount: reportIds.length, userId: user.id, email: user.email },
+      '[link-reports] Reports linked to user'
     );
 
     return NextResponse.json({ linked: reportIds.length });

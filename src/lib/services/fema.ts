@@ -100,7 +100,8 @@ export async function getFloodZone(
     if (!response.ok) {
       const body = await response.text().catch(() => '');
       apiLogger.error(
-        `[fema] identify responded ${response.status}: ${body.slice(0, 500)}`
+        { status: response.status, body: body.slice(0, 500) },
+        '[fema] Identify request failed'
       );
       return {
         data: null,

@@ -101,7 +101,7 @@ export async function sendCartRecoveryEmails(): Promise<{ sent: number; errors: 
       }
     } catch (err) {
       errors++;
-      emailLogger.error({ err: err }, `Error processing ${report.id}`);
+      emailLogger.error({ err: err, reportId: report.id }, 'Error processing cart recovery');
     }
   }
 

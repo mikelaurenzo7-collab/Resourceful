@@ -332,8 +332,8 @@ export async function runNarratives(
         landValue = Math.round(base * ratio);
         landValueEstimated = true;
         pipelineLogger.warn(
-          `[stage5] land_value missing — estimating as $${landValue.toLocaleString()} ` +
-          `(${(ratio * 100).toFixed(0)}% of market-implied $${base.toLocaleString()} [assessed $${assessedBase.toLocaleString()} / ratio ${assessmentRatio ?? 1.0}] per IAAO ${subtype} ratio)`
+          { landValue, ratioPct: (ratio * 100).toFixed(0), marketImplied: base, assessed: assessedBase, assessmentRatio: assessmentRatio ?? 1.0, subtype },
+          '[stage5] land_value missing — estimated from IAAO ratio'
         );
       }
     }
@@ -376,8 +376,8 @@ export async function runNarratives(
             webSale.salePrice * Math.pow(1 + appreciationRate, yearsElapsed) / 1000
           ) * 1000;
           pipelineLogger.warn(
-            `[stage5] Web sale found: $${webSale.salePrice.toLocaleString()} on ${webSale.saleDate} ` +
-            `→ extrapolated $${priorSaleExtrapolated.toLocaleString()} (source: ${webSale.source})`
+            { salePrice: webSale.salePrice, saleDate: webSale.saleDate, extrapolated: priorSaleExtrapolated, source: webSale.source },
+            '[stage5] Web sale found and extrapolated to present'
           );
           (propertyData as Record<string, unknown>)['_priorSaleExtrapolated'] = priorSaleExtrapolated;
           (propertyData as Record<string, unknown>)['_priorSaleDate'] = webSale.saleDate;
@@ -414,9 +414,8 @@ export async function runNarratives(
           lastSale.salePrice! * Math.pow(1 + appreciationRate, yearsElapsed) / 1000
         ) * 1000;
         pipelineLogger.warn(
-          `[stage5] 0 comps, no income, cost approach unusable — extrapolating from prior sale ` +
-          `($${lastSale.salePrice!.toLocaleString()} on ${lastSale.recordingDate}, ` +
-          `${yearsElapsed.toFixed(1)} yrs @ ${(appreciationRate * 100).toFixed(1)}%/yr → $${priorSaleExtrapolated.toLocaleString()})`
+          { salePrice: lastSale.salePrice, saleDate: lastSale.recordingDate, yearsElapsed: +yearsElapsed.toFixed(1), appreciationRate, extrapolated: priorSaleExtrapolated },
+          '[stage5] 0 comps, no income, cost unusable — extrapolating from prior sale'
         );
         // Store the prior sale metadata for later use in concludedValue assignment.
         (propertyData as Record<string, unknown>)['_priorSaleExtrapolated'] = priorSaleExtrapolated;
@@ -425,8 +424,8 @@ export async function runNarratives(
       }
     } else {
       pipelineLogger.warn(
-        `[stage5] 0 comps and no income data — falling back to cost approach only ` +
-        `($${costApproachValue.toLocaleString()})${landValueEstimated ? ' [land value estimated]' : ''}`
+        { costApproachValue, landValueEstimated },
+        '[stage5] 0 comps and no income data — falling back to cost approach only'
       );
     }
   }
@@ -625,7 +624,8 @@ export async function runNarratives(
 
   if (photoAnalyses.length > 0) {
     pipelineLogger.info(
-      `[stage5] Photo value attribution: $${concludedValueWithoutPhotos.toLocaleString()} (market only) → $${concludedValue.toLocaleString()} (with photos) = $${photoImpactDollars.toLocaleString()} impact (${photoImpactPct}%), ${totalDefects} defects (${significantDefects} significant), condition adj: ${photoConditionAdjustmentPct}%`
+      { concludedValueWithoutPhotos, concludedValue, photoImpactDollars, photoImpactPct, totalDefects, significantDefects, photoConditionAdjustmentPct },
+      '[stage5] Photo value attribution computed'
     );
   }
 
@@ -694,9 +694,8 @@ export async function runNarratives(
   }
 
   pipelineLogger.info(
-    `[stage5] Case intelligence: strength=${strengthScore}/100, ` +
-    `value_at_stake=$${overassessmentDollars.toLocaleString()}, ` +
-    `is_underassessed=${isUnderassessed}${isUnderassessed ? ` (${underassessmentPct}% under)` : ''}`
+    { strengthScore, valueAtStake: overassessmentDollars, isUnderassessed, underassessmentPct: isUnderassessed ? underassessmentPct : undefined },
+    '[stage5] Case intelligence computed'
   );
 
   // assessmentRatio was computed above (after countyRule fetch) and is already set.
@@ -854,9 +853,8 @@ export async function runNarratives(
       pipelineLogger.warn({ message: costUpdateError.message }, '[stage5] Failed to persist cost approach');
     } else {
       pipelineLogger.info(
-        `[stage5] Cost approach: RCN=$${costApproachRcn?.toLocaleString()}, ` +
-        `value=$${costApproachValue?.toLocaleString()}, ` +
-        `functional obsolescence=${functionalObsolescencePct}%`
+        { costApproachRcn, costApproachValue, functionalObsolescencePct },
+        '[stage5] Cost approach computed'
       );
     }
   }
@@ -898,9 +896,8 @@ export async function runNarratives(
   };
 
   pipelineLogger.info(
-    `[stage5] Overvaluation analysis: ${overvaluationPct != null ? `${overvaluationPct > 0 ? '+' : ''}${overvaluationPct}% vs comps` : 'N/A'}, ` +
-    `ratio mismatch: ${assessmentRatioMismatch}, exceeds ATTOM: ${assessedExceedsAttomRange}, ` +
-    `market trend: ${marketTrendPct != null ? `${marketTrendPct}%` : 'N/A'}, anomalies: ${dataAnomalies.length}`
+    { overvaluationPct, assessmentRatioMismatch, assessedExceedsAttomRange, marketTrendPct, dataAnomalyCount: dataAnomalies.length },
+    '[stage5] Overvaluation analysis complete'
   );
 
   // ── Form prefill data (tax_appeal only) ────────────────────────────────
@@ -1169,8 +1166,8 @@ export async function runNarratives(
     detractorAnalysis = detractorResult.value;
     if (detractorAnalysis.detractors.length > 0) {
       pipelineLogger.info(
-        `[stage5] Value detractors found: ${detractorAnalysis.detractors.length} factors, ` +
-        `aggregate impact: ${detractorAnalysis.totalEstimatedImpactPct}%`
+        { detractorCount: detractorAnalysis.detractors.length, totalImpactPct: detractorAnalysis.totalEstimatedImpactPct },
+        '[stage5] Value detractors found'
       );
     }
   } else if (detractorResult.status === 'rejected') {
@@ -1214,8 +1211,8 @@ export async function runNarratives(
         })) ?? [],
     };
     pipelineLogger.info(
-      `[stage5] Equity data injected into payload: ` +
-      `${equitySnap.neighborCount} neighbors, ratio=${equitySnap.equityRatioPct}%`
+      { neighborCount: equitySnap.neighborCount, equityRatioPct: equitySnap.equityRatioPct },
+      '[stage5] Equity data injected into payload'
     );
   }
 
@@ -1282,7 +1279,8 @@ export async function runNarratives(
   }
 
   pipelineLogger.info(
-    `[stage5] Generated ${sections.length} narrative sections in ${generation_duration_ms}ms. Concluded value: $${concludedValue}`
+    { sectionCount: sections.length, durationMs: generation_duration_ms, concludedValue },
+    '[stage5] Narrative generation complete'
   );
 
   return { success: true };

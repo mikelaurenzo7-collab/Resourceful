@@ -272,7 +272,8 @@ async function attomFetch<T>(
           ? parseInt(retryAfter, 10) * 1000
           : BASE_DELAY_MS * Math.pow(2, attempt);
         apiLogger.warn(
-          `[attom] ${path} returned ${response.status}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`
+          { path, status: response.status, delayMs, attempt: attempt + 1, maxRetries: MAX_RETRIES },
+          '[attom] Retrying after error status'
         );
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         continue;
@@ -294,7 +295,8 @@ async function attomFetch<T>(
         }
         const body = await response.text().catch(() => '');
         apiLogger.error(
-          `[attom] ${path} responded ${response.status}: ${body.slice(0, 500)}`
+          { path, status: response.status, body: body.slice(0, 500) },
+          '[attom] Request failed'
         );
         return {
           data: null,
@@ -310,7 +312,8 @@ async function attomFetch<T>(
       if (attempt < MAX_RETRIES && err instanceof Error && err.name !== 'AbortError') {
         const delayMs = BASE_DELAY_MS * Math.pow(2, attempt);
         apiLogger.warn(
-          `[attom] ${path} fetch error, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES}): ${err.message}`
+          { path, delayMs, attempt: attempt + 1, maxRetries: MAX_RETRIES, err: err.message },
+          '[attom] Fetch error, retrying'
         );
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         continue;
@@ -753,9 +756,8 @@ export async function getAssessmentEquitySnapshot(
     const isOverAssessed = equityRatioPct != null && equityRatioPct > 10;
 
     apiLogger.info(
-      `[attom] equity snapshot: ${neighbors.length} neighbors, ` +
-      `subject=$${subjectAssessedPerSqft}/sqft, median=$${medianNeighborAssessedPerSqft}/sqft, ` +
-      `ratio=${equityRatioPct}%`
+      { neighborCount: neighbors.length, subjectAssessedPerSqft, medianNeighborAssessedPerSqft, equityRatioPct },
+      '[attom] Equity snapshot computed'
     );
 
     return {

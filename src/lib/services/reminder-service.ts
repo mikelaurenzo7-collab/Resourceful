@@ -81,8 +81,8 @@ export async function subscribeToReminders(reportId: string): Promise<void> {
     });
 
   emailLogger.info(
-    `[reminders] Subscribed ${report.client_email} for ${report.property_address} — ` +
-    `remind in month ${remindMonth}`
+    { email: report.client_email, address: report.property_address, remindMonth },
+    '[reminders] Deadline reminder subscribed'
   );
 }
 

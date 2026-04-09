@@ -335,7 +335,8 @@ export async function findRentalsViaWeb(
   try {
     const [q1, q2] = buildRentalSearchQueries(ctx);
     apiLogger.info(
-      `[web-rentals] Searching for rental comps near ${ctx.address}, ${ctx.city}...`,
+      { address: ctx.address, city: ctx.city },
+      '[web-rentals] Searching for rental comps',
     );
 
     // Run both searches in parallel
@@ -378,7 +379,8 @@ export async function findRentalsViaWeb(
 
     if (pageContent) {
       apiLogger.info(
-        `[web-rentals] Fetched page content from ${preferredResult.link} (${pageContent.length} chars)`,
+        { url: preferredResult.link, contentLength: pageContent.length },
+        '[web-rentals] Fetched page content',
       );
     }
 
@@ -413,9 +415,8 @@ export async function findRentalsViaWeb(
     }
 
     apiLogger.info(
-      `[web-rentals] Found ${inserts.length} web rental comps, ` +
-        `median $${medianRentPerSqFtYr.toFixed(2)}/sqft/yr: ` +
-        inserts.map((i) => `${i.address} ($${i.rent_per_sqft_yr}/sf/yr)`).join(', '),
+      { compCount: inserts.length, medianRentPerSqFtYr: +medianRentPerSqFtYr.toFixed(2) },
+      '[web-rentals] Web rental comps found',
     );
 
     return { inserts, medianRentPerSqFtYr };

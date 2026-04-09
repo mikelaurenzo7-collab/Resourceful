@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { validateApiKey, trackApiUsage } from '@/lib/services/partner-api-service';
 import { createReport } from '@/lib/repository/reports';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report } from '@/types/database';
@@ -134,11 +135,31 @@ export async function POST(request: NextRequest) {
     await trackApiUsage(partner.id, report.id, partner.per_report_fee_cents);
 
     // ── Trigger pipeline (non-blocking) ───────────────────────────────────
-    runPipeline(report.id).catch((err) => {
+    runPipeline(report.id).catch(async (err) => {
+      const message = err instanceof Error ? err.message : String(err);
+      const stack = err instanceof Error ? err.stack : undefined;
       apiLogger.error(
-        { reportId: report.id, partner: partner.firm_name, err: String(err) },
+        { reportId: report.id, partner: partner.firm_name, err: message, stack },
         '[partner-api] Pipeline failed'
       );
+
+      // Record error to DB so report doesn't stay stuck in 'paid' status
+      try {
+        await createAdminClient().from('reports').update({
+          status: 'failed',
+          pipeline_error_log: [{
+            stage: 'pipeline',
+            error: message,
+            stack: stack ?? message,
+            timestamp: new Date().toISOString(),
+          }],
+        } as never).eq('id', report.id);
+      } catch (dbErr) {
+        apiLogger.error(
+          { reportId: report.id, dbErr: String(dbErr), pipelineError: message },
+          '[partner-api] CRITICAL: Pipeline failed AND error recording failed'
+        );
+      }
     });
 
     // ── Return report ID and status ───────────────────────────────────────

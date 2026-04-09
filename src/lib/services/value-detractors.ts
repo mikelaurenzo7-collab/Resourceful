@@ -287,8 +287,8 @@ export async function detectValueDetractors(params: {
 
   if (allDetractors.length > 0) {
     apiLogger.info(
-      `[value-detractors] Found ${allDetractors.length} detractors, ` +
-      `aggregate impact: ${totalEstimatedImpactPct}%`
+      { detractorCount: allDetractors.length, totalImpactPct: totalEstimatedImpactPct },
+      '[value-detractors] Analysis complete'
     );
   }
 

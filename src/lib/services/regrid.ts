@@ -263,10 +263,8 @@ export async function getParcelByAddress(
     };
 
     apiLogger.info(
-      `[regrid] Parcel found for "${query}": APN=${result.apn}, ` +
-      `${result.parcel.gisAcreage?.toFixed(2) ?? '?'} acres, ` +
-      `zoning=${result.zoning.code ?? 'N/A'}, ` +
-      `geometry=${feature.geometry ? 'yes' : 'no'}`
+      { query, apn: result.apn, acres: result.parcel.gisAcreage?.toFixed(2), zoningCode: result.zoning.code ?? 'N/A', hasGeometry: !!feature.geometry },
+      '[regrid] Parcel found'
     );
 
     return { data: result, error: null };

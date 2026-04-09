@@ -180,9 +180,7 @@ export async function runDataCollection(
     if (!hasTaxBill) {
       return { success: false, error: `Property data collection failed: ${dataResult.error}` };
     }
-    pipelineLogger.warn(
-      `[stage1] Data collection failed but tax bill data available — continuing with partial data`
-    );
+    pipelineLogger.warn('[stage1] Data collection failed but tax bill data available — continuing with partial data');
   }
 
   const geo = geocodeResult.data;
@@ -230,8 +228,8 @@ export async function runDataCollection(
   const resolvedState = geo.state || report.state;
 
   pipelineLogger.info(
-    `[stage1] County resolution: fips=${resolvedFips}, county="${resolvedCountyName}", state=${resolvedState} ` +
-    `(sources: collected_fips=${collectedFips}, user_fips=${report.county_fips}, geocode_county=${geo.county})`
+    { fips: resolvedFips, county: resolvedCountyName, state: resolvedState, collectedFips, userFips: report.county_fips, geocodeCounty: geo.county },
+    '[stage1] County resolution'
   );
 
   // ── Look up county_rules ───────────────────────────────────────────────
@@ -453,10 +451,8 @@ export async function runDataCollection(
   }
 
   pipelineLogger.info(
-    `[stage1] Data collection complete for report ${reportId}. ` +
-    `County: ${countyRule?.county_name ?? resolvedCountyName ?? 'unknown'} (${resolvedFips ?? 'no FIPS'}). ` +
-    `Subtype: ${propertySubtype}, effective age: ${baselineEffectiveAge}yr, depreciation: ${baselineDepreciationPct}%. ` +
-    `Notes: ${notes.length} flags.`
+    { reportId, county: countyRule?.county_name ?? resolvedCountyName ?? 'unknown', fips: resolvedFips, subtype: propertySubtype, effectiveAge: baselineEffectiveAge, depreciationPct: baselineDepreciationPct, noteCount: notes.length },
+    '[stage1] Data collection complete'
   );
 
   return { success: true };

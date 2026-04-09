@@ -345,7 +345,8 @@ export async function researchMarketData(
 
   try {
     apiLogger.info(
-      `[web-market-data] Researching market data for ${ctx.subtype} in ${ctx.city}, ${ctx.state}...`,
+      { subtype: ctx.subtype, city: ctx.city, state: ctx.state },
+      '[web-market-data] Researching market data',
     );
 
     // Build all queries
@@ -413,7 +414,8 @@ export async function researchMarketData(
 
     if (pageContent) {
       apiLogger.info(
-        `[web-market-data] Fetched page content from ${promisingResult!.link} (${pageContent.length} chars)`,
+        { url: promisingResult!.link, contentLength: pageContent.length },
+        '[web-market-data] Fetched page content',
       );
     }
 
@@ -431,27 +433,32 @@ export async function researchMarketData(
       (v) => v !== null,
     ).length;
     apiLogger.info(
-      `[web-market-data] Extracted ${foundCount}/${Object.keys(overrides).length} market data points for ${ctx.city}, ${ctx.state}`,
+      { foundCount, totalFields: Object.keys(overrides).length, city: ctx.city, state: ctx.state },
+      '[web-market-data] Market data extraction complete',
     );
 
     if (overrides.capRate != null) {
       apiLogger.info(
-        `[web-market-data] Cap rate: ${(overrides.capRate * 100).toFixed(2)}% (${overrides.capRateSurveySource})`,
+        { capRate: (overrides.capRate * 100).toFixed(2), source: overrides.capRateSurveySource },
+        '[web-market-data] Cap rate found',
       );
     }
     if (overrides.vacancyRatePct != null) {
       apiLogger.info(
-        `[web-market-data] Vacancy: ${overrides.vacancyRatePct}% (${overrides.vacancySource})`,
+        { vacancyRatePct: overrides.vacancyRatePct, source: overrides.vacancySource },
+        '[web-market-data] Vacancy rate found',
       );
     }
     if (overrides.constructionCostPerSqFt != null) {
       apiLogger.info(
-        `[web-market-data] Construction: $${overrides.constructionCostPerSqFt}/sqft (${overrides.constructionCostSource})`,
+        { costPerSqFt: overrides.constructionCostPerSqFt, source: overrides.constructionCostSource },
+        '[web-market-data] Construction cost found',
       );
     }
     if (overrides.appreciationPctAnnual != null) {
       apiLogger.info(
-        `[web-market-data] Appreciation: ${overrides.appreciationPctAnnual}%/yr (${overrides.appreciationSource})`,
+        { appreciationPctAnnual: overrides.appreciationPctAnnual, source: overrides.appreciationSource },
+        '[web-market-data] Appreciation rate found',
       );
     }
 

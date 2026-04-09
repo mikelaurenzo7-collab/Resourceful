@@ -137,8 +137,8 @@ export async function getRentalListings(
   };
 
   apiLogger.info(
-    `[rentcast] Rental listings at (${latitude}, ${longitude}) radius=${radiusMiles}mi ` +
-      `type=${toRentcastPropertyType(propertySubtype)}`,
+    { latitude, longitude, radiusMiles, propertyType: toRentcastPropertyType(propertySubtype) },
+    '[rentcast] Fetching rental listings',
   );
   return rentcastFetch<RentcastListing[]>('/listings/rental/long-term', params);
 }

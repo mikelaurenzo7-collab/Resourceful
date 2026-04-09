@@ -83,9 +83,8 @@ export async function runIncomeAnalysis(
   const DEFAULT_CAP_RATE = incomeParams.cap_rate_default;
 
   pipelineLogger.info(
-    `[stage3] Income params for subtype="${subtype}": vacancy=${DEFAULT_VACANCY_RATE * 100}%, ` +
-    `expenses=${DEFAULT_EXPENSE_RATIO * 100}%, fallbackRent=$${FALLBACK_RENT}/sf/yr, ` +
-    `defaultCap=${DEFAULT_CAP_RATE * 100}%`
+    { subtype, vacancyPct: DEFAULT_VACANCY_RATE * 100, expensePct: DEFAULT_EXPENSE_RATIO * 100, fallbackRent: FALLBACK_RENT, defaultCapPct: DEFAULT_CAP_RATE * 100 },
+    '[stage3] Income analysis params loaded'
   );
 
   // ── Query rental comparables from ATTOM ───────────────────────────────
@@ -149,7 +148,8 @@ export async function runIncomeAnalysis(
     }
 
     pipelineLogger.info(
-      `[stage3] Found ${rentalResult.data.length} rental comps, median rent/sqft/yr: $${concludedMarketRentPerSqFtYr}`
+      { rentalCompCount: rentalResult.data.length, medianRentPerSqFtYr: concludedMarketRentPerSqFtYr },
+      '[stage3] Found ATTOM rental comps'
     );
   } else {
     // ATTOM returned no rental comps — try web search, then RentCast, then fallback
@@ -173,7 +173,8 @@ export async function runIncomeAnalysis(
       concludedMarketRentPerSqFtYr = webRentalResult.medianRentPerSqFtYr;
       rentcastCompCount = webRentalResult.inserts.length;
       pipelineLogger.info(
-        `[stage3] Web search: ${webRentalResult.inserts.length} rental comps, median $${concludedMarketRentPerSqFtYr.toFixed(2)}/sqft/yr`,
+        { webCompCount: webRentalResult.inserts.length, medianRentPerSqFtYr: concludedMarketRentPerSqFtYr },
+        '[stage3] Web search found rental comps',
       );
     }
 
@@ -211,7 +212,8 @@ export async function runIncomeAnalysis(
           rates.length % 2 === 0 ? (rates[mid - 1] + rates[mid]) / 2 : rates[mid];
         rentcastCompCount = rcListings.length;
         pipelineLogger.info(
-          `[stage3] RentCast: ${rcListings.length} listings, median $${concludedMarketRentPerSqFtYr.toFixed(2)}/sqft/yr`,
+          { rcListingCount: rcListings.length, medianRentPerSqFtYr: concludedMarketRentPerSqFtYr },
+          '[stage3] RentCast listings found',
         );
       }
 
@@ -227,7 +229,8 @@ export async function runIncomeAnalysis(
         if (rcAvm.data && rcAvm.data.rent > 0 && buildingSqFt > 0) {
           concludedMarketRentPerSqFtYr = (rcAvm.data.rent * 12) / buildingSqFt;
           pipelineLogger.info(
-            `[stage3] RentCast AVM: $${rcAvm.data.rent}/mo → $${concludedMarketRentPerSqFtYr.toFixed(2)}/sqft/yr`,
+            { rentPerMonth: rcAvm.data.rent, rentPerSqFtYr: concludedMarketRentPerSqFtYr },
+            '[stage3] RentCast AVM estimate used',
           );
         }
       }
@@ -237,7 +240,8 @@ export async function runIncomeAnalysis(
     if (concludedMarketRentPerSqFtYr === 0) {
       concludedMarketRentPerSqFtYr = FALLBACK_RENT;
       pipelineLogger.warn(
-        `[stage3] No rental comps from any source. Using fallback: $${FALLBACK_RENT}/sqft/yr for "${subtype}"`,
+        { fallbackRent: FALLBACK_RENT, subtype },
+        '[stage3] No rental comps from any source — using hardcoded fallback',
       );
     }
   }
@@ -392,7 +396,8 @@ export async function runIncomeAnalysis(
   }
 
   pipelineLogger.info(
-    `[stage3] Income analysis complete. NOI: $${netOperatingIncome}, Cap: ${(concludedCapRate * 100).toFixed(2)}%, Value: $${concludedValueIncomeApproach}, Rental confidence: ${rentalCompConfidence} (${rentalCompCount} comps)`
+    { noi: netOperatingIncome, capRate: (concludedCapRate * 100).toFixed(2), incomeValue: concludedValueIncomeApproach, rentalCompConfidence, rentalCompCount },
+    '[stage3] Income analysis complete'
   );
 
   return { success: true };

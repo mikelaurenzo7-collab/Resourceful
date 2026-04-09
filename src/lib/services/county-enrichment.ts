@@ -325,7 +325,8 @@ export async function enrichCounty(
   }
 
   apiLogger.info(
-    `[county-enrichment] Enriched ${county_name}, ${state_name}: ${fieldsUpdated.length} fields updated (${fieldsUpdated.join(', ')})`
+    { county_name, state_name, fieldsUpdatedCount: fieldsUpdated.length, fieldsUpdated: fieldsUpdated.join(', ') },
+    '[county-enrichment] County enriched'
   );
 
   return { enriched: true, fieldsUpdated, error: null };

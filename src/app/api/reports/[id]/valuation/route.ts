@@ -141,7 +141,7 @@ export async function POST(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error({ err: message }, `[api/reports/${reportId}/valuation] Error`);
+    apiLogger.error({ err: message, reportId }, '[api/reports/valuation] Error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

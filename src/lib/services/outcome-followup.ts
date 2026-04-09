@@ -112,7 +112,7 @@ export async function sendOutcomeFollowups(): Promise<{ sent: number; errors: nu
       }
     } catch (err) {
       errors++;
-      emailLogger.error({ err: err }, `Error processing ${report.id}`);
+      emailLogger.error({ err: err, reportId: report.id }, 'Error processing outcome followup');
     }
   }
 

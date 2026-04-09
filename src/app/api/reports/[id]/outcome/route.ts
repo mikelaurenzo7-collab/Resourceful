@@ -162,7 +162,7 @@ export async function POST(
     .eq('id', reportId);
 
   if (updateError) {
-    apiLogger.error({ err: updateError.message }, `Failed to update report ${reportId}`);
+    apiLogger.error({ err: updateError.message, reportId }, 'Failed to update report outcome');
     return NextResponse.json({ error: 'Failed to record outcome' }, { status: 500 });
   }
 
@@ -170,7 +170,7 @@ export async function POST(
   try {
     await createCalibrationEntry(reportId, adminSupabase);
   } catch (err) {
-    apiLogger.error({ err: err }, `Calibration entry failed for ${reportId}`);
+    apiLogger.error({ err: err, reportId }, 'Calibration entry failed');
     // Don't fail the outcome recording if calibration fails
   }
 
@@ -230,7 +230,7 @@ export async function POST(
           .eq('county_fips', report.county_fips);
       }
     } catch (err) {
-      apiLogger.error({ err: err }, `County stats update failed for ${report.county_fips}`);
+      apiLogger.error({ err: err, countyFips: report.county_fips }, 'County stats update failed');
     }
   }
 

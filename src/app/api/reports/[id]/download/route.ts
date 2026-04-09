@@ -101,7 +101,7 @@ export async function GET(
 
       apiLogger.warn({ reportId }, '[PDF] Regenerated on demand for report');
     } catch (err) {
-      apiLogger.error({ err: err }, `On-demand PDF regeneration failed for ${reportId}`);
+      apiLogger.error({ err: err, reportId }, 'On-demand PDF regeneration failed');
       return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 });
     }
   }
@@ -113,7 +113,7 @@ export async function GET(
     .createSignedUrl(storagePath, SIGNED_URL_EXPIRY_SECONDS);
 
   if (signedUrlError || !signedUrlData?.signedUrl) {
-    apiLogger.error({ err: signedUrlError?.message }, `Failed to create signed URL for report ${reportId}`);
+    apiLogger.error({ err: signedUrlError?.message, reportId }, 'Failed to create signed URL');
     return NextResponse.json(
       { error: 'Failed to generate download link' },
       { status: 500 }

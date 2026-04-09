@@ -212,10 +212,8 @@ export async function runPhotoAnalysis(
   const hasCompletePackage = hasAllRequiredTypes && descriptionCoverage >= 0.5;
 
   pipelineLogger.info(
-    `[stage4] Photo package: ${photos.length} photos, ` +
-    `required types covered: ${hasAllRequiredTypes}, ` +
-    `description coverage: ${Math.round(descriptionCoverage * 100)}%, ` +
-    `complete package: ${hasCompletePackage}`
+    { photoCount: photos.length, hasAllRequiredTypes, descriptionCoveragePct: Math.round(descriptionCoverage * 100), hasCompletePackage },
+    '[stage4] Photo package summary'
   );
 
   pipelineLogger.info({ length: photos.length, reportId }, '[stage4] Analyzing photos for report');
@@ -284,7 +282,8 @@ export async function runPhotoAnalysis(
         }
 
         pipelineLogger.info(
-          `[stage4] Photo ${photo.id} (${photo.photo_type}): condition=${analysis.condition_rating}, defects=${analysis.defects.length}`
+          { photoId: photo.id, photoType: photo.photo_type, conditionRating: analysis.condition_rating, defectCount: analysis.defects.length },
+          '[stage4] Photo analyzed'
         );
 
         return analysis;
@@ -303,7 +302,8 @@ export async function runPhotoAnalysis(
   const overallCondition = computeConditionMode(conditionRatings, serviceType);
 
   pipelineLogger.info(
-    `[stage4] Overall condition: ${overallCondition} from ${conditionRatings.length} photos`
+    { overallCondition, ratingCount: conditionRatings.length },
+    '[stage4] Overall condition determined'
   );
 
   // ── Refine effective age from photo-observed condition ─────────────────
@@ -335,9 +335,8 @@ export async function runPhotoAnalysis(
       pipelineLogger.warn({ message: ageUpdateError.message }, '[stage4] Failed to update effective age');
     } else {
       pipelineLogger.info(
-        `[stage4] Effective age updated: ${propertyDataForAge.year_built} built, ` +
-        `condition="${overallCondition}" → effective_age=${photoAdjustedEffectiveAge}yr, ` +
-        `depreciation=${updatedDepreciationPct}%, remaining_life=${updatedRemainingLife}yr`
+        { yearBuilt: propertyDataForAge.year_built, condition: overallCondition, effectiveAge: photoAdjustedEffectiveAge, depreciationPct: updatedDepreciationPct, remainingLife: updatedRemainingLife },
+        '[stage4] Effective age updated'
       );
     }
   }
@@ -379,9 +378,8 @@ export async function runPhotoAnalysis(
   const cappedAdjustment = Math.max(totalConditionAdjustment, -CONDITION_ADJ_MAX_PCT);
 
   pipelineLogger.info(
-    `[stage4] Condition adjustment: ${cappedAdjustment}% ` +
-    `(${allDefects.length} defects: ${defectBasedAdjustment}% × ${completenessMultiplier} completeness, ` +
-    `base offset for "${overallCondition}": ${baseConditionOffset}%)`
+    { conditionAdjustmentPct: cappedAdjustment, defectCount: allDefects.length, defectAdj: defectBasedAdjustment, completeness: completenessMultiplier, condition: overallCondition, baseOffset: baseConditionOffset },
+    '[stage4] Condition adjustment computed'
   );
 
   // ── Apply condition adjustment to comparable sales ──────────────────
@@ -428,7 +426,8 @@ export async function runPhotoAnalysis(
       }
 
       pipelineLogger.info(
-        `[stage4] Applied ${cappedAdjustment}% condition adjustment to ${comps.length} comps`
+        { conditionAdjustmentPct: cappedAdjustment, compCount: comps.length },
+        '[stage4] Condition adjustment applied to comps'
       );
     }
   }

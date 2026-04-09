@@ -213,15 +213,15 @@ export async function runCalibrationBatch(
     }
 
     apiLogger.info(
-      `[calibration-batch] Updated ${params.property_type}/${params.county_fips ?? 'global'}: ` +
-      `bias=${params.value_bias_pct}%, MAE=${params.mean_absolute_error_pct}%, ` +
-      `n=${params.sample_size}`
+      { propertyType: params.property_type, countyFips: params.county_fips ?? 'global', valueBiasPct: params.value_bias_pct, maePct: params.mean_absolute_error_pct, sampleSize: params.sample_size },
+      '[calibration-batch] Params updated'
     );
     upserted++;
   }
 
   apiLogger.info(
-    `[calibration-batch] Complete: ${upserted} upserted, ${skipped} skipped (< ${MIN_SAMPLE_SIZE} samples), ${errors} errors`
+    { upserted, skipped, minSampleSize: MIN_SAMPLE_SIZE, errors },
+    '[calibration-batch] Batch complete'
   );
 
   return { upserted, skipped, errors };

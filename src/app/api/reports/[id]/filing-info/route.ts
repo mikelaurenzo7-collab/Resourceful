@@ -130,7 +130,7 @@ export async function GET(
     repRestrictionsNotes: countyRule.rep_restrictions_notes,
   });
   } catch (err) {
-    apiLogger.error({ err: err instanceof Error ? err.message : err }, `Error for report ${reportId}`);
+    apiLogger.error({ err: err instanceof Error ? err.message : err, reportId }, 'Error fetching filing info');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

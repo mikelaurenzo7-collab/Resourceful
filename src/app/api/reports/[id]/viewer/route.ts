@@ -228,7 +228,7 @@ export async function GET(
     } : null,
   });
   } catch (err) {
-    apiLogger.error({ err: err instanceof Error ? err.message : err }, `Error for report ${reportId}`);
+    apiLogger.error({ err: err instanceof Error ? err.message : err, reportId }, 'Error fetching report viewer data');
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

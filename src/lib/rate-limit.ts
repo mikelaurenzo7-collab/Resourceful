@@ -109,7 +109,7 @@ export async function checkRateLimit(
 
     if (error) {
       dbFailureCount++;
-      apiLogger.error({ err: error.message }, `DB error (${dbFailureCount}/${DB_FAILURE_THRESHOLD}), falling back to memory`);
+      apiLogger.error({ err: error.message, dbFailureCount, threshold: DB_FAILURE_THRESHOLD }, 'DB error, falling back to memory');
       return checkMemoryRateLimit(key, config);
     }
 

@@ -480,8 +480,8 @@ export async function getPropertyDetailFromPublicRecords(
   }
 
   apiLogger.info(
-    `[public-records] Extracted: assessed=$${extracted.assessment?.assessedValue}, ` +
-    `sqft=${extracted.summary?.buildingSquareFeet}, year=${extracted.summary?.yearBuilt}`
+    { assessedValue: extracted.assessment?.assessedValue, sqft: extracted.summary?.buildingSquareFeet, yearBuilt: extracted.summary?.yearBuilt },
+    '[public-records] Data extracted'
   );
 
   return { data: extracted as AttomPropertyDetail, error: null };

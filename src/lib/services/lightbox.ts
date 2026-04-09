@@ -261,10 +261,8 @@ export async function getPropertyDetail(
     }
 
     apiLogger.info(
-      `[lightbox] Parcel data for "${q}": ` +
-        `assessed=$${detail.assessment.assessedValue?.toLocaleString() ?? 'N/A'}, ` +
-        `sqft=${detail.structure.grossSquareFeet ?? 'N/A'}, ` +
-        `yearBuilt=${detail.structure.yearBuilt ?? 'N/A'}`,
+      { query: q, assessedValue: detail.assessment.assessedValue, sqft: detail.structure.grossSquareFeet, yearBuilt: detail.structure.yearBuilt },
+      '[lightbox] Parcel data retrieved',
     );
 
     return { data: detail, error: null };
