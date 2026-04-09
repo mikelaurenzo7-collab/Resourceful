@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
 
     // ── Founder bypass: skip Stripe, trigger pipeline directly ───────────
     if (founderAccess) {
-      console.log(`[api/reports] Founder access for ${client_email}, report ${report.id} — skipping payment`);
+      console.log(`[api/reports] Founder access for report ${report.id} — skipping payment`);
       runPipeline(report.id).catch(async (err) => {
         const message = err instanceof Error ? err.message : String(err);
         console.error(`[api/reports] Pipeline failed for founder report ${report.id}: ${message}`);

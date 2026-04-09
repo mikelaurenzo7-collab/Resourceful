@@ -250,9 +250,9 @@ async function attomFetch<T>(
   const BASE_DELAY_MS = 1000;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20_000); // 20s timeout
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 20_000); // 20s timeout
       const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
@@ -303,6 +303,7 @@ async function attomFetch<T>(
       const json = (await response.json()) as T;
       return { data: json, error: null };
     } catch (err) {
+      clearTimeout(timeout);
       // Retry on network errors (not abort timeouts)
       if (attempt < MAX_RETRIES && err instanceof Error && err.name !== 'AbortError') {
         const delayMs = BASE_DELAY_MS * Math.pow(2, attempt);
@@ -475,7 +476,7 @@ export async function getPropertyDetail(
   state?: string | null
 ): Promise<ServiceResult<AttomPropertyDetail>> {
   const { address1, address2 } = parseAddress(address, city, state);
-  console.log(`[attom] getPropertyDetail address1="${address1}" address2="${address2}"`);
+  console.log(`[attom] getPropertyDetail request`);
   const result = await attomFetch<Record<string, unknown>>(
     '/property/detail',
     { address1, address2 }
@@ -619,7 +620,7 @@ export async function getDeedHistory(
   state?: string | null
 ): Promise<ServiceResult<AttomDeedRecord[]>> {
   const { address1, address2 } = parseAddress(address, city, state);
-  console.log(`[attom] getDeedHistory address1="${address1}" address2="${address2}"`);
+  console.log(`[attom] getDeedHistory request`);
   const result = await attomFetch<Record<string, unknown>>(
     '/sale/history',
     { address1, address2 }

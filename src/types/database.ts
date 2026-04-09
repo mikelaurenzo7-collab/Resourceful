@@ -198,6 +198,9 @@ export type PropertyData = {
   photo_defect_count: number;
   photo_defect_count_significant: number;
   photo_count: number;
+  // Income confidence and data quality (migration 019)
+  valuation_method: string | null;
+  comp_count: number | null;
   // Regrid parcel intelligence (migration 022)
   parcel_boundary_geojson: Record<string, unknown> | null;
   lot_frontage_ft: number | null;

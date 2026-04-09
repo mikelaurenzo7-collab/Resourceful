@@ -96,7 +96,7 @@ export async function sendCartRecoveryEmails(): Promise<{ sent: number; errors: 
         console.error(`[cart-recovery] Email failed for ${report.id}: ${result.error}`);
       } else {
         sent++;
-        console.log(`[cart-recovery] Sent to ${report.client_email} for ${report.property_address}`);
+        console.log(`[cart-recovery] Sent recovery email for report ${report.id}`);
       }
     } catch (err) {
       errors++;

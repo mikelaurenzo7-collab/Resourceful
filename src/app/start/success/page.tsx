@@ -110,7 +110,7 @@ function SuccessContent() {
           <div className="absolute -inset-4 rounded-full bg-emerald-500/[0.06] blur-xl animate-glow" />
           <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-glow" />
           <div className="relative w-28 h-28 rounded-full bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center animate-scale-in">
-            <svg className="w-14 h-14 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-14 h-14 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
@@ -191,7 +191,7 @@ function SuccessContent() {
 
             <div className="space-y-3">
               <Button size="lg" fullWidth onClick={() => window.location.href = `/report/${reportId}`}>
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 Check Report Status
@@ -204,7 +204,7 @@ function SuccessContent() {
             {/* Email notification preference */}
             <div className="mt-6 card-premium rounded-lg p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <svg className="w-4 h-4 text-cream/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-cream/30" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                 </svg>
                 <span className="text-xs text-cream/40">Email me when my report is ready</span>
@@ -243,7 +243,7 @@ function SuccessContent() {
         {reportId && !isLoggedIn && !accountCreated && (
           <div className="mt-8 card-premium rounded-xl overflow-hidden text-left animate-fade-in">
             <div className="px-6 pt-5 pb-4 border-b border-gold/[0.08] flex items-center gap-2">
-              <svg className="w-4 h-4 text-gold/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-gold/60" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
               <h2 className="text-xs font-semibold uppercase tracking-widest text-gold/80">Access Your Dashboard</h2>
@@ -259,7 +259,7 @@ function SuccessContent() {
                       onClick={() => setShowAccountForm(true)}
                       className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-gold-light via-gold to-gold-dark px-4 py-3 text-sm font-semibold text-navy-deep hover:brightness-110 transition-all"
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                       </svg>
                       Create Account
@@ -351,7 +351,7 @@ function SuccessContent() {
         {reportId && accountCreated && (
           <div className="mt-8 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5 text-center animate-fade-in">
             <div className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-3">
-              <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
@@ -365,7 +365,7 @@ function SuccessContent() {
               href={isLoggedIn ? '/dashboard' : '/login?redirect=/dashboard'}
               className="inline-flex items-center gap-2 text-sm font-medium text-gold border border-gold/20 px-5 py-2.5 rounded-lg hover:bg-gold/10 transition-all"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
               {isLoggedIn ? 'Go to Dashboard' : 'Sign In to Dashboard'}
@@ -380,7 +380,7 @@ function SuccessContent() {
               href="/dashboard"
               className="inline-flex items-center gap-2 text-sm font-medium text-gold border border-gold/20 px-5 py-2.5 rounded-lg hover:bg-gold/10 transition-all"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
               Go to Dashboard

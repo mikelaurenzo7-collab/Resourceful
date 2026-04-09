@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { applyRateLimit } from '@/lib/rate-limit';
-import type { Report, PropertyData, CountyRule, ReportNarrative } from '@/types/database';
+import type { PropertyData, CountyRule } from '@/types/database';
 
 const SIGNED_URL_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
@@ -29,12 +29,13 @@ export async function GET(
     return NextResponse.json({ error: 'Report ID required' }, { status: 400 });
   }
 
+  try {
   const supabase = createAdminClient();
 
   // Fetch report
   const { data: reportData, error: reportError } = await supabase
     .from('reports')
-    .select('*')
+    .select('id, status, user_id, client_email, property_address, city, state, county_fips, county, service_type, review_tier, report_pdf_storage_path, delivered_at, outcome_reported_at, appeal_outcome, case_strength_score, case_value_at_stake')
     .eq('id', reportId)
     .single();
 
@@ -42,7 +43,8 @@ export async function GET(
     return NextResponse.json({ error: 'Report not found' }, { status: 404 });
   }
 
-  const report = reportData as Report;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const report = reportData as any;
 
   // ── Authenticate + verify ownership ────────────────────────────────────
   const userSupabase = await createClient();
@@ -80,12 +82,12 @@ export async function GET(
 
   // Fetch in parallel: property data, narratives (all), county rules, comps (full), photos
   const [propertyResult, narrativesResult, countyResult, compsResult, photosResult] = await Promise.all([
-    supabase.from('property_data').select('*').eq('report_id', reportId).single(),
+    supabase.from('property_data').select('assessed_value, concluded_value, building_sqft_gross, photo_defect_count, photo_impact_dollars, photo_impact_pct, valuation_method').eq('report_id', reportId).single(),
     supabase.from('report_narratives').select('section_name, content').eq('report_id', reportId),
     report.county_fips
-      ? supabase.from('county_rules').select('*').eq('county_fips', report.county_fips).single()
+      ? supabase.from('county_rules').select('county_name, state_name, appeal_board_name, appeal_board_address, appeal_board_phone, accepts_online_filing, portal_url, accepts_email_filing, filing_email, requires_mail_filing, appeal_deadline_rule, next_appeal_deadline, current_tax_year, assessment_cycle, appeal_form_name, form_download_url, filing_fee_cents, filing_fee_notes, required_documents, filing_steps, hearing_typically_required, hearing_format, hearing_duration_minutes, virtual_hearing_available, virtual_hearing_platform, informal_review_available, informal_review_notes, typical_resolution_weeks_min, typical_resolution_weeks_max, further_appeal_body, pro_se_tips').eq('county_fips', report.county_fips).single()
       : report.county && report.state
-        ? supabase.from('county_rules').select('*').eq('county_name', report.county).eq('state_abbreviation', report.state).single()
+        ? supabase.from('county_rules').select('county_name, state_name, appeal_board_name, appeal_board_address, appeal_board_phone, accepts_online_filing, portal_url, accepts_email_filing, filing_email, requires_mail_filing, appeal_deadline_rule, next_appeal_deadline, current_tax_year, assessment_cycle, appeal_form_name, form_download_url, filing_fee_cents, filing_fee_notes, required_documents, filing_steps, hearing_typically_required, hearing_format, hearing_duration_minutes, virtual_hearing_available, virtual_hearing_platform, informal_review_available, informal_review_notes, typical_resolution_weeks_min, typical_resolution_weeks_max, further_appeal_body, pro_se_tips').eq('county_name', report.county).eq('state_abbreviation', report.state).single()
         : Promise.resolve({ data: null, error: null }),
     supabase.from('comparable_sales')
       .select('address, sale_price, sale_date, building_sqft, adjusted_price_per_sqft, distance_miles, net_adjustment_pct, is_distressed_sale, is_weak_comparable')
@@ -142,13 +144,13 @@ export async function GET(
   }
 
   // Case intelligence
-  const caseStrengthScore = (report as unknown as Record<string, unknown>).case_strength_score as number | null ?? null;
+  const caseStrengthScore = report.case_strength_score as number | null ?? null;
   const photoCount = (photosResult.data ?? []).length;
   const compCount = comps.length;
   const photoDefectCount = propertyData?.photo_defect_count ?? null;
   const photoImpactDollars = propertyData?.photo_impact_dollars ?? null;
   const photoImpactPct = propertyData?.photo_impact_pct ?? null;
-  const valuationMethod = (propertyData as unknown as Record<string, unknown>)?.valuation_method as string | null ?? null;
+  const valuationMethod = propertyData?.valuation_method ?? null;
 
   return NextResponse.json({
     ready: true,
@@ -159,7 +161,7 @@ export async function GET(
     reviewTier: report.review_tier ?? 'auto',
     assessedValue: propertyData?.assessed_value ?? 0,
     concludedValue,
-    potentialSavings: (report as unknown as Record<string, unknown>).case_value_at_stake as number ?? Math.max(0, (propertyData?.assessed_value ?? 0) - concludedValue),
+    potentialSavings: report.case_value_at_stake as number ?? Math.max(0, (propertyData?.assessed_value ?? 0) - concludedValue),
     pdfUrl,
     filingGuide,
     deliveredAt: report.delivered_at,
@@ -224,4 +226,8 @@ export async function GET(
       proSeTips: countyRule.pro_se_tips,
     } : null,
   });
+  } catch (err) {
+    console.error(`[viewer] Error for report ${reportId}:`, err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
             .select('id');
 
           if (linked && linked.length > 0) {
-            console.log(`[auth/callback] Linked ${linked.length} reports to user ${user.id} (${user.email})`);
+            console.log(`[auth/callback] Linked ${linked.length} reports to user ${user.id}`);
           }
         }
       } catch (linkErr) {

@@ -117,7 +117,7 @@ export async function sendDueReminders(): Promise<{ sent: number; errors: number
     try {
       // Reminder email — uses same Resend service as report delivery
       // Will be fully implemented when email templates are designed
-      console.log(`[reminders] Would send reminder to ${(reminder as { email: string }).email} (email sending pending template design)`);
+      console.log(`[reminders] Would send reminder for ${(reminder as { id: string }).id} (email sending pending template design)`);
 
       // Mark as sent
       await supabase
@@ -129,7 +129,7 @@ export async function sendDueReminders(): Promise<{ sent: number; errors: number
         .eq('id' as never, (reminder as { id: string }).id);
 
       sent++;
-      console.log(`[reminders] Sent reminder to ${(reminder as { email: string }).email}`);
+      console.log(`[reminders] Sent reminder for ${(reminder as { id: string }).id}`);
     } catch (err) {
       errors++;
       console.error(`[reminders] Failed to send reminder: ${err}`);

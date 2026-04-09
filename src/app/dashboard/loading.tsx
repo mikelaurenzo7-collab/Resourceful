@@ -1,6 +1,6 @@
 export default function DashboardLoading() {
   return (
-    <div className="min-h-screen bg-pattern">
+    <div className="min-h-screen bg-pattern" role="status" aria-busy="true" aria-label="Loading dashboard">
       {/* Header skeleton */}
       <header className="bg-navy-deep/80 backdrop-blur-xl nav-shadow sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">

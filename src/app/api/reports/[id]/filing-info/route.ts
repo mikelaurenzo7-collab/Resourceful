@@ -25,6 +25,7 @@ export async function GET(
     return NextResponse.json({ error: 'Report ID required' }, { status: 400 });
   }
 
+  try {
   const supabase = createAdminClient();
 
   // Fetch report with county info
@@ -127,4 +128,8 @@ export async function GET(
     authorizedRepTypes: countyRule.authorized_rep_types,
     repRestrictionsNotes: countyRule.rep_restrictions_notes,
   });
+  } catch (err) {
+    console.error(`[filing-info] Error for report ${reportId}:`, err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

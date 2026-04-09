@@ -23,6 +23,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ suggestions: [] });
   }
 
-  const suggestions = await searchAddresses(query.trim(), 5);
-  return NextResponse.json({ suggestions });
+  try {
+    const suggestions = await searchAddresses(query.trim(), 5);
+    return NextResponse.json({ suggestions });
+  } catch (err) {
+    console.error('[address-search] Search failed:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ suggestions: [] });
+  }
 }

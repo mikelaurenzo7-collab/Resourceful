@@ -112,7 +112,7 @@ export default function PhotosPage() {
         <div className="mb-8 animate-slide-up">
           <div className="rounded-xl overflow-hidden border border-gold/15">
             <div className="bg-gold/5 px-4 py-2 border-b border-gold/10 flex items-center gap-2">
-              <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
               <span className="text-xs text-emerald-400 font-medium">Exterior captured automatically</span>
@@ -135,7 +135,7 @@ export default function PhotosPage() {
       {selectedIssues.length > 0 && !showUploader && (
         <div className="space-y-4 mb-8 animate-slide-up">
           <h2 className="text-sm font-medium text-cream/70 flex items-center gap-2">
-            <svg className="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Based on your selected issues, here&apos;s what to photograph:
@@ -220,7 +220,7 @@ export default function PhotosPage() {
                 setShowUploader(true);
               }}
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
@@ -237,7 +237,7 @@ export default function PhotosPage() {
             {/* Why photos strengthen your report */}
             <div className="rounded-xl border border-gold/15 bg-navy-light/50 p-4 text-left space-y-3">
               <div className="flex items-start gap-3">
-                <svg className="w-5 h-5 text-gold/70 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-gold/70 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div>
@@ -258,7 +258,7 @@ export default function PhotosPage() {
         ) : (
           <div className="flex gap-4 pt-2">
             <Button variant="secondary" size="lg" onClick={() => setShowUploader(false)}>
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
               </svg>
               Back
@@ -275,7 +275,7 @@ export default function PhotosPage() {
               {state.photoCount > 0
                 ? `Continue with ${state.photoCount} photo${state.photoCount !== 1 ? 's' : ''}`
                 : 'Continue without photos'}
-              <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
               </svg>
             </Button>
@@ -287,7 +287,7 @@ export default function PhotosPage() {
       {!showUploader && (
         <div className="mt-4">
           <Button variant="ghost" size="sm" onClick={() => router.push('/start/payment')}>
-            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
             </svg>
             Back to payment

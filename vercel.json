@@ -3,6 +3,12 @@
     "src/app/api/webhooks/stripe/route.ts": {
       "maxDuration": 300
     },
+    "src/app/api/reports/[id]/download/route.ts": {
+      "maxDuration": 120
+    },
+    "src/app/api/reports/[id]/viewer/route.ts": {
+      "maxDuration": 60
+    },
     "src/app/api/cron/reminders/route.ts": {
       "maxDuration": 120
     },

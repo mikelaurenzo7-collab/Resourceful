@@ -46,7 +46,7 @@ export default async function AdminLayout({
       .single();
     adminUser = newAdmin as unknown as AdminUser | null;
     if (adminUser) {
-      console.log(`[admin] Auto-provisioned admin access for founder: ${user.email}`);
+      console.log(`[admin] Auto-provisioned admin access for founder: ${user.id}`);
     }
   }
 

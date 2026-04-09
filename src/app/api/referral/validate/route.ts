@@ -17,15 +17,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Code parameter required' }, { status: 400 });
   }
 
-  const result = await validateReferralCode(code);
+  try {
+    const result = await validateReferralCode(code);
 
-  if (!result.valid) {
-    return NextResponse.json({ valid: false, error: result.error }, { status: 200 });
+    if (!result.valid) {
+      return NextResponse.json({ valid: false, error: result.error }, { status: 200 });
+    }
+
+    return NextResponse.json({
+      valid: true,
+      discountPct: result.discountPct,
+      code: result.code?.code,
+    });
+  } catch (err) {
+    console.error('[referral/validate] Validation failed:', err instanceof Error ? err.message : err);
+    return NextResponse.json({ error: 'Validation failed' }, { status: 500 });
   }
-
-  return NextResponse.json({
-    valid: true,
-    discountPct: result.discountPct,
-    code: result.code?.code,
-  });
 }

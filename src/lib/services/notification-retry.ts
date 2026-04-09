@@ -100,7 +100,7 @@ export async function retryFailedNotifications(): Promise<{ sent: number; errors
           .update({ notification_sent_at: new Date().toISOString() } as Record<string, unknown>)
           .eq('id', report.id);
 
-        console.log(`[notification-retry] Sent for ${report.id} to ${report.client_email}`);
+        console.log(`[notification-retry] Sent for report ${report.id}`);
         sent++;
       }
     } catch (err) {

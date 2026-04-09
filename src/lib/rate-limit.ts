@@ -160,6 +160,7 @@ export async function applyRateLimit(
 
   if (!result.success) {
     const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
+    console.warn(`[rate-limit] ${config.prefix} exceeded by ${ip} (limit: ${config.limit}/${config.windowSeconds}s)`);
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
       {

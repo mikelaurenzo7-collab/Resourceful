@@ -107,7 +107,7 @@ export async function sendOutcomeFollowups(): Promise<{ sent: number; errors: nu
         console.error(`[outcome-followup] Email failed for ${report.id}: ${result.error}`);
       } else {
         sent++;
-        console.log(`[outcome-followup] Sent follow-up to ${report.client_email} for ${report.property_address}`);
+        console.log(`[outcome-followup] Sent follow-up for report ${report.id}`);
       }
     } catch (err) {
       errors++;

@@ -51,13 +51,13 @@ export default function ResetPasswordPage() {
             <Wordmark className="font-display text-base text-cream/70 tracking-wide" />
           </a>
           <div className="w-16 h-16 rounded-full bg-gold/10 border border-gold/20 flex items-center justify-center mx-auto mb-6">
-            <svg className="w-8 h-8 text-gold/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-8 h-8 text-gold/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
           </div>
           <h1 className="font-display text-3xl text-cream mb-3">Check Your Email</h1>
           <p className="text-cream/50 text-sm mb-8">
-            If an account exists for <span className="text-cream/70 font-medium">{email}</span>,
+            If an account exists with that email address,
             you&apos;ll receive a password reset link shortly.
           </p>
           <a href="/login" className="text-gold hover:text-gold-light transition-colors text-sm font-medium">

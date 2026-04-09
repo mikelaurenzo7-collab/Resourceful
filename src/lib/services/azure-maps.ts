@@ -82,6 +82,8 @@ const CENSUS_GEOCODE_URL = 'https://geocoding.geo.census.gov/geocoder/geographie
 async function geocodeWithCensus(
   address: string
 ): Promise<ServiceResult<GeocodeResult>> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15_000);
   try {
     const url = new URL(CENSUS_GEOCODE_URL);
     url.searchParams.set('address', address);
@@ -89,8 +91,6 @@ async function geocodeWithCensus(
     url.searchParams.set('vintage', 'Current_Current');
     url.searchParams.set('format', 'json');
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15_000);
     const response = await fetch(url.toString(), { signal: controller.signal });
     clearTimeout(timeout);
 
@@ -137,6 +137,7 @@ async function geocodeWithCensus(
       error: null,
     };
   } catch (err) {
+    clearTimeout(timeout);
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[geocode] Census fallback error: ${message}`);
     return { data: null, error: `Census geocoding failed: ${message}` };
