@@ -39,7 +39,7 @@ function CheckoutForm() {
       const { error: paymentError } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: `${window.location.origin}/start/success?reportId=${state.reportId}`,
+          return_url: `${window.location.origin}/start/photos?reportId=${state.reportId}`,
         },
         redirect: 'if_required',
       });
@@ -50,9 +50,8 @@ function CheckoutForm() {
         return;
       }
 
-      // Payment succeeded — clear wizard state (intake kept for success page), redirect
-      sessionStorage.removeItem('wizard');
-      router.push(`/start/success?reportId=${state.reportId}`);
+      // Payment succeeded — redirect to photos step (reportId now exists)
+      router.push(`/start/photos?reportId=${state.reportId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Payment failed.');
       setSubmitting(false);
@@ -299,7 +298,7 @@ export default function PaymentPage() {
   const [referralError, setReferralError] = useState('');
 
   useEffect(() => {
-    setCurrentStep(5);
+    setCurrentStep(4);
     if (!state.address || !state.serviceType || !state.propertyType) {
       router.push('/start');
     }
@@ -429,7 +428,7 @@ export default function PaymentPage() {
       <main className="max-w-2xl mx-auto px-6 py-12">
         <div className="text-center mb-10 animate-fade-in">
           <span className="inline-block text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase mb-3">
-            Step 5 — Your Report
+            Step 4 — Your Report
           </span>
           <h1 className="font-display text-3xl text-cream mb-3">Choose Your Package</h1>
           <p className="text-cream/50">

@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { constructWebhookEvent } from '@/lib/services/stripe-service';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
+import { sendDisputeAlert } from '@/lib/services/resend-email';
 import type Stripe from 'stripe';
 
 export async function POST(request: NextRequest) {
@@ -43,6 +44,11 @@ export async function POST(request: NextRequest) {
         await handlePaymentIntentSucceeded(
           event.data.object as Stripe.PaymentIntent
         );
+        break;
+      }
+      case 'charge.dispute.created':
+      case 'charge.dispute.closed': {
+        await handleDispute(event.data.object as Stripe.Dispute);
         break;
       }
       default:
@@ -158,5 +164,37 @@ async function handlePaymentIntentSucceeded(
         `Report may be stuck in 'paid' status. Exception: ${dbErr}. Pipeline error: ${message}`
       );
     }
+  });
+}
+
+async function handleDispute(dispute: Stripe.Dispute) {
+  const paymentIntentId = typeof dispute.payment_intent === 'string'
+    ? dispute.payment_intent
+    : dispute.payment_intent?.id ?? 'unknown';
+
+  console.log(
+    `[webhook/stripe] Dispute ${dispute.status}: ${dispute.id} (PI: ${paymentIntentId}, reason: ${dispute.reason})`
+  );
+
+  // Try to find the associated report
+  let reportId: string | undefined;
+  if (paymentIntentId !== 'unknown') {
+    const supabase = createAdminClient();
+    const { data } = await supabase
+      .from('reports')
+      .select('id')
+      .eq('stripe_payment_intent_id', paymentIntentId)
+      .single();
+    if (data) reportId = data.id;
+  }
+
+  // Alert admin via email
+  await sendDisputeAlert({
+    disputeId: dispute.id,
+    paymentIntentId,
+    amount: dispute.amount,
+    reason: dispute.reason,
+    status: dispute.status,
+    reportId,
   });
 }

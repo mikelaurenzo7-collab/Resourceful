@@ -65,6 +65,11 @@ export default function Footer() {
                   Disclaimer
                 </Link>
               </li>
+              <li>
+                <a href="mailto:support@resourceful.app" className="text-sm text-cream/30 hover:text-cream/60 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
+                  Contact Support
+                </a>
+              </li>
             </ul>
           </div>
         </div>

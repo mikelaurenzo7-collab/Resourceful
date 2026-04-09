@@ -17,9 +17,9 @@ export default function PhotosPage() {
   const [streetViewUrl, setStreetViewUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    setCurrentStep(4);
-    if (!state.address) router.push('/start/property');
-  }, [setCurrentStep, state.address, router]);
+    setCurrentStep(5);
+    if (!state.reportId) router.push('/start/payment');
+  }, [setCurrentStep, state.reportId, router]);
 
   // Auto-fetch street-level imagery via Mapillary when address is available
   useEffect(() => {
@@ -54,7 +54,8 @@ export default function PhotosPage() {
 
   const handleSkip = () => {
     updateState({ photosSkipped: true, photoCount: 0 });
-    router.push('/start/payment');
+    sessionStorage.removeItem('wizard');
+    router.push(`/start/success?reportId=${state.reportId}`);
   };
 
   const handleFileUpload = async (file: File, photoType: PhotoType, caption: string): Promise<boolean> => {
@@ -92,7 +93,7 @@ export default function PhotosPage() {
     <main className="max-w-3xl mx-auto px-6 py-12">
       <div className="text-center mb-10 animate-fade-in">
         <span className="inline-block text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase mb-3">
-          Step 4 — Your Evidence
+          Step 5 — Your Evidence
         </span>
         <h1 className="font-display text-3xl text-cream mb-3">Your Property, Your Evidence</h1>
         <p className="text-cream/50 max-w-lg mx-auto leading-relaxed">
@@ -266,7 +267,10 @@ export default function PhotosPage() {
               size="lg"
               fullWidth
               disabled={uploading}
-              onClick={() => router.push('/start/payment')}
+              onClick={() => {
+                sessionStorage.removeItem('wizard');
+                router.push(`/start/success?reportId=${state.reportId}`);
+              }}
             >
               {state.photoCount > 0
                 ? `Continue with ${state.photoCount} photo${state.photoCount !== 1 ? 's' : ''}`
@@ -282,11 +286,11 @@ export default function PhotosPage() {
       {/* Back to situation (when uploader is not showing) */}
       {!showUploader && (
         <div className="mt-4">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/start/situation')}>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/start/payment')}>
             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
             </svg>
-            Back to property details
+            Back to payment
           </Button>
         </div>
       )}

@@ -241,6 +241,9 @@ export default function Hero() {
           {/* Value display */}
           <div className="mt-8 flex justify-center animate-fade-in" style={{ animationDelay: '0.75s' }}>
             <div className="card-premium border-gradient rounded-xl px-8 py-7 inline-block">
+              {!hasResult && !loading && (
+                <p className="text-[10px] uppercase tracking-widest text-cream/25 mb-3 text-center">Example Property</p>
+              )}
               <div className="grid grid-cols-3 gap-8 md:gap-12 text-center">
                 {loading ? (
                   /* Skeleton loader */

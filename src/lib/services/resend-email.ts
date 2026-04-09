@@ -358,3 +358,70 @@ export async function sendOutcomeFollowupEmail(
     return { data: null, error: `Outcome follow-up email failed: ${message}` };
   }
 }
+
+/**
+ * Alert admin about a Stripe dispute (chargeback).
+ */
+export async function sendDisputeAlert(
+  params: {
+    disputeId: string;
+    paymentIntentId: string;
+    amount: number;
+    reason: string;
+    status: string;
+    reportId?: string;
+  }
+): Promise<ServiceResult<EmailResult>> {
+  try {
+    const result = await sendWithRetry({
+      from: FROM_ADDRESS_LAZY(),
+      to: ADMIN_EMAIL_LAZY(),
+      subject: `[DISPUTE ${params.status.toUpperCase()}] ${params.reason} — $${(params.amount / 100).toFixed(2)}`,
+      html: wrapHtml(`
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #dc2626; font-size: 24px;">⚠️ Stripe Dispute ${params.status === 'needs_response' ? 'Opened' : params.status}</h1>
+          <p>A customer has filed a dispute. Action may be required in the Stripe dashboard.</p>
+
+          <div style="background: #fff5f5; border: 1px solid #fecaca; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Dispute ID</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600;">${escapeHtml(params.disputeId)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Payment Intent</td>
+                <td style="padding: 8px 0; text-align: right;">${escapeHtml(params.paymentIntentId)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Amount</td>
+                <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #dc2626;">$${(params.amount / 100).toFixed(2)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Reason</td>
+                <td style="padding: 8px 0; text-align: right;">${escapeHtml(params.reason)}</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 0; color: #666;">Status</td>
+                <td style="padding: 8px 0; text-align: right;">${escapeHtml(params.status)}</td>
+              </tr>
+              ${params.reportId ? `<tr>
+                <td style="padding: 8px 0; color: #666;">Report ID</td>
+                <td style="padding: 8px 0; text-align: right;">${escapeHtml(params.reportId)}</td>
+              </tr>` : ''}
+            </table>
+          </div>
+
+          <a href="https://dashboard.stripe.com/disputes/${params.disputeId}" style="display: inline-block; background: #dc2626; color: #fff; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+            View in Stripe Dashboard
+          </a>
+        </div>
+      `),
+    });
+
+    return { data: { id: result.data?.id ?? '' }, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[resend] sendDisputeAlert error: ${message}`);
+    return { data: null, error: `Dispute alert failed: ${message}` };
+  }
+}

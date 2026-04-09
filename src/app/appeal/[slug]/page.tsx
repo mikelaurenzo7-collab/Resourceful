@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import { parseCountySlug, buildCountySlug } from '@/lib/utils/county-slug';
 import { getCountyByName, getActiveCounties } from '@/lib/repository/county-rules';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { TAX_BILL_DISCOUNT } from '@/config/pricing';
 import Footer from '@/components/landing/Footer';
 import type { CountyRule } from '@/types/database';
 
@@ -225,7 +226,7 @@ export default async function CountyAppealPage({
             <h3 className="font-display text-xl text-cream mb-3">Enter Your Address</h3>
             <p className="text-sm text-cream/50 leading-relaxed">
               We pull {displayName} assessment data and property details automatically.
-              Upload your tax bill to save 15%.
+              Upload your tax bill to save {Math.round(TAX_BILL_DISCOUNT * 100)}%.
             </p>
           </div>
 
@@ -448,7 +449,7 @@ export default async function CountyAppealPage({
             Ready to Appeal in {displayName}?
           </h2>
           <p className="mt-4 text-cream/50 max-w-lg mx-auto">
-            Enter your address and let us run the numbers. Upload your tax bill to save 15% on your report.
+            Enter your address and let us run the numbers. Upload your tax bill to save {Math.round(TAX_BILL_DISCOUNT * 100)}% on your report.
           </p>
           <Link
             href="/start"

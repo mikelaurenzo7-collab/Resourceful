@@ -120,6 +120,24 @@ export default function ReportViewerPage() {
   const [pollExhausted, setPollExhausted] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'filing' | 'guide'>('overview');
 
+  // Keyboard navigation for tabs
+  const isTaxAppealForKeys = data?.serviceType === 'tax_appeal';
+  useEffect(() => {
+    if (!isTaxAppealForKeys) return;
+    const tabs = ['overview', 'filing', 'guide'] as const;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        setActiveTab((prev) => {
+          const idx = tabs.indexOf(prev);
+          if (e.key === 'ArrowLeft') return tabs[(idx - 1 + tabs.length) % tabs.length];
+          return tabs[(idx + 1) % tabs.length];
+        });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isTaxAppealForKeys]);
+
   // Outcome form state
   const [showOutcomeForm, setShowOutcomeForm] = useState(false);
   const [outcomeValue, setOutcomeValue] = useState('');
@@ -268,9 +286,15 @@ export default function ReportViewerPage() {
       {/* Nav */}
       <nav className="bg-navy-deep/80 backdrop-blur-xl nav-shadow sticky top-0 z-50">
         <div className="mx-auto max-w-5xl px-6 flex items-center justify-between h-16">
-          <Link href="/" className="font-display text-xl text-cream hover:opacity-80 transition-opacity">
-            <Wordmark />
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/" className="font-display text-xl text-cream hover:opacity-80 transition-opacity">
+              <Wordmark />
+            </Link>
+            <span className="text-cream/15">|</span>
+            <Link href="/dashboard" className="text-sm text-cream/40 hover:text-cream/70 transition-colors">
+              ← Dashboard
+            </Link>
+          </div>
           <a
             href={`/api/reports/${reportId}/download`}
             className="flex items-center gap-2 text-sm font-medium text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark px-4 py-2 rounded-lg hover:shadow-gold transition-all"

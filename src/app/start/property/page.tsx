@@ -58,11 +58,14 @@ export default function PropertyPage() {
     });
   };
 
-  // Auto-save tax bill data when fields change
+  // Auto-save tax bill data when fields change (debounced)
   useEffect(() => {
     if (showTaxBillForm) {
       const av = parseFloat(assessedValue.replace(/[^0-9.]/g, ''));
-      if (av > 0) handleTaxBillSave();
+      if (av > 0) {
+        const timer = setTimeout(() => handleTaxBillSave(), 500);
+        return () => clearTimeout(timer);
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessedValue, taxAmount, taxYear, pin, showTaxBillForm]);

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { PropertyType, ServiceType, ReviewTier } from '@/types/database';
 import Wordmark from '@/components/ui/Wordmark';
@@ -225,13 +225,13 @@ export const WIZARD_STEPS = [
   { number: 1, label: 'Goals', path: '/start' },
   { number: 2, label: 'Property', path: '/start/property' },
   { number: 3, label: 'Situation', path: '/start/situation' },
-  { number: 4, label: 'Photos', path: '/start/photos' },
-  { number: 5, label: 'Payment', path: '/start/payment' },
+  { number: 4, label: 'Payment', path: '/start/payment' },
+  { number: 5, label: 'Photos', path: '/start/photos' },
 ];
 
 // ─── Provider + Layout ──────────────────────────────────────────────────────
 
-export default function WizardLayout({ children }: { children: React.ReactNode }) {
+function WizardLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
   const [currentStep, setCurrentStep] = useState(1);
@@ -377,5 +377,19 @@ export default function WizardLayout({ children }: { children: React.ReactNode }
         {children}
       </div>
     </WizardContext.Provider>
+  );
+}
+
+export default function WizardLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-pattern flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <WizardLayoutInner>{children}</WizardLayoutInner>
+    </Suspense>
   );
 }
