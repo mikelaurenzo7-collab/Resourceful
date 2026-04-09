@@ -89,15 +89,15 @@ async function seed() {
       service_type: 'tax_appeal',
       property_type: 'residential',
       status: 'delivered',
-      property_address: '4217 N Kedzie Ave',
+      property_address: '2120 N Winchester Ave',
       city: 'Chicago',
       state: 'Illinois',
       state_abbreviation: 'IL',
       county: 'Cook County',
       county_fips: '17031',
-      latitude: 41.9612,
-      longitude: -87.7083,
-      pin: '13-13-217-024-0000',
+      latitude: 41.9178,
+      longitude: -87.6772,
+      pin: '14-31-300-015-0000',
       photos_skipped: false,
       property_issues: ['roof_damage', 'foundation_crack', 'deferred_maintenance'],
       additional_notes: 'Roof has visible shingle loss on north face. Foundation crack visible at northwest corner of basement. Interior shows deferred maintenance throughout.',
@@ -185,12 +185,12 @@ async function seed() {
 
   // ── 5. Comparable sales ──
   const comps = [
-    { address: '4108 N Kedzie Ave', sale_price: 245000, sale_date: '2025-11-14', sqft: 1720, year_built: 1922, condition: 'average', distance_miles: 0.12, adjusted_price_per_sqft: 142 },
-    { address: '4401 N Sawyer Ave', sale_price: 258000, sale_date: '2025-10-02', sqft: 1880, year_built: 1926, condition: 'good', distance_miles: 0.24, adjusted_price_per_sqft: 137 },
-    { address: '3954 N Kimball Ave', sale_price: 271000, sale_date: '2025-08-19', sqft: 1960, year_built: 1928, condition: 'average', distance_miles: 0.31, adjusted_price_per_sqft: 138 },
-    { address: '4532 N St Louis Ave', sale_price: 233000, sale_date: '2026-01-07', sqft: 1640, year_built: 1921, condition: 'fair', distance_miles: 0.19, adjusted_price_per_sqft: 142 },
-    { address: '4215 N Homan Ave', sale_price: 262000, sale_date: '2025-09-23', sqft: 1800, year_built: 1925, condition: 'average', distance_miles: 0.09, adjusted_price_per_sqft: 145 },
-    { address: '3882 N Troy St', sale_price: 279000, sale_date: '2025-07-11', sqft: 2020, year_built: 1929, condition: 'good', distance_miles: 0.38, adjusted_price_per_sqft: 138 },
+    { address: '2043 N Leavitt St', sale_price: 245000, sale_date: '2025-11-14', sqft: 1720, year_built: 1922, condition: 'average', distance_miles: 0.12, adjusted_price_per_sqft: 142 },
+    { address: '2234 N Oakley Ave', sale_price: 258000, sale_date: '2025-10-02', sqft: 1880, year_built: 1926, condition: 'good', distance_miles: 0.24, adjusted_price_per_sqft: 137 },
+    { address: '1958 N Paulina St', sale_price: 271000, sale_date: '2025-08-19', sqft: 1960, year_built: 1928, condition: 'average', distance_miles: 0.31, adjusted_price_per_sqft: 138 },
+    { address: '2312 N Damen Ave', sale_price: 233000, sale_date: '2026-01-07', sqft: 1640, year_built: 1921, condition: 'fair', distance_miles: 0.19, adjusted_price_per_sqft: 142 },
+    { address: '2087 N Claremont Ave', sale_price: 262000, sale_date: '2025-09-23', sqft: 1800, year_built: 1925, condition: 'average', distance_miles: 0.09, adjusted_price_per_sqft: 145 },
+    { address: '1932 N Hoyne Ave', sale_price: 279000, sale_date: '2025-07-11', sqft: 2020, year_built: 1929, condition: 'good', distance_miles: 0.38, adjusted_price_per_sqft: 138 },
   ];
 
   const compRows = comps.map((c, i) => ({
@@ -219,7 +219,7 @@ async function seed() {
       section_name: 'executive_summary',
       content: `## Executive Summary
 
-**Subject Property:** 4217 N Kedzie Ave, Chicago, IL 60618 (PIN: 13-13-217-024-0000)
+**Subject Property:** 2120 N Winchester Ave, Chicago, IL 60613 (PIN: 14-31-300-015-0000)
 **Current Assessed Value:** $320,000 (2025 Cook County Assessor)
 **Concluded Market Value:** $258,000
 **Indicated Reduction:** $62,000 (19.4%)
@@ -227,7 +227,7 @@ async function seed() {
 
 ---
 
-This report presents evidence that the 2025 assessed value of $320,000 for 4217 N Kedzie Ave, Chicago materially exceeds the property's market value as supported by comparable sales. Six arm's-length sales of similar residential properties within a 0.4-mile radius — all sold between July 2025 and January 2026 — indicate a market value range of $245,000–$279,000, with a median adjusted value of $258,000.
+This report presents evidence that the 2025 assessed value of $320,000 for 2120 N Winchester Ave, Chicago materially exceeds the property's market value as supported by comparable sales. Six arm's-length sales of similar residential properties within a 0.4-mile radius — all sold between July 2025 and January 2026 — indicate a market value range of $245,000–$279,000, with a median adjusted value of $258,000.
 
 The property carries documented physical deficiencies — roof damage, a foundation crack, and deferred maintenance throughout — that further depress its market position relative to better-maintained sales. Photo evidence supports condition adjustments totaling -6.5% relative to average comparable condition.
 
@@ -237,14 +237,14 @@ The assessment is 24.0% above the concluded market value. Cook County's statutor
       section_name: 'property_description',
       content: `## Subject Property Description
 
-**Address:** 4217 N Kedzie Ave, Chicago, IL 60618
+**Address:** 2120 N Winchester Ave, Chicago, IL 60613
 **Property Type:** Residential — Single-Family Residence
 **Property Class:** Class 2-03 (Two-story single-family)
 **Zoning:** RS-3 (Residential Single-Family) — Conforming use
 
 ### Physical Description
 
-The subject is a two-story balloon-frame residence constructed in 1924, situated on a 25×150 foot (3,750 sq ft) lot in the Avondale neighborhood of Chicago's Northwest Side. The improved area consists of 1,840 gross square feet (1,680 sq ft above-grade living area) plus an unfinished basement of 920 sq ft with approximately 200 sq ft of finished space.
+The subject is a two-story balloon-frame residence constructed in 1924, situated on a 25×125 foot (3,125 sq ft) lot in the Bucktown neighborhood of Chicago's North Side. The improved area consists of 1,840 gross square feet (1,680 sq ft above-grade living area) plus an unfinished basement of 920 sq ft with approximately 200 sq ft of finished space.
 
 **Construction:** Wood frame, vinyl siding exterior, asphalt shingle roof on gable structure.
 **Mechanical:** Forced-air gas furnace with central air conditioning. Original plumbing throughout.
@@ -261,19 +261,19 @@ Six arm's-length sales of similar residential properties were analyzed within a 
 
 | Address | Sale Date | Sale Price | Sq Ft | $/Sq Ft (Adj) | Condition | Distance |
 |---|---|---|---|---|---|---|
-| 4108 N Kedzie Ave | Nov 2025 | $245,000 | 1,720 | $142 | Average | 0.12 mi |
-| 4215 N Homan Ave | Sep 2025 | $262,000 | 1,800 | $145 | Average | 0.09 mi |
-| 4401 N Sawyer Ave | Oct 2025 | $258,000 | 1,880 | $137 | Good | 0.24 mi |
-| 4532 N St Louis Ave | Jan 2026 | $233,000 | 1,640 | $142 | Fair | 0.19 mi |
-| 3954 N Kimball Ave | Aug 2025 | $271,000 | 1,960 | $138 | Average | 0.31 mi |
-| 3882 N Troy St | Jul 2025 | $279,000 | 2,020 | $138 | Good | 0.38 mi |
+| 2043 N Leavitt St | Nov 2025 | $245,000 | 1,720 | $142 | Average | 0.12 mi |
+| 2087 N Claremont Ave | Sep 2025 | $262,000 | 1,800 | $145 | Average | 0.09 mi |
+| 2234 N Oakley Ave | Oct 2025 | $258,000 | 1,880 | $137 | Good | 0.24 mi |
+| 2312 N Damen Ave | Jan 2026 | $233,000 | 1,640 | $142 | Fair | 0.19 mi |
+| 1958 N Paulina St | Aug 2025 | $271,000 | 1,960 | $138 | Average | 0.31 mi |
+| 1932 N Hoyne Ave | Jul 2025 | $279,000 | 2,020 | $138 | Good | 0.38 mi |
 
 **Median Adjusted Price Per Square Foot:** $140/sq ft
 **Concluded Value (1,840 sq ft × $140/sq ft):** $258,000 (rounded to nearest $1,000)
 
 ### Reconciliation
 
-The six comparable sales bracket the subject in terms of size, age, and condition. The closest sale (4215 N Homan Ave, 0.09 miles) closed at $262,000 for a property in similar average condition — a near-perfect match before condition adjustment. Applying the documented condition deficit of -6.5% (supported by photo evidence) to a base of ~$276,000 yields a concluded value of approximately $258,000, consistent with the direct comparison evidence.`,
+The six comparable sales bracket the subject in terms of size, age, and condition. The closest sale (2087 N Claremont Ave, 0.09 miles) closed at $262,000 for a property in similar average condition — a near-perfect match before condition adjustment. Applying the documented condition deficit of -6.5% (supported by photo evidence) to a base of ~$276,000 yields a concluded value of approximately $258,000, consistent with the direct comparison evidence.`,
     },
     {
       section_name: 'condition_analysis',
@@ -305,7 +305,7 @@ Concrete driveway is cracked and heaved. Cosmetic issue only.
     {
       section_name: 'pro_se_filing_guide',
       content: `# Cook County Board of Review — Filing Guide
-## 4217 N Kedzie Ave, Chicago IL 60618
+## 2120 N Winchester Ave, Chicago IL 60613
 
 ---
 
@@ -323,7 +323,7 @@ Concrete driveway is cracked and heaved. Cosmetic issue only.
 Print this full report (20–25 pages). You will need:
 - ✅ This report (comparable sales grid + narrative)
 - ✅ Your 7 condition photographs
-- ✅ Your Cook County tax bill (showing your PIN: 13-13-217-024-0000)
+- ✅ Your Cook County tax bill (showing your PIN: 14-31-300-015-0000)
 - ✅ Completed Residential Appeal Form (download at cookcountyboardofreview.com)
 
 ### Step 2: File Your Appeal
@@ -331,9 +331,9 @@ Print this full report (20–25 pages). You will need:
 **By Mail:** Send to 118 N Clark St, Room 601, Chicago IL 60602. Use certified mail and keep your tracking number.
 
 ### Step 3: Present Your Case
-If a hearing is scheduled, arrive 10 minutes early. You'll have approximately 15 minutes. Lead with your strongest comparable sale (4215 N Homan Ave — closest sale, $262,000) and your condition photos.
+If a hearing is scheduled, arrive 10 minutes early. You'll have approximately 15 minutes. Lead with your strongest comparable sale (2087 N Claremont Ave — closest sale, $262,000) and your condition photos.
 
-**Opening statement (suggested):** "Good morning. I'm appealing my 2025 assessment of $320,000 for 4217 N Kedzie Avenue. I have six comparable sales within a quarter mile showing market values of $245,000–$279,000, and photographic evidence of roof damage and a foundation crack that further depress my property's market position. I'm requesting a reduction to $258,000."
+**Opening statement (suggested):** "Good morning. I'm appealing my 2025 assessment of $320,000 for 2120 N Winchester Avenue. I have six comparable sales within a quarter mile showing market values of $245,000–$279,000, and photographic evidence of roof damage and a foundation crack that further depress my property's market position. I'm requesting a reduction to $258,000."
 
 ### Step 4: Follow Up
 The Board issues decisions by mail, typically 8–16 weeks after filing. If denied, you may appeal to the Illinois Property Tax Appeal Board (PTAB) within 30 days of the decision.

@@ -7,6 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, ComparableRentalInsert, Report, PropertyData, ComparableSale } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { getRentalComparables } from '@/lib/services/attom';
+import { getRentalListings, getRentEstimate } from '@/lib/services/rentcast';
 import { INCOME_PARAMS, resolvePropertySubtype } from '@/config/valuation';
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
@@ -97,6 +98,7 @@ export async function runIncomeAnalysis(
   }
 
   let concludedMarketRentPerSqFtYr = 0;
+  let rentcastCompCount = 0;
 
   if (rentalResult.data && rentalResult.data.length > 0) {
     // Write rental comps to DB
@@ -138,15 +140,73 @@ export async function runIncomeAnalysis(
       `[stage3] Found ${rentalResult.data.length} rental comps, median rent/sqft/yr: $${concludedMarketRentPerSqFtYr}`
     );
   } else {
-    // Fallback: subtype-specific estimate from valuation config
-    concludedMarketRentPerSqFtYr = FALLBACK_RENT;
-    console.warn(
-      `[stage3] No rental comps found. Using subtype fallback rate: $${concludedMarketRentPerSqFtYr}/sqft/yr for "${subtype}"`
-    );
+    // ATTOM returned no rental comps — try RentCast before hardcoded fallback
+    console.warn(`[stage3] ATTOM returned 0 rental comps — trying RentCast`);
+
+    // Try RentCast active rental listings first
+    const rcListingsResult = await getRentalListings(latitude, longitude, 5, subtype, 20);
+    const rcListings = (rcListingsResult.data ?? [])
+      .filter((l) => l.price > 0 && l.squareFootage && l.squareFootage > 0);
+
+    if (rcListings.length > 0) {
+      const rcInserts: ComparableRentalInsert[] = rcListings.map((l) => ({
+        report_id: reportId,
+        address: l.formattedAddress,
+        lease_date: l.listedDate ?? null,
+        pin: null,
+        building_sqft_leased: l.squareFootage ?? null,
+        rent_per_sqft_yr: l.squareFootage
+          ? Math.round((l.price * 12 / l.squareFootage) * 100) / 100
+          : null,
+        lease_type: null,
+        tenant_pays_description: null,
+        adjustment_notes: `RentCast listing (${l.status ?? 'Active'})`,
+        effective_net_rent_per_sqft: l.squareFootage
+          ? Math.round((l.price * 12 / l.squareFootage) * 100) / 100
+          : null,
+      }));
+      await supabase.from('comparable_rentals').insert(rcInserts);
+
+      const rates = rcListings
+        .map((l) => (l.price * 12) / l.squareFootage!)
+        .sort((a, b) => a - b);
+      const mid = Math.floor(rates.length / 2);
+      concludedMarketRentPerSqFtYr =
+        rates.length % 2 === 0 ? (rates[mid - 1] + rates[mid]) / 2 : rates[mid];
+      rentcastCompCount = rcListings.length;
+      console.log(
+        `[stage3] RentCast: ${rcListings.length} listings, median $${concludedMarketRentPerSqFtYr.toFixed(2)}/sqft/yr`,
+      );
+    }
+
+    // If still no rate, try RentCast AVM estimate
+    if (concludedMarketRentPerSqFtYr === 0) {
+      const rcAvm = await getRentEstimate(
+        report.property_address ?? '',
+        report.city ?? '',
+        report.state ?? '',
+        subtype,
+        buildingSqFt > 0 ? buildingSqFt : null,
+      );
+      if (rcAvm.data && rcAvm.data.rent > 0 && buildingSqFt > 0) {
+        concludedMarketRentPerSqFtYr = (rcAvm.data.rent * 12) / buildingSqFt;
+        console.log(
+          `[stage3] RentCast AVM: $${rcAvm.data.rent}/mo → $${concludedMarketRentPerSqFtYr.toFixed(2)}/sqft/yr`,
+        );
+      }
+    }
+
+    // Final hardcoded fallback
+    if (concludedMarketRentPerSqFtYr === 0) {
+      concludedMarketRentPerSqFtYr = FALLBACK_RENT;
+      console.warn(
+        `[stage3] No rental comps from any source. Using fallback: $${FALLBACK_RENT}/sqft/yr for "${subtype}"`,
+      );
+    }
   }
 
   // ── Rental comp confidence scoring ──────────────────────────────────
-  const rentalCompCount = rentalResult.data?.length ?? 0;
+  const rentalCompCount = (rentalResult.data?.length ?? 0) + rentcastCompCount;
   const rentalCompConfidence: 'high' | 'medium' | 'low' | 'none' =
     rentalCompCount >= 5 ? 'high' :
     rentalCompCount >= 2 ? 'medium' :

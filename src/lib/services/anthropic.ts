@@ -25,7 +25,7 @@ function getClient(): Anthropic {
   if (!_client) {
     _client = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY,
-      timeout: 120_000, // 2 minute timeout for AI calls
+      timeout: 300_000, // 5 minute timeout — Opus needs time for full 17-section report
     });
   }
   return _client;
@@ -154,6 +154,24 @@ export interface NarrativePayload {
     // Conditions of sale
     distressedCompCount?: number;          // # comps with conditions-of-sale adjustment applied
   };
+  // Horizontal equity / uniformity analysis — assessed $/sqft vs neighborhood median
+  // Populated by Stage 2 when ATTOM /property/snapshot returns neighbor data.
+  // When present this unlocks the assessment uniformity argument even with 0 comps.
+  assessmentEquity?: {
+    neighborCount: number;
+    subjectAssessedPerSqft: number | null;
+    medianNeighborAssessedPerSqft: number | null;
+    /** Positive = subject is above median (over-assessed relative to neighbors) */
+    equityRatioPct: number | null;
+    isOverAssessed: boolean;
+    neighborSample: Array<{
+      address: string;
+      assessedPerSqft: number;
+      buildingSquareFeet: number;
+      yearBuilt: number | null;
+      distanceMiles: number | null;
+    }>;
+  } | null;
   // Live research intelligence — per-report web research from research agent
   researchIntelligence?: {
     strategyInsights: string;
@@ -173,6 +191,14 @@ export interface NarrativePayload {
     }>;
     totalEstimatedImpactPct: number;
     summary: string;
+  } | null;
+  // Prior sale analysis — used as last-resort value indicator when comps/cost/income all unavailable
+  priorSaleAnalysis?: {
+    lastSalePrice: number;
+    lastSaleDate: string;
+    yearsElapsed: number;
+    annualAppreciationPct: number;
+    extrapolatedValue: number;
   } | null;
 }
 
@@ -260,6 +286,8 @@ const NARRATIVE_SECTION_NAMES = [
   'sales_comparison_narrative',
   'adjustment_grid_narrative',
   'income_approach_narrative',
+  'cost_approach_narrative',
+  'assessment_equity',
   'reconciliation_narrative',
   'appeal_argument_summary',
   'hearing_script',
@@ -867,6 +895,25 @@ HOW TO USE THIS INTELLIGENCE:
 5. RECONCILIATION: Factor the aggregate proximity impact into your value conclusion.
 
 This proximity intelligence is a proprietary competitive advantage — frame it professionally as "independent location analysis" or "geographic proximity assessment."` : ''}
+${payload.priorSaleAnalysis ? `
+═══════════════════════════════════════════════════════════════════════
+PRIOR SALE ANALYSIS — MARKET VALUE EXTRAPOLATED FROM SUBJECT'S OWN SALE
+═══════════════════════════════════════════════════════════════════════
+
+Comparable sales data is unavailable or insufficient for this property. The concluded value of $${payload.concludedValue.toLocaleString()} was derived from the subject property's own confirmed arm's-length sale history, extrapolated forward to current market conditions.
+
+PRIOR SALE DATA:
+- Last arm's-length sale price: $${payload.priorSaleAnalysis.lastSalePrice.toLocaleString()}
+- Sale date: ${payload.priorSaleAnalysis.lastSaleDate}
+- Years elapsed since sale: ${payload.priorSaleAnalysis.yearsElapsed}
+- Applied annual appreciation rate: ${payload.priorSaleAnalysis.annualAppreciationPct}% (conservative FHFA long-run average)
+- Extrapolated current market value: $${payload.priorSaleAnalysis.extrapolatedValue.toLocaleString()}
+
+HOW TO PRESENT THIS IN THE NARRATIVES:
+- In "sales_comparison_narrative": Acknowledge that traditional comparable sales data is limited for this property. Then pivot to the prior sale approach: "The subject property's most recent arm's-length transaction provides the most reliable basis for market value determination. On [date], the property sold for $[X] in an arm's-length market transaction. Applying a conservative 4% annual appreciation rate consistent with the FHFA House Price Index for this market, the extrapolated current market value is $[Y]."
+- In "reconciliation_narrative": "In the absence of adequate comparable sales data, the concluded value of $[Y] is based on the subject property's own confirmed market transaction, adjusted for time elapsed since the sale date. This approach is recognized under USPAP as a valid value indicator when market data is limited."
+- If the concluded (extrapolated) value is BELOW the current assessed value: this is powerful evidence of overassessment — the county is assessing the property at more than its own documented market history supports.
+- Do NOT fabricate comps. Do NOT use the prior sale as a "comparable" — it IS the subject. Use first-person language about the property's own sale history.` : ''}
 
 You must return valid JSON — an array of objects with these keys:
 - "section_name": one of the exact values listed below
@@ -897,7 +944,13 @@ ${hasPhotos ? '12' : '11'}. "sales_comparison_narrative" — aggressive comparab
 ${hasPhotos ? '13' : '12'}. "adjustment_grid_narrative" — methodical explanation of every adjustment, framed to support the lower concluded value${hasPhotos ? '. The condition adjustment line item should reference the photo evidence summary.' : ''}
 ${payload.comparableRentals?.length ? `${hasPhotos ? '14' : '13'}. "income_approach_narrative" — rental income analysis showing the income-derived value is below the assessed value` : ''}
 ${payload.overvaluationAnalysis?.costApproachValue != null ? `${hasPhotos ? '15' : '14'}. "cost_approach_narrative" — USPAP Cost Approach: present the replacement cost new (RCN), physical depreciation, ${payload.overvaluationAnalysis.functionalObsolescencePct ? 'functional obsolescence, ' : ''}and land value. Show the math step by step: "RCN of $[X] × (1 − [Y]% total depreciation) + land value of $[Z] = cost approach indicator of $[W]." If the cost approach value is BELOW the assessed value, this is a powerful third line of evidence converging with the sales comparison${payload.comparableRentals?.length ? ' and income approaches' : ''}. State explicitly: "Three independent valuation approaches all indicate a market value below the assessor's figure." If it exceeds the assessed value, address it honestly — explain why the cost approach may be less reliable here (e.g., land value uncertainty, market obsolescence) — do not suppress it.` : ''}
-${hasPhotos ? '16' : '15'}. "reconciliation_narrative" — final value reconciliation: state the concluded value with conviction, quantify the exact overassessment in dollars and percentage, and recommend the assessment be reduced. When cost approach data is present, state which approaches were used and how they were weighted. ${hasPhotos ? 'Explicitly state that the concluded value reflects documented property condition from firsthand photographic evidence — evidence the assessor did not have when setting the assessed value.' : ''}
+${payload.assessmentEquity?.isOverAssessed ? `${hasPhotos ? '16' : '15'}. "assessment_equity" — HORIZONTAL UNIFORMITY / EQUITY ARGUMENT — this section is MANDATORY when equity data shows over-assessment. Structure it as follows:
+   **Opening**: State the legal principle — uniformity of assessment is required by state law. Properties of comparable type, size, and condition within the same jurisdiction must be assessed at comparable rates.
+   **The Math**: Present side-by-side: "The subject property is assessed at $${payload.assessmentEquity.subjectAssessedPerSqft?.toFixed(2) ?? '[X]'}/sqft. Analysis of ${payload.assessmentEquity.neighborCount} comparable neighboring properties within 0.5 miles reveals a median assessed value of $${payload.assessmentEquity.medianNeighborAssessedPerSqft?.toFixed(2) ?? '[Y]'}/sqft — ${payload.assessmentEquity.equityRatioPct?.toFixed(1) ?? '[Z]'}% lower than the subject's current assessment."
+   **The Evidence**: Cite 2-3 specific neighboring properties from the sample by address, with their assessed $/sqft, square footage, and year built. Example: "[Address], a [size] sqft [year] property assessed at $[X]/sqft." Show that these neighbors are reasonably comparable in type and vintage.
+   **The Ask**: "To achieve assessment equity consistent with ${payload.assessmentEquity.neighborCount} comparable neighboring properties, the subject's assessed value per sqft should be reduced from $${payload.assessmentEquity.subjectAssessedPerSqft?.toFixed(2) ?? '[X]'} to the neighborhood median of approximately $${payload.assessmentEquity.medianNeighborAssessedPerSqft?.toFixed(2) ?? '[Y]'}, implying a total assessed value of $[calculated]. This reduction requires no market sales evidence — only that the county apply its own assessment standards uniformly."
+   This argument is powerful precisely because it does NOT depend on market sales, appraisals, or opinions of value — it is purely a mathematical comparison of the county's own records.` : ''}
+${hasPhotos ? '17' : '16'}. "reconciliation_narrative" — final value reconciliation: state the concluded value with conviction, quantify the exact overassessment in dollars and percentage, and recommend the assessment be reduced. When cost approach data is present, state which approaches were used and how they were weighted. ${hasPhotos ? 'Explicitly state that the concluded value reflects documented property condition from firsthand photographic evidence — evidence the assessor did not have when setting the assessed value.' : ''}
 ${payload.serviceType === 'tax_appeal' ? `${hasPhotos ? '17' : '16'}. "appeal_argument_summary" — the homeowner's battle plan: 5-7 numbered arguments, each a specific, quotable statement they can read to ${payload.countyRules.appealBoardName || 'the board'}. Lead with the strongest argument. Include exact dollar figures. End with a clear ask: "I respectfully request the assessed value be reduced from $X to $Y."${hasPhotos ? ' At least 2 of the arguments MUST reference the photographic evidence directly — these are your most persuasive points because the board can see the evidence with their own eyes.' : ''}` : ''}
 ${payload.serviceType === 'tax_appeal' && payload.reviewTier !== 'full_representation' ? `${hasPhotos ? '18' : '17'}. "hearing_script" — A COMPLETE WORD-FOR-WORD HEARING SCRIPT the homeowner can literally read aloud at their hearing. This is their rehearsal guide. Structure it EXACTLY like this:
 
@@ -952,7 +1005,15 @@ You MUST investigate ALL of the following angles and report findings in the reco
 
 9. FUNCTIONAL/EXTERNAL OBSOLESCENCE: Use the pre-computed functional obsolescence data from the property analysis. If functional_obsolescence_pct > 0, the system has already quantified incurable super-adequacy — the subject is materially larger than the neighborhood median, and the market will not pay replacement cost for the excess. State this explicitly: "The subject's [X,XXX sqft] exceeds the neighborhood median by Y%, resulting in Z% incurable functional obsolescence that the assessor has not accounted for." External obsolescence from flood zones, busy roads, or commercial adjacency should also be cited and quantified.
 
-10. EQUITY ANALYSIS: If the subject's assessed value per sqft significantly exceeds nearby properties of similar quality, that's an equal-protection argument. The assessment must be equitable.
+10. EQUITY ANALYSIS (HORIZONTAL UNIFORMITY): Assessment equity is a standalone legal theory — Illinois courts and most states recognize it as grounds for reduction independent of market value. If the subject is assessed at a higher rate per sqft than comparable neighboring properties, the assessment is inequitable and must be corrected. Cite IAAO Standard on Ratio Studies language: the standard of uniformity requires that properties of similar type and condition be assessed at comparable levels.
+${payload.assessmentEquity && payload.assessmentEquity.isOverAssessed ? `   ⚠️  EQUITY DATA CONFIRMED — THIS IS A LIVE ARGUMENT:
+   Subject assessed: $${payload.assessmentEquity.subjectAssessedPerSqft?.toFixed(2) ?? 'N/A'}/sqft
+   Neighborhood median: $${payload.assessmentEquity.medianNeighborAssessedPerSqft?.toFixed(2) ?? 'N/A'}/sqft (${payload.assessmentEquity.neighborCount} nearby properties sampled within 0.5 miles)
+   Over-assessed vs neighbors: ${payload.assessmentEquity.equityRatioPct?.toFixed(1) ?? 'N/A'}%
+   Make this THE PRIMARY argument in assessment_equity section and appeal_argument_summary point #1.
+   Exact language to use: "Under the principle of horizontal equity, properties of similar size and type in the same neighborhood must be assessed at comparable levels. Our analysis of ${payload.assessmentEquity.neighborCount} neighboring properties reveals a median assessed value of $${payload.assessmentEquity.medianNeighborAssessedPerSqft?.toFixed(2) ?? 'N/A'} per square foot. The subject is assessed at $${payload.assessmentEquity.subjectAssessedPerSqft?.toFixed(2) ?? 'N/A'} per square foot — ${payload.assessmentEquity.equityRatioPct?.toFixed(1) ?? 'N/A'}% above the neighborhood standard. This inequity has no factual basis and violates the uniform assessment requirement."
+   Neighbor sample for citation: ${payload.assessmentEquity.neighborSample.slice(0, 3).map(n => `${n.address} (${n.buildingSquareFeet.toLocaleString()} sqft, $${n.assessedPerSqft.toFixed(2)}/sqft${n.yearBuilt ? `, built ${n.yearBuilt}` : ''})`).join('; ')}
+   You may cite these specific neighboring properties by address in the assessment_equity section.` : payload.assessmentEquity ? `   Equity snapshot run: ${payload.assessmentEquity.neighborCount} neighbors at $${payload.assessmentEquity.medianNeighborAssessedPerSqft?.toFixed(2) ?? 'N/A'}/sqft median vs subject $${payload.assessmentEquity.subjectAssessedPerSqft?.toFixed(2) ?? 'N/A'}/sqft. Subject is within normal range — note briefly in reconciliation but do not lead with this argument.` : `   No equity snapshot data available. Conduct the analysis qualitatively.`}
 
 11. CONDITIONS OF SALE: Note how many comparable sales in the analysis grid were distressed (REO, foreclosure, short sale). Each was adjusted upward by 12% to arms-length equivalent. If you see distressedCompCount > 0 in the data, note this in adjustment_grid_narrative: "Of the [N] comparable sales analyzed, [X] required conditions-of-sale adjustments to reflect arms-length market conditions, ensuring the analysis is not contaminated by non-market transactions."
 
@@ -988,6 +1049,8 @@ function buildNarrativeUserMessage(payload: NarrativePayload): string {
       concludedValue: payload.concludedValue,
       photoAnalyses: payload.photoAnalyses ?? [],
       overvaluationAnalysis: payload.overvaluationAnalysis ?? null,
+      assessmentEquity: payload.assessmentEquity ?? null,
+      priorSaleAnalysis: payload.priorSaleAnalysis ?? null,
     },
     null,
     2

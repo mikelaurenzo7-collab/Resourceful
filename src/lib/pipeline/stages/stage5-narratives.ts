@@ -21,10 +21,22 @@ import {
   CONDITION_BASE_OFFSET,
   OVER_IMPROVEMENT_ADJ_PCT,
   OVER_IMPROVEMENT_ADJ_MAX_PCT,
+  LAND_RATIO_BY_SUBTYPE,
   type QualityGrade,
 } from '@/config/valuation';
 import { getCalibrationParams } from '@/lib/repository/calibration';
+import { getDeedHistory } from '@/lib/services/attom';
+import { findSubjectPriorSaleViaWeb, estimateValueViaAI } from '@/lib/services/web-comps';
 // Attorney referral system removed — all filing handled in-house or guided pro se.
+
+// Assumed annual appreciation rate for prior-sale extrapolation (conservative FHFA long-run average).
+const PRIOR_SALE_ANNUAL_APPRECIATION = 0.04;
+// Exclude non-arm's-length transfers when looking for a usable prior sale price.
+const NON_ARMS_LENGTH_KEYWORDS = [
+  'foreclosure', 'reo', 'real estate owned', 'bank owned', 'short sale',
+  'sheriff', 'trustee', 'distressed', 'deed in lieu', 'quitclaim', 'quit claim',
+  'gift', 'inter-family', 'intrafamily',
+];
 
 // ─── Section Mapping ────────────────────────────────────────────────────────
 
@@ -254,8 +266,25 @@ export async function runNarratives(
   // ── Value WITH photo condition adjustments (the real concluded value) ──
   // When 0 comps are available (thin rural markets), fall back to cost/income approach.
   if (comps.length === 0 && !incomeData?.concluded_value_income_approach) {
-    // Check if we can use cost approach as sole valuation method
-    const landValue = propertyData.land_value ?? null;
+    // Attempt cost approach.
+    // If ATTOM didn't supply a split land value, estimate it using IAAO
+    // land ratio benchmarks. This keeps the cost approach viable in thin
+    // markets and for accounts where ATTOM omits land value.
+    const subtype = propertyData.property_subtype ?? 'residential_sfr';
+    let landValue = propertyData.land_value ?? null;
+    let landValueEstimated = false;
+    if (!landValue || landValue <= 0) {
+      const ratio = LAND_RATIO_BY_SUBTYPE[subtype] ?? 0.20;
+      const base = propertyData.assessed_value ?? 0;
+      if (base > 0) {
+        landValue = Math.round(base * ratio);
+        landValueEstimated = true;
+        console.warn(
+          `[stage5] land_value missing — estimating as $${landValue.toLocaleString()} ` +
+          `(${(ratio * 100).toFixed(0)}% of assessed $${base.toLocaleString()} per IAAO ${subtype} ratio)`
+        );
+      }
+    }
     const qualityGrade = propertyData.quality_grade ?? 'average';
     const { costApproachValue } = computeCostApproach(
       propertyData.property_subtype,
@@ -266,24 +295,109 @@ export async function runNarratives(
       landValue
     );
     if (!costApproachValue) {
-      return {
-        success: false,
-        error: 'No comparable sales, income data, or sufficient cost approach data available — cannot generate valuation',
-      };
+      // Last resort: fetch the subject's own sale history and extrapolate to present.
+      const deedResult = await getDeedHistory(
+        report.property_address ?? '',
+        report.city ?? null,
+        report.state ?? null,
+      );
+      const deeds = deedResult.data ?? [];
+      const armLengthSales = deeds
+        .filter((d) => {
+          if (!d.salePrice || d.salePrice <= 0) return false;
+          const lower = `${d.documentType ?? ''} ${d.deedType ?? ''}`.toLowerCase();
+          return !NON_ARMS_LENGTH_KEYWORDS.some((kw) => lower.includes(kw));
+        })
+        .sort((a, b) => new Date(b.recordingDate).getTime() - new Date(a.recordingDate).getTime());
+      if (armLengthSales.length === 0) {
+        // ATTOM has no sale history either — try web search as absolute last resort
+        console.warn('[stage5] ATTOM deed history empty — trying web search for subject prior sale');
+        const webSale = await findSubjectPriorSaleViaWeb(
+          report.property_address ?? '',
+          report.city ?? '',
+          report.state ?? '',
+        );
+        if (webSale && webSale.salePrice > 0) {
+          const yearsElapsed = (Date.now() - new Date(webSale.saleDate).getTime()) / (365.25 * 24 * 3600 * 1000);
+          const priorSaleExtrapolated = Math.round(
+            webSale.salePrice * Math.pow(1 + PRIOR_SALE_ANNUAL_APPRECIATION, yearsElapsed) / 1000
+          ) * 1000;
+          console.warn(
+            `[stage5] Web sale found: $${webSale.salePrice.toLocaleString()} on ${webSale.saleDate} ` +
+            `→ extrapolated $${priorSaleExtrapolated.toLocaleString()} (source: ${webSale.source})`
+          );
+          (propertyData as Record<string, unknown>)['_priorSaleExtrapolated'] = priorSaleExtrapolated;
+          (propertyData as Record<string, unknown>)['_priorSaleDate'] = webSale.saleDate;
+          (propertyData as Record<string, unknown>)['_priorSalePrice'] = webSale.salePrice;
+        } else {
+          // Absolute last resort: Claude knows neighborhood values from training data
+          console.warn('[stage5] Web prior sale search returned nothing — falling back to AI knowledge-based estimate');
+          const aiEst = await estimateValueViaAI(
+            report.property_address ?? '',
+            report.city ?? '',
+            report.state ?? '',
+            report.property_type ?? 'residential',
+            propertyData.latitude ?? null,
+            propertyData.longitude ?? null,
+          );
+          if (aiEst && aiEst.estimatedValue > 0) {
+            (propertyData as Record<string, unknown>)['_priorSaleExtrapolated'] = aiEst.estimatedValue;
+            (propertyData as Record<string, unknown>)['_priorSaleDate'] = new Date().toISOString().substring(0, 10);
+            (propertyData as Record<string, unknown>)['_priorSalePrice'] = aiEst.estimatedValue;
+            (propertyData as Record<string, unknown>)['_aiEstimateReasoning'] = aiEst.reasoning;
+            (propertyData as Record<string, unknown>)['_aiEstimateRange'] = { low: aiEst.rangeLow, high: aiEst.rangeHigh };
+          } else {
+            return {
+              success: false,
+              error: 'No comparable sales, income data, cost approach data, prior sale history, or AI estimate available — cannot generate valuation',
+            };
+          }
+        }
+      }
+      const lastSale = armLengthSales[0]!;
+      const yearsElapsed = (Date.now() - new Date(lastSale.recordingDate).getTime()) / (365.25 * 24 * 3600 * 1000);
+      const priorSaleExtrapolated = Math.round(
+        lastSale.salePrice! * Math.pow(1 + PRIOR_SALE_ANNUAL_APPRECIATION, yearsElapsed) / 1000
+      ) * 1000;
+      console.warn(
+        `[stage5] 0 comps, no income, cost approach unusable — extrapolating from prior sale ` +
+        `($${lastSale.salePrice!.toLocaleString()} on ${lastSale.recordingDate}, ` +
+        `${yearsElapsed.toFixed(1)} yrs @ ${(PRIOR_SALE_ANNUAL_APPRECIATION * 100).toFixed(0)}%/yr → $${priorSaleExtrapolated.toLocaleString()})`
+      );
+      // Store the prior sale metadata for later use in concludedValue assignment.
+      (propertyData as Record<string, unknown>)['_priorSaleExtrapolated'] = priorSaleExtrapolated;
+      (propertyData as Record<string, unknown>)['_priorSaleDate'] = lastSale.recordingDate;
+      (propertyData as Record<string, unknown>)['_priorSalePrice'] = lastSale.salePrice;
+    } else {
+      console.warn(
+        `[stage5] 0 comps and no income data — falling back to cost approach only ` +
+        `($${costApproachValue.toLocaleString()})${landValueEstimated ? ' [land value estimated]' : ''}`
+      );
     }
-    console.warn(`[stage5] 0 comps and no income data — falling back to cost approach only ($${costApproachValue.toLocaleString()})`);
   }
 
   let concludedValue: number;
+  const _priorSaleExtrapolated = (propertyData as Record<string, unknown>)['_priorSaleExtrapolated'] as number | undefined;
   if (comps.length > 0) {
     concludedValue = computeMedianValue(comps, propertyData.building_sqft_gross, (c) => c.adjusted_price_per_sqft);
   } else if (incomeData?.concluded_value_income_approach) {
     // No comps but income approach available — use income as primary
     concludedValue = incomeData.concluded_value_income_approach;
     console.warn(`[stage5] 0 comps — using income approach as primary value: $${concludedValue.toLocaleString()}`);
+  } else if (_priorSaleExtrapolated) {
+    // Prior sale extrapolated to current market (last resort)
+    concludedValue = _priorSaleExtrapolated;
+    console.warn(`[stage5] using prior-sale extrapolated value as concluded value: $${concludedValue.toLocaleString()}`);
   } else {
     // Cost approach only (validated above)
-    const landValue = propertyData.land_value ?? null;
+    // Re-run with the same estimated land value logic used in the guard above.
+    const subtype = propertyData.property_subtype ?? 'residential_sfr';
+    let landValue = propertyData.land_value ?? null;
+    if (!landValue || landValue <= 0) {
+      const ratio = LAND_RATIO_BY_SUBTYPE[subtype] ?? 0.20;
+      const base = propertyData.assessed_value ?? 0;
+      if (base > 0) landValue = Math.round(base * ratio);
+    }
     const qualityGrade = propertyData.quality_grade ?? 'average';
     const { costApproachValue } = computeCostApproach(
       propertyData.property_subtype,
@@ -1005,6 +1119,48 @@ export async function runNarratives(
         summary: detractorAnalysis.summary,
       }
     : null;
+
+  // ── Inject assessment equity data from Stage 2 snapshot ──────────────
+  // Stage 2 stored equity stats inside attom_raw_response.assessment_equity.
+  // Pull them out and pass to the AI as a standalone argument strategy.
+  const attomRaw = propertyData.attom_raw_response as Record<string, unknown> | null;
+  const equitySnap = attomRaw?.assessment_equity as Record<string, unknown> | null;
+  if (equitySnap) {
+    payload.assessmentEquity = {
+      neighborCount: equitySnap.neighborCount as number,
+      subjectAssessedPerSqft: equitySnap.subjectAssessedPerSqft as number | null,
+      medianNeighborAssessedPerSqft: equitySnap.medianNeighborAssessedPerSqft as number | null,
+      equityRatioPct: equitySnap.equityRatioPct as number | null,
+      isOverAssessed: equitySnap.isOverAssessed as boolean,
+      neighborSample: (equitySnap.neighborSample as Array<Record<string, unknown>> | null)
+        ?.map((n) => ({
+          address: n.address as string,
+          assessedPerSqft: n.assessedPerSqft as number,
+          buildingSquareFeet: n.buildingSquareFeet as number,
+          yearBuilt: n.yearBuilt as number | null,
+          distanceMiles: n.distanceMiles as number | null,
+        })) ?? [],
+    };
+    console.log(
+      `[stage5] Equity data injected into payload: ` +
+      `${equitySnap.neighborCount} neighbors, ratio=${equitySnap.equityRatioPct}%`
+    );
+  }
+
+  // ── Inject prior sale analysis if used as concluded value ────────────
+  const _pse = (propertyData as Record<string, unknown>)['_priorSaleExtrapolated'] as number | undefined;
+  const _psd = (propertyData as Record<string, unknown>)['_priorSaleDate'] as string | undefined;
+  const _psp = (propertyData as Record<string, unknown>)['_priorSalePrice'] as number | undefined;
+  if (_pse && _psd && _psp) {
+    const yearsElapsed = (Date.now() - new Date(_psd).getTime()) / (365.25 * 24 * 3600 * 1000);
+    payload.priorSaleAnalysis = {
+      lastSalePrice: _psp,
+      lastSaleDate: _psd,
+      yearsElapsed: Math.round(yearsElapsed * 10) / 10,
+      annualAppreciationPct: PRIOR_SALE_ANNUAL_APPRECIATION * 100,
+      extrapolatedValue: _pse,
+    };
+  }
 
   // ── Call Anthropic to generate narratives ──────────────────────────────
   console.log(`[stage5] Generating narratives for report ${reportId}...`);

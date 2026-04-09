@@ -684,11 +684,17 @@ export default function ReportViewerPage() {
                 <div className="prose-legal text-sm text-cream/60 leading-relaxed" style={{ maxWidth: 'none' }}>
                   {data.filingGuide.split('\n').map((line, i) => {
                     const trimmed = line.trim();
+                    if (trimmed.startsWith('### ')) {
+                      return <h3 key={i} className="text-base font-medium text-cream/80 mt-6 mb-2">{trimmed.slice(4)}</h3>;
+                    }
                     if (trimmed.startsWith('## ')) {
                       return <h2 key={i} className="text-lg font-semibold text-cream mt-8 mb-3">{trimmed.slice(3)}</h2>;
                     }
-                    if (trimmed.startsWith('### ')) {
-                      return <h3 key={i} className="text-base font-medium text-cream/80 mt-6 mb-2">{trimmed.slice(4)}</h3>;
+                    if (trimmed.startsWith('# ')) {
+                      return <h1 key={i} className="text-xl font-bold text-cream mt-2 mb-1">{trimmed.slice(2)}</h1>;
+                    }
+                    if (trimmed === '---') {
+                      return <hr key={i} className="border-cream/10 my-6" />;
                     }
                     if (!trimmed) return <br key={i} />;
                     // Render bold (**text**) safely via React

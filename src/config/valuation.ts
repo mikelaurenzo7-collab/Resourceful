@@ -267,6 +267,43 @@ export const SIZE_ADJ_MAX_PCT           = 15;     // maximum size adjustment cap
 export const LAND_RATIO_THRESHOLD_PCT = 20;       // % difference to trigger adjustment
 export const LAND_RATIO_ADJ_MAX_PCT = 10;         // max ±10% cap per USPAP
 
+// ─── Land Value Estimation (Cost Approach Fallback) ──────────────────────────
+// When ATTOM does not supply a split land value, estimate land value as a
+// fraction of the assessed value per IAAO market allocation benchmarks.
+// Used only when actual land_value is null — always flagged as estimated.
+// Source: IAAO "Assessment Administration" handbook Table 15-1 and
+// Appraisal Institute "The Appraisal of Real Estate" 15th ed.
+
+export const LAND_RATIO_BY_SUBTYPE: Record<string, number> = {
+  residential_sfr:           0.20, // 20% of total value — IAAO urban residential median
+  residential_condo:         0.15, // condos: lower land share, shared-lot
+  residential_multifamily:   0.22,
+  commercial_retail_strip:   0.25,
+  commercial_office:         0.30,
+  commercial_restaurant:     0.28,
+  commercial_hotel:          0.28,
+  commercial_mixed_use:      0.27,
+  commercial_general:        0.25,
+  industrial_warehouse:      0.20,
+  industrial_manufacturing:  0.18,
+  industrial_flex:           0.20,
+  industrial_self_storage:   0.22,
+  industrial_general:        0.18,
+  agricultural_general:      0.50, // land-dominant
+  agricultural_crop:         0.60,
+  agricultural_pasture:      0.80,
+  land:                      1.00, // entire value is land
+};
+
+// ─── Assessment Equity Thresholds ────────────────────────────────────────────
+// Used in Stage 2 to evaluate horizontal equity (are neighbors assessed fairly?).
+// IAAO standard: COD (coefficient of dispersion) should be ≤15% for residential.
+// We flag the subject as inequitably assessed when its assessed $/sqft materially
+// exceeds the neighborhood median — a strong, data-backed uniformity argument.
+
+export const EQUITY_OVERASSESSMENT_THRESHOLD_PCT = 10; // subject must be >10% above median to flag
+export const EQUITY_SNAPSHOT_RADIUS_MILES        = 0.5; // neighborhood snapshot radius
+
 // ─── Photo Condition Adjustments ────────────────────────────────────────────
 // Defect impact by severity × value_impact level. Used in stage4 and stage5.
 

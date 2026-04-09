@@ -21,6 +21,11 @@ import {
 } from './attom';
 
 import {
+  getPropertyDetail as lightboxGetPropertyDetail,
+  type LightboxParcelDetail,
+} from './lightbox';
+
+import {
   getPropertyDetailFromPublicRecords,
 } from './public-records';
 
@@ -210,6 +215,75 @@ function mergeSupplemental(
   };
 }
 
+// ─── Lightbox Normalizer ─────────────────────────────────────────────────────
+
+function lightboxToCollected(detail: LightboxParcelDetail): CollectedPropertyData {
+  const sourceMap: DataSourceMap = {};
+  if (detail.assessment.assessedValue) {
+    sourceMap.assessed_value = { source: 'lightbox', confidence: 'county_records' };
+  }
+  if (detail.structure.grossSquareFeet) {
+    sourceMap.building_sqft = { source: 'lightbox', confidence: 'county_records' };
+  }
+  if (detail.structure.yearBuilt) {
+    sourceMap.year_built = { source: 'lightbox', confidence: 'county_records' };
+  }
+  if (detail.lot.squareFeet) {
+    sourceMap.lot_size_sqft = { source: 'lightbox', confidence: 'county_records' };
+  }
+  if (detail.propertyUse.code) {
+    sourceMap.property_class = { source: 'lightbox', confidence: 'county_records' };
+  }
+
+  return {
+    assessed_value: detail.assessment.assessedValue ?? null,
+    assessed_value_source: 'lightbox',
+    market_value_estimate_low: null,
+    market_value_estimate_high: null,
+    assessment_ratio: null,
+    assessment_methodology: null,
+    lot_size_sqft: detail.lot.squareFeet ?? null,
+    building_sqft_gross: detail.structure.grossSquareFeet ?? null,
+    building_sqft_living_area: detail.structure.livableSquareFeet ?? null,
+    year_built: detail.structure.yearBuilt ?? null,
+    property_class: detail.propertyUse.code ?? null,
+    property_class_description: detail.propertyUse.description ?? null,
+    zoning_designation: detail.lot.zoning ?? null,
+    zoning_ordinance_citation: null,
+    zoning_conformance: null,
+    flood_zone_designation: null,
+    flood_map_panel_number: null,
+    flood_map_panel_date: null,
+    tax_year_in_appeal: detail.assessment.taxYear ?? null,
+    assessment_history: null,
+    deed_history: detail.saleHistory.length > 0
+      ? detail.saleHistory.map((s) => ({
+          date: s.date,
+          price: s.amount,
+          documentType: s.documentType,
+          armsLength: s.armsLength,
+          buyers: s.buyerNames,
+          sellers: s.sellerNames,
+        } as Record<string, unknown>))
+      : null,
+    attom_raw_response: null,
+    county_assessor_raw_response: {
+      source: 'lightbox',
+      parcelId: detail.parcelId,
+      apn: detail.apn,
+      assessedValue: detail.assessment.assessedValue,
+      landValue: detail.assessment.landValue,
+      marketValue: detail.assessment.marketValue,
+    },
+    data_collection_notes: null,
+    data_source_map: sourceMap,
+    latitude: detail.location.latitude ?? null,
+    longitude: detail.location.longitude ?? null,
+    countyFips: detail.address.fips ?? null,
+    countyName: detail.address.county ?? null,
+  };
+}
+
 // ─── Data Quality Check ──────────────────────────────────────────────────────
 
 function hasMinimumData(data: CollectedPropertyData): boolean {
@@ -264,7 +338,7 @@ export async function collectPropertyData(
   const attomKey = process.env.ATTOM_API_KEY;
 
   if (attomKey) {
-    const attomResult = await attomGetPropertyDetail(params.address);
+    const attomResult = await attomGetPropertyDetail(params.address, params.city, params.state);
 
     if (attomResult.data) {
       const attomData = attomToCollected(attomResult.data, 'attom');
@@ -284,6 +358,28 @@ export async function collectPropertyData(
   } else {
     notes.push('ATTOM: not configured (no API key)');
     console.log(`[data-router] ATTOM not configured — using public records only`);
+  }
+
+  // ── Source 3: Lightbox (fills critical gaps when ATTOM returns zero fields) ──
+  const hasCriticalGaps = !collected?.building_sqft_gross || !collected?.assessed_value;
+  if (hasCriticalGaps && process.env.LIGHTBOX_API_KEY && process.env.LIGHTBOX_API_SECRET) {
+    console.log(`[data-router] Critical data gaps detected — trying Lightbox for "${params.address}"...`);
+    const lightboxResult = await lightboxGetPropertyDetail(params.address, params.city, params.state);
+
+    if (lightboxResult.data) {
+      const lightboxData = lightboxToCollected(lightboxResult.data);
+      if (collected) {
+        collected = mergeSupplemental(collected, lightboxData, 'lightbox');
+        notes.push('Lightbox: supplemental property data retrieved');
+      } else {
+        collected = lightboxData;
+        notes.push('Lightbox: primary property data source (public records + ATTOM both failed)');
+      }
+      console.log(`[data-router] Lightbox supplemented data for "${params.address}"`);
+    } else {
+      notes.push(`Lightbox: ${lightboxResult.error ?? 'no data found'}`);
+      console.warn(`[data-router] Lightbox also failed for "${params.address}": ${lightboxResult.error}`);
+    }
   }
 
   // ── Result ──────────────────────────────────────────────────────────────

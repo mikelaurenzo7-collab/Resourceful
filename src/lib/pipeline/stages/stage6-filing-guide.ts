@@ -123,6 +123,12 @@ export async function runFilingGuide(
     }
   }
 
+  // Fallback: use the concluded_value saved by stage 5 (cost approach or income)
+  if (concludedValue <= 0 && propertyData?.concluded_value && propertyData.concluded_value > 0) {
+    concludedValue = propertyData.concluded_value;
+    console.log(`[stage6] No comps — using stage-5 concluded value as fallback: $${concludedValue.toLocaleString()}`);
+  }
+
   if (concludedValue <= 0) {
     return { success: false, error: 'No concluded value available for filing guide' };
   }

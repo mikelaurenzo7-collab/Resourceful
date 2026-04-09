@@ -299,6 +299,12 @@ export default function PaymentPage() {
     if (!state.address || !state.serviceType || !state.propertyType) {
       router.push('/start');
     }
+    // Pre-fill email from logged-in session
+    import('@/lib/supabase/client').then(({ createClient }) => {
+      createClient().auth.getUser().then(({ data: { user } }) => {
+        if (user?.email) setEmail(user.email);
+      });
+    });
   }, [setCurrentStep, state.address, state.serviceType, state.propertyType, router]);
 
   const handleCreateReport = async () => {

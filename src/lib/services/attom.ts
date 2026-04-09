@@ -142,6 +142,97 @@ export interface RentalCompParams {
   monthsBack: number;
 }
 
+// ─── Address Normalization ───────────────────────────────────────────────────
+
+/**
+ * Parse a potentially messy address string and extract street, city, and state
+ * components so ATTOM always receives well-formed address1 / address2 params.
+ *
+ * Handles inputs like:
+ *   "2120 N Winchester Ave"                        → street only
+ *   "2120 N Winchester Ave, Chicago"               → street + city
+ *   "2120 N Winchester Ave, Chicago, IL"           → street + city + state
+ *   "2120 N Winchester Ave, Chicago, IL 60613"     → street + city + state + zip
+ *   "2120 N Winchester Ave Chicago IL 60613"       → no-comma variant
+ */
+function parseAddress(
+  rawAddress: string,
+  cityHint?: string | null,
+  stateHint?: string | null
+): { address1: string; address2: string } {
+  const trimmed = rawAddress.trim();
+
+  // If caller already provides city and/or state separately, use those as hints
+  // but still attempt to detect embedded city/state in the raw string.
+
+  // ── Step 1: Try comma-separated split ───────────────────────────────────
+  const parts = trimmed.split(',').map((p) => p.trim()).filter(Boolean);
+
+  if (parts.length >= 3) {
+    // "Street, City, State [Zip]" — extract state (first token of last part)
+    const street = parts[0];
+    const city = parts[1];
+    const stateZip = parts[2].trim().split(/\s+/);
+    const state = stateZip[0];
+    return { address1: street, address2: `${city}, ${state}` };
+  }
+
+  if (parts.length === 2) {
+    // "Street, City" or "Street, City State" or "Street, City State Zip"
+    const street = parts[0];
+    const remainder = parts[1];
+    // Check if remainder contains a state abbreviation at position 2 token
+    const tokens = remainder.split(/\s+/);
+    if (tokens.length >= 2) {
+      // Last non-zip token is likely the state abbreviation (2 uppercase letters)
+      const stateIdx = tokens.findIndex((t) => /^[A-Z]{2}$/.test(t));
+      if (stateIdx > 0) {
+        const city = tokens.slice(0, stateIdx).join(' ');
+        const state = tokens[stateIdx];
+        return { address1: street, address2: `${city}, ${state}` };
+      }
+    }
+    // Fallback: treat entire remainder as city, supplement with state hint
+    const address2 = stateHint
+      ? `${remainder}, ${stateHint}`
+      : remainder;
+    return { address1: street, address2 };
+  }
+
+  // ── Step 2: No commas — try to detect city + state inline ───────────────
+  // Pattern: "<Street Number> <Dir?> <Street Name> <Suffix> <City tokens> <ST> <Zip?>"
+  // We detect a 2-letter uppercase state abbreviation as the split point.
+  const tokens = trimmed.split(/\s+/);
+  const stateIdx = tokens.findIndex((t, i) => i > 0 && /^[A-Z]{2}$/.test(t));
+
+  if (stateIdx > 0) {
+    // Heuristic: street is the first 3–5 tokens (number + direction + name + suffix)
+    // Everything between street and state token is the city
+    const streetTokenCount = Math.min(
+      stateIdx - 1,
+      tokens.findIndex((t, i) => i > 0 && /^(Ave|St|Blvd|Dr|Ln|Rd|Ct|Pl|Way|Pkwy|Hwy|Cir|Ter|Trl|Sq|Loop|Row|Path|Walk|Run|Pass)\.?$/i.test(t)) + 1 || 4
+    );
+    const street = tokens.slice(0, streetTokenCount).join(' ');
+    const city = tokens.slice(streetTokenCount, stateIdx).join(' ');
+    const state = tokens[stateIdx];
+    if (city) {
+      return { address1: street, address2: `${city}, ${state}` };
+    }
+  }
+
+  // ── Step 3: Fallback — use caller-provided hints ─────────────────────────
+  // The raw address is just a street; use city/state from intake form data.
+  if (cityHint && stateHint) {
+    return { address1: trimmed, address2: `${cityHint}, ${stateHint}` };
+  }
+  if (cityHint) {
+    return { address1: trimmed, address2: cityHint };
+  }
+
+  // Last resort: pass as-is and hope ATTOM can match on street alone
+  return { address1: trimmed, address2: '' };
+}
+
 // ─── Internal Helpers ────────────────────────────────────────────────────────
 
 async function attomFetch<T>(
@@ -347,11 +438,15 @@ function normalizeDeedHistory(raw: Record<string, unknown>): AttomDeedRecord[] {
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 export async function getPropertyDetail(
-  address: string
+  address: string,
+  city?: string | null,
+  state?: string | null
 ): Promise<ServiceResult<AttomPropertyDetail>> {
+  const { address1, address2 } = parseAddress(address, city, state);
+  console.log(`[attom] getPropertyDetail address1="${address1}" address2="${address2}"`);
   const result = await attomFetch<Record<string, unknown>>(
     '/property/detail',
-    { address1: address, address2: '' }
+    { address1, address2 }
   );
 
   if (result.error || !result.data) {
@@ -392,6 +487,13 @@ export async function getPropertyDetail(
 export async function getSalesComparables(
   params: SalesCompParams
 ): Promise<ServiceResult<AttomSaleComp[]>> {
+  // ATTOM /sale/snapshot requires startSaleSearchDate + endSaleSearchDate (YYYY/MM/DD)
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setMonth(startDate.getMonth() - params.monthsBack);
+  const formatDate = (d: Date) =>
+    `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+
   const result = await attomFetch<Record<string, unknown>>(
     '/sale/snapshot',
     {
@@ -399,9 +501,10 @@ export async function getSalesComparables(
       longitude: String(params.longitude),
       radius: String(params.radiusMiles),
       propertytype: params.propertyType,
-      minsqft: String(params.minSqft),
-      maxsqft: String(params.maxSqft),
-      saleDateRange: `${params.monthsBack}M`,
+      minUniversalSize: String(params.minSqft),
+      maxUniversalSize: String(params.maxSqft),
+      startSaleSearchDate: formatDate(startDate),
+      endSaleSearchDate: formatDate(endDate),
       orderby: 'distance',
     }
   );
@@ -442,8 +545,8 @@ export async function getRentalComparables(
       longitude: String(params.longitude),
       radius: String(params.radiusMiles),
       propertytype: params.propertyType,
-      minsqft: String(params.minSqft),
-      maxsqft: String(params.maxSqft),
+      minUniversalSize: String(params.minSqft),
+      maxUniversalSize: String(params.maxSqft),
       orderby: 'distance',
     }
   );
@@ -462,11 +565,15 @@ export async function getRentalComparables(
 }
 
 export async function getDeedHistory(
-  address: string
+  address: string,
+  city?: string | null,
+  state?: string | null
 ): Promise<ServiceResult<AttomDeedRecord[]>> {
+  const { address1, address2 } = parseAddress(address, city, state);
+  console.log(`[attom] getDeedHistory address1="${address1}" address2="${address2}"`);
   const result = await attomFetch<Record<string, unknown>>(
     '/sale/history',
-    { address1: address, address2: '' }
+    { address1, address2 }
   );
 
   if (result.error || !result.data) {
@@ -481,3 +588,139 @@ export async function getDeedHistory(
     return { data: null, error: `Failed to parse ATTOM response: ${message}` };
   }
 }
+
+// ─── Assessment Equity Snapshot ──────────────────────────────────────────────
+
+export interface AssessmentEquityProperty {
+  attomId: number;
+  address: string;
+  assessedValue: number;
+  buildingSquareFeet: number;
+  assessedPerSqft: number;
+  yearBuilt: number | null;
+  propertyType: string | null;
+  distanceMiles: number | null;
+}
+
+export interface AssessmentEquityResult {
+  /** Number of nearby properties with valid assessment data */
+  neighborCount: number;
+  /** Subject's assessed value per sqft */
+  subjectAssessedPerSqft: number | null;
+  /** Median assessed $/sqft for nearby comparable properties */
+  medianNeighborAssessedPerSqft: number | null;
+  /** How far above (positive) or below (negative) the median the subject is, in % */
+  equityRatioPct: number | null;
+  /** True when subject is meaningfully above the neighborhood median */
+  isOverAssessed: boolean;
+  /** Raw snapshot for reference / AI narrative detail */
+  neighbors: AssessmentEquityProperty[];
+}
+
+function normalizePropertySnapshot(raw: Record<string, unknown>): AssessmentEquityProperty[] {
+  const properties = (raw as any)?.property ?? [];
+  return (properties as any[])
+    .map((p: any) => {
+      const sqft: number = p.summary?.buildingSqFt ?? 0;
+      const assessed: number = p.assessment?.assessed?.assdTtlValue ?? 0;
+      if (!sqft || sqft <= 0 || !assessed || assessed <= 0) return null;
+      return {
+        attomId: p.identifier?.attomId ?? 0,
+        address: p.address?.line1 ?? '',
+        assessedValue: assessed,
+        buildingSquareFeet: sqft,
+        assessedPerSqft: Math.round((assessed / sqft) * 100) / 100,
+        yearBuilt: p.summary?.yearBuilt ?? null,
+        propertyType: p.summary?.propertyType ?? null,
+        distanceMiles: p.location?.distance ?? null,
+      };
+    })
+    .filter((p): p is AssessmentEquityProperty => p !== null);
+}
+
+/**
+ * Fetch nearby property assessments to compute horizontal equity statistics.
+ *
+ * Queries ATTOM's /property/snapshot endpoint for properties within a given
+ * radius and returns a comparison of the subject's assessed $/sqft vs the
+ * neighborhood median. Used in Stage 2 to build the horizontal inequity argument
+ * even when no comparable sales are available.
+ */
+export async function getAssessmentEquitySnapshot(
+  latitude: number,
+  longitude: number,
+  radiusMiles: number,
+  subjectAssessedValue: number | null,
+  subjectBuildingSqft: number | null
+): Promise<ServiceResult<AssessmentEquityResult>> {
+  const result = await attomFetch<Record<string, unknown>>(
+    '/property/snapshot',
+    {
+      latitude: String(latitude),
+      longitude: String(longitude),
+      radius: String(radiusMiles),
+      orderby: 'distance',
+      pagesize: '50',
+    }
+  );
+
+  if (result.error || !result.data) {
+    return { data: null, error: result.error };
+  }
+
+  try {
+    const neighbors = normalizePropertySnapshot(result.data);
+
+    const subjectAssessedPerSqft =
+      subjectAssessedValue && subjectBuildingSqft && subjectBuildingSqft > 0
+        ? Math.round((subjectAssessedValue / subjectBuildingSqft) * 100) / 100
+        : null;
+
+    const perSqftValues = neighbors
+      .map((n) => n.assessedPerSqft)
+      .filter((v) => v > 0)
+      .sort((a, b) => a - b);
+
+    let medianNeighborAssessedPerSqft: number | null = null;
+    if (perSqftValues.length > 0) {
+      const mid = Math.floor(perSqftValues.length / 2);
+      medianNeighborAssessedPerSqft =
+        perSqftValues.length % 2 === 0
+          ? Math.round(((perSqftValues[mid - 1] + perSqftValues[mid]) / 2) * 100) / 100
+          : perSqftValues[mid];
+    }
+
+    const equityRatioPct =
+      subjectAssessedPerSqft != null && medianNeighborAssessedPerSqft != null && medianNeighborAssessedPerSqft > 0
+        ? Math.round(
+            ((subjectAssessedPerSqft - medianNeighborAssessedPerSqft) / medianNeighborAssessedPerSqft) * 1000
+          ) / 10
+        : null;
+
+    // Threshold: flag as over-assessed when >10% above neighborhood median
+    const isOverAssessed = equityRatioPct != null && equityRatioPct > 10;
+
+    console.log(
+      `[attom] equity snapshot: ${neighbors.length} neighbors, ` +
+      `subject=$${subjectAssessedPerSqft}/sqft, median=$${medianNeighborAssessedPerSqft}/sqft, ` +
+      `ratio=${equityRatioPct}%`
+    );
+
+    return {
+      data: {
+        neighborCount: neighbors.length,
+        subjectAssessedPerSqft,
+        medianNeighborAssessedPerSqft,
+        equityRatioPct,
+        isOverAssessed,
+        neighbors,
+      },
+      error: null,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[attom] Failed to normalize property snapshot: ${message}`);
+    return { data: null, error: `Failed to parse ATTOM snapshot response: ${message}` };
+  }
+}
+

@@ -7,7 +7,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, PropertyType, ComparableSaleInsert, Report, PropertyData } from '@/types/database';
 import type { StageResult } from '../orchestrator';
-import { getSalesComparables, type AttomSaleComp } from '@/lib/services/attom';
+import { getSalesComparables, getAssessmentEquitySnapshot, type AttomSaleComp } from '@/lib/services/attom';
+import { findCompsViaWeb } from '@/lib/services/web-comps';
 import { getMapillaryImageUrl, geocodeAddress } from '@/lib/services/azure-maps';
 import {
   EFFECTIVE_AGE_ADJ_RATE_PER_YEAR,
@@ -22,6 +23,7 @@ import {
   SIZE_ADJ_MAX_PCT,
   LAND_RATIO_THRESHOLD_PCT,
   LAND_RATIO_ADJ_MAX_PCT,
+  EQUITY_SNAPSHOT_RADIUS_MILES,
 } from '@/config/valuation';
 import { getCalibrationParams, type CalibrationMultipliers } from '@/lib/repository/calibration';
 
@@ -327,18 +329,81 @@ export async function runComparables(
     }
   }
 
-  if (allComps.length === 0) {
-    // Graceful degradation: allow pipeline to continue with cost/income approaches.
-    // Stage 5 will detect 0 comps and rely on alternative valuation methods.
-    console.warn(
-      `[stage2] No comparable sales found after all search tiers for report ${reportId}. ` +
-      `Pipeline will continue with cost and/or income approach if available.`
+  // ── Assessment Equity Snapshot (always runs, independent of sales comps) ──
+  // Fetch nearby property assessments to build a horizontal inequity argument.
+  // This runs even when 0 comparable sales exist — it's an independent strategy.
+  if (latitude && longitude) {
+    const equityResult = await getAssessmentEquitySnapshot(
+      latitude,
+      longitude,
+      EQUITY_SNAPSHOT_RADIUS_MILES,
+      propertyData.assessed_value,
+      propertyData.building_sqft_gross
     );
+    if (equityResult.data && equityResult.data.neighborCount > 0) {
+      // Store equity stats inside attom_raw_response under a dedicated key
+      // so stage 5 can pass them to the AI without a schema migration.
+      const existing = (propertyData.attom_raw_response as Record<string, unknown> | null) ?? {};
+      await supabase
+        .from('property_data')
+        .update({
+          attom_raw_response: {
+            ...existing,
+            assessment_equity: {
+              neighborCount: equityResult.data.neighborCount,
+              subjectAssessedPerSqft: equityResult.data.subjectAssessedPerSqft,
+              medianNeighborAssessedPerSqft: equityResult.data.medianNeighborAssessedPerSqft,
+              equityRatioPct: equityResult.data.equityRatioPct,
+              isOverAssessed: equityResult.data.isOverAssessed,
+              // Only store first 20 neighbors to keep JSONB size reasonable
+              neighborSample: equityResult.data.neighbors.slice(0, 20).map((n) => ({
+                address: n.address,
+                assessedPerSqft: n.assessedPerSqft,
+                buildingSquareFeet: n.buildingSquareFeet,
+                yearBuilt: n.yearBuilt,
+                distanceMiles: n.distanceMiles,
+              })),
+            },
+          },
+        })
+        .eq('report_id', reportId);
+      console.log(
+        `[stage2] Equity snapshot stored: ${equityResult.data.neighborCount} neighbors, ` +
+        `subject=$${equityResult.data.subjectAssessedPerSqft}/sqft, ` +
+        `median=$${equityResult.data.medianNeighborAssessedPerSqft}/sqft, ` +
+        `ratio=${equityResult.data.equityRatioPct}%`
+      );
+    } else {
+      console.log(`[stage2] No equity snapshot data (${equityResult.error ?? 'empty response'})`);
+    }
+  }
 
-    // Clean up any stale comps from a previous run
-    await supabase.from('comparable_sales').delete().eq('report_id', reportId);
+  if (allComps.length === 0) {
+    // ── Web search fallback ────────────────────────────────────────────────
+    // ATTOM found nothing — try Serper + Claude to locate comps from real
+    // estate portals (Redfin, Zillow, county records). Returns [] gracefully
+    // if SERPER_API_KEY is absent or no results are found.
+    console.log(`[stage2] ATTOM returned 0 comps — attempting web search fallback for ${reportId}`);
+    const webComps = await findCompsViaWeb({
+      address: report.property_address,
+      city: report.city ?? '',
+      state: report.state_abbreviation ?? report.state ?? '',
+      propertyType,
+      buildingSqFt: subject.buildingSqFt,
+    });
 
-    return { success: true };
+    if (webComps.length > 0) {
+      allComps = webComps;
+      console.log(`[stage2] Web fallback found ${webComps.length} comps — resuming adjustment pipeline`);
+    } else {
+      // Still 0 comps — graceful degradation: equity + cost approach will carry Stage 5.
+      console.warn(
+        `[stage2] No comparable sales from ATTOM or web search for report ${reportId}. ` +
+        `Pipeline will continue with equity, cost, and/or income approach if available.`
+      );
+      await supabase.from('comparable_sales').delete().eq('report_id', reportId);
+      return { success: true };
+    }
   }
 
   // Limit to best comps (closest distance, most recent)
