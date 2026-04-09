@@ -61,6 +61,7 @@ interface ReportData {
   photoDefectCount: number | null;
   photoImpactDollars: number | null;
   photoImpactPct: number | null;
+  valuationMethod: string | null;
 }
 
 function formatDollar(value: number): string {
@@ -296,9 +297,13 @@ export default function ReportViewerPage() {
                   <p className="text-[10px] uppercase tracking-widest text-gold/60 mb-2">Our Concluded Value</p>
                   <p className="font-display text-3xl text-gold">{formatDollar(data.concludedValue)}</p>
                   <p className="text-xs text-cream/25 mt-1.5">
-                    {data.photoImpactDollars && Math.abs(data.photoImpactDollars) >= 1000
-                      ? `Includes ${formatDollar(Math.abs(data.photoImpactDollars))} photo adjustment`
-                      : 'Based on independent analysis'}
+                    {(!data.valuationMethod || data.valuationMethod === 'sales_comparison' || data.valuationMethod === 'sales_income_blend')
+                      ? 'Based on comparable sales'
+                      : data.valuationMethod === 'cost'
+                      ? 'Based on cost approach (no recent sales)'
+                      : data.valuationMethod === 'income'
+                      ? 'Based on income approach'
+                      : 'Based on market analysis'}
                   </p>
                 </div>
               )}

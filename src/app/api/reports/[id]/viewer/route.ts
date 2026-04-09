@@ -116,6 +116,7 @@ export async function GET(
   const photoDefectCount = propertyData?.photo_defect_count ?? null;
   const photoImpactDollars = propertyData?.photo_impact_dollars ?? null;
   const photoImpactPct = propertyData?.photo_impact_pct ?? null;
+  const valuationMethod = (propertyData as unknown as Record<string, unknown>)?.valuation_method as string | null ?? null;
 
   return NextResponse.json({
     ready: true,
@@ -136,6 +137,7 @@ export async function GET(
     photoDefectCount,
     photoImpactDollars,
     photoImpactPct,
+    valuationMethod,
     // County filing info
     outcomeReportedAt: report.outcome_reported_at ?? null,
     appealOutcome: report.appeal_outcome ?? null,

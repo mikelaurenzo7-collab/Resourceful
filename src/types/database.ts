@@ -414,6 +414,10 @@ export type CountyRule = {
   success_rate_pct: number | null;
   success_rate_source: string | null;
   avg_savings_pct: number | null;
+  // Per-county land-to-value ratio overrides (nullable — falls back to IAAO national constant when null)
+  land_ratio_residential: number | null;
+  land_ratio_commercial: number | null;
+  land_ratio_industrial: number | null;
   // Standard fields
   is_active: boolean;
   last_verified_date: string | null;

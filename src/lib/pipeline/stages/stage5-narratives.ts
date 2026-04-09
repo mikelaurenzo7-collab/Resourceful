@@ -294,7 +294,13 @@ export async function runNarratives(
     let landValue = propertyData.land_value ?? null;
     let landValueEstimated = false;
     if (!landValue || landValue <= 0) {
-      const ratio = LAND_RATIO_BY_SUBTYPE[subtype] ?? 0.20;
+      // Use county-specific land ratio if set; fall back to IAAO national constant
+      const countyLandRatio = countyRule
+        ? (report.property_type === 'commercial' ? countyRule.land_ratio_commercial
+          : report.property_type === 'industrial' ? countyRule.land_ratio_industrial
+          : countyRule.land_ratio_residential) ?? null
+        : null;
+      const ratio = countyLandRatio ?? LAND_RATIO_BY_SUBTYPE[subtype] ?? 0.20;
       const assessedBase = propertyData.assessed_value ?? 0;
       // Convert assessed value to market-implied value using county assessment ratio
       // e.g. Cook County: $78K assessed / 0.10 ratio = $780K market-implied
@@ -417,7 +423,12 @@ export async function runNarratives(
     const subtype = propertyData.property_subtype ?? 'residential_sfr';
     let landValue = propertyData.land_value ?? null;
     if (!landValue || landValue <= 0) {
-      const ratio = LAND_RATIO_BY_SUBTYPE[subtype] ?? 0.20;
+      const countyLandRatio = countyRule
+        ? (report.property_type === 'commercial' ? countyRule.land_ratio_commercial
+          : report.property_type === 'industrial' ? countyRule.land_ratio_industrial
+          : countyRule.land_ratio_residential) ?? null
+        : null;
+      const ratio = countyLandRatio ?? LAND_RATIO_BY_SUBTYPE[subtype] ?? 0.20;
       const assessedBase = propertyData.assessed_value ?? 0;
       const base = assessedBase > 0 ? Math.round(assessedBase / (assessmentRatio ?? 1.0)) : 0;
       if (base > 0) landValue = Math.round(base * ratio);
