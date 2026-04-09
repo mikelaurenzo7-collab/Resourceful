@@ -518,3 +518,74 @@ export async function sendPaymentReceipt(
     return { data: null, error: `Payment receipt email failed: ${message}` };
   }
 }
+
+// ─── Abandoned Cart Recovery ─────────────────────────────────────────────────
+
+export interface AbandonedCartRecoveryParams {
+  to: string;
+  clientName: string | null;
+  reportId: string;
+  propertyAddress: string;
+  serviceType: string;
+}
+
+/**
+ * Send a gentle recovery email to users who started checkout but never
+ * completed payment. Non-pushy — emphasizes the work already done on
+ * their property and a direct link to resume.
+ */
+export async function sendAbandonedCartRecovery(
+  params: AbandonedCartRecoveryParams
+): Promise<ServiceResult<EmailResult>> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app';
+  const greeting = params.clientName ? `Hi ${escapeHtml(params.clientName)}` : 'Hi there';
+
+  const serviceCopy: Record<string, string> = {
+    tax_appeal: 'property tax appeal analysis',
+    pre_purchase: 'pre-purchase property analysis',
+    pre_listing: 'pre-listing property analysis',
+  };
+  const serviceDesc = serviceCopy[params.serviceType] ?? 'property analysis';
+
+  try {
+    const result = await sendWithRetry({
+      from: FROM_ADDRESS_LAZY(),
+      to: params.to,
+      subject: `Your ${escapeHtml(params.propertyAddress)} report is waiting`,
+      html: wrapHtml(`
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1 style="color: #1a1a1a; font-size: 24px;">Your Report is Ready to Go</h1>
+          <p>${greeting},</p>
+          <p>We noticed you started a ${escapeHtml(serviceDesc)} for
+            <strong>${escapeHtml(params.propertyAddress)}</strong> but didn't finish
+            checking out.</p>
+
+          <div style="background: #f5f5f5; border-radius: 8px; padding: 20px; margin: 24px 0;">
+            <p style="margin: 0; color: #444;">
+              Your property details are saved. You can pick up right where you left off — no need to re-enter anything.
+            </p>
+          </div>
+
+          <a href="${appUrl}/start/payment?resume=${params.reportId}" style="display: inline-block; background: #2563eb; color: #fff; padding: 14px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 16px;">
+            Complete Your Order
+          </a>
+
+          <p style="margin-top: 24px; font-size: 13px; color: #666;">
+            If you had any trouble during checkout, or have questions about the report, just reply to this email. We're happy to help.
+          </p>
+
+          <p style="margin-top: 32px; font-size: 12px; color: #999;">
+            You received this email because you started an analysis at resourceful.app.
+            If you've changed your mind, no further action is needed — we won't email you again about this.
+          </p>
+        </div>
+      `),
+    });
+
+    return { data: { id: result.data?.id ?? '' }, error: null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[resend] sendAbandonedCartRecovery error: ${message}`);
+    return { data: null, error: `Cart recovery email failed: ${message}` };
+  }
+}
