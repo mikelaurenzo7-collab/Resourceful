@@ -240,6 +240,27 @@ export const REPLACEMENT_COST_PER_SQFT: Record<string, Record<QualityGrade, numb
   agricultural_crop:        { economy: 35,  average: 50,  good: 65,  excellent: 85,  luxury: 85  },
 };
 
+// ─── Bedroom & Bathroom Adjustments (Residential) ───────────────────────────
+// Applied when both subject and comp have known bedroom/bathroom counts.
+// Residential appraisal market studies support ~$10K–$20K per bedroom for
+// average markets (= ~2–4% on a $500K home). We use 3% per bedroom and 1.5%
+// per bathroom (full baths; half baths count as 0.5 in the caller).
+// Caps prevent runaway adjustments when counts differ by 3+ units.
+// Only applied to SFR, condo, and multi-family — NOT commercial/industrial.
+
+export const BEDROOM_ADJ_PCT_PER_UNIT  = 3.0;   // % of sale price per bedroom diff
+export const BEDROOM_ADJ_MAX_PCT       = 9.0;   // cap at ±9% (≈3 bedrooms)
+export const BATHROOM_ADJ_PCT_PER_UNIT = 1.5;   // % per bathroom diff
+export const BATHROOM_ADJ_MAX_PCT      = 6.0;   // cap at ±6% (≈4 bathrooms)
+
+// Property subtypes where bedroom/bathroom adjustments are appropriate.
+// Set for O(1) lookup inside the hot adjustment path.
+export const RESIDENTIAL_SUBTYPES_FOR_ROOM_ADJ = new Set([
+  'residential_sfr',
+  'residential_condo',
+  'residential_multifamily',
+]);
+
 // ─── Conditions of Sale Adjustment ────────────────────────────────────────────
 // Positive upward adjustment applied to distressed sales (REO, foreclosure,
 // short sale, sheriff sale) to bring them to arms-length equivalent.

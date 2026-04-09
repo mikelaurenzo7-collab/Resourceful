@@ -75,9 +75,10 @@ export async function GET(
   const filingGuide = (filingGuideResult.data as Pick<ReportNarrative, 'content'> | null)?.content ?? null;
   const countyRule = countyResult.data as CountyRule | null;
 
-  // Calculate concluded value
+  // Calculate concluded value from comps; fall back to property_data.concluded_value
+  // (set by stage 5 when cost/income approach is used with 0 comps)
   const comps = (compsResult.data ?? []) as { adjusted_price_per_sqft: number | null; sale_price: number | null }[];
-  let concludedValue = 0;
+  let concludedValue = (propertyData as unknown as Record<string, unknown>)?.concluded_value as number | null ?? 0;
   if (comps.length > 0 && propertyData?.building_sqft_gross) {
     const adjustedPrices = comps
       .map((c) => c.adjusted_price_per_sqft)

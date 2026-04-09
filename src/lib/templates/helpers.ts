@@ -257,7 +257,7 @@ export function adjustmentLabel(key: string): string {
     heating_cooling: 'Heating / Cooling',
     stories: 'Stories',
     view: 'View',
-    other: 'Other',
+    other: 'Rooms & Amenities',
   };
   return labels[key] ?? key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }

@@ -277,6 +277,19 @@ async function attomFetch<T>(
       }
 
       if (!response.ok) {
+        // ATTOM returns HTTP 400 with msg="SuccessWithoutResult" for valid queries
+        // with 0 matching records — treat as success with empty property array
+        if (response.status === 400) {
+          const body400 = await response.json().catch(() => null) as Record<string, unknown> | null;
+          const msg = (body400?.status as Record<string, unknown> | null)?.msg ?? '';
+          if (msg === 'SuccessWithoutResult') {
+            console.log(`[attom] ${path} returned 400 SuccessWithoutResult (no matching records)`);
+            return { data: body400 as unknown as T, error: null };
+          }
+          const body400Str = JSON.stringify(body400 ?? '').slice(0, 500);
+          console.error(`[attom] ${path} responded 400: ${body400Str}`);
+          return { data: null, error: `ATTOM API returned 400: ${response.statusText}` };
+        }
         const body = await response.text().catch(() => '');
         console.error(
           `[attom] ${path} responded ${response.status}: ${body.slice(0, 500)}`
@@ -435,6 +448,25 @@ function normalizeDeedHistory(raw: Record<string, unknown>): AttomDeedRecord[] {
   }));
 }
 
+// ─── Property Type Mapping ────────────────────────────────────────────────────
+// Maps our internal property type/subtype strings to the codes ATTOM's
+// /sale/snapshot and /rental/snapshot endpoints accept.
+// 'RESIDENTIAL' is NOT a valid ATTOM code — omitting the filter for broad
+// residential causes ATTOM to return all types within the radius, which is
+// fine because minUniversalSize/maxUniversalSize already narrow the pool.
+function mapToAttomPropertyType(propertyType: string): string | null {
+  const t = propertyType.toLowerCase().replace(/_/g, '');
+  if (t === 'land' || t === 'vacant' || t === 'agricultural') return 'VACANT';
+  if (t === 'commercial') return 'COMMERCIAL';
+  if (t === 'industrial') return 'COMMERCIAL'; // ATTOM lumps most non-resi into COMMERCIAL
+  if (t.includes('sfr') || t.includes('singlefamily')) return 'SFR';
+  if (t.includes('condo') || t.includes('condominium')) return 'CONDOMINIUM';
+  if (t.includes('townhouse') || t.includes('townhome')) return 'TOWNHOUSE';
+  if (t.includes('multifamily') || t.includes('mfr')) return 'MULTIFAMILY';
+  // Generic 'residential' or anything else — omit the filter entirely
+  return null;
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 export async function getPropertyDetail(
@@ -494,19 +526,22 @@ export async function getSalesComparables(
   const formatDate = (d: Date) =>
     `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
 
+  const attomType = mapToAttomPropertyType(params.propertyType);
+  const saleSearchParams: Record<string, string> = {
+    latitude: String(params.latitude),
+    longitude: String(params.longitude),
+    radius: String(params.radiusMiles),
+    minUniversalSize: String(params.minSqft),
+    maxUniversalSize: String(params.maxSqft),
+    startSaleSearchDate: formatDate(startDate),
+    endSaleSearchDate: formatDate(endDate),
+    orderby: 'distance',
+  };
+  if (attomType) saleSearchParams.propertytype = attomType;
+
   const result = await attomFetch<Record<string, unknown>>(
     '/sale/snapshot',
-    {
-      latitude: String(params.latitude),
-      longitude: String(params.longitude),
-      radius: String(params.radiusMiles),
-      propertytype: params.propertyType,
-      minUniversalSize: String(params.minSqft),
-      maxUniversalSize: String(params.maxSqft),
-      startSaleSearchDate: formatDate(startDate),
-      endSaleSearchDate: formatDate(endDate),
-      orderby: 'distance',
-    }
+    saleSearchParams
   );
 
   if (result.error || !result.data) {
@@ -538,17 +573,20 @@ export async function getSalesComparables(
 export async function getRentalComparables(
   params: RentalCompParams
 ): Promise<ServiceResult<AttomRentalComp[]>> {
+  const rentalAttomType = mapToAttomPropertyType(params.propertyType);
+  const rentalSearchParams: Record<string, string> = {
+    latitude: String(params.latitude),
+    longitude: String(params.longitude),
+    radius: String(params.radiusMiles),
+    minUniversalSize: String(params.minSqft),
+    maxUniversalSize: String(params.maxSqft),
+    orderby: 'distance',
+  };
+  if (rentalAttomType) rentalSearchParams.propertytype = rentalAttomType;
+
   const result = await attomFetch<Record<string, unknown>>(
     '/rental/snapshot',
-    {
-      latitude: String(params.latitude),
-      longitude: String(params.longitude),
-      radius: String(params.radiusMiles),
-      propertytype: params.propertyType,
-      minUniversalSize: String(params.minSqft),
-      maxUniversalSize: String(params.maxSqft),
-      orderby: 'distance',
-    }
+    rentalSearchParams
   );
 
   if (result.error || !result.data) {

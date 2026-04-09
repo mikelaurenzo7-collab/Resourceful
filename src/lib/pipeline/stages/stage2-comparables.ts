@@ -24,6 +24,11 @@ import {
   LAND_RATIO_THRESHOLD_PCT,
   LAND_RATIO_ADJ_MAX_PCT,
   EQUITY_SNAPSHOT_RADIUS_MILES,
+  BEDROOM_ADJ_PCT_PER_UNIT,
+  BEDROOM_ADJ_MAX_PCT,
+  BATHROOM_ADJ_PCT_PER_UNIT,
+  BATHROOM_ADJ_MAX_PCT,
+  RESIDENTIAL_SUBTYPES_FOR_ROOM_ADJ,
 } from '@/config/valuation';
 import { getCalibrationParams, type CalibrationMultipliers } from '@/lib/repository/calibration';
 
@@ -83,7 +88,10 @@ interface SubjectData {
   buildingSqFt: number;
   lotSqFt: number;
   yearBuilt: number;
-  effectiveAge: number;   // from property_data.effective_age (Stage 1 baseline)
+  effectiveAge: number;      // from property_data.effective_age (Stage 1 baseline)
+  bedrooms: number | null;   // for residential bed/bath adjustments
+  bathrooms: number | null;  // full + 0.5×half baths
+  propertySubtype: string | null; // controls which adjustments apply
 }
 
 interface AdjustmentResult {
@@ -116,7 +124,7 @@ function calculateAdjustments(
   // to arms-length equivalent. IAAO guidance supports +10%–+20% range.
   const { isDistressed } = classifySaleCondition(comp);
   const adjustment_pct_conditions_of_sale = isDistressed ? DISTRESSED_SALE_ADJ_PCT : 0;
-  const adjustment_pct_other = 0;
+  let adjustment_pct_other = 0;
 
   // Location adjustment: comps beyond 0.5 miles may be in different sub-markets.
   // We apply a conservative, distance-proportional adjustment using the
@@ -207,6 +215,29 @@ function calculateAdjustments(
     }
   }
 
+  // Bedroom & bathroom adjustment — residential properties only.
+  // Direction: (subject.feature − comp.feature) × rate
+  //   Positive → subject is superior (comp had fewer) → adjust comp price UP.
+  //   Negative → comp is superior (comp had more)  → adjust comp price DOWN.
+  // Stored in adjustment_pct_other (only field not already allocated).
+  if (
+    subject.propertySubtype &&
+    RESIDENTIAL_SUBTYPES_FOR_ROOM_ADJ.has(subject.propertySubtype)
+  ) {
+    let roomAdj = 0;
+    if (subject.bedrooms != null && comp.bedrooms != null && comp.bedrooms > 0) {
+      const bedDiff = subject.bedrooms - comp.bedrooms;
+      const rawBedAdj = bedDiff * BEDROOM_ADJ_PCT_PER_UNIT;
+      roomAdj += Math.max(Math.min(rawBedAdj, BEDROOM_ADJ_MAX_PCT), -BEDROOM_ADJ_MAX_PCT);
+    }
+    if (subject.bathrooms != null && comp.bathrooms != null && comp.bathrooms > 0) {
+      const bathDiff = subject.bathrooms - comp.bathrooms;
+      const rawBathAdj = bathDiff * BATHROOM_ADJ_PCT_PER_UNIT;
+      roomAdj += Math.max(Math.min(rawBathAdj, BATHROOM_ADJ_MAX_PCT), -BATHROOM_ADJ_MAX_PCT);
+    }
+    adjustment_pct_other = Math.round(roomAdj * 100) / 100;
+  }
+
   // Calculate net adjustment
   const net_adjustment_pct =
     adjustment_pct_property_rights +
@@ -221,7 +252,21 @@ function calculateAdjustments(
 
   const roundedNet = Math.round(net_adjustment_pct * 100) / 100;
   const adjustedSalePrice = Math.round(comp.salePrice * (1 + roundedNet / 100));
-  const is_weak_comparable = Math.abs(roundedNet) > 25;
+
+  // Flag weak comparables: net > 25% OR gross (sum of |adjustments|) > 35%.
+  // Gross check catches offsetting adjustments that inflate uncertainty
+  // even when the net is small (e.g. +20% size offset by -20% condition).
+  const grossAdjPct =
+    Math.abs(adjustment_pct_property_rights) +
+    Math.abs(adjustment_pct_financing_terms) +
+    Math.abs(adjustment_pct_conditions_of_sale) +
+    Math.abs(adjustment_pct_market_trends) +
+    Math.abs(adjustment_pct_location) +
+    Math.abs(adjustment_pct_size) +
+    Math.abs(adjustment_pct_land_to_building) +
+    Math.abs(adjustment_pct_condition) +
+    Math.abs(adjustment_pct_other);
+  const is_weak_comparable = Math.abs(roundedNet) > 25 || grossAdjPct > 35;
 
   return {
     adjustment_pct_property_rights,
@@ -295,6 +340,12 @@ export async function runComparables(
     effectiveAge: propertyData.effective_age ?? (propertyData.year_built
       ? new Date().getFullYear() - propertyData.year_built
       : 0),
+    bedrooms: propertyData.bedroom_count ?? null,
+    // Combine full + half baths: half baths count as 0.5 (standard appraisal practice)
+    bathrooms: propertyData.full_bath_count != null
+      ? propertyData.full_bath_count + (propertyData.half_bath_count ?? 0) * 0.5
+      : null,
+    propertySubtype: propertyData.property_subtype ?? null,
   };
 
   const tiers = SEARCH_TIERS[propertyType] ?? SEARCH_TIERS.residential;
@@ -309,7 +360,7 @@ export async function runComparables(
     const result = await getSalesComparables({
       latitude,
       longitude,
-      propertyType: propertyType === 'land' ? 'VACANT' : propertyType.toUpperCase(),
+      propertyType: propertyData.property_subtype ?? propertyType,
       minSqft: Math.max(minSqft, 0),
       maxSqft: maxSqft || 99999,
       radiusMiles: tier.radiusMiles,

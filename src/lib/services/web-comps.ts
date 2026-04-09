@@ -89,6 +89,27 @@ function buildSearchQueries(ctx: WebCompsContext): [string, string] {
   return [q1, q2];
 }
 
+// ─── Subject Property Address Filter ───────────────────────────────────────
+// After Claude extraction, strip any comp whose address matches the subject.
+// Claude is instructed to exclude it in the prompt, but occasionally still
+// returns the subject property itself (e.g. a Zillow/Redfin listing page for
+// the address). This catches those cases with a normalized string comparison.
+
+function isSubjectProperty(compAddress: string, subjectAddress: string): boolean {
+  const normalize = (s: string) =>
+    s.toLowerCase().replace(/[.,#]/g, '').replace(/\s+/g, ' ').trim();
+  const compNorm  = normalize(compAddress);
+  const subjNorm  = normalize(subjectAddress);
+  // Quick full-string check
+  if (compNorm === subjNorm) return true;
+  // Number-level check: same house number AND shared meaningful street token
+  const compTokens = compNorm.split(' ');
+  const subjTokens = subjNorm.split(' ');
+  if (!compTokens[0] || !subjTokens[0] || compTokens[0] !== subjTokens[0]) return false;
+  const subjSet = new Set(subjTokens.slice(1).filter((t) => t.length > 1));
+  return compTokens.slice(1).some((t) => t.length > 1 && subjSet.has(t));
+}
+
 // ─── Core Extraction (Claude) ────────────────────────────────────────────────
 
 async function extractCompsFromSearchContent(
@@ -186,7 +207,13 @@ Return ONLY the JSON array. No explanation, no markdown.`;
       const price = Number(c.salePrice ?? 0);
       const hasDate = typeof c.saleDate === 'string' && c.saleDate.length >= 4;
       const hasAddress = typeof c.address === 'string' && c.address.trim().length > 0;
-      return conf !== 'low' && price > 0 && hasDate && hasAddress;
+      if (conf === 'low' || price <= 0 || !hasDate || !hasAddress) return false;
+      // Exclude the subject property — Claude sometimes returns it despite instructions
+      if (isSubjectProperty(String(c.address), ctx.address)) {
+        console.log(`[web-comps] Filtered subject property from comps: ${c.address}`);
+        return false;
+      }
+      return true;
     })
     .map((c, i) => {
       const price = Number(c.salePrice);

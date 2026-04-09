@@ -1295,7 +1295,7 @@ function renderAdjustmentGrid(
     { label: 'Size', field: 'adjustment_pct_size', isTransaction: false },
     { label: 'Land-to-Building Ratio', field: 'adjustment_pct_land_to_building', isTransaction: false },
     { label: 'Condition', field: 'adjustment_pct_condition', isTransaction: false },
-    { label: 'Other', field: 'adjustment_pct_other', isTransaction: false },
+    { label: 'Rooms & Amenities', field: 'adjustment_pct_other', isTransaction: false },
   ];
 
   const activeRows = adjustmentRows.filter((row) =>

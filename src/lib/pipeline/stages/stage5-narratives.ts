@@ -203,6 +203,26 @@ export async function runNarratives(
     countyRule = data as CountyRule | null;
   }
 
+  // ── Derive assessment ratio — needed early for cost-approach land estimation ──
+  let assessmentRatio: number | null = null;
+  if (countyRule) {
+    switch (report.property_type) {
+      case 'commercial':
+        assessmentRatio = countyRule.assessment_ratio_commercial;
+        break;
+      case 'industrial':
+        assessmentRatio = countyRule.assessment_ratio_industrial;
+        break;
+      case 'agricultural':
+        assessmentRatio = (countyRule as Record<string, unknown>).assessment_ratio_agricultural as number | null
+          ?? countyRule.assessment_ratio_residential;
+        break;
+      default:
+        assessmentRatio = countyRule.assessment_ratio_residential;
+        break;
+    }
+  }
+
   // ── Load calibration params (learned value bias correction) ───────────
   const cal = await getCalibrationParams(
     supabase,
@@ -275,13 +295,16 @@ export async function runNarratives(
     let landValueEstimated = false;
     if (!landValue || landValue <= 0) {
       const ratio = LAND_RATIO_BY_SUBTYPE[subtype] ?? 0.20;
-      const base = propertyData.assessed_value ?? 0;
+      const assessedBase = propertyData.assessed_value ?? 0;
+      // Convert assessed value to market-implied value using county assessment ratio
+      // e.g. Cook County: $78K assessed / 0.10 ratio = $780K market-implied
+      const base = assessedBase > 0 ? Math.round(assessedBase / (assessmentRatio ?? 1.0)) : 0;
       if (base > 0) {
         landValue = Math.round(base * ratio);
         landValueEstimated = true;
         console.warn(
           `[stage5] land_value missing — estimating as $${landValue.toLocaleString()} ` +
-          `(${(ratio * 100).toFixed(0)}% of assessed $${base.toLocaleString()} per IAAO ${subtype} ratio)`
+          `(${(ratio * 100).toFixed(0)}% of market-implied $${base.toLocaleString()} [assessed $${assessedBase.toLocaleString()} / ratio ${assessmentRatio ?? 1.0}] per IAAO ${subtype} ratio)`
         );
       }
     }
@@ -395,7 +418,8 @@ export async function runNarratives(
     let landValue = propertyData.land_value ?? null;
     if (!landValue || landValue <= 0) {
       const ratio = LAND_RATIO_BY_SUBTYPE[subtype] ?? 0.20;
-      const base = propertyData.assessed_value ?? 0;
+      const assessedBase = propertyData.assessed_value ?? 0;
+      const base = assessedBase > 0 ? Math.round(assessedBase / (assessmentRatio ?? 1.0)) : 0;
       if (base > 0) landValue = Math.round(base * ratio);
     }
     const qualityGrade = propertyData.quality_grade ?? 'average';
@@ -555,12 +579,19 @@ export async function runNarratives(
   }
 
   // ── Two-way analysis: overassessment vs. underassessment ──────────────
-  const assessedForTwoWay = propertyData.assessed_value ?? 0;
-  const overassessmentDollars = concludedValue > 0 && assessedForTwoWay > concludedValue
-    ? assessedForTwoWay - concludedValue
+  // For fractional-assessment counties (ratio < 1.0), convert assessed value
+  // to the assessor's implied market value before comparing against our
+  // concluded market value.
+  // e.g. Cook County: $78K assessed / 0.10 = $780K assessor-implied market value
+  const rawAssessed = propertyData.assessed_value ?? 0;
+  const assessorImpliedMarket = assessmentRatio && assessmentRatio > 0 && assessmentRatio < 1.0
+    ? Math.round(rawAssessed / assessmentRatio)
+    : rawAssessed;
+  const overassessmentDollars = concludedValue > 0 && assessorImpliedMarket > concludedValue
+    ? assessorImpliedMarket - concludedValue
     : 0;
-  const underassessmentPct = concludedValue > 0 && assessedForTwoWay > 0 && concludedValue > assessedForTwoWay
-    ? Math.round(((concludedValue - assessedForTwoWay) / concludedValue) * 1000) / 10
+  const underassessmentPct = concludedValue > 0 && assessorImpliedMarket > 0 && concludedValue > assessorImpliedMarket
+    ? Math.round(((concludedValue - assessorImpliedMarket) / concludedValue) * 1000) / 10
     : 0;
   const isUnderassessed = underassessmentPct > 5; // meaningful underassessment threshold
 
@@ -617,25 +648,7 @@ export async function runNarratives(
     `is_underassessed=${isUnderassessed}${isUnderassessed ? ` (${underassessmentPct}% under)` : ''}`
   );
 
-  // ── Determine assessment ratio based on property type ──────────────────
-  let assessmentRatio: number | null = null;
-  if (countyRule) {
-    switch (report.property_type) {
-      case 'commercial':
-        assessmentRatio = countyRule.assessment_ratio_commercial;
-        break;
-      case 'industrial':
-        assessmentRatio = countyRule.assessment_ratio_industrial;
-        break;
-      case 'agricultural':
-        assessmentRatio = (countyRule as Record<string, unknown>).assessment_ratio_agricultural as number | null
-          ?? countyRule.assessment_ratio_residential;
-        break;
-      default:
-        assessmentRatio = countyRule.assessment_ratio_residential;
-        break;
-    }
-  }
+  // assessmentRatio was computed above (after countyRule fetch) and is already set.
 
   // ── Compute overvaluation analysis ───────────────────────────────────
   // Pre-compute every angle where the assessor may have missed the mark.

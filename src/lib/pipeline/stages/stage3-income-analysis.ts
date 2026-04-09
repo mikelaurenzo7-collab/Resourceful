@@ -80,7 +80,7 @@ export async function runIncomeAnalysis(
   const rentalResult = await getRentalComparables({
     latitude,
     longitude,
-    propertyType: report.property_type.toUpperCase(),
+    propertyType: subtype,
     minSqft: Math.round(buildingSqFt * 0.6),
     maxSqft: Math.round(buildingSqFt * 1.4) || 99999,
     radiusMiles: 5,
