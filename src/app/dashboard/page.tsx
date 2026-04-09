@@ -1,9 +1,18 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
 import type { Report, ReportStatus } from '@/types/database';
+import { logger } from '@/lib/logger';
 
-export const dynamic = 'force-dynamic';
+export const metadata: Metadata = {
+  title: 'Dashboard',
+  description: 'View your property tax appeal reports, track pipeline progress, and download completed analyses.',
+  robots: { index: false, follow: false },
+};
+
+// Allow Next.js to determine caching per-request (auth makes this dynamic automatically)
+export const revalidate = 0;
 import PipelineProgress from '@/components/dashboard/PipelineProgress';
 import ReportDownload from '@/components/dashboard/ReportDownload';
 import AppealJourney from '@/components/dashboard/AppealJourney';
@@ -109,7 +118,7 @@ export default async function DashboardPage() {
         .eq('client_email', userEmail.toLowerCase())
         .is('user_id', null);
     } catch (linkErr) {
-      console.warn('[dashboard] Report linking failed (non-fatal):', linkErr);
+      logger.warn({ err: String(linkErr) }, '[dashboard] Report linking failed (non-fatal)');
     }
   }
 
@@ -130,7 +139,7 @@ export default async function DashboardPage() {
   const userReports = (reports ?? []) as unknown as Report[];
 
   if (error) {
-    console.error('[dashboard] Failed to fetch reports:', error.message);
+    logger.error({ err: error.message }, '[dashboard] Failed to fetch reports');
   }
 
   // ── Split active / past ──────────────────────────────────────────────────

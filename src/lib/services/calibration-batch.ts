@@ -147,7 +147,7 @@ export async function runCalibrationBatch(
     return { upserted: 0, skipped: 0, errors: 0 };
   }
 
-  apiLogger.info(`[calibration-batch] Processing ${entries.length} calibration entries`);
+  apiLogger.info({ length: entries.length }, '[calibration-batch] Processing calibration entries');
 
   // Group entries by (property_type, county_fips)
   const groups = new Map<string, CalibrationEntryRow[]>();
@@ -205,8 +205,8 @@ export async function runCalibrationBatch(
 
     if (upsertError) {
       apiLogger.error(
-        `[calibration-batch] Upsert failed for ${params.property_type}/${params.county_fips}:`,
-        upsertError.message
+        { propertyType: params.property_type, countyFips: params.county_fips, err: upsertError.message },
+        '[calibration-batch] Upsert failed'
       );
       errors++;
       continue;

@@ -105,11 +105,11 @@ export async function sendDueReminders(): Promise<{ sent: number; errors: number
     .or(`last_reminded_year.is.null,last_reminded_year.lt.${currentYear}`);
 
   if (!dueReminders || dueReminders.length === 0) {
-    emailLogger.info(`[reminders] No reminders due for month ${currentMonth}`);
+    emailLogger.info({ currentMonth }, '[reminders] No reminders due for month');
     return { sent: 0, errors: 0 };
   }
 
-  emailLogger.info(`[reminders] ${dueReminders.length} reminders due for month ${currentMonth}`);
+  emailLogger.info({ length: dueReminders.length, currentMonth }, '[reminders] reminders due for month');
 
   let sent = 0;
   let errors = 0;
@@ -118,7 +118,7 @@ export async function sendDueReminders(): Promise<{ sent: number; errors: number
     try {
       // Reminder email — uses same Resend service as report delivery
       // Will be fully implemented when email templates are designed
-      emailLogger.info(`[reminders] Would send reminder for ${(reminder as { id: string }).id} (email sending pending template design)`);
+      emailLogger.info({ reminder: (reminder as { id: string }).id }, '[reminders] Would send reminder for (email sending pending template design)');
 
       // Mark as sent
       await supabase
@@ -130,10 +130,10 @@ export async function sendDueReminders(): Promise<{ sent: number; errors: number
         .eq('id' as never, (reminder as { id: string }).id);
 
       sent++;
-      emailLogger.info(`[reminders] Sent reminder for ${(reminder as { id: string }).id}`);
+      emailLogger.info({ reminder: (reminder as { id: string }).id }, '[reminders] Sent reminder for');
     } catch (err) {
       errors++;
-      emailLogger.error(`[reminders] Failed to send reminder: ${err}`);
+      emailLogger.error({ err }, '[reminders] Failed to send reminder');
     }
   }
 

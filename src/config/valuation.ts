@@ -1,3 +1,5 @@
+import { logger } from '@/lib/logger';
+
 // ─── Valuation Configuration ─────────────────────────────────────────────────
 // Single source of truth for all valuation parameters: IAAO economic life
 // schedules, property subtype mapping, income approach assumptions, adjustment
@@ -373,7 +375,7 @@ export function resolvePropertySubtype(
     case 'agricultural': return 'agricultural_general';
     case 'land':        return 'land';
     default:
-      console.warn(`[valuation] Unknown property type '${propertyType}' — defaulting to residential_sfr`);
+      logger.warn({ propertyType }, '[valuation] Unknown property type — defaulting to residential_sfr');
       return 'residential_sfr';
   }
 }

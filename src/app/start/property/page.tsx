@@ -70,6 +70,7 @@ export default function PropertyPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assessedValue, taxAmount, taxYear, pin, showTaxBillForm]);
 
+  const [attempted, setAttempted] = useState(false);
   const canContinue = state.address && state.propertyType;
 
   return (
@@ -93,6 +94,9 @@ export default function PropertyPage() {
             initialAddress={state.address}
             onAddressSelect={(addr) => updateState({ address: addr })}
           />
+          {attempted && !state.address && (
+            <p role="alert" className="mt-2 text-sm text-red-400">Please select an address to continue.</p>
+          )}
           {state.address && (
             <div className="mt-3 rounded-lg bg-emerald-500/[0.06] border border-emerald-500/20 px-4 py-2.5 flex items-center gap-2.5 animate-fade-in">
               <div className="w-5 h-5 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
@@ -114,6 +118,9 @@ export default function PropertyPage() {
             selected={state.propertyType}
             onChange={(pt) => updateState({ propertyType: pt })}
           />
+          {attempted && !state.propertyType && state.address && (
+            <p role="alert" className="mt-2 text-sm text-red-400">Please select a property type.</p>
+          )}
         </section>
 
         {/* Tax Bill Upload */}
@@ -248,7 +255,10 @@ export default function PropertyPage() {
           size="lg"
           fullWidth
           disabled={!canContinue}
-          onClick={() => router.push('/start/situation')}
+          onClick={() => {
+            if (!canContinue) { setAttempted(true); return; }
+            router.push('/start/situation');
+          }}
         >
           Continue
           <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

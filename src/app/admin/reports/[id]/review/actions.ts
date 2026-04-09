@@ -13,7 +13,9 @@ import type {
   ReportStatus,
   AdminUser,
   ReportNarrative,
+  Report,
 } from '@/types/database';
+import { adminLogger } from '@/lib/logger';
 
 async function getAdminUserId(): Promise<string> {
   const supabase = await createClient();
@@ -59,7 +61,7 @@ export async function approveReport(reportId: string) {
 
   // Run Stage 8: generates signed PDF URL, emails client, updates status,
   // and records approval event — all in one atomic flow.
-  const result = await runDelivery(reportId, adminUserId, supabase as any);
+  const result = await runDelivery(reportId, adminUserId, supabase as never);
 
   if (!result.success) {
     throw new Error(`Delivery failed: ${result.error}`);
@@ -69,22 +71,22 @@ export async function approveReport(reportId: string) {
   try {
     // Fetch report to check tier and filing eligibility
     const { data: reportData } = await supabase.from('reports').select('*').eq('id', reportId).single();
-    const report = reportData as any;
+    const report = reportData as unknown as Report | null;
 
     if (report && isFilingEligible(report)) {
-      console.log(`[approve] Auto-filing for report ${reportId} (tier: ${report.review_tier})`);
+      adminLogger.info({ reportId, tier: report.review_tier }, '[approve] Auto-filing for report');
       fileAppeal(reportId).catch(err =>
-        console.error(`[approve] Filing failed for ${reportId}: ${err}`)
+        adminLogger.error({ reportId, err: String(err) }, '[approve] Filing failed')
       );
     }
 
     // Subscribe to annual reminders (all delivered reports)
     subscribeToReminders(reportId).catch(err =>
-      console.error(`[approve] Reminder subscription failed for ${reportId}: ${err}`)
+      adminLogger.error({ reportId, err: String(err) }, '[approve] Reminder subscription failed')
     );
   } catch (err) {
     // Non-fatal — delivery already succeeded
-    console.warn(`[approve] Post-delivery tasks failed (non-fatal): ${err}`);
+    adminLogger.warn({ err: String(err) }, '[approve] Post-delivery tasks failed (non-fatal)');
   }
 
   revalidatePath('/admin/reports');
@@ -129,7 +131,7 @@ export async function rejectReport(reportId: string, notes: string) {
     propertyAddress: (reportData as { property_address: string } | null)?.property_address ?? 'Unknown',
     notes,
   }).catch((err) => {
-    console.error('[admin] Failed to send rejection alert email:', err);
+    adminLogger.error({ err: String(err) }, '[admin] Failed to send rejection alert email');
   });
 
   revalidatePath('/admin/reports');
@@ -213,7 +215,7 @@ export async function editSection(
 
   // Fire-and-forget pipeline from stage 7
   runPipeline(reportId, 7).catch((err) => {
-    console.error(`[admin] PDF regeneration failed for report ${reportId}:`, err);
+    adminLogger.error({ reportId, err: String(err) }, '[admin] PDF regeneration failed');
   });
 
   revalidatePath(`/admin/reports/${reportId}/review`);
@@ -244,7 +246,7 @@ export async function regenerateSection(reportId: string, sectionName: string) {
 
   // Fire-and-forget pipeline from stage 5
   runPipeline(reportId, 5).catch((err) => {
-    console.error(`[admin] Section regeneration failed for report ${reportId}:`, err);
+    adminLogger.error({ reportId, err: String(err) }, '[admin] Section regeneration failed');
   });
 
   revalidatePath(`/admin/reports/${reportId}/review`);
@@ -278,7 +280,7 @@ export async function rerunPipeline(reportId: string) {
 
   // Fire-and-forget full pipeline rerun from stage 1
   runPipeline(reportId, 1).catch((err) => {
-    console.error(`[admin] Pipeline rerun failed for report ${reportId}:`, err);
+    adminLogger.error({ reportId, err: String(err) }, '[admin] Pipeline rerun failed');
   });
 
   revalidatePath('/admin/reports');

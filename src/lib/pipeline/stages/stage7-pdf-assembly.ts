@@ -52,7 +52,7 @@ export async function runPdfAssembly(
   }
 
   if (qaIssues.length > 0) {
-    pipelineLogger.warn({ err: qaIssues }, `QA pre-flight warnings for report ${reportId}`);
+    pipelineLogger.warn({ reportId, qaIssues }, '[stage7] QA pre-flight warnings');
     // Hard-fail on critical issues (no comps, no concluded value)
     const hardFails = qaIssues.filter(
       i => i.includes('No comparable sales') || i.includes('Concluded value')
@@ -70,7 +70,7 @@ export async function runPdfAssembly(
   ].filter(Boolean).join(', ');
 
   // ── Generate PDF ─────────────────────────────────────────────────────
-  pipelineLogger.info(`[stage7] Rendering PDF for report ${reportId}...`);
+  pipelineLogger.info({ reportId }, '[stage7] Rendering PDF for report ...');
 
   let pdfBuffer: Buffer;
   try {
@@ -116,7 +116,8 @@ export async function runPdfAssembly(
   // Removed from stage7 to prevent duplicate emails.
 
   pipelineLogger.info(
-    `[stage7] PDF assembled and uploaded for report ${reportId}. Size: ${(pdfBuffer.length / 1024).toFixed(0)}KB`
+    { reportId, sizeKB: (pdfBuffer.length / 1024).toFixed(0) },
+    '[stage7] PDF assembled and uploaded'
   );
 
   return { success: true };

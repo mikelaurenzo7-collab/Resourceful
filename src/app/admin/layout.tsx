@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { isFounderEmail } from '@/config/founders';
 import type { AdminUser } from '@/types/database';
 import AdminSidebar from '@/components/admin/AdminSidebar';
+import { adminLogger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,7 @@ export default async function AdminLayout({
       .single();
     adminUser = newAdmin as unknown as AdminUser | null;
     if (adminUser) {
-      console.log(`[admin] Auto-provisioned admin access for founder: ${user.id}`);
+      adminLogger.info({ userId: user.id }, '[admin] Auto-provisioned admin access for founder');
     }
   }
 

@@ -68,7 +68,7 @@ async function serperSearch(
       body: JSON.stringify({ q: query, num: 8 }),
     });
     if (!res.ok) {
-      apiLogger.warn(`[web-market-data] Serper returned ${res.status}`);
+      apiLogger.warn({ status: res.status }, '[web-market-data] Serper returned');
       return [];
     }
     const data = (await res.json()) as {
@@ -81,8 +81,8 @@ async function serperSearch(
     }));
   } catch (err) {
     apiLogger.warn(
-      '[web-market-data] Serper error:',
-      err instanceof Error ? err.message : String(err),
+      { err: err instanceof Error ? err.message : String(err) },
+      '[web-market-data] Serper error'
     );
     return [];
   }
@@ -458,8 +458,8 @@ export async function researchMarketData(
     return overrides;
   } catch (err) {
     apiLogger.warn(
-      '[web-market-data] Error:',
-      err instanceof Error ? err.message : String(err),
+      { err: err instanceof Error ? err.message : String(err) },
+      '[web-market-data] Error'
     );
     return { ...EMPTY_OVERRIDES };
   }

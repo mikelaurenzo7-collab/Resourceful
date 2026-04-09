@@ -218,7 +218,7 @@ export async function runPhotoAnalysis(
     `complete package: ${hasCompletePackage}`
   );
 
-  pipelineLogger.info(`[stage4] Analyzing ${photos.length} photos for report ${reportId}`);
+  pipelineLogger.info({ length: photos.length, reportId }, '[stage4] Analyzing photos for report');
 
   // ── Analyze photos in parallel batches of 3 ──────────────────────────
   const conditionRatings: string[] = [];
@@ -243,7 +243,7 @@ export async function runPhotoAnalysis(
         }
 
         if (!imageUrl) {
-          pipelineLogger.warn(`[stage4] No URL available for photo ${photo.id}, skipping`);
+          pipelineLogger.warn({ id: photo.id }, '[stage4] No URL available for photo , skipping');
           return null;
         }
 
@@ -260,7 +260,7 @@ export async function runPhotoAnalysis(
         const result = await analyzePhoto(imageUrl, fullPrompt, userContext);
 
         if (result.error || !result.data) {
-          pipelineLogger.warn(`[stage4] Photo analysis failed for ${photo.id}: ${result.error}`);
+          pipelineLogger.warn({ id: photo.id, error: result.error }, '[stage4] Photo analysis failed for');
           return null;
         }
 
@@ -280,7 +280,7 @@ export async function runPhotoAnalysis(
           .eq('id', photo.id);
 
         if (photoUpdateError) {
-          pipelineLogger.warn(`[stage4] Failed to update photo ${photo.id}: ${photoUpdateError.message}`);
+          pipelineLogger.warn({ id: photo.id, message: photoUpdateError.message }, '[stage4] Failed to update photo');
         }
 
         pipelineLogger.info(
@@ -332,7 +332,7 @@ export async function runPhotoAnalysis(
       .eq('report_id', reportId);
 
     if (ageUpdateError) {
-      pipelineLogger.warn(`[stage4] Failed to update effective age: ${ageUpdateError.message}`);
+      pipelineLogger.warn({ message: ageUpdateError.message }, '[stage4] Failed to update effective age');
     } else {
       pipelineLogger.info(
         `[stage4] Effective age updated: ${propertyDataForAge.year_built} built, ` +
@@ -423,7 +423,7 @@ export async function runPhotoAnalysis(
           .eq('id', comp.id);
 
         if (compUpdateError) {
-          pipelineLogger.warn(`[stage4] Failed to update comp ${comp.id}: ${compUpdateError.message}`);
+          pipelineLogger.warn({ id: comp.id, message: compUpdateError.message }, '[stage4] Failed to update comp');
         }
       }
 

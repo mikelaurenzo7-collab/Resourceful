@@ -72,7 +72,7 @@ export async function runIncomeAnalysis(
 
   // For residential, only multifamily gets income analysis
   if (report.property_type === 'residential' && subtype !== 'residential_multifamily') {
-    pipelineLogger.info(`[stage3] Skipping income analysis for non-multifamily residential (subtype: ${subtype})`);
+    pipelineLogger.info({ subtype }, '[stage3] Skipping income analysis for non-multifamily residential (subtype: )');
     return { success: true };
   }
 
@@ -106,7 +106,7 @@ export async function runIncomeAnalysis(
     .eq('report_id', reportId);
 
   if (deleteRentalsError) {
-    pipelineLogger.warn(`[stage3] Failed to delete existing rental comps: ${deleteRentalsError.message}`);
+    pipelineLogger.warn({ message: deleteRentalsError.message }, '[stage3] Failed to delete existing rental comps');
   }
 
   let concludedMarketRentPerSqFtYr = 0;
@@ -132,7 +132,7 @@ export async function runIncomeAnalysis(
       .insert(rentalInserts);
 
     if (rentalInsertError) {
-      pipelineLogger.warn(`[stage3] Failed to insert rental comps: ${rentalInsertError.message}`);
+      pipelineLogger.warn({ message: rentalInsertError.message }, '[stage3] Failed to insert rental comps');
     }
 
     // Calculate concluded market rent from comparables (median rent_per_sqft_yr)
@@ -153,7 +153,7 @@ export async function runIncomeAnalysis(
     );
   } else {
     // ATTOM returned no rental comps — try web search, then RentCast, then fallback
-    pipelineLogger.warn(`[stage3] ATTOM returned 0 rental comps — trying web search`);
+    pipelineLogger.warn('[stage3] ATTOM returned 0 rental comps — trying web search');
 
     // Try web search first (free, powered by Serper + Claude)
     const webRentalResult = await findRentalsViaWeb({
@@ -179,7 +179,7 @@ export async function runIncomeAnalysis(
 
     // If web search didn't find enough, try RentCast as paid fallback
     if (concludedMarketRentPerSqFtYr === 0) {
-      pipelineLogger.warn(`[stage3] Web search found 0 rental comps — trying RentCast`);
+      pipelineLogger.warn('[stage3] Web search found 0 rental comps — trying RentCast');
       const rcListingsResult = await getRentalListings(latitude, longitude, 5, subtype, 20);
       const rcListings = (rcListingsResult.data ?? [])
         .filter((l) => l.price > 0 && l.squareFootage && l.squareFootage > 0);
@@ -269,7 +269,7 @@ export async function runIncomeAnalysis(
   // If web research found market rent and we're using a fallback, prefer it
   if (concludedMarketRentPerSqFtYr === FALLBACK_RENT && marketData.marketRentPerSqFtYr != null) {
     concludedMarketRentPerSqFtYr = marketData.marketRentPerSqFtYr;
-    pipelineLogger.info(`[stage3] Overriding fallback rent with web research: $${concludedMarketRentPerSqFtYr}/sqft/yr (${marketData.marketRentSource})`);
+    pipelineLogger.info({ concludedMarketRentPerSqFtYr, marketRentSource: marketData.marketRentSource }, '[stage3] Overriding fallback rent with web research: $/sqft/yr ()');
   }
 
   // ── Build pro forma ───────────────────────────────────────────────────
@@ -313,7 +313,7 @@ export async function runIncomeAnalysis(
   // Use web-researched cap rate as the default if available (better than hardcoded)
   if (marketData.capRate != null) {
     concludedCapRate = marketData.capRate;
-    pipelineLogger.info(`[stage3] Using web-researched cap rate: ${(concludedCapRate * 100).toFixed(2)}% (${marketData.capRateSurveySource})`);
+    pipelineLogger.info({ concludedCapRate: (concludedCapRate * 100).toFixed(2), capRateSurveySource: marketData.capRateSurveySource }, '[stage3] Using web-researched cap rate: % ()');
   }
 
   if (salesComps && salesComps.length > 0) {
@@ -355,7 +355,7 @@ export async function runIncomeAnalysis(
     .eq('report_id', reportId);
 
   if (deleteIncomeError) {
-    pipelineLogger.warn(`[stage3] Failed to delete existing income_analysis: ${deleteIncomeError.message}`);
+    pipelineLogger.warn({ message: deleteIncomeError.message }, '[stage3] Failed to delete existing income_analysis');
   }
 
   // ── Write income analysis to DB ───────────────────────────────────────

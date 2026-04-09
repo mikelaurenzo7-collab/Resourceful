@@ -52,7 +52,7 @@ async function serperSearch(
       body: JSON.stringify({ q: query, num: 10 }),
     });
     if (!res.ok) {
-      apiLogger.warn(`[web-rentals] Serper returned ${res.status}`);
+      apiLogger.warn({ status: res.status }, '[web-rentals] Serper returned');
       return [];
     }
     const data = (await res.json()) as {
@@ -252,7 +252,7 @@ Return ONLY the JSON array. No explanation, no markdown.`;
         (typeof c.rentPerSqFtYear === 'number' && c.rentPerSqFtYear > 0);
       if (!hasAddress || !hasRent) return false;
       if (isSubjectProperty(String(c.address), ctx.address)) {
-        apiLogger.info(`[web-rentals] Filtered subject property: ${c.address}`);
+        apiLogger.info({ address: c.address }, '[web-rentals] Filtered subject property');
         return false;
       }
       return true;
@@ -421,8 +421,8 @@ export async function findRentalsViaWeb(
     return { inserts, medianRentPerSqFtYr };
   } catch (err) {
     apiLogger.warn(
-      '[web-rentals] Error:',
-      err instanceof Error ? err.message : String(err),
+      { err: err instanceof Error ? err.message : String(err) },
+      '[web-rentals] Error'
     );
     return empty;
   }

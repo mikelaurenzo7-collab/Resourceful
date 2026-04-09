@@ -51,6 +51,22 @@ describe('data-router types', () => {
       longitude: -87.6298,
       countyFips: '17031',
       countyName: 'Cook',
+      bedroom_count: null,
+      full_bath_count: null,
+      half_bath_count: null,
+      number_of_stories: null,
+      parcel_boundary_geojson: null,
+      lot_frontage_ft: null,
+      lot_depth_ft: null,
+      lot_shape_description: null,
+      legal_description: null,
+      owner_name: null,
+      owner_mailing_address: null,
+      zoning_description: null,
+      zoning_overlay_district: null,
+      apn: null,
+      regrid_parcel_id: null,
+      parcel_data_source: null,
     };
 
     expect(sample.assessed_value).toBe(250000);

@@ -5,15 +5,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { cronLogger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authError = verifyCronAuth(request);
+  if (authError) return authError;
 
   const supabase = createAdminClient();
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -32,7 +29,7 @@ export async function GET(request: NextRequest) {
         .select('id');
       staleIntakeCleaned = staleIntakes?.length ?? 0;
       if (staleIntakeCleaned > 0) {
-        cronLogger.info(`[cron/cleanup] Removed ${staleIntakeCleaned} stale intake reports (no payment)`);
+        cronLogger.info({ staleIntakeCleaned }, '[cron/cleanup] Removed stale intake reports (no payment)');
       }
     } catch (intakeErr) {
       cronLogger.warn({ err: intakeErr }, 'Stale intake cleanup failed (non-fatal)');
@@ -112,7 +109,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    cronLogger.error(`[cron/cleanup] Error: ${message}`);
+    cronLogger.error({ message }, '[cron/cleanup] Error');
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

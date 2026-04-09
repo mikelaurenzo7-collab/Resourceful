@@ -9,15 +9,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runCalibrationBatch } from '@/lib/services/calibration-batch';
+import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { cronLogger } from '@/lib/logger';
 
 export async function GET(req: NextRequest) {
-  // Verify cron secret (Vercel sets this automatically for cron endpoints)
-  const authHeader = req.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authError = verifyCronAuth(req);
+  if (authError) return authError;
 
   try {
     const supabase = createAdminClient();

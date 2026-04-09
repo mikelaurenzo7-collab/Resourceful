@@ -132,7 +132,7 @@ export async function runDelivery(
       }
     }
 
-    pipelineLogger.info(`[stage8] Sending report-ready notification to ${clientEmail}`);
+    pipelineLogger.info({ clientEmail }, '[stage8] Sending report-ready notification to');
     const emailResult = await sendReportReadyNotification({
       to: clientEmail,
       reportId,
@@ -161,7 +161,7 @@ export async function runDelivery(
       );
     }
   } else {
-    pipelineLogger.info(`[stage8] Report ${reportId} delivered (email notification opted out by user)`);
+    pipelineLogger.info({ reportId }, '[stage8] Report delivered (email notification opted out by user)');
   }
 
   return { success: true };

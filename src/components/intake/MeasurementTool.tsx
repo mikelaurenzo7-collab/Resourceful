@@ -46,7 +46,7 @@ export default function MeasurementTool({
               value={manualSqFt}
               onChange={(e) => setManualSqFt(e.target.value)}
               placeholder="e.g., 1850"
-              className="flex-1 rounded-lg border border-gold/20 bg-navy-deep/60 px-4 py-3 text-cream placeholder:text-cream/30 focus:border-gold focus:ring-2 focus:ring-gold/15 focus:outline-none"
+              className="flex-1 rounded-lg border border-gold/20 bg-navy-deep/60 px-4 py-3 text-cream placeholder:text-cream/50 focus:border-gold focus:ring-2 focus:ring-gold/15 focus:outline-none"
             />
             <button
               onClick={handleManualSubmit}
@@ -55,7 +55,7 @@ export default function MeasurementTool({
               Confirm
             </button>
           </div>
-          <p className="mt-2 text-xs text-cream/30">
+          <p className="mt-2 text-xs text-cream/50">
             Enter the total gross building area from your tax bill, survey, or listing.
           </p>
         </div>
@@ -102,7 +102,7 @@ export default function MeasurementTool({
       )}
 
       {/* Address context */}
-      <p className="text-xs text-cream/30 text-center">{address}</p>
+      <p className="text-xs text-cream/50 text-center">{address}</p>
     </div>
   );
 }

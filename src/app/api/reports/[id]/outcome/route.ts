@@ -9,6 +9,7 @@
 // 2. Creates a calibration entry (predicted vs actual)
 // 3. Recalculates county-level stats
 
+import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
@@ -16,6 +17,12 @@ import { applyRateLimit } from '@/lib/rate-limit';
 import { createCalibrationEntry } from '@/lib/services/calibration';
 import type { Report, PropertyData } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
+
+/** Timing-safe token comparison to prevent enumeration via response-time analysis. */
+function tokensMatch(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
 
 const VALID_OUTCOMES = ['won', 'lost', 'pending', 'withdrew', 'didnt_file'] as const;
 type AppealOutcome = typeof VALID_OUTCOMES[number];
@@ -98,7 +105,7 @@ export async function POST(
   // ── Auth: token-based or session-based ──────────────────────────────────
   let authorized = false;
 
-  if (token && report.outcome_followup_token === token) {
+  if (token && report.outcome_followup_token && tokensMatch(token, report.outcome_followup_token)) {
     // Token-based auth: verify token hasn't expired (30 days after followup email)
     const TOKEN_EXPIRY_DAYS = 30;
     if (report.outcome_followup_sent_at) {
@@ -227,7 +234,7 @@ export async function POST(
     }
   }
 
-  apiLogger.info(`[outcome] Recorded ${outcome} for report ${reportId}`);
+  apiLogger.info({ outcome, reportId }, '[outcome] Recorded for report');
 
   return NextResponse.json({
     success: true,

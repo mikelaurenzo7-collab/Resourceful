@@ -127,7 +127,7 @@ export async function runFilingGuide(
   // Fallback: use the concluded_value saved by stage 5 (cost approach or income)
   if (concludedValue <= 0 && propertyData?.concluded_value && propertyData.concluded_value > 0) {
     concludedValue = propertyData.concluded_value;
-    pipelineLogger.info(`[stage6] No comps — using stage-5 concluded value as fallback: $${concludedValue.toLocaleString()}`);
+    pipelineLogger.info({ concludedValue: concludedValue.toLocaleString() }, '[stage6] No comps — using stage-5 concluded value as fallback: $');
   }
 
   if (concludedValue <= 0) {
@@ -143,7 +143,7 @@ export async function runFilingGuide(
     if (countyRule?.appeal_deadline_rule) {
       appealDeadline += ` — Rule: ${countyRule.appeal_deadline_rule}`;
     }
-    pipelineLogger.info(`[stage6] Auto-calculated deadline: ${deadlineInfo.displayText} (${deadlineInfo.urgencyLevel})`);
+    pipelineLogger.info({ displayText: deadlineInfo.displayText, urgencyLevel: deadlineInfo.urgencyLevel }, '[stage6] Auto-calculated deadline: ()');
   } else if (countyRule?.appeal_deadline_rule) {
     appealDeadline = countyRule.appeal_deadline_rule;
   }
@@ -219,7 +219,7 @@ export async function runFilingGuide(
   };
 
   // ── Generate filing guide via AI ──────────────────────────────────────
-  pipelineLogger.info(`[stage6] Generating filing guide for ${report.county ?? 'unknown'}, ${report.state ?? 'unknown'}`);
+  pipelineLogger.info({ report: report.county ?? 'unknown', report2: report.state ?? 'unknown' }, '[stage6] Generating filing guide for ,');
   const guideResult = await generateFilingGuide(payload);
 
   if (guideResult.error || !guideResult.data) {

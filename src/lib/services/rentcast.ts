@@ -5,6 +5,8 @@
 
 const BASE_URL = 'https://api.rentcast.io/v1';
 
+import { apiLogger } from '@/lib/logger';
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface RentcastRentEstimate {
@@ -76,13 +78,13 @@ async function rentcastFetch<T>(
 
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      apiLogger.error(`[rentcast] ${path} returned ${res.status}: ${body.slice(0, 300)}`);
+      apiLogger.error({ path, status: res.status, body: body.slice(0, 300) }, '[rentcast] returned');
       return { data: null, error: `RentCast API returned ${res.status}` };
     }
     return { data: (await res.json()) as T, error: null };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    apiLogger.warn(`[rentcast] ${path} error: ${msg}`);
+    apiLogger.warn({ path, msg }, '[rentcast] error');
     return { data: null, error: msg };
   }
 }
@@ -109,7 +111,7 @@ export async function getRentEstimate(
   };
   if (squareFootage && squareFootage > 0) params.squareFootage = String(squareFootage);
 
-  apiLogger.info(`[rentcast] Rent estimate for "${fullAddress}" (${toRentcastPropertyType(propertySubtype)})`);
+  apiLogger.info({ fullAddress, toRentcastPropertyType: toRentcastPropertyType(propertySubtype) }, '[rentcast] Rent estimate for "" ()');
   return rentcastFetch<RentcastRentEstimate>('/avm/rent/long-term', params);
 }
 

@@ -60,7 +60,7 @@ export async function sendCartRecoveryEmails(): Promise<{ sent: number; errors: 
     return { sent: 0, errors: 0, skipped: 0 };
   }
 
-  emailLogger.info(`[cart-recovery] ${reports.length} abandoned carts found`);
+  emailLogger.info({ length: reports.length }, '[cart-recovery] abandoned carts found');
 
   let sent = 0;
   let errors = 0;
@@ -94,10 +94,10 @@ export async function sendCartRecoveryEmails(): Promise<{ sent: number; errors: 
 
       if (result.error) {
         errors++;
-        emailLogger.error(`[cart-recovery] Email failed for ${report.id}: ${result.error}`);
+        emailLogger.error({ id: report.id, error: result.error }, '[cart-recovery] Email failed for');
       } else {
         sent++;
-        emailLogger.info(`[cart-recovery] Sent recovery email for report ${report.id}`);
+        emailLogger.info({ id: report.id }, '[cart-recovery] Sent recovery email for report');
       }
     } catch (err) {
       errors++;
@@ -105,6 +105,6 @@ export async function sendCartRecoveryEmails(): Promise<{ sent: number; errors: 
     }
   }
 
-  emailLogger.info(`[cart-recovery] Complete: ${sent} sent, ${errors} errors, ${skipped} skipped`);
+  emailLogger.info({ sent, errors, skipped }, '[cart-recovery] Complete: sent, errors, skipped');
   return { sent, errors, skipped };
 }

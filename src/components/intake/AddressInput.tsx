@@ -42,6 +42,7 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
   const [isFocused, setIsFocused] = useState(false);
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -91,6 +92,7 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
     setQuery(s.formattedAddress);
     setShowSuggestions(false);
     setSuggestions([]);
+    setActiveIndex(-1);
     onAddressSelect({
       line1: line1 || s.formattedAddress,
       city: s.city ?? '',
@@ -102,12 +104,10 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
 
   const handleManualSubmit = () => {
     if (!query.trim()) return;
-    // If suggestions exist, auto-select the first match instead of submitting a raw string
     if (suggestions.length > 0) {
-      handleSelect(suggestions[0]);
+      handleSelect(activeIndex >= 0 ? suggestions[activeIndex] : suggestions[0]);
       return;
     }
-    // No suggestions available — warn user but allow submission
     onAddressSelect({
       line1: query.trim(),
       city: '',
@@ -115,6 +115,27 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
       zip: '',
       county: '',
     });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) {
+      if (e.key === 'Enter') { e.preventDefault(); handleManualSubmit(); }
+      return;
+    }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev + 1) % suggestions.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeIndex >= 0) handleSelect(suggestions[activeIndex]);
+      else handleManualSubmit();
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      setActiveIndex(-1);
+    }
   };
 
   return (
@@ -126,7 +147,7 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
         className={`
           relative flex items-center rounded-lg border bg-navy-deep/60
           transition-all duration-200
-          ${isFocused ? 'border-gold ring-2 ring-gold/15' : 'border-gold/20'}
+          ${isFocused ? 'border-gold ring-2 ring-gold/40' : 'border-gold/20'}
         `}
       >
         <div className="pl-4 text-gold/60">
@@ -138,21 +159,18 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
         <input
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => { setQuery(e.target.value); setActiveIndex(-1); }}
           onFocus={() => { setIsFocused(true); if (suggestions.length) setShowSuggestions(true); }}
           onBlur={() => setIsFocused(false)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              handleManualSubmit();
-            }
-          }}
+          onKeyDown={handleKeyDown}
           placeholder="Start typing your property address..."
-          className="flex-1 bg-transparent px-4 py-4 text-cream placeholder:text-cream/30 focus:outline-none"
+          className="flex-1 bg-transparent px-4 py-4 text-cream placeholder:text-cream/40 focus:outline-none"
           autoComplete="off"
           role="combobox"
           aria-expanded={showSuggestions && suggestions.length > 0}
           aria-autocomplete="list"
+          aria-controls="address-input-listbox"
+          aria-activedescendant={activeIndex >= 0 ? `address-option-${activeIndex}` : undefined}
         />
         <button
           onClick={handleManualSubmit}
@@ -164,14 +182,19 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
 
       {/* Autocomplete dropdown */}
       {showSuggestions && suggestions.length > 0 && (
-        <ul className="absolute z-50 mt-1 w-full max-w-lg rounded-lg border border-gold/20 bg-navy-deep/95 backdrop-blur-sm shadow-xl overflow-hidden" role="listbox">
+        <ul id="address-input-listbox" className="absolute z-50 mt-1 w-full max-w-lg rounded-lg border border-gold/20 bg-navy-deep/95 backdrop-blur-sm shadow-xl overflow-hidden" role="listbox">
           {suggestions.map((s, i) => (
             <li key={i}>
               <button
+                id={`address-option-${i}`}
                 type="button"
-                className="w-full text-left px-4 py-3 text-sm text-cream hover:bg-gold/10 transition-colors border-b border-gold/5 last:border-0"
+                className={`w-full text-left px-4 py-3 text-sm text-cream transition-colors border-b border-gold/5 last:border-0 ${
+                  i === activeIndex ? 'bg-gold/15' : 'hover:bg-gold/10'
+                }`}
                 onMouseDown={() => handleSelect(s)}
+                onMouseEnter={() => setActiveIndex(i)}
                 role="option"
+                aria-selected={i === activeIndex}
               >
                 {s.formattedAddress}
               </button>
@@ -180,7 +203,7 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
         </ul>
       )}
 
-      <p className="mt-2 text-xs text-cream/30">
+      <p className="mt-2 text-xs text-cream/50">
         Enter your full property address
       </p>
     </div>

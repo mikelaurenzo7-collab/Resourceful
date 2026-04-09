@@ -272,7 +272,7 @@ export async function researchAppealStrategy(
 
           if (toolUse.name === 'web_search' && searchCount < MAX_SEARCHES) {
             searchCount++;
-            apiLogger.info(`[research-agent] Search ${searchCount}/${MAX_SEARCHES}: "${input.query}"`);
+            apiLogger.info({ searchCount, MAX_SEARCHES, query: input.query }, '[research-agent] Search /: ""');
             const searchResult = await executeWebSearch(input.query);
 
             if (searchResult.error) {
@@ -293,7 +293,7 @@ export async function researchAppealStrategy(
               });
             }
           } else if (toolUse.name === 'read_page') {
-            apiLogger.info(`[research-agent] Reading: ${input.url}`);
+            apiLogger.info({ url: input.url }, '[research-agent] Reading');
             const pageText = await fetchPageContent(input.url);
             toolResults.push({
               type: 'tool_result',
@@ -360,7 +360,7 @@ export async function researchAppealStrategy(
     return result;
 
   } catch (err) {
-    apiLogger.error(`[research-agent] Research failed: ${err instanceof Error ? err.message : err}`);
+    apiLogger.error({ err: err instanceof Error ? err.message : err }, '[research-agent] Research failed');
     return {
       strategyInsights: '',
       deadlineInfo: null,
@@ -387,13 +387,13 @@ function parseResearchOutput(text: string): ResearchResult {
     if (!content) return null;
     // Flag if the AI just repeated the section label with no substance
     if (content.length < 30) {
-      apiLogger.warn(`[research-agent] ${label} section too short (${content.length} chars) — discarding`);
+      apiLogger.warn({ label, length: content.length }, '[research-agent] section too short ( chars) — discarding');
       return null;
     }
     // Detect boilerplate non-answers
     const boilerplate = /i (?:could not|couldn't|was unable to|did not|didn't) find/i;
     if (boilerplate.test(content) && content.length < 100) {
-      apiLogger.warn(`[research-agent] ${label} section is a non-answer — discarding`);
+      apiLogger.warn({ label }, '[research-agent] section is a non-answer — discarding');
       return null;
     }
     // Cap at reasonable length to prevent prompt bloat

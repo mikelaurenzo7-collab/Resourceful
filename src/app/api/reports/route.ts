@@ -12,6 +12,7 @@ import { applyRateLimit } from '@/lib/rate-limit';
 import { isFounderEmail } from '@/config/founders';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 import { validateReferralCode, applyReferralCode } from '@/lib/services/referral-service';
 import type { Report } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
@@ -74,7 +75,14 @@ export async function POST(request: NextRequest) {
     }
 
     // ── Check founder access ─────────────────────────────────────────────
-    const founderAccess = isFounderEmail(client_email);
+    // Founder bypass requires BOTH: email matches AND user is authenticated
+    // (prevents abuse by claiming a founder email without logging in)
+    let founderAccess = false;
+    if (isFounderEmail(client_email)) {
+      const supabase = await createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      founderAccess = !!user && user.email?.toLowerCase() === client_email.toLowerCase();
+    }
 
     // ── Calculate price (tier-aware, tax bill discount applied) ──────────
     let priceCents = founderAccess ? 0 : getPriceCents(service_type, property_type, review_tier, has_tax_bill);
@@ -143,17 +151,17 @@ export async function POST(request: NextRequest) {
 
     // ── Founder bypass: skip Stripe, trigger pipeline directly ───────────
     if (founderAccess) {
-      apiLogger.info(`[api/reports] Founder access for report ${report.id} — skipping payment`);
+      apiLogger.info({ id: report.id }, '[api/reports] Founder access for report — skipping payment');
       runPipeline(report.id).catch(async (err) => {
         const message = err instanceof Error ? err.message : String(err);
-        apiLogger.error(`[api/reports] Pipeline failed for founder report ${report.id}: ${message}`);
+        apiLogger.error({ id: report.id, message }, '[api/reports] Pipeline failed for founder report');
         try {
           await createAdminClient().from('reports').update({
             status: 'failed',
             pipeline_error_log: [{ stage: 'pipeline', error: message, timestamp: new Date().toISOString() }],
           } as never).eq('id', report.id);
         } catch (dbErr) {
-          apiLogger.error(`[api/reports] CRITICAL: Pipeline failed AND error recording failed for founder report ${report.id}. Exception: ${dbErr}. Pipeline error: ${message}`);
+          apiLogger.error({ id: report.id, dbErr, message }, '[api/reports] CRITICAL: Pipeline failed AND error recording failed for founder report . Exception: . Pipeline error');
         }
       });
       return NextResponse.json(

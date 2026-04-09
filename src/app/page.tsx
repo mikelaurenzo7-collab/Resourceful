@@ -114,7 +114,7 @@ export default function HomePage() {
                   </svg>
                 </div>
                 <p className="text-sm font-semibold text-cream/90">{item.label}</p>
-                <p className="text-xs text-cream/30 mt-1">{item.desc}</p>
+                <p className="text-xs text-cream/50 mt-1">{item.desc}</p>
               </div>
             ))}
           </div>

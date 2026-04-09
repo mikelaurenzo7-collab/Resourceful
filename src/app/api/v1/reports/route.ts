@@ -136,7 +136,8 @@ export async function POST(request: NextRequest) {
     // ── Trigger pipeline (non-blocking) ───────────────────────────────────
     runPipeline(report.id).catch((err) => {
       apiLogger.error(
-        `[partner-api] Pipeline failed for report ${report.id} (partner: ${partner.firm_name}): ${err}`
+        { reportId: report.id, partner: partner.firm_name, err: String(err) },
+        '[partner-api] Pipeline failed'
       );
     });
 

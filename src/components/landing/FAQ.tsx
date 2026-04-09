@@ -101,7 +101,7 @@ export default function FAQ() {
                 transition: 'max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease-out',
               }}
             >
-              <div className="px-6 pb-5 text-sm text-cream/60 leading-relaxed">
+              <div className="px-6 pb-5 text-sm text-cream/70 leading-relaxed">
                 {faq.answer}
               </div>
             </div>

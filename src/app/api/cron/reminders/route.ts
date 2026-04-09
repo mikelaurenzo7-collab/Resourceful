@@ -5,16 +5,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { handleReminderCron } from '@/lib/services/reminder-service';
+import { verifyCronAuth } from '@/lib/utils/cron-auth';
 import { cronLogger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
-  // Verify cron secret (Vercel sets this automatically for cron jobs)
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const authError = verifyCronAuth(request);
+  if (authError) return authError;
 
   try {
     const result = await handleReminderCron();
@@ -25,7 +21,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    cronLogger.error(`[cron/reminders] Error: ${message}`);
+    cronLogger.error({ message }, '[cron/reminders] Error');
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

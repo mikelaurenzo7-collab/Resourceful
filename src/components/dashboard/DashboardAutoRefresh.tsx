@@ -22,18 +22,35 @@ export default function DashboardAutoRefresh({
   const router = useRouter();
   const [secondsAgo, setSecondsAgo] = useState(0);
   const lastRefreshRef = useRef(Date.now());
+  const refreshCountRef = useRef(0);
 
-  // Refresh data on interval
+  // Refresh data on interval with exponential backoff
+  // First 5 refreshes: base interval (30s)
+  // Then doubles each 5 cycles, capped at 5 minutes
   useEffect(() => {
-    if (!hasActiveReport) return;
+    if (!hasActiveReport) {
+      refreshCountRef.current = 0;
+      return;
+    }
 
-    const refresh = setInterval(() => {
-      router.refresh();
-      lastRefreshRef.current = Date.now();
-      setSecondsAgo(0);
-    }, intervalMs);
+    let timer: ReturnType<typeof setTimeout>;
 
-    return () => clearInterval(refresh);
+    const scheduleRefresh = () => {
+      const count = refreshCountRef.current;
+      const backoffFactor = Math.pow(2, Math.floor(count / 5));
+      const delay = Math.min(intervalMs * backoffFactor, 300_000);
+
+      timer = setTimeout(() => {
+        router.refresh();
+        lastRefreshRef.current = Date.now();
+        setSecondsAgo(0);
+        refreshCountRef.current++;
+        scheduleRefresh();
+      }, delay);
+    };
+
+    scheduleRefresh();
+    return () => clearTimeout(timer);
   }, [hasActiveReport, intervalMs, router]);
 
   // Update "X seconds ago" counter every 10 s

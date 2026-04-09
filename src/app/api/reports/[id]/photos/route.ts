@@ -11,6 +11,27 @@ import { applyRateLimit } from '@/lib/rate-limit';
 import type { PhotoInsert } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
 
+function validateImageMagicBytes(buffer: Buffer, declaredType: string): boolean {
+  if (buffer.length < 12) return false;
+
+  const signatures: Record<string, (b: Buffer) => boolean> = {
+    'image/jpeg': (b) => b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF,
+    'image/png': (b) => b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47,
+    'image/webp': (b) => b.slice(0, 4).toString() === 'RIFF' && b.slice(8, 12).toString() === 'WEBP',
+    'image/heic': (b) => {
+      const ftyp = b.slice(4, 8).toString();
+      return ftyp === 'ftyp' && ['heic', 'heix', 'mif1'].some(t => b.slice(8, 12).toString().startsWith(t));
+    },
+    'image/heif': (b) => {
+      const ftyp = b.slice(4, 8).toString();
+      return ftyp === 'ftyp' && ['heic', 'heix', 'mif1'].some(t => b.slice(8, 12).toString().startsWith(t));
+    },
+  };
+
+  const check = signatures[declaredType];
+  return check ? check(buffer) : false;
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -127,6 +148,15 @@ export async function POST(
     const filename = `${reportId}/${uploadType}_${uploadOrder}_${Date.now()}.${fileExt}`;
 
     const fileBuffer = Buffer.from(await file.arrayBuffer());
+
+    // ── Validate magic bytes (prevent MIME spoofing) ─────────────────────
+    const magicBytesValid = validateImageMagicBytes(fileBuffer, file.type);
+    if (!magicBytesValid) {
+      return NextResponse.json(
+        { error: 'File content does not match declared type. Upload a valid image.' },
+        { status: 400 }
+      );
+    }
 
     const { error: uploadError } = await admin.storage
       .from('photos')

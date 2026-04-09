@@ -5,6 +5,8 @@
 
 const BASE_URL = 'https://api.lightboxre.com';
 
+import { apiLogger } from '@/lib/logger';
+
 // ─── Token Cache ─────────────────────────────────────────────────────────────
 // Module-level cache — reused within a warm serverless invocation.
 let tokenCache: { token: string; expiresAt: number } | null = null;
@@ -29,7 +31,7 @@ async function getAccessToken(): Promise<string | null> {
     });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      apiLogger.warn(`[lightbox] Token request failed ${res.status}: ${body.slice(0, 200)}`);
+      apiLogger.warn({ status: res.status, body: body.slice(0, 200) }, '[lightbox] Token request failed');
       return null;
     }
     const json = (await res.json()) as { access_token: string; expires_in: number };
@@ -188,13 +190,13 @@ async function lightboxFetch<T>(
     clearTimeout(timeout);
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      apiLogger.error(`[lightbox] ${path} returned ${res.status}: ${body.slice(0, 300)}`);
+      apiLogger.error({ path, status: res.status, body: body.slice(0, 300) }, '[lightbox] returned');
       return { data: null, error: `Lightbox API returned ${res.status}` };
     }
     return { data: (await res.json()) as T, error: null };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    apiLogger.warn(`[lightbox] ${path} error: ${msg}`);
+    apiLogger.warn({ path, msg }, '[lightbox] error');
     return { data: null, error: msg };
   }
 }
@@ -214,7 +216,7 @@ export async function getPropertyDetail(
   if (!token) return { data: null, error: 'Lightbox token acquisition failed' };
 
   const q = [address, city, state].filter(Boolean).join(', ');
-  apiLogger.info(`[lightbox] Searching address: "${q}"`);
+  apiLogger.info({ q }, '[lightbox] Searching address: ""');
 
   // ── Step 1: Resolve address → parcel ID ─────────────────────────────────
   const addrResult = await lightboxFetch<Record<string, unknown>>(token, '/v2/addresses', {
@@ -228,13 +230,13 @@ export async function getPropertyDetail(
 
   const addresses: any[] = (addrResult.data as any)?.addresses ?? [];
   if (!addresses.length) {
-    apiLogger.warn(`[lightbox] No address match for "${q}"`);
+    apiLogger.warn({ q }, '[lightbox] No address match for ""');
     return { data: null, error: 'No address match found in Lightbox' };
   }
 
   const parcelId: string | null = addresses[0]?.parcels?.[0]?.id ?? null;
   if (!parcelId) {
-    apiLogger.warn(`[lightbox] No parcel linked to address "${q}"`);
+    apiLogger.warn({ q }, '[lightbox] No parcel linked to address ""');
     return { data: null, error: 'No parcel found for address in Lightbox' };
   }
 
@@ -255,7 +257,7 @@ export async function getPropertyDetail(
     if (!detail.structure.yearBuilt) missing.push('yearBuilt');
     if (!detail.assessment.assessedValue) missing.push('assessedValue');
     if (missing.length) {
-      apiLogger.warn(`[lightbox] Missing fields for "${q}": ${missing.join(', ')}`);
+      apiLogger.warn({ q, missing: missing.join(', ') }, '[lightbox] Missing fields for ""');
     }
 
     apiLogger.info(
@@ -268,7 +270,7 @@ export async function getPropertyDetail(
     return { data: detail, error: null };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    apiLogger.error(`[lightbox] Failed to normalize parcel: ${msg}`);
+    apiLogger.error({ msg }, '[lightbox] Failed to normalize parcel');
     return { data: null, error: `Failed to parse Lightbox response: ${msg}` };
   }
 }

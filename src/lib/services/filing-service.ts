@@ -293,7 +293,7 @@ async function prepareGuidedFiling(
   packet: FilingPacket,
   countyRule: CountyRule | null
 ): Promise<FilingResult> {
-  apiLogger.info(`[filing] Preparing guided filing packet for ${packet.propertyAddress}`);
+  apiLogger.info({ propertyAddress: packet.propertyAddress }, '[filing] Preparing guided filing packet for');
 
   const supabase = createAdminClient();
   await supabase
@@ -354,7 +354,7 @@ export async function fileAppeal(reportId: string): Promise<FilingResult> {
 
   const method = resolveFilingMethod(countyRule, packet.reviewTier);
 
-  apiLogger.info(`[filing] Method resolved: ${method} for tier=${packet.reviewTier}, county=${packet.county}`);
+  apiLogger.info({ method, reviewTier: packet.reviewTier, county: packet.county }, '[filing] Method resolved: for tier=, county=');
 
   switch (method) {
     case 'online':

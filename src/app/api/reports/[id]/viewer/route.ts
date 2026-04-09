@@ -45,7 +45,7 @@ export async function GET(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const report = reportData as any;
+  const report = reportData as any; // Dynamic field access throughout this route
 
   // ── Authenticate + verify ownership ────────────────────────────────────
   const userSupabase = await createClient();

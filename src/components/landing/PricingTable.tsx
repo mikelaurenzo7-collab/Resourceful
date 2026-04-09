@@ -119,12 +119,12 @@ export default function PricingTable() {
 
               <div className="mb-6">
                 <span className="font-display text-3xl text-gold">{formatPrice(price)}</span>
-                <span className="text-xs text-cream/30 ml-1.5">residential</span>
+                <span className="text-xs text-cream/50 ml-1.5">residential</span>
               </div>
 
               <ul className="space-y-2.5 mb-8 flex-grow">
                 {t.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-[12px] text-cream/50">
+                  <li key={f} className="flex items-start gap-2 text-[12px] text-cream/70">
                     <svg className="w-3.5 h-3.5 text-gold/50 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
@@ -134,7 +134,7 @@ export default function PricingTable() {
               </ul>
 
               {t.appealOnly && (
-                <p className="text-[10px] text-cream/20 mb-3">Tax appeal reports only</p>
+                <p className="text-[10px] text-cream/50 mb-3">Tax appeal reports only</p>
               )}
 
               <Link
@@ -153,7 +153,7 @@ export default function PricingTable() {
         })}
       </div>
 
-      <p className="text-center text-xs text-cream/25 mt-8">
+      <p className="text-center text-xs text-cream/50 mt-8">
         Upload your tax bill at checkout and save 15% on any tier. Commercial and industrial properties start at $99.
       </p>
     </section>

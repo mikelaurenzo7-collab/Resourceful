@@ -76,7 +76,7 @@ export async function POST(
     });
 
     // ── Trigger full pipeline from stage 1 (fire-and-forget) ───────────────
-    apiLogger.info(`[api/admin/rerun] Triggering full pipeline rerun for report ${reportId}`);
+    apiLogger.info({ reportId }, '[api/admin/rerun] Triggering full pipeline rerun for report');
 
     runPipeline(reportId, 1).catch(async (err) => {
       const errMessage = err instanceof Error ? err.message : String(err);

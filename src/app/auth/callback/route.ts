@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { authLogger } from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
@@ -32,18 +33,18 @@ export async function GET(request: NextRequest) {
             .select('id');
 
           if (linked && linked.length > 0) {
-            console.log(`[auth/callback] Linked ${linked.length} reports to user ${user.id}`);
+            authLogger.info({ count: linked.length, userId: user.id }, '[auth/callback] Linked reports to user');
           }
         }
       } catch (linkErr) {
         // Non-fatal — reports can still be linked later via dashboard
-        console.warn('[auth/callback] Report linking failed (non-fatal):', linkErr);
+        authLogger.warn({ err: String(linkErr) }, '[auth/callback] Report linking failed (non-fatal)');
       }
 
       return NextResponse.redirect(`${origin}${next}`);
     }
 
-    console.error('[auth/callback] Code exchange failed:', error.message);
+    authLogger.error({ err: error.message }, '[auth/callback] Code exchange failed');
   }
 
   // If code exchange fails or no code, redirect to login with error hint

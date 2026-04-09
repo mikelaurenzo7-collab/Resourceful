@@ -13,6 +13,8 @@
 // Output is a structured list of detractors with estimated value impact
 // percentages, passed to the narrative AI for professional framing.
 
+import { apiLogger } from '@/lib/logger';
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface ValueDetractor {
@@ -101,7 +103,7 @@ async function searchNearbyDetractors(
       clearTimeout(timeout);
 
       if (!response.ok) {
-        apiLogger.warn(`[value-detractors] Azure POI search returned ${response.status}`);
+        apiLogger.warn({ status: response.status }, '[value-detractors] Azure POI search returned');
         continue;
       }
 
@@ -130,7 +132,7 @@ async function searchNearbyDetractors(
         }
       }
     } catch (err) {
-      apiLogger.warn(`[value-detractors] POI search batch failed: ${err instanceof Error ? err.message : err}`);
+      apiLogger.warn({ err: err instanceof Error ? err.message : err }, '[value-detractors] POI search batch failed');
     }
   }
 
@@ -239,11 +241,11 @@ export async function detectValueDetractors(params: {
   // Run POI search and web search in parallel
   const [poiResults, webResults] = await Promise.all([
     searchNearbyDetractors(params.lat, params.lng).catch((err) => {
-      apiLogger.warn(`[value-detractors] POI search failed: ${err}`);
+      apiLogger.warn({ err }, '[value-detractors] POI search failed');
       return [] as ValueDetractor[];
     }),
     searchLocalIssues(params.address, params.city, params.state).catch((err) => {
-      apiLogger.warn(`[value-detractors] Web search failed: ${err}`);
+      apiLogger.warn({ err }, '[value-detractors] Web search failed');
       return [] as ValueDetractor[];
     }),
   ]);

@@ -384,7 +384,7 @@ export async function generateNarratives(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error(`[anthropic] generateNarratives error: ${message}`);
+    apiLogger.error({ message }, '[anthropic] generateNarratives error');
     return { data: null, error: `AI narrative generation failed: ${message}` };
   }
 }
@@ -619,7 +619,7 @@ export async function generateFilingGuide(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error(`[anthropic] generateFilingGuide error: ${message}`);
+    apiLogger.error({ message }, '[anthropic] generateFilingGuide error');
     return { data: null, error: `AI filing guide generation failed: ${message}` };
   }
 }
@@ -698,7 +698,7 @@ Return a JSON object with:
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error(`[anthropic] analyzePhoto error: ${message}`);
+    apiLogger.error({ message }, '[anthropic] analyzePhoto error');
     return { data: null, error: `AI photo analysis failed: ${message}` };
   }
 }
@@ -1119,7 +1119,7 @@ function parseNarrativeJson(text: string): NarrativeSection[] | null {
       const closed = truncated.replace(/,\s*$/, '') + ']';
       const r2 = tryParse(closed);
       if (r2 && r2.length > 0) {
-        apiLogger.warn(`[anthropic] Narrative response was truncated — recovered ${r2.length} sections from partial JSON`);
+        apiLogger.warn({ length: r2.length }, '[anthropic] Narrative response was truncated — recovered sections from partial JSON');
         return r2;
       }
     }

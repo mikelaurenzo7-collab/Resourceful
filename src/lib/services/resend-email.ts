@@ -190,7 +190,7 @@ export async function sendAdminNotification(
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    emailLogger.error(`[resend] sendAdminNotification error: ${message}`);
+    emailLogger.error({ message }, '[resend] sendAdminNotification error');
     return { data: null, error: `Admin notification failed: ${message}` };
   }
 }
@@ -235,7 +235,7 @@ export async function sendReportRejectionAlert(
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    emailLogger.error(`[resend] sendReportRejectionAlert error: ${message}`);
+    emailLogger.error({ message }, '[resend] sendReportRejectionAlert error');
     return { data: null, error: `Rejection alert failed: ${message}` };
   }
 }
@@ -304,7 +304,7 @@ export async function sendReportReadyNotification(
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    emailLogger.error(`[resend] sendReportReadyNotification error: ${message}`);
+    emailLogger.error({ message }, '[resend] sendReportReadyNotification error');
     return { data: null, error: `Notification email failed: ${message}` };
   }
 }
@@ -355,7 +355,7 @@ export async function sendOutcomeFollowupEmail(
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    emailLogger.error(`[resend] sendOutcomeFollowupEmail error: ${message}`);
+    emailLogger.error({ message }, '[resend] sendOutcomeFollowupEmail error');
     return { data: null, error: `Outcome follow-up email failed: ${message}` };
   }
 }
@@ -422,7 +422,7 @@ export async function sendDisputeAlert(
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    emailLogger.error(`[resend] sendDisputeAlert error: ${message}`);
+    emailLogger.error({ message }, '[resend] sendDisputeAlert error');
     return { data: null, error: `Dispute alert failed: ${message}` };
   }
 }
@@ -515,7 +515,7 @@ export async function sendPaymentReceipt(
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    emailLogger.error(`[resend] sendPaymentReceipt error: ${message}`);
+    emailLogger.error({ message }, '[resend] sendPaymentReceipt error');
     return { data: null, error: `Payment receipt email failed: ${message}` };
   }
 }
@@ -586,7 +586,7 @@ export async function sendAbandonedCartRecovery(
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    emailLogger.error(`[resend] sendAbandonedCartRecovery error: ${message}`);
+    emailLogger.error({ message }, '[resend] sendAbandonedCartRecovery error');
     return { data: null, error: `Cart recovery email failed: ${message}` };
   }
 }

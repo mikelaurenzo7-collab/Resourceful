@@ -311,7 +311,7 @@ export async function runNarratives(
       ? marketDataForCost.appreciationPctAnnual / 100
       : PRIOR_SALE_ANNUAL_APPRECIATION;
     if (marketDataForCost.appreciationPctAnnual != null) {
-      pipelineLogger.info(`[stage5] Using web-researched appreciation: ${marketDataForCost.appreciationPctAnnual}%/yr (${marketDataForCost.appreciationSource})`);
+      pipelineLogger.info({ appreciationPctAnnual: marketDataForCost.appreciationPctAnnual, appreciationSource: marketDataForCost.appreciationSource }, '[stage5] Using web-researched appreciation: %/yr ()');
     }
 
     let landValue = propertyData.land_value ?? null;
@@ -438,11 +438,11 @@ export async function runNarratives(
   } else if (incomeData?.concluded_value_income_approach) {
     // No comps but income approach available — use income as primary
     concludedValue = incomeData.concluded_value_income_approach;
-    pipelineLogger.warn(`[stage5] 0 comps — using income approach as primary value: $${concludedValue.toLocaleString()}`);
+    pipelineLogger.warn({ concludedValue: concludedValue.toLocaleString() }, '[stage5] 0 comps — using income approach as primary value: $');
   } else if (_priorSaleExtrapolated) {
     // Prior sale extrapolated to current market (last resort)
     concludedValue = _priorSaleExtrapolated;
-    pipelineLogger.warn(`[stage5] using prior-sale extrapolated value as concluded value: $${concludedValue.toLocaleString()}`);
+    pipelineLogger.warn({ concludedValue: concludedValue.toLocaleString() }, '[stage5] using prior-sale extrapolated value as concluded value: $');
   } else {
     // Cost approach only (validated above)
     // Re-run with the same estimated land value logic used in the guard above.
@@ -475,7 +475,7 @@ export async function runNarratives(
         error: 'Cost approach returned invalid value — insufficient data for valuation',
       };
     }
-    pipelineLogger.warn(`[stage5] 0 comps, no income — using cost approach as primary value: $${concludedValue.toLocaleString()}`);
+    pipelineLogger.warn({ concludedValue: concludedValue.toLocaleString() }, '[stage5] 0 comps, no income — using cost approach as primary value: $');
   }
 
   // Guard: concludedValue must be positive
@@ -581,7 +581,7 @@ export async function runNarratives(
     const biasFactor = 1 - (cal.value_bias_pct / 100);
     concludedValue = Math.round((concludedValue * biasFactor) / 1000) * 1000;
     concludedValueWithoutPhotos = Math.round((concludedValueWithoutPhotos * biasFactor) / 1000) * 1000;
-    pipelineLogger.info(`[stage5] Applied calibration bias correction of ${cal.value_bias_pct}% (n=${cal.sample_count})`);
+    pipelineLogger.info({ value_bias_pct: cal.value_bias_pct, sample_count: cal.sample_count }, '[stage5] Applied calibration bias correction of % (n=)');
   }
 
   // ── Photo value attribution ────────────────────────────────────────────
@@ -620,7 +620,7 @@ export async function runNarratives(
     .eq('report_id', reportId);
 
   if (attrUpdateError) {
-    pipelineLogger.warn(`[stage5] Failed to store photo attribution: ${attrUpdateError.message}`);
+    pipelineLogger.warn({ message: attrUpdateError.message }, '[stage5] Failed to store photo attribution');
   }
 
   if (photoAnalyses.length > 0) {
@@ -690,7 +690,7 @@ export async function runNarratives(
     .eq('id', reportId);
 
   if (reportIntelError) {
-    pipelineLogger.warn(`[stage5] Failed to store case intelligence: ${reportIntelError.message}`);
+    pipelineLogger.warn({ message: reportIntelError.message }, '[stage5] Failed to store case intelligence');
   }
 
   pipelineLogger.info(
@@ -851,7 +851,7 @@ export async function runNarratives(
       .eq('report_id', reportId);
 
     if (costUpdateError) {
-      pipelineLogger.warn(`[stage5] Failed to persist cost approach: ${costUpdateError.message}`);
+      pipelineLogger.warn({ message: costUpdateError.message }, '[stage5] Failed to persist cost approach');
     } else {
       pipelineLogger.info(
         `[stage5] Cost approach: RCN=$${costApproachRcn?.toLocaleString()}, ` +
@@ -984,9 +984,9 @@ export async function runNarratives(
       });
 
     if (formError) {
-      pipelineLogger.warn(`[stage5] Form prefill storage failed (non-fatal): ${formError.message}`);
+      pipelineLogger.warn({ message: formError.message }, '[stage5] Form prefill storage failed (non-fatal)');
     } else {
-      pipelineLogger.info(`[stage5] Form prefill ready: ${submissionMethod} filing${countyRule.portal_url ? ` via ${countyRule.portal_url}` : ''}`);
+      pipelineLogger.info({ submissionMethod, portalUrl: countyRule.portal_url ?? undefined }, '[stage5] Form prefill ready');
     }
   }
 
@@ -1159,9 +1159,9 @@ export async function runNarratives(
       recentChanges: research.recentChanges,
       sources: research.sources,
     };
-    pipelineLogger.info(`[stage5] Research complete: ${research.searchesPerformed} searches, ${research.sources.length} sources`);
+    pipelineLogger.info({ searchesPerformed: research.searchesPerformed, research: research.sources.length }, '[stage5] Research complete: searches, sources');
   } else if (researchResult.status === 'rejected') {
-    pipelineLogger.warn(`[stage5] Research agent failed (non-fatal): ${researchResult.reason}`);
+    pipelineLogger.warn({ reason: researchResult.reason }, '[stage5] Research agent failed (non-fatal)');
   }
 
   // Process detractor result
@@ -1174,7 +1174,7 @@ export async function runNarratives(
       );
     }
   } else if (detractorResult.status === 'rejected') {
-    pipelineLogger.warn(`[stage5] Value detractor detection failed (non-fatal): ${detractorResult.reason}`);
+    pipelineLogger.warn({ reason: detractorResult.reason }, '[stage5] Value detractor detection failed (non-fatal)');
   }
 
   payload.researchIntelligence = researchIntelligence;
@@ -1235,7 +1235,7 @@ export async function runNarratives(
   }
 
   // ── Call Anthropic to generate narratives ──────────────────────────────
-  pipelineLogger.info(`[stage5] Generating narratives for report ${reportId}...`);
+  pipelineLogger.info({ reportId }, '[stage5] Generating narratives for report ...');
   const narrativeResult = await generateNarratives(payload);
 
   if (narrativeResult.error || !narrativeResult.data) {

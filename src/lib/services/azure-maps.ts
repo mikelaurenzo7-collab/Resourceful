@@ -12,6 +12,8 @@ const AZURE_STATIC_MAP_URL = 'https://atlas.microsoft.com/map/static/png';
 const AZURE_FUZZY_SEARCH_URL = 'https://atlas.microsoft.com/search/fuzzy/json';
 const MAPILLARY_SEARCH_URL = 'https://graph.mapillary.com/images';
 
+import { apiLogger } from '@/lib/logger';
+
 // ─── Response Types ──────────────────────────────────────────────────────────
 
 export interface GeocodeResult {
@@ -118,7 +120,7 @@ async function geocodeWithCensus(
 
     const addressComponents = match.addressComponents ?? {};
 
-    apiLogger.info(`[geocode] Census fallback succeeded for: ${address}`);
+    apiLogger.info({ address }, '[geocode] Census fallback succeeded for');
 
     return {
       data: {
@@ -139,7 +141,7 @@ async function geocodeWithCensus(
   } catch (err) {
     clearTimeout(timeout);
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error(`[geocode] Census fallback error: ${message}`);
+    apiLogger.error({ message }, '[geocode] Census fallback error');
     return { data: null, error: `Census geocoding failed: ${message}` };
   }
 }
@@ -157,7 +159,7 @@ export async function geocodeAddress(
   if (AZURE_KEY) {
     const azureResult = await geocodeWithAzure(address);
     if (azureResult.data) return azureResult;
-    apiLogger.warn(`[geocode] Azure Maps failed, falling back to Census: ${azureResult.error}`);
+    apiLogger.warn({ error: azureResult.error }, '[geocode] Azure Maps failed, falling back to Census');
   } else {
     apiLogger.info('[geocode] Azure Maps subscription key not configured, using Census geocoder');
   }
@@ -226,7 +228,7 @@ async function geocodeWithAzure(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error(`[azure-maps] geocode error: ${message}`);
+    apiLogger.error({ message }, '[azure-maps] geocode error');
     return { data: null, error: `Geocoding request failed: ${message}` };
   }
 }
@@ -289,7 +291,7 @@ export async function getMapillaryImageUrl(
     clearTimeout(timeout);
 
     if (!response.ok) {
-      apiLogger.warn(`[mapillary] API returned ${response.status}`);
+      apiLogger.warn({ status: response.status }, '[mapillary] API returned');
       return null;
     }
 
@@ -311,7 +313,7 @@ export async function getMapillaryImageUrl(
     return images[0].thumb_2048_url ?? images[0].thumb_1024_url ?? null;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.warn(`[mapillary] image search error: ${message}`);
+    apiLogger.warn({ message }, '[mapillary] image search error');
     return null;
   }
 }
@@ -360,7 +362,7 @@ export async function searchAddresses(
 
     if (!response.ok) {
       const body = await response.text().catch(() => '');
-      apiLogger.error(`[azure-maps] Fuzzy search failed (${response.status}): ${body.slice(0, 300)}`);
+      apiLogger.error({ status: response.status, body: body.slice(0, 300) }, '[azure-maps] Fuzzy search failed ()');
       return [];
     }
 

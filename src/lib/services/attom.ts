@@ -285,11 +285,11 @@ async function attomFetch<T>(
           const body400 = await response.json().catch(() => null) as Record<string, unknown> | null;
           const msg = (body400?.status as Record<string, unknown> | null)?.msg ?? '';
           if (msg === 'SuccessWithoutResult') {
-            apiLogger.info(`[attom] ${path} returned 400 SuccessWithoutResult (no matching records)`);
+            apiLogger.info({ path }, '[attom] returned 400 SuccessWithoutResult (no matching records)');
             return { data: body400 as unknown as T, error: null };
           }
           const body400Str = JSON.stringify(body400 ?? '').slice(0, 500);
-          apiLogger.error(`[attom] ${path} responded 400: ${body400Str}`);
+          apiLogger.error({ path, body400Str }, '[attom] responded 400');
           return { data: null, error: `ATTOM API returned 400: ${response.statusText}` };
         }
         const body = await response.text().catch(() => '');
@@ -316,7 +316,7 @@ async function attomFetch<T>(
         continue;
       }
       const message = err instanceof Error ? err.message : String(err);
-      apiLogger.error(`[attom] ${path} fetch error: ${message}`);
+      apiLogger.error({ path, message }, '[attom] fetch error');
       return { data: null, error: `ATTOM API request failed: ${message}` };
     }
   }
@@ -478,7 +478,7 @@ export async function getPropertyDetail(
   state?: string | null
 ): Promise<ServiceResult<AttomPropertyDetail>> {
   const { address1, address2 } = parseAddress(address, city, state);
-  apiLogger.info(`[attom] getPropertyDetail request`);
+  apiLogger.info('[attom] getPropertyDetail request');
   const result = await attomFetch<Record<string, unknown>>(
     '/property/detail',
     { address1, address2 }
@@ -508,13 +508,13 @@ export async function getPropertyDetail(
       warnings.push('lotSquareFeet is 0 or missing');
     }
     if (warnings.length > 0) {
-      apiLogger.warn(`[attom] Data quality warnings for "${address}": ${warnings.join('; ')}`);
+      apiLogger.warn({ address, warnings: warnings.join('; ') }, '[attom] Data quality warnings for ""');
     }
 
     return { data: detail, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error(`[attom] Failed to normalize property detail: ${message}`);
+    apiLogger.error({ message }, '[attom] Failed to normalize property detail');
     return { data: null, error: `Failed to parse ATTOM response: ${message}` };
   }
 }
@@ -569,13 +569,13 @@ export async function getSalesComparables(
     });
 
     if (validComps.length < comps.length) {
-      apiLogger.warn(`[attom] Filtered ${comps.length - validComps.length} invalid comps (missing sale price/date)`);
+      apiLogger.warn({ comps: comps.length - validComps.length }, '[attom] Filtered invalid comps (missing sale price/date)');
     }
 
     return { data: validComps, error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error(`[attom] Failed to normalize sale comps: ${message}`);
+    apiLogger.error({ message }, '[attom] Failed to normalize sale comps');
     return { data: null, error: `Failed to parse ATTOM response: ${message}` };
   }
 }
@@ -611,7 +611,7 @@ export async function getRentalComparables(
     return { data: normalizeRentalComps(result.data), error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error(`[attom] Failed to normalize rental comps: ${message}`);
+    apiLogger.error({ message }, '[attom] Failed to normalize rental comps');
     return { data: null, error: `Failed to parse ATTOM response: ${message}` };
   }
 }
@@ -622,7 +622,7 @@ export async function getDeedHistory(
   state?: string | null
 ): Promise<ServiceResult<AttomDeedRecord[]>> {
   const { address1, address2 } = parseAddress(address, city, state);
-  apiLogger.info(`[attom] getDeedHistory request`);
+  apiLogger.info('[attom] getDeedHistory request');
   const result = await attomFetch<Record<string, unknown>>(
     '/sale/history',
     { address1, address2 }
@@ -636,7 +636,7 @@ export async function getDeedHistory(
     return { data: normalizeDeedHistory(result.data), error: null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error(`[attom] Failed to normalize deed history: ${message}`);
+    apiLogger.error({ message }, '[attom] Failed to normalize deed history');
     return { data: null, error: `Failed to parse ATTOM response: ${message}` };
   }
 }
@@ -771,7 +771,7 @@ export async function getAssessmentEquitySnapshot(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error(`[attom] Failed to normalize property snapshot: ${message}`);
+    apiLogger.error({ message }, '[attom] Failed to normalize property snapshot');
     return { data: null, error: `Failed to parse ATTOM snapshot response: ${message}` };
   }
 }

@@ -52,7 +52,7 @@ async function queryFemaFloodZone(lat: number, lng: number): Promise<FemaFloodRe
     const response = await fetch(url.toString(), { signal: controller.signal });
     clearTimeout(timeoutId);
     if (!response.ok) {
-      pipelineLogger.warn(`[stage1] FEMA API returned ${response.status}`);
+      pipelineLogger.warn({ status: response.status }, '[stage1] FEMA API returned');
       return { floodZone: null, panelNumber: null };
     }
 
@@ -64,7 +64,7 @@ async function queryFemaFloodZone(lat: number, lng: number): Promise<FemaFloodRe
       panelNumber: feature?.FIRM_PAN ?? null,
     };
   } catch (err) {
-    pipelineLogger.warn(`[stage1] FEMA flood zone query failed: ${err}`);
+    pipelineLogger.warn({ err }, '[stage1] FEMA flood zone query failed');
     return { floodZone: null, panelNumber: null };
   }
 }
@@ -242,19 +242,19 @@ export async function runDataCollection(
   // the county's appeal process using web search + AI. The enriched data persists
   // so subsequent reports get it instantly.
   if (countyRule && needsEnrichment(countyRule)) {
-    pipelineLogger.info(`[stage1] County ${countyRule.county_name} needs enrichment — auto-researching...`);
+    pipelineLogger.info({ county_name: countyRule.county_name }, '[stage1] County needs enrichment — auto-researching...');
     const enrichResult = await enrichCounty(countyRule, supabase as never);
     if (enrichResult.enriched) {
       // Re-fetch the enriched county rule
       countyRule = await findCountyRule(supabase, resolvedFips, resolvedCountyName, resolvedState);
-      pipelineLogger.info(`[stage1] County enriched: ${enrichResult.fieldsUpdated.join(', ')}`);
+      pipelineLogger.info({ enrichResult: enrichResult.fieldsUpdated.join(', ') }, '[stage1] County enriched');
     }
   } else if (countyRule?.last_verified_date) {
     // ── 180-day stale data check — re-enrich if data is older than 6 months ──
     const lastVerified = new Date(countyRule.last_verified_date);
     const daysSinceVerified = Math.floor((Date.now() - lastVerified.getTime()) / (1000 * 60 * 60 * 24));
     if (daysSinceVerified > 180) {
-      pipelineLogger.info(`[stage1] County ${countyRule.county_name} data is ${daysSinceVerified} days old — re-enriching...`);
+      pipelineLogger.info({ county_name: countyRule.county_name, daysSinceVerified }, '[stage1] County data is days old — re-enriching...');
       // Force re-enrichment by temporarily clearing pro_se_tips (triggers needsEnrichment)
       const enrichResult = await enrichCounty(
         { ...countyRule, pro_se_tips: null } as typeof countyRule,
@@ -262,7 +262,7 @@ export async function runDataCollection(
       );
       if (enrichResult.enriched) {
         countyRule = await findCountyRule(supabase, resolvedFips, resolvedCountyName, resolvedState);
-        pipelineLogger.info(`[stage1] County re-enriched after ${daysSinceVerified} days: ${enrichResult.fieldsUpdated.join(', ')}`);
+        pipelineLogger.info({ daysSinceVerified, enrichResult: enrichResult.fieldsUpdated.join(', ') }, '[stage1] County re-enriched after days');
       }
     }
   }

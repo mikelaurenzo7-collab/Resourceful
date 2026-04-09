@@ -15,6 +15,8 @@ const LAYERS = {
   floodHazardZones: 28, // S_FLD_HAZ_AR — flood hazard zones
 } as const;
 
+import { apiLogger } from '@/lib/logger';
+
 // ─── Response Types ──────────────────────────────────────────────────────────
 
 /**
@@ -145,7 +147,7 @@ export async function getFloodZone(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error(`[fema] identify error: ${message}`);
+    apiLogger.error({ message }, '[fema] identify error');
     return { data: null, error: `FEMA API request failed: ${message}` };
   }
 }

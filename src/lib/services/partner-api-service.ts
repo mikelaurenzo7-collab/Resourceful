@@ -79,6 +79,11 @@ export async function validateApiKey(
     return { partner: null, error: 'Monthly report limit exceeded' };
   }
 
+  // Ensure partner has billing terms configured (prevent misconfigured free access)
+  if (partner.per_report_fee_cents <= 0) {
+    return { partner: null, error: 'Partner billing not configured — contact support' };
+  }
+
   return { partner, error: null };
 }
 
@@ -131,7 +136,7 @@ export async function trackApiUsage(
   } as never);
 
   if (partnerError) {
-    apiLogger.error(`[partner-api] Failed to track usage for partner ${partnerId}: ${partnerError.message}`);
+    apiLogger.error({ partnerId, message: partnerError.message }, '[partner-api] Failed to track usage for partner');
     throw new Error(`Partner usage tracking failed: ${partnerError.message}`);
   }
 

@@ -393,7 +393,7 @@ export async function collectPropertyData(
   let collected: CollectedPropertyData | null = null;
 
   // ── Source 1: Public Records (FREE) ─────────────────────────────────────
-  apiLogger.info(`[data-router] Trying public records for "${params.address}"...`);
+  apiLogger.info({ address: params.address }, '[data-router] Trying public records for ""...');
 
   const publicResult = await getPropertyDetailFromPublicRecords({
     address: params.address,
@@ -405,10 +405,10 @@ export async function collectPropertyData(
   if (publicResult.data) {
     collected = attomToCollected(publicResult.data, 'public_records');
     notes.push('Public records: property data extracted');
-    apiLogger.info(`[data-router] Public records returned data for "${params.address}"`);
+    apiLogger.info({ address: params.address }, '[data-router] Public records returned data for ""');
 
     if (hasMinimumData(collected)) {
-      apiLogger.info(`[data-router] Public records sufficient — skipping ATTOM`);
+      apiLogger.info('[data-router] Public records sufficient — skipping ATTOM');
       collected.data_collection_notes = notes.join('; ');
       return { data: collected, error: null };
     }
@@ -416,7 +416,7 @@ export async function collectPropertyData(
     notes.push('Public records: partial data — trying ATTOM for supplement');
   } else {
     notes.push(`Public records: ${publicResult.error ?? 'no data found'}`);
-    apiLogger.info(`[data-router] Public records returned no data, trying ATTOM...`);
+    apiLogger.info('[data-router] Public records returned no data, trying ATTOM...');
   }
 
   // ── Source 2: ATTOM (PAID, optional) ────────────────────────────────────
@@ -438,11 +438,11 @@ export async function collectPropertyData(
       }
     } else {
       notes.push(`ATTOM: ${attomResult.error ?? 'failed'}`);
-      apiLogger.warn(`[data-router] ATTOM also failed for "${params.address}"`);
+      apiLogger.warn({ address: params.address }, '[data-router] ATTOM also failed for ""');
     }
   } else {
     notes.push('ATTOM: not configured (no API key)');
-    apiLogger.info(`[data-router] ATTOM not configured — using public records only`);
+    apiLogger.info('[data-router] ATTOM not configured — using public records only');
   }
 
   // ── Source 3: Lightbox (absolute last resort — only when both public records AND ATTOM failed) ──
@@ -451,7 +451,7 @@ export async function collectPropertyData(
   const hasCriticalGaps = !collected?.building_sqft_gross || !collected?.assessed_value;
   const primarySourcesFailed = !collected?.assessed_value_source || collected.assessed_value_source === 'none';
   if (hasCriticalGaps && primarySourcesFailed && process.env.LIGHTBOX_API_KEY && process.env.LIGHTBOX_API_SECRET) {
-    apiLogger.info(`[data-router] Critical data gaps + primary sources failed — trying Lightbox for "${params.address}"...`);
+    apiLogger.info({ address: params.address }, '[data-router] Critical data gaps + primary sources failed — trying Lightbox for ""...');
     const lightboxResult = await lightboxGetPropertyDetail(params.address, params.city, params.state);
 
     if (lightboxResult.data) {
@@ -463,10 +463,10 @@ export async function collectPropertyData(
         collected = lightboxData;
         notes.push('Lightbox: primary property data source (public records + ATTOM both failed)');
       }
-      apiLogger.info(`[data-router] Lightbox supplemented data for "${params.address}"`);
+      apiLogger.info({ address: params.address }, '[data-router] Lightbox supplemented data for ""');
     } else {
       notes.push(`Lightbox: ${lightboxResult.error ?? 'no data found'}`);
-      apiLogger.warn(`[data-router] Lightbox also failed for "${params.address}": ${lightboxResult.error}`);
+      apiLogger.warn({ address: params.address, error: lightboxResult.error }, '[data-router] Lightbox also failed for ""');
     }
   }
 
@@ -474,7 +474,7 @@ export async function collectPropertyData(
   // Regrid provides UNIQUE data no other source has (geometry, frontage/depth,
   // legal descriptions, zoning detail). Always called when configured.
   if (collected && process.env.REGRID_API_KEY) {
-    apiLogger.info(`[data-router] Enriching with Regrid parcel data for "${params.address}"...`);
+    apiLogger.info({ address: params.address }, '[data-router] Enriching with Regrid parcel data for ""...');
     const regridResult = await getParcelByAddress(params.address, params.city, params.state);
 
     if (regridResult.data) {
@@ -513,7 +513,7 @@ export async function collectPropertyData(
       );
     } else {
       notes.push(`Regrid: ${regridResult.error ?? 'no parcel found'}`);
-      apiLogger.info(`[data-router] Regrid: ${regridResult.error} for "${params.address}"`);
+      apiLogger.info({ error: regridResult.error, address: params.address }, '[data-router] Regrid: for ""');
     }
   }
 

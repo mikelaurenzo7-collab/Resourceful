@@ -30,7 +30,7 @@ export async function createCalibrationEntry(
 
   const report = reportData as Report | null;
   if (!report || !report.appeal_outcome) {
-    apiLogger.warn(`[calibration] No report or outcome for ${reportId}`);
+    apiLogger.warn({ reportId }, '[calibration] No report or outcome for');
     return;
   }
 
@@ -43,7 +43,7 @@ export async function createCalibrationEntry(
   const propertyData = pdData as Pick<PropertyData, 'assessed_value' | 'concluded_value' | 'photo_count' | 'photo_defect_count' | 'building_sqft_gross'> | null;
 
   if (!propertyData?.concluded_value) {
-    apiLogger.warn(`[calibration] No concluded value for report ${reportId}`);
+    apiLogger.warn({ reportId }, '[calibration] No concluded value for report');
     return;
   }
 

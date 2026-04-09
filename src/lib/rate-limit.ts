@@ -130,7 +130,7 @@ export async function checkRateLimit(
     };
   } catch {
     dbFailureCount++;
-    apiLogger.error(`[rate-limit] Unexpected error (${dbFailureCount}/${DB_FAILURE_THRESHOLD}), falling back to memory`);
+    apiLogger.error({ dbFailureCount, DB_FAILURE_THRESHOLD }, '[rate-limit] Unexpected error (/), falling back to memory');
     return checkMemoryRateLimit(key, config);
   }
 }
@@ -161,7 +161,7 @@ export async function applyRateLimit(
 
   if (!result.success) {
     const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
-    apiLogger.warn(`[rate-limit] ${config.prefix} exceeded by ${ip} (limit: ${config.limit}/${config.windowSeconds}s)`);
+    apiLogger.warn({ prefix: config.prefix, ip, limit: config.limit, windowSeconds: config.windowSeconds }, '[rate-limit] exceeded by (limit: /s)');
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
       {

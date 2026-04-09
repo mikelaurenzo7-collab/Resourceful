@@ -47,3 +47,4 @@ export const emailLogger = logger.child({ module: 'email' });
 export const cronLogger = logger.child({ module: 'cron' });
 export const authLogger = logger.child({ module: 'auth' });
 export const paymentLogger = logger.child({ module: 'payment' });
+export const adminLogger = logger.child({ module: 'admin' });

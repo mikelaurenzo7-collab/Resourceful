@@ -47,7 +47,8 @@ export async function getConditionPatternsForCounty(
 
   const decade = yearBuilt ? `${Math.floor(yearBuilt / 10) * 10}s` : null;
 
-  // Query photos + reports + property_data to aggregate patterns
+  // Query only condition_rating from ai_analysis (lightweight JSONB extraction)
+  // Limit to 200 photos max to prevent memory bloat at scale.
   const { data: photos } = await supabase
     .from('photos')
     .select(`
@@ -62,13 +63,14 @@ export async function getConditionPatternsForCounty(
     .eq('reports.county_fips' as never, countyFips)
     .eq('reports.property_type' as never, propertyType)
     .not('ai_analysis', 'is', null)
-    .in('reports.status' as never, ['delivered', 'approved', 'pending_approval'] as never);
+    .in('reports.status' as never, ['delivered', 'approved', 'pending_approval'] as never)
+    .limit(200);
 
   if (!photos || photos.length < 5) {
     return null; // Not enough data to form patterns
   }
 
-  // Aggregate condition ratings and defects
+  // Aggregate condition ratings and defects from the limited sample
   const ratings: Record<string, number> = {};
   const defectTypes: Record<string, number> = {};
   let totalDefects = 0;

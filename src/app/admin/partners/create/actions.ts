@@ -1,5 +1,7 @@
 'use server';
 
+import { adminLogger } from '@/lib/logger';
+
 // ─── Admin: Create Partner Server Action ─────────────────────────────────────
 // Creates a new API partner and generates a one-time-visible API key.
 
@@ -64,7 +66,7 @@ export async function createPartnerAction(
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[admin/partners/create] Error:', message);
+    adminLogger.error({ err: message }, '[admin/partners/create] Error');
     return { success: false, error: message };
   }
 }

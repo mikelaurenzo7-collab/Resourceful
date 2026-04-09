@@ -2,6 +2,8 @@
 // Founder accounts get full access to all services at no cost.
 // Set FOUNDER_EMAILS env var as a comma-separated list of emails.
 
+import { logger } from '@/lib/logger';
+
 let warnedEmpty = false;
 
 /**
@@ -26,7 +28,7 @@ export function isFounderEmail(email: string): boolean {
   const founders = getFounderEmails();
   if (founders.size === 0 && !warnedEmpty) {
     warnedEmpty = true;
-    console.warn('[founders] FOUNDER_EMAILS env var is empty — no founder bypass is active');
+    logger.warn('[founders] FOUNDER_EMAILS env var is empty — no founder bypass is active');
   }
   return founders.has(email.toLowerCase().trim());
 }

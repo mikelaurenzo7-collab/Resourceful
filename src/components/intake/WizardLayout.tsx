@@ -347,7 +347,7 @@ function WizardLayoutInner({ children }: { children: React.ReactNode }) {
                           ? 'bg-gold/20 border border-gold/40 text-gold'
                           : isActive
                             ? 'bg-gold text-navy-deep'
-                            : 'border border-gold/20 text-cream/30'
+                            : 'border border-gold/20 text-cream/50'
                       }`}
                     >
                       {isComplete ? (

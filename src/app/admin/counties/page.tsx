@@ -17,8 +17,8 @@ export default async function CountyRulesPage() {
   const { data: rawCounties, error } = await supabase
     .from('county_rules')
     .select('*')
-    .order('state_abbreviation' as any)
-    .order('county_name' as any);
+    .order('state_abbreviation' as never)
+    .order('county_name' as never);
 
   const counties = rawCounties as unknown as CountyRule[] | null;
 

@@ -69,7 +69,7 @@ export default function Testimonials() {
             </div>
 
             {/* Quote */}
-            <blockquote className="text-[13px] text-cream/60 leading-relaxed flex-grow">
+            <blockquote className="text-[13px] text-cream/70 leading-relaxed flex-grow">
               &ldquo;{t.quote}&rdquo;
             </blockquote>
 
@@ -77,16 +77,16 @@ export default function Testimonials() {
             <div className="mt-5 pt-4 flex items-center justify-between" style={{ borderTop: '1px solid rgba(212, 168, 71, 0.08)' }}>
               <div>
                 <p className="text-sm font-medium text-cream">{t.name}</p>
-                <p className="text-[11px] text-cream/30">{t.location}</p>
+                <p className="text-[11px] text-cream/50">{t.location}</p>
               </div>
               <div className="text-right">
                 {t.savings ? (
                   <p className="text-sm font-display text-emerald-400">{t.savings}</p>
                 ) : (
-                  <p className="text-[11px] text-cream/25">{t.outcome}</p>
+                  <p className="text-[11px] text-cream/50">{t.outcome}</p>
                 )}
                 {t.savings && (
-                  <p className="text-[10px] text-cream/25">{t.outcome}</p>
+                  <p className="text-[10px] text-cream/50">{t.outcome}</p>
                 )}
               </div>
             </div>

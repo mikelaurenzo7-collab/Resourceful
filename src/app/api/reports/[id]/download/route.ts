@@ -99,7 +99,7 @@ export async function GET(
 
       await supabase.from('reports').update({ report_pdf_storage_path: storagePath }).eq('id', reportId);
 
-      apiLogger.warn(`[PDF] Regenerated on demand for report ${reportId}`);
+      apiLogger.warn({ reportId }, '[PDF] Regenerated on demand for report');
     } catch (err) {
       apiLogger.error({ err: err }, `On-demand PDF regeneration failed for ${reportId}`);
       return NextResponse.json({ error: 'Failed to generate PDF' }, { status: 500 });

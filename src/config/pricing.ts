@@ -2,6 +2,7 @@
 // All pricing in cents. Update here to change pricing everywhere.
 
 import type { ReviewTier } from '@/types/database';
+import { logger } from '@/lib/logger';
 
 // ─── Base Prices (Auto-Report tier) ─────────────────────────────────────────
 
@@ -75,7 +76,7 @@ export function getPriceForReport(
     serviceType !== 'tax_appeal';
 
   if (needsDowngrade) {
-    console.warn(`[pricing] Review tier '${reviewTier}' is not available for '${serviceType}'. Downgrading to 'expert_reviewed'.`);
+    logger.warn({ reviewTier, serviceType }, '[pricing] Review tier not available for service type — downgrading to expert_reviewed');
   }
 
   const effectiveTier = needsDowngrade ? 'expert_reviewed' : reviewTier;

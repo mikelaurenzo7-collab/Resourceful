@@ -53,7 +53,7 @@ export async function sendOutcomeFollowups(): Promise<{ sent: number; errors: nu
     return { sent: 0, errors: 0 };
   }
 
-  emailLogger.info(`[outcome-followup] ${reports.length} reports due for follow-up`);
+  emailLogger.info({ length: reports.length }, '[outcome-followup] reports due for follow-up');
 
   let sent = 0;
   let errors = 0;
@@ -105,10 +105,10 @@ export async function sendOutcomeFollowups(): Promise<{ sent: number; errors: nu
 
       if (result.error) {
         errors++;
-        emailLogger.error(`[outcome-followup] Email failed for ${report.id}: ${result.error}`);
+        emailLogger.error({ id: report.id, error: result.error }, '[outcome-followup] Email failed for');
       } else {
         sent++;
-        emailLogger.info(`[outcome-followup] Sent follow-up for report ${report.id}`);
+        emailLogger.info({ id: report.id }, '[outcome-followup] Sent follow-up for report');
       }
     } catch (err) {
       errors++;
@@ -116,6 +116,6 @@ export async function sendOutcomeFollowups(): Promise<{ sent: number; errors: nu
     }
   }
 
-  emailLogger.info(`[outcome-followup] Complete: ${sent} sent, ${errors} errors`);
+  emailLogger.info({ sent, errors }, '[outcome-followup] Complete: sent, errors');
   return { sent, errors };
 }

@@ -43,7 +43,7 @@ export async function retryFailedNotifications(): Promise<{ sent: number; errors
     return { sent: 0, errors: 0 };
   }
 
-  emailLogger.info(`[notification-retry] Found ${reports.length} reports needing notification retry`);
+  emailLogger.info({ length: reports.length }, '[notification-retry] Found reports needing notification retry');
 
   let sent = 0;
   let errors = 0;
@@ -92,7 +92,7 @@ export async function retryFailedNotifications(): Promise<{ sent: number; errors
       });
 
       if (result.error) {
-        emailLogger.error(`[notification-retry] Failed for ${report.id}: ${result.error}`);
+        emailLogger.error({ id: report.id, error: result.error }, '[notification-retry] Failed for');
         errors++;
       } else {
         // Stamp success — won't be retried again
@@ -101,16 +101,16 @@ export async function retryFailedNotifications(): Promise<{ sent: number; errors
           .update({ notification_sent_at: new Date().toISOString() } as Record<string, unknown>)
           .eq('id', report.id);
 
-        emailLogger.info(`[notification-retry] Sent for report ${report.id}`);
+        emailLogger.info({ id: report.id }, '[notification-retry] Sent for report');
         sent++;
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      emailLogger.error(`[notification-retry] Error for ${report.id}: ${message}`);
+      emailLogger.error({ id: report.id, message }, '[notification-retry] Error for');
       errors++;
     }
   }
 
-  emailLogger.info(`[notification-retry] Complete: ${sent} sent, ${errors} errors`);
+  emailLogger.info({ sent, errors }, '[notification-retry] Complete: sent, errors');
   return { sent, errors };
 }

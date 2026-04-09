@@ -84,7 +84,7 @@ export default function SampleReport() {
 
           {/* Bottom accent */}
           <div className="mt-8 pt-6 text-center" style={{ borderTop: '1px solid rgba(212, 168, 71, 0.08)' }}>
-            <p className="text-xs text-cream/25">
+            <p className="text-xs text-cream/50">
               Includes cover page, table of contents, methodology disclosure, and legal disclaimers.
               All reports are quality-reviewed before delivery.
             </p>

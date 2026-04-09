@@ -39,7 +39,7 @@ async function serperSearch(
       body: JSON.stringify({ q: query, num: 8 }),
     });
     if (!res.ok) {
-      apiLogger.warn(`[web-comps] Serper returned ${res.status} for query: ${query}`);
+      apiLogger.warn({ status: res.status, query }, '[web-comps] Serper returned for query');
       return [];
     }
     const data = await res.json() as { organic?: Array<{ title: string; link: string; snippet: string }> };
@@ -211,7 +211,7 @@ Return ONLY the JSON array. No explanation, no markdown.`;
       if (conf === 'low' || price <= 0 || !hasDate || !hasAddress) return false;
       // Exclude the subject property — Claude sometimes returns it despite instructions
       if (isSubjectProperty(String(c.address), ctx.address)) {
-        apiLogger.info(`[web-comps] Filtered subject property from comps: ${c.address}`);
+        apiLogger.info({ address: c.address }, '[web-comps] Filtered subject property from comps');
         return false;
       }
       return true;
@@ -265,7 +265,7 @@ export async function findCompsViaWeb(ctx: WebCompsContext): Promise<AttomSaleCo
 
   try {
     const [q1, q2] = buildSearchQueries(ctx);
-    apiLogger.info(`[web-comps] Searching web for comparable sales near ${ctx.address}, ${ctx.city}...`);
+    apiLogger.info({ address: ctx.address, city: ctx.city }, '[web-comps] Searching web for comparable sales near , ...');
 
     // Run both searches in parallel
     const [results1, results2] = await Promise.all([
@@ -299,7 +299,7 @@ export async function findCompsViaWeb(ctx: WebCompsContext): Promise<AttomSaleCo
       : null;
 
     if (pageContent) {
-      apiLogger.info(`[web-comps] Fetched page content from ${preferredResult.link} (${pageContent.length} chars)`);
+      apiLogger.info({ link: preferredResult.link, length: pageContent.length }, '[web-comps] Fetched page content from ( chars)');
     }
 
     // Use Claude to extract structured comps from search snippets + page content
@@ -317,8 +317,8 @@ export async function findCompsViaWeb(ctx: WebCompsContext): Promise<AttomSaleCo
     return comps;
   } catch (err) {
     apiLogger.warn(
-      '[web-comps] Fallback comp search failed:',
-      err instanceof Error ? err.message : String(err)
+      { err: err instanceof Error ? err.message : String(err) },
+      '[web-comps] Fallback comp search failed'
     );
     return [];
   }
@@ -352,7 +352,7 @@ export async function findSubjectPriorSaleViaWeb(
       `${fullAddress} sale history property sold last sold`,
     ];
 
-    apiLogger.info(`[web-comps] Searching for prior sale of subject: ${fullAddress}`);
+    apiLogger.info({ fullAddress }, '[web-comps] Searching for prior sale of subject');
     const [r1, r2] = await Promise.all([serperSearch(queries[0]), serperSearch(queries[1])]);
 
     const seen = new Set<string>();

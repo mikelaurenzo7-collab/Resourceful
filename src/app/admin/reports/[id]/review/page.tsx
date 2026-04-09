@@ -58,11 +58,11 @@ export default async function ReviewPage({
   ] = await Promise.all([
     supabase.from('reports').select('*').eq('id', reportId).single(),
     supabase.from('property_data').select('*').eq('report_id', reportId).single(),
-    supabase.from('comparable_sales').select('*').eq('report_id', reportId).order('distance_miles' as any),
+    supabase.from('comparable_sales').select('*').eq('report_id', reportId).order('distance_miles' as never),
     supabase.from('measurements').select('*').eq('report_id', reportId),
     supabase.from('income_analysis').select('*').eq('report_id', reportId).single(),
-    supabase.from('photos').select('*').eq('report_id', reportId).order('sort_order' as any),
-    supabase.from('report_narratives').select('*').eq('report_id', reportId).order('generated_at' as any),
+    supabase.from('photos').select('*').eq('report_id', reportId).order('sort_order' as never),
+    supabase.from('report_narratives').select('*').eq('report_id', reportId).order('generated_at' as never),
     supabase.from('approval_events').select('*').eq('report_id', reportId).order('created_at', { ascending: false }),
   ]);
 

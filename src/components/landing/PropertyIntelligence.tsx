@@ -79,7 +79,7 @@ export default function PropertyIntelligence() {
 
       {/* Value Prop Closer */}
       <div className="mt-12 text-center" data-animate>
-        <div className="inline-flex items-center gap-2 text-xs text-cream/25 mb-5">
+        <div className="inline-flex items-center gap-2 text-xs text-cream/50 mb-5">
           <div className="h-px w-8 bg-cream/10" />
           The assessor valued your home from a desk. We bring independent evidence.
           <div className="h-px w-8 bg-cream/10" />

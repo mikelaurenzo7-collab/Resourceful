@@ -196,7 +196,7 @@ export default function PhotoUploader({ propertyType, onPhotosChange, onFileUplo
                     value={captions[req.type] ?? photo?.caption ?? ''}
                     onChange={(e) => handleCaptionChange(req.type, e.target.value)}
                     rows={2}
-                    className="mt-3 w-full rounded-lg border border-gold/10 bg-navy-deep/60 px-3 py-2 text-xs text-cream/70 placeholder:text-cream/25 focus:border-gold/30 focus:outline-none focus:ring-1 focus:ring-gold/20 resize-none transition-colors"
+                    className="mt-3 w-full rounded-lg border border-gold/10 bg-navy-deep/60 px-3 py-2 text-xs text-cream/70 placeholder:text-cream/40 focus:border-gold/30 focus:outline-none focus:ring-1 focus:ring-gold/20 resize-none transition-colors"
                   />
 
                   {/* Upload zone or thumbnail */}

@@ -205,14 +205,14 @@ export async function getParcelByAddress(
 
     if (!res.ok) {
       const body = await res.text().catch(() => '');
-      apiLogger.warn(`[regrid] API error ${res.status}: ${body.slice(0, 200)}`);
+      apiLogger.warn({ status: res.status, body: body.slice(0, 200) }, '[regrid] API error');
       return { data: null, error: `Regrid API error ${res.status}` };
     }
 
     const json = (await res.json()) as RegridSearchResponse;
 
     if (!json.features || json.features.length === 0) {
-      apiLogger.info(`[regrid] No parcels found for "${query}"`);
+      apiLogger.info({ query }, '[regrid] No parcels found for ""');
       return { data: null, error: 'No parcel found at this address' };
     }
 
@@ -272,7 +272,7 @@ export async function getParcelByAddress(
     return { data: result, error: null };
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
-      apiLogger.warn(`[regrid] Request timed out for "${query}"`);
+      apiLogger.warn({ query }, '[regrid] Request timed out for ""');
       return { data: null, error: 'Regrid request timed out' };
     }
     apiLogger.warn({ err: err instanceof Error ? err.message : String(err) }, 'Request failed');
