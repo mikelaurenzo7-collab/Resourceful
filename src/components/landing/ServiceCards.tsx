@@ -86,8 +86,8 @@ export default function ServiceCards() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {services.map((svc, i) => {
           const href = svc.premium
-            ? '/start?tier=full-representation'
-            : '/start';
+            ? `/start?service=${svc.service}&tier=full-representation`
+            : `/start?service=${svc.service}`;
 
           return (
             <Link

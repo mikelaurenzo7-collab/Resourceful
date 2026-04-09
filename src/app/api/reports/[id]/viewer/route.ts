@@ -124,6 +124,7 @@ export async function GET(
     reportId: report.id,
     propertyAddress: [report.property_address, report.city, report.state].filter(Boolean).join(', '),
     serviceType: report.service_type,
+    reviewTier: report.review_tier ?? 'auto',
     assessedValue: propertyData?.assessed_value ?? 0,
     concludedValue,
     potentialSavings: Math.max(0, (propertyData?.assessed_value ?? 0) - concludedValue),

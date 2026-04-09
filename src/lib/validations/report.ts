@@ -47,6 +47,8 @@ export const reportCreateSchema = z.object({
   tax_bill_tax_amount: z.number().positive().nullable().optional(),
   tax_bill_tax_year: z.string().regex(/^\d{4}$/, 'Tax year must be 4 digits').or(z.literal('')).nullable().optional(),
   tax_bill_pin: z.string().max(50).nullable().optional(),
+  // Referral code (validated server-side)
+  referral_code: z.string().max(50).optional(),
 }).refine(
   (data) => !data.has_tax_bill || (data.tax_bill_assessed_value != null),
   { message: 'Tax bill assessed value is required when has_tax_bill is true', path: ['tax_bill_assessed_value'] }

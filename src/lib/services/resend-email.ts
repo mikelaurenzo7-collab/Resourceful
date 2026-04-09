@@ -195,11 +195,8 @@ export async function sendReportDeliveryEmail(
             Your report page includes your full PDF, county-specific filing instructions, required forms, and step-by-step guidance.
           </p>
 
-          <p style="margin-top: 12px;">
-            <a href="${params.pdfUrl}" style="color: #2563eb; text-decoration: underline; font-size: 13px;">
-              Or download the PDF directly
-            </a>
-            <span style="font-size: 12px; color: #999;"> (link expires in 7 days)</span>
+          <p style="margin-top: 12px; font-size: 13px; color: #666;">
+            Your PDF is always available for download from your report page.
           </p>
 
           <p style="margin-top: 32px; font-size: 12px; color: #999;">

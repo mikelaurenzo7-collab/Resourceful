@@ -3,6 +3,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { parseCountySlug, buildCountySlug } from '@/lib/utils/county-slug';
 import { getCountyByName, getActiveCounties } from '@/lib/repository/county-rules';
+import { createAdminClient } from '@/lib/supabase/admin';
 import Footer from '@/components/landing/Footer';
 import type { CountyRule } from '@/types/database';
 
@@ -65,6 +66,23 @@ export default async function CountyAppealPage({
   const county = await getCountyByName(parsed.countyName, parsed.stateAbbrev);
   if (!county) notFound();
 
+  // Fetch real outcome stats for this county
+  const supabase = createAdminClient();
+  const { data: outcomeStats } = await supabase
+    .from('reports')
+    .select('appeal_outcome, savings_amount_cents')
+    .eq('county', county.county_name)
+    .eq('state', county.state_abbreviation)
+    .not('appeal_outcome', 'is', null);
+
+  const outcomes = outcomeStats ?? [];
+  const totalAppeals = outcomes.length;
+  const wins = outcomes.filter((o) => o.appeal_outcome === 'won');
+  const winRate = totalAppeals >= 3 ? Math.round((wins.length / totalAppeals) * 100) : null;
+  const avgSavingsCents = wins.length >= 2
+    ? Math.round(wins.reduce((sum, o) => sum + (o.savings_amount_cents ?? 0), 0) / wins.length)
+    : null;
+
   const filingMethod = getFilingMethodText(county);
   const displayName = county.county_name;
   const stateName = county.state_name;
@@ -106,7 +124,9 @@ export default async function CountyAppealPage({
           </h1>
           <p className="mt-6 text-lg text-cream/50 max-w-2xl mx-auto leading-relaxed">
             Professional property tax appeal reports for {displayName} homeowners.
-            Our analysis has helped property owners save an average of $800&ndash;$3,000+ per year.
+            {avgSavingsCents && avgSavingsCents > 0
+              ? ` Our ${displayName} customers have saved an average of $${Math.round(avgSavingsCents / 100).toLocaleString()} per year on successful appeals.`
+              : ' Our analysis has helped property owners save substantially on their tax assessments.'}
           </p>
           <Link
             href="/start"
@@ -351,6 +371,32 @@ export default async function CountyAppealPage({
               {displayName} offers an informal review process before a formal hearing.
               {county.informal_review_notes && ` ${county.informal_review_notes}`}
             </p>
+          </div>
+        )}
+
+        {/* Resourceful Outcomes for This County */}
+        {totalAppeals >= 3 && (
+          <div className="mt-8 card-premium rounded-xl p-8">
+            <h3 className="font-display text-xl text-cream mb-6 text-center">Our Results in {displayName}</h3>
+            <div className="grid grid-cols-3 gap-8 text-center">
+              <div>
+                <p className="font-display text-3xl text-gold">{totalAppeals}</p>
+                <p className="text-sm text-cream/40 mt-1">Reports Completed</p>
+              </div>
+              {winRate !== null && (
+                <div>
+                  <p className="font-display text-3xl text-emerald-400">{winRate}%</p>
+                  <p className="text-sm text-cream/40 mt-1">Appeal Win Rate</p>
+                </div>
+              )}
+              {avgSavingsCents !== null && avgSavingsCents > 0 && (
+                <div>
+                  <p className="font-display text-3xl text-gold">${Math.round(avgSavingsCents / 100).toLocaleString()}</p>
+                  <p className="text-sm text-cream/40 mt-1">Avg. Annual Savings</p>
+                </div>
+              )}
+            </div>
+            <p className="text-[10px] text-cream/20 text-center mt-4">Based on reported outcomes from Resourceful customers in {displayName}</p>
           </div>
         )}
 

@@ -12,6 +12,7 @@ import { applyRateLimit } from '@/lib/rate-limit';
 import { isFounderEmail } from '@/config/founders';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { validateReferralCode, applyReferralCode } from '@/lib/services/referral-service';
 import type { Report } from '@/types/database';
 
 export async function POST(request: NextRequest) {
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest) {
     const tax_bill_tax_amount = d.tax_bill_tax_amount ?? null;
     const tax_bill_tax_year = d.tax_bill_tax_year || null;
     const tax_bill_pin = d.tax_bill_pin || null;
+    const referral_code = d.referral_code || null;
 
     // ── Per-email concurrency check (prevent abuse) ─────────────────────
     // Max 3 reports in 'intake' or 'processing' state per email
@@ -74,7 +76,17 @@ export async function POST(request: NextRequest) {
     const founderAccess = isFounderEmail(client_email);
 
     // ── Calculate price (tier-aware, tax bill discount applied) ──────────
-    const priceCents = founderAccess ? 0 : getPriceCents(service_type, property_type, review_tier, has_tax_bill);
+    let priceCents = founderAccess ? 0 : getPriceCents(service_type, property_type, review_tier, has_tax_bill);
+
+    // ── Validate and apply referral code discount ────────────────────────
+    let referralValidation = null;
+    if (!founderAccess && referral_code) {
+      referralValidation = await validateReferralCode(referral_code);
+      if (referralValidation.valid && referralValidation.discountPct > 0) {
+        const discountCents = Math.round(priceCents * (referralValidation.discountPct / 100));
+        priceCents = priceCents - discountCents;
+      }
+    }
 
     // ── Create report row via repository ─────────────────────────────────
     const report = (await createReport({
@@ -120,6 +132,13 @@ export async function POST(request: NextRequest) {
       appeal_outcome: null,
       savings_amount_cents: null,
     })) as Report;
+
+    // ── Apply referral code to report if validated ───────────────────────
+    if (referralValidation?.valid && referralValidation.code) {
+      const basePriceCents = getPriceCents(service_type, property_type, review_tier, has_tax_bill);
+      const discountCents = basePriceCents - priceCents;
+      await applyReferralCode(report.id, referralValidation.code.id, discountCents);
+    }
 
     // ── Founder bypass: skip Stripe, trigger pipeline directly ───────────
     if (founderAccess) {

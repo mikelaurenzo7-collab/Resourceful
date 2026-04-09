@@ -293,6 +293,10 @@ export default function PaymentPage() {
   const [emailError, setEmailError] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [referralCode, setReferralCode] = useState('');
+  const [referralStatus, setReferralStatus] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  const [referralDiscount, setReferralDiscount] = useState(0);
+  const [referralError, setReferralError] = useState('');
 
   useEffect(() => {
     setCurrentStep(5);
@@ -306,6 +310,26 @@ export default function PaymentPage() {
       });
     });
   }, [setCurrentStep, state.address, state.serviceType, state.propertyType, router]);
+
+  const handleValidateReferral = async () => {
+    if (!referralCode.trim()) return;
+    setReferralStatus('validating');
+    setReferralError('');
+    try {
+      const res = await fetch(`/api/referral/validate?code=${encodeURIComponent(referralCode.trim())}`);
+      const data = await res.json();
+      if (data.valid) {
+        setReferralStatus('valid');
+        setReferralDiscount(data.discountPct);
+      } else {
+        setReferralStatus('invalid');
+        setReferralError(data.error || 'Invalid referral code');
+      }
+    } catch {
+      setReferralStatus('invalid');
+      setReferralError('Could not validate code');
+    }
+  };
 
   const handleCreateReport = async () => {
     // Validate email
@@ -340,6 +364,7 @@ export default function PaymentPage() {
           tax_bill_tax_amount: state.taxBillData?.taxAmount ?? null,
           tax_bill_tax_year: state.taxBillData?.taxYear ?? null,
           tax_bill_pin: state.taxBillData?.pin ?? null,
+          referral_code: referralStatus === 'valid' ? referralCode.trim() : undefined,
         }),
       });
 
@@ -625,6 +650,42 @@ export default function PaymentPage() {
               <p className="text-xs uppercase tracking-widest text-gold/70">Delivery Details</p>
             </div>
             <div className="p-6 space-y-4">
+              {/* Referral code */}
+              <div>
+                <label className="block text-sm text-cream/70 font-medium mb-1.5">
+                  Referral Code <span className="text-cream/30 font-normal">(optional)</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={referralCode}
+                    onChange={(e) => { setReferralCode(e.target.value.toUpperCase()); setReferralStatus('idle'); setReferralError(''); }}
+                    placeholder="e.g. MIKE2026"
+                    maxLength={50}
+                    className="flex-1 rounded-lg bg-navy-light border border-gold/15 px-4 py-3 text-cream placeholder-cream/25 focus:outline-none focus:border-gold/40 focus:ring-1 focus:ring-gold/20 uppercase"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleValidateReferral}
+                    disabled={!referralCode.trim() || referralStatus === 'validating'}
+                    className="rounded-lg bg-gold/10 border border-gold/20 px-4 py-3 text-sm font-medium text-gold hover:bg-gold/15 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {referralStatus === 'validating' ? 'Checking…' : 'Apply'}
+                  </button>
+                </div>
+                {referralStatus === 'valid' && (
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-xs text-emerald-400 font-medium">{referralDiscount}% discount applied</span>
+                  </div>
+                )}
+                {referralStatus === 'invalid' && referralError && (
+                  <p className="text-xs text-red-400 mt-1.5">{referralError}</p>
+                )}
+              </div>
+              <div className="h-px bg-gold/10" />
               <div>
                 <label className="block text-sm text-cream/70 font-medium mb-1.5">Email Address *</label>
                 <input
@@ -666,7 +727,10 @@ export default function PaymentPage() {
               Back
             </Button>
             <Button size="lg" fullWidth loading={creating} onClick={handleCreateReport}>
-              Continue to Payment — {formatPrice(state.serviceType && state.propertyType ? getPriceCents(state.serviceType, state.propertyType, state.reviewTier, state.hasTaxBill) : 0)}
+              Continue to Payment — {formatPrice((() => {
+                const base = state.serviceType && state.propertyType ? getPriceCents(state.serviceType, state.propertyType, state.reviewTier, state.hasTaxBill) : 0;
+                return referralStatus === 'valid' ? Math.round(base * (1 - referralDiscount / 100)) : base;
+              })())}
               <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
               </svg>

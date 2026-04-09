@@ -46,6 +46,7 @@ interface ReportData {
   reportId: string;
   propertyAddress: string;
   serviceType: string;
+  reviewTier: string;
   assessedValue: number;
   concludedValue: number;
   potentialSavings: number;
@@ -912,6 +913,56 @@ export default function ReportViewerPage() {
                   {outcomeValue === 'won' && ' Congratulations on your successful appeal!'}
                 </p>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Referral CTA — shown for delivered reports */}
+        {data.status === 'delivered' && data.potentialSavings > 0 && (
+          <div className="mt-10 card-premium rounded-xl p-6 border border-gold/20 animate-fade-in">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-cream font-medium">Know someone who&apos;s overpaying on property taxes?</h3>
+                <p className="text-sm text-cream/40 mt-1">
+                  Share Resourceful with a neighbor or friend. They&apos;ll get 10% off their report, and you&apos;ll earn a $5 credit toward your next analysis.
+                </p>
+              </div>
+              <Link
+                href="/start"
+                className="text-sm font-medium bg-gold/10 text-gold border border-gold/20 px-5 py-2.5 rounded-lg hover:bg-gold/20 transition-all whitespace-nowrap"
+              >
+                Share &amp; Earn
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Upsell CTA — auto-tier tax appeal users who might want guided/full-rep */}
+        {data.serviceType === 'tax_appeal' && data.reviewTier === 'auto' && data.status === 'delivered' && (
+          <div className="mt-6 card-premium rounded-xl p-6 border border-gold/10 animate-fade-in">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-gold/10 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-cream font-medium">Want help filing your appeal?</h3>
+                <p className="text-sm text-cream/40 mt-1">
+                  Upgrade to <strong className="text-cream/60">Guided Filing</strong> for a live coaching session, or let us handle everything with <strong className="text-cream/60">Full Representation</strong>.
+                </p>
+              </div>
+              <Link
+                href={`/start?service=tax_appeal&tier=guided-filing`}
+                className="text-sm font-medium bg-gold/10 text-gold border border-gold/20 px-5 py-2.5 rounded-lg hover:bg-gold/20 transition-all whitespace-nowrap"
+              >
+                Explore Options
+              </Link>
             </div>
           </div>
         )}

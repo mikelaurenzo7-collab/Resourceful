@@ -260,6 +260,15 @@ export default function WizardLayout({ children }: { children: React.ReactNode }
       } catch { /* ignore invalid JSON */ }
     }
 
+    // Pre-populate service type from URL
+    const serviceParam = searchParams.get('service');
+    if (serviceParam) {
+      const validServices = ['tax_appeal', 'pre_purchase', 'pre_listing'];
+      if (validServices.includes(serviceParam)) {
+        setState((prev) => ({ ...prev, serviceType: serviceParam as ServiceType }));
+      }
+    }
+
     const tierParam = searchParams.get('tier');
     if (tierParam) {
       const tierMap: Record<string, ReviewTier> = {
