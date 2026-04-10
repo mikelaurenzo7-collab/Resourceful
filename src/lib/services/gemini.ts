@@ -121,7 +121,7 @@ export async function analyzeDeferredMaintenance(
     1. Identify the true severity.
     2. Write a professional 'appraiserDescription' to be printed directly into a legal valuation report.
        (e.g., "Subject property exhibits severe exterior deferred maintenance, characterized by significant concrete spalling on the western foundation...").
-    3. Generate a logical 'estimatedCostToCure' if applicable to correct the defect.
+    3. Generate a logical 'estimatedCostToCure' if applicable to correct the defect. Use the provided Google Search grounding tool to look up current, real-world estimates for repairing this specific issue.
     4. Categorize the 'primaryDefectType' (e.g., Foundation, Roof, Water Intrusion, Cosmetic Updating).
 
     Return ONLY a JSON object:
@@ -147,6 +147,7 @@ export async function analyzeDeferredMaintenance(
         config: {
           responseMimeType: 'application/json',
           temperature: 0.4, // Slight creative interpretation for the narrative portion
+          tools: [{ googleSearch: {} }], // Automatically ground defect analysis with up-to-date regional cost/repair data
         }
       }),
       { maxAttempts: 3, baseDelayMs: 2000, retryOn: isRetryableError }
