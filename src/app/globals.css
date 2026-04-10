@@ -512,13 +512,6 @@ a > svg, button > svg, [role="img"] > svg {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .bg-aurora {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  z-index: -1;
   background: var(--navy-deep);
 }
 
@@ -530,6 +523,8 @@ a > svg, button > svg, [role="img"] > svg {
   filter: blur(140px);
   opacity: 0.15;
   animation: aurora-float 20s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .bg-aurora::before {

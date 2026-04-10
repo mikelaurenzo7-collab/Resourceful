@@ -12,14 +12,19 @@ Resourceful is a nationwide property intelligence platform that generates profes
 
 ## Stack
 
-- Next.js 14 App Router
-- TypeScript strict mode
-- Supabase for Postgres, Auth, Storage, and RLS
-- Stripe for checkout and payment webhooks
-- Anthropic for narratives and image analysis
-- ATTOM plus supporting services for property data and comps
-- React PDF for the production report renderer
-- Vercel for deployment and cron execution
+- **Next.js 14** App Router, TypeScript strict mode
+- **Supabase** — Postgres, Auth, Storage, RLS on every table
+- **Anthropic Claude** — report narratives (PRIMARY), classification (FAST)
+- **Google Gemini** — multimodal vision for photo analysis (VISION), tax bill OCR (DOCUMENT)
+- **ATTOM Data API** — property details, sales comps, rental comps, deed history
+- **Azure Maps** — geocoding, static maps, address autocomplete
+- **Mapillary** — street-level imagery (replaces Google Street View)
+- **Stripe** — checkout, payment webhooks, subscription management
+- **Resend** — transactional email (delivery notifications, outcome follow-ups)
+- **@sparticuz/chromium + puppeteer-core** — PDF generation
+- **Vercel** — deployment, edge middleware, cron execution
+
+Optional data enrichment services: RentCast (rental comps), LightBox RE (property data fallback), Regrid (parcel boundaries), Serper (web search), Lob (certified mail filing).
 
 ## Important Paths
 
@@ -56,34 +61,44 @@ Helpful scripts:
 
 ## Environment
 
-Required production variables include:
+**Required** for production:
 
-- `ANTHROPIC_API_KEY`
-- `AI_MODEL_PRIMARY`
-- `AI_MODEL_FAST`
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
-- `NEXT_PUBLIC_APP_URL`
-- `ATTOM_API_KEY`
-- `CRON_SECRET`
+| Variable | Purpose |
+|---|---|
+| `ANTHROPIC_API_KEY` | Claude AI — narratives, filing guides |
+| `AI_MODEL_PRIMARY` | e.g. `claude-sonnet-4-6` |
+| `AI_MODEL_FAST` | e.g. `claude-haiku-4-5-20251001` |
+| `GEMINI_API_KEY` | Google Gemini — photo analysis, tax bill OCR |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key (browser-safe) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase admin key (server-only) |
+| `ATTOM_API_KEY` | ATTOM property data API |
+| `AZURE_MAPS_SUBSCRIPTION_KEY` | Azure Maps geocoding + autocomplete |
+| `STRIPE_SECRET_KEY` | Stripe payments |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signature verification |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe client key (browser-safe) |
+| `RESEND_API_KEY` | Transactional email |
+| `NEXT_PUBLIC_APP_URL` | Canonical app URL (e.g. `https://resourceful.app`) |
+| `CRON_SECRET` | Vercel cron job authentication |
 
-Recommended variables are documented in `.env.example` and validated at startup by `src/lib/utils/validate-env.ts`.
+**Optional** enrichment keys: `RENTCAST_API_KEY`, `LIGHTBOX_API_KEY`, `LIGHTBOX_API_SECRET`, `REGRID_API_KEY`, `SERPER_API_KEY`, `LOB_API_KEY`, `NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN`.
+
+All variables are documented in `.env.example`.
 
 ## Production Checklist
 
 Before shipping:
 
-1. Run `pnpm lint` and `pnpm build` on the exact commit being deployed.
-2. Ensure the latest Supabase migrations have been applied.
-3. Verify Stripe webhook configuration points to `/api/webhooks/stripe` with the correct secret.
-4. Confirm `county_rules` contains the jurisdictions you intend to support.
-5. Verify at least one admin user can review and approve reports.
-6. Test the happy path end to end: intake, payment, pipeline, admin approval, delivery email, dashboard access.
-7. Verify cron authentication and scheduled routes in `vercel.json`.
+1. `pnpm lint && pnpm build` — must pass clean on the deployed commit.
+2. All Supabase migrations applied (`supabase db push`).
+3. All required env vars set in Vercel project settings (see table above).
+4. Stripe webhook → `/api/webhooks/stripe` with correct `STRIPE_WEBHOOK_SECRET`.
+5. Resend sending domain verified and `RESEND_FROM_ADDRESS` set.
+6. `county_rules` seeded for target jurisdictions (`scripts/seed-counties.ts`).
+7. At least one admin user in the database for report quality review.
+8. End-to-end test: intake → payment → pipeline stages 1–7 → admin approval → delivery email → dashboard access.
+9. Verify cron routes in `vercel.json` and `CRON_SECRET` set.
+10. Confirm `NEXT_PUBLIC_APP_URL` is the production domain (used for canonical URLs, OG images, email links).
 
 ## Operational Notes
 

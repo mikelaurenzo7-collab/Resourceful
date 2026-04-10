@@ -27,15 +27,27 @@ This platform serves every county in every state. ATTOM is the universal data so
 ## Tech Stack
 - Next.js 14 App Router, TypeScript strict mode
 - Supabase (Postgres, Storage, Auth) — RLS on every table
-- Anthropic AI API (model names are env-var constants — never hardcoded)
-- ATTOM Data API for property data
-- Azure Maps (geocoding, static maps, address search) + Mapillary (street-level imagery)
-- Stripe for payments, Resend for email
+- Anthropic AI API — report narratives, filing guides (PRIMARY + FAST models)
+- Google Gemini AI API — multimodal vision (photo analysis) + document OCR (tax bills)
+- ATTOM Data API for property data, sales comps, rental comps
+- Azure Maps (geocoding, static maps, address autocomplete) + Mapillary (street-level imagery)
+- Stripe for payments, Resend for transactional email
 - @sparticuz/chromium + puppeteer-core for PDF generation
 - Deployed on Vercel
 
+## AI Architecture — Dual-Provider
+Anthropic and Google Gemini serve complementary roles:
+- **Anthropic PRIMARY** (e.g. Sonnet): Report narratives, logical reasoning, filing guides, photo condition analysis
+- **Anthropic FAST** (e.g. Haiku): Quick classification, structured data extraction from web scrapes
+- **Gemini VISION**: Appraiser-grade photo defect extraction (deferred maintenance analysis)
+- **Gemini DOCUMENT**: Dense tax bill OCR (extracts assessed value, taxable value, rates)
+
+All model identifiers live in `config/ai.ts` via env vars. Gemini models default to
+`gemini-3.1-pro` if env overrides are not set. Gemini uses `@google/genai` SDK with
+JSON response mode — do NOT combine with Google Search Grounding (they're incompatible).
+
 ## Key Conventions
-- All AI model identifiers: AI_MODELS.PRIMARY and AI_MODELS.FAST from config/ai.ts
+- All AI model identifiers: AI_MODELS.PRIMARY, .FAST, .VISION, .DOCUMENT from config/ai.ts
 - All database queries: typed repository functions in lib/repository/
 - All external API calls: typed service modules in lib/services/
 - All prices: PRICING constants from config/pricing.ts
@@ -83,3 +95,5 @@ If a county is corrupt or wrong, ATTOM inherits that same bad data. Therefore:
 - Never use ATTOM marketValue as ground truth for valuations or comparisons
 - Never trust county assessment data as accurate — always verify independently
 - Never say "free" in any user-facing text
+- Never combine Gemini `responseMimeType: 'application/json'` with `googleSearch` tool (incompatible)
+- Never pass undefined API keys to SDK constructors — throw early with a clear message
