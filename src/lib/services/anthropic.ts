@@ -215,6 +215,15 @@ export interface NarrativePayload {
     annualAppreciationPct: number;
     extrapolatedValue: number;
   } | null;
+  // Gemini Vision aggregate deferred maintenance analysis — whole-property condition assessment
+  // from multi-image spatial reasoning. Complements Anthropic's per-photo defect analysis.
+  deferredMaintenanceAnalysis?: {
+    severity: string;
+    appraiserDescription: string;
+    estimatedCostToCure: number | null;
+    primaryDefectType: string | null;
+    justification: string;
+  } | null;
 }
 
 export interface FilingGuidePayload {
@@ -679,7 +688,7 @@ export async function analyzePhoto(
 
   try {
     const response = await createWithRetry({
-      model: AI_MODELS.FAST,
+      model: AI_MODELS.PRIMARY, // Photos are the owner's strongest independent evidence — use best model
       max_tokens: AI_CONFIG.maxTokens.photoAnalysis,
       system: systemPrompt,
       messages: [
@@ -1039,6 +1048,16 @@ ${(payload.overvaluationAnalysis.distressedCompCount ?? 0) > 0 ? `- CONDITIONS O
 ${payload.overvaluationAnalysis.dataAnomalies.length > 0 ? `- ASSESSOR DATA ERRORS:\n${payload.overvaluationAnalysis.dataAnomalies.map(a => `  → ${a}`).join('\n')}` : ''}
 ` : ''}
 ${hasPhotos ? buildPhotoEvidenceBrief(payload.photoAnalyses!, payload.photoAttribution) : ''}
+${payload.deferredMaintenanceAnalysis && payload.deferredMaintenanceAnalysis.severity !== 'none' ? `
+AGGREGATE DEFERRED MAINTENANCE ANALYSIS (Gemini Vision — multi-image whole-property assessment):
+This is an independent AI analysis that examined ALL deferred maintenance photos simultaneously to produce a whole-property condition verdict. Use this to strengthen the condition_assessment and improvement_description_narrative sections.
+- Overall severity: ${payload.deferredMaintenanceAnalysis.severity.toUpperCase()}
+- Professional description: ${payload.deferredMaintenanceAnalysis.appraiserDescription}
+${payload.deferredMaintenanceAnalysis.estimatedCostToCure ? `- Estimated cost to cure: $${payload.deferredMaintenanceAnalysis.estimatedCostToCure.toLocaleString()}` : ''}
+${payload.deferredMaintenanceAnalysis.primaryDefectType ? `- Primary defect category: ${payload.deferredMaintenanceAnalysis.primaryDefectType}` : ''}
+- Basis: ${payload.deferredMaintenanceAnalysis.justification}
+
+Integrate this cost-to-cure estimate into the condition_assessment and reconciliation_narrative. A documented cost-to-cure is powerful evidence of economic depreciation that the assessor failed to account for.` : ''}
 
 TONE: Write with the confidence of an expert witness who has testified before ${payload.countyRules.appealBoardName || 'boards of review'} hundreds of times. Be specific, cite numbers, and make every paragraph advance the homeowner's case. Professional but assertive — never timid, never hedging. The homeowner is paying for advocacy, not neutrality.`;
 }
@@ -1055,6 +1074,7 @@ function buildNarrativeUserMessage(payload: NarrativePayload): string {
       incomeAnalysis: payload.incomeAnalysis ?? null,
       concludedValue: payload.concludedValue,
       photoAnalyses: payload.photoAnalyses ?? [],
+      deferredMaintenanceAnalysis: payload.deferredMaintenanceAnalysis ?? null,
       overvaluationAnalysis: payload.overvaluationAnalysis ?? null,
       assessmentEquity: payload.assessmentEquity ?? null,
       priorSaleAnalysis: payload.priorSaleAnalysis ?? null,

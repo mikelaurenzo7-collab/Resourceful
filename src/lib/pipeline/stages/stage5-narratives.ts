@@ -49,6 +49,47 @@ interface CostApproachResult {
   costApproachValue: number | null;
 }
 
+// ─── Deferred Maintenance Notes Parser ───────────────────────────────────────
+// Parses the structured condition_notes string written by Stage 4 (Gemini Vision)
+// into a typed object for the narrative payload.
+function parseDeferredMaintenanceNotes(
+  conditionNotes: string | null
+): NarrativePayload['deferredMaintenanceAnalysis'] {
+  if (!conditionNotes?.startsWith('DEFERRED MAINTENANCE ANALYSIS [Gemini Vision')) return null;
+
+  // Extract severity
+  const severityMatch = conditionNotes.match(/Severity:\s*(none|minor|moderate|severe)\./i);
+  const severity = severityMatch?.[1]?.toLowerCase() ?? 'moderate';
+
+  // Extract cost to cure
+  const costMatch = conditionNotes.match(/Estimated cost to cure:\s*\$([0-9,]+)/i);
+  const estimatedCostToCure = costMatch ? parseInt(costMatch[1].replace(/,/g, ''), 10) : null;
+
+  // Extract primary defect type
+  const defectMatch = conditionNotes.match(/Primary defect category:\s*([^.]+)\./i);
+  const primaryDefectType = defectMatch?.[1]?.trim() ?? null;
+
+  // The appraiser description is the main content between severity and cost/defect lines
+  const descStart = conditionNotes.indexOf(']:') + 2;
+  const descEnd = conditionNotes.indexOf('Estimated cost to cure:');
+  const rawDesc = conditionNotes
+    .slice(descStart, descEnd > descStart ? descEnd : undefined)
+    .replace(/Severity:\s*(none|minor|moderate|severe)\.\s*/i, '')
+    .trim();
+
+  // Extract justification
+  const basisMatch = conditionNotes.match(/Basis:\s*(.+)$/i);
+  const justification = basisMatch?.[1]?.trim() ?? '';
+
+  return {
+    severity,
+    appraiserDescription: rawDesc || conditionNotes,
+    estimatedCostToCure: estimatedCostToCure && !isNaN(estimatedCostToCure) ? estimatedCostToCure : null,
+    primaryDefectType,
+    justification,
+  };
+}
+
 function computeCostApproach(
   subtype: string | null,
   qualityGrade: string | null,
@@ -1084,6 +1125,8 @@ export async function runNarratives(
     floodZone: propertyData.flood_zone_designation,
     reviewTier: (report.review_tier ?? 'auto') as NarrativePayload['reviewTier'],
     overvaluationAnalysis,
+    // Gemini Vision aggregate deferred maintenance analysis (set by Stage 4)
+    deferredMaintenanceAnalysis: parseDeferredMaintenanceNotes(propertyData.condition_notes),
   };
 
   // ── Per-report research + value detractor detection (parallel) ──────

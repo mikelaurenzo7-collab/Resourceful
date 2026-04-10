@@ -8,6 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, PhotoAiAnalysis, Photo, ComparableSale, PropertyData } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { analyzePhoto } from '@/lib/services/anthropic';
+import { analyzeDeferredMaintenance } from '@/lib/services/gemini';
 import {
   computeEffectiveAge,
   computePhysicalDepreciation,
@@ -302,6 +303,107 @@ export async function runPhotoAnalysis(
     }
   }
 
+  // ── Gemini Vision: Aggregate deferred maintenance analysis ────────────
+  // Anthropic analyzed each photo individually above. Now send ALL deferred-
+  // maintenance photos to Gemini Vision simultaneously for a whole-property
+  // aggregate assessment. Gemini excels at multi-image spatial reasoning and
+  // produces appraiser-grade severity + cost-to-cure estimates.
+  // This is non-fatal — if Gemini fails, we continue with Anthropic-only results.
+  let geminiDeferredMaintenance: string | null = null;
+  try {
+    // Collect deferred-maintenance photos + any photos where Anthropic found significant defects.
+    // analyzedPhotos is not indexed to match photos (failed analyses are skipped), so check
+    // whether ANY analyzed photo had significant defects to decide if non-DM photos should be included.
+    const hasSignificantDefects = analyzedPhotos.some(
+      a => a?.defects?.some(d => d.severity === 'significant')
+    );
+    const deferredPhotos = photos.filter((p) => {
+      if (p.photo_type === 'deferred_maintenance') return true;
+      // If Anthropic found significant defects anywhere, also include exterior photos
+      // to give Gemini a fuller picture of the property's condition
+      if (hasSignificantDefects && p.photo_type?.startsWith('exterior_')) return true;
+      return false;
+    });
+
+    if (deferredPhotos.length > 0) {
+      // Cap at 10 images to stay within Gemini's context window
+      const photosToAnalyze = deferredPhotos.slice(0, 10);
+
+      // Download base64 data from Supabase Storage
+      const base64Images: { data: string; mimeType: string }[] = [];
+      for (const photo of photosToAnalyze) {
+        if (!photo.storage_path) continue;
+        const { data: blob, error: dlError } = await supabase
+          .storage
+          .from('photos')
+          .download(photo.storage_path);
+
+        if (dlError || !blob) {
+          pipelineLogger.warn({ id: photo.id, error: dlError?.message }, '[stage4] Failed to download photo for Gemini');
+          continue;
+        }
+
+        const arrayBuffer = await blob.arrayBuffer();
+        const base64 = Buffer.from(arrayBuffer).toString('base64');
+        // Infer MIME type from storage path extension
+        const ext = photo.storage_path.split('.').pop()?.toLowerCase() ?? 'jpeg';
+        const mimeMap: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/heic' };
+        const mimeType = mimeMap[ext] ?? 'image/jpeg';
+
+        base64Images.push({ data: base64, mimeType });
+      }
+
+      if (base64Images.length > 0) {
+        // Build aggregate caption from all deferred maintenance photo descriptions
+        const aggregateCaption = photosToAnalyze
+          .map(p => p.caption?.trim())
+          .filter(Boolean)
+          .join(' | ')
+          .slice(0, 2000) || 'Property deferred maintenance photos';
+
+        pipelineLogger.info(
+          { imageCount: base64Images.length, propertyType },
+          '[stage4] Sending deferred maintenance photos to Gemini Vision'
+        );
+
+        const geminiResult = await analyzeDeferredMaintenance(
+          base64Images,
+          aggregateCaption,
+          propertyType
+        );
+
+        if (geminiResult) {
+          // Format as structured condition notes for Stage 5 narrative consumption
+          const costStr = geminiResult.estimatedCostToCure
+            ? `Estimated cost to cure: $${geminiResult.estimatedCostToCure.toLocaleString()}.`
+            : '';
+          const defectStr = geminiResult.primaryDefectType
+            ? `Primary defect category: ${geminiResult.primaryDefectType}.`
+            : '';
+          geminiDeferredMaintenance = [
+            `DEFERRED MAINTENANCE ANALYSIS [Gemini Vision — ${base64Images.length} photos analyzed]:`,
+            `Severity: ${geminiResult.severity}.`,
+            geminiResult.appraiserDescription,
+            costStr,
+            defectStr,
+            `Basis: ${geminiResult.justification}`,
+          ].filter(Boolean).join(' ');
+
+          pipelineLogger.info(
+            { severity: geminiResult.severity, costToCure: geminiResult.estimatedCostToCure, defectType: geminiResult.primaryDefectType },
+            '[stage4] Gemini deferred maintenance analysis complete'
+          );
+        }
+      }
+    }
+  } catch (geminiError) {
+    // Non-fatal — Gemini analysis enriches but isn't required
+    pipelineLogger.warn(
+      { err: geminiError instanceof Error ? geminiError.message : String(geminiError) },
+      '[stage4] Gemini deferred maintenance analysis failed (non-fatal, continuing with Anthropic results)'
+    );
+  }
+
   // ── Compute overall condition ─────────────────────────────────────────
   const overallCondition = computeConditionMode(conditionRatings, serviceType);
 
@@ -332,6 +434,7 @@ export async function runPhotoAnalysis(
         physical_depreciation_pct: updatedDepreciationPct,
         remaining_economic_life: updatedRemainingLife,
         overall_condition: overallCondition,
+        ...(geminiDeferredMaintenance ? { condition_notes: geminiDeferredMaintenance } : {}),
       })
       .eq('report_id', reportId);
 
@@ -343,6 +446,15 @@ export async function runPhotoAnalysis(
         '[stage4] Effective age updated'
       );
     }
+  } else if (geminiDeferredMaintenance) {
+    // No year_built to compute effective age, but still store Gemini analysis
+    await supabase
+      .from('property_data')
+      .update({
+        overall_condition: overallCondition,
+        condition_notes: geminiDeferredMaintenance,
+      })
+      .eq('report_id', reportId);
   }
 
   // ── Compute per-defect condition adjustment ──────────────────────────
