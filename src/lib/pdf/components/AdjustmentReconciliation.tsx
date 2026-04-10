@@ -2,10 +2,11 @@
 
 import React from 'react';
 import { View } from '@react-pdf/renderer';
-import { colors } from '../styles/theme';
-import { SectionHeader, NarrativeBlock, DataTable, ValueCallout } from './shared';
+import { SectionHeader, NarrativeBlock, DataTable } from './shared';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
-import { formatCurrency, adjustmentLabel } from '@/lib/templates/helpers';
+import { adjustmentLabel } from '@/lib/templates/helpers';
+import { findNarrativeContent } from '@/lib/report-narratives';
+import ValueConclusionTable from './ValueConclusionTable';
 
 const ADJ_KEYS = [
   'property_rights', 'financing_terms', 'conditions_of_sale', 'market_trends',
@@ -13,8 +14,8 @@ const ADJ_KEYS = [
 ] as const;
 
 export default function AdjustmentReconciliation({ data }: { data: ReportTemplateData }) {
-  const { comparableSales, concludedValue, narratives } = data;
-  const reconcNarrative = narratives.find(n => n.section_name === 'reconciliation');
+  const { comparableSales, narratives } = data;
+  const reconcNarrative = findNarrativeContent(narratives, 'reconciliation_narrative');
 
   // Build adjustment range table
   const adjRows = ADJ_KEYS.map(key => {
@@ -34,7 +35,7 @@ export default function AdjustmentReconciliation({ data }: { data: ReportTemplat
 
   return (
     <View break>
-      <SectionHeader number="IX" title="Adjustment Reconciliation" />
+      <SectionHeader number="IX" title="Adjustment Reconciliation & Value Conclusion" />
 
       {adjRows.length > 0 && (
         <DataTable
@@ -45,14 +46,9 @@ export default function AdjustmentReconciliation({ data }: { data: ReportTemplat
       )}
 
       {/* Reconciliation narrative */}
-      {reconcNarrative && <NarrativeBlock content={reconcNarrative.content} />}
+      {reconcNarrative && <NarrativeBlock content={reconcNarrative} />}
 
-      {/* Concluded value callout */}
-      <ValueCallout
-        label="Concluded Market Value"
-        value={formatCurrency(concludedValue)}
-        color={colors.accent}
-      />
+      <ValueConclusionTable data={data} />
     </View>
   );
 }

@@ -9,6 +9,7 @@ import { theme, colors } from '../styles/theme';
 import { SectionHeader, NarrativeBlock, DataTable, ValueCallout } from './shared';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { formatCurrency, formatPercent, formatSqFt, formatDateShort } from '@/lib/templates/helpers';
+import { findNarrativeContent } from '@/lib/report-narratives';
 
 export default function IncomeApproachTable({ data }: { data: ReportTemplateData }) {
   const { incomeAnalysis, comparableRentals, narratives, report } = data;
@@ -17,7 +18,7 @@ export default function IncomeApproachTable({ data }: { data: ReportTemplateData
   const isIncomeProperty = report.property_type === 'commercial' || report.property_type === 'industrial';
   if (!isIncomeProperty || !incomeAnalysis) return null;
 
-  const incomeNarrative = narratives.find(n => n.section_name === 'income_approach');
+  const incomeNarrative = findNarrativeContent(narratives, 'income_approach_narrative');
 
   return (
     <View break>
@@ -162,7 +163,7 @@ export default function IncomeApproachTable({ data }: { data: ReportTemplateData
       )}
 
       {/* Narrative */}
-      {incomeNarrative && <NarrativeBlock content={incomeNarrative.content} />}
+      {incomeNarrative && <NarrativeBlock content={incomeNarrative} />}
 
       {incomeAnalysis.concluded_value_income_approach != null && (
         <ValueCallout

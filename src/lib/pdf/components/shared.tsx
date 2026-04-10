@@ -4,6 +4,7 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet } from '@react-pdf/renderer';
 import { theme, colors } from '../styles/theme';
+import { parseInlineMarkdown, parseMarkdownBlocks, stripInlineMarkdown } from '../markdown';
 
 // ─── Section Header ─────────────────────────────────────────────────────────
 
@@ -21,104 +22,90 @@ export function SectionHeader({ number, title }: { number: string; title: string
 // Parses the AI-generated markdown into properly styled PDF primitives.
 // Inter SemiBold/Bold for headings, Source Serif 4 for body, bullet/numbered lists.
 
-function stripInline(text: string): string {
-  return text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1');
-}
-
 export function NarrativeBlock({ content }: { content: string }) {
   if (!content) return null;
-  const lines = content.split('\n');
-  const elements: React.ReactElement[] = [];
-  let i = 0;
+  const blocks = parseMarkdownBlocks(content);
+  const elements = blocks.map((block, index) => {
+    switch (block.type) {
+      case 'table':
+        return (
+          <DataTable
+            key={`table-${index}`}
+            headers={block.headers.map(stripInlineMarkdown)}
+            rows={block.rows.map((row) => row.map(stripInlineMarkdown))}
+            numericColumns={block.numericColumns}
+          />
+        );
 
-  while (i < lines.length) {
-    const line = lines[i].trim();
-
-    // Skip blank lines, horizontal rules, table separator rows
-    if (!line || /^-{3,}$/.test(line) || /^[\|\s\-:]+$/.test(line)) {
-      i++;
-      continue;
-    }
-
-    // Table rows — strip pipe chars and render as plain text
-    if (/^\|.+\|/.test(line)) {
-      const cells = line.split('|').slice(1, -1).map(c => c.trim()).filter(Boolean).join('  ');
-      if (cells) {
-        elements.push(
-          <Text key={i} style={[theme.bodyText, { marginBottom: 3, color: colors.inkMuted }]}>
-            {stripInline(cells)}
+      case 'heading': {
+        const headingStyle =
+          block.level === 3
+            ? styles.headingLevelThree
+            : styles.headingLevelOneTwo;
+        return (
+          <Text key={`heading-${index}`} style={headingStyle}>
+            {renderInlineText(block.text, `heading-${index}`)}
           </Text>
         );
       }
-      i++;
-      continue;
-    }
 
-    // H1 / H2 headings
-    if (line.startsWith('# ') || line.startsWith('## ')) {
-      const text = line.startsWith('## ') ? line.slice(3) : line.slice(2);
-      elements.push(
-        <Text key={i} style={{ fontFamily: 'Inter', fontWeight: 700, fontSize: 11, color: colors.inkPrimary, marginTop: 8, marginBottom: 3 }}>
-          {stripInline(text)}
-        </Text>
-      );
-      i++;
-      continue;
-    }
-
-    // H3 headings
-    if (line.startsWith('### ')) {
-      elements.push(
-        <Text key={i} style={{ fontFamily: 'Inter', fontWeight: 600, fontSize: 10, color: colors.inkPrimary, marginTop: 6, marginBottom: 2 }}>
-          {stripInline(line.slice(4))}
-        </Text>
-      );
-      i++;
-      continue;
-    }
-
-    // Bullet list
-    if (/^[-*] /.test(line)) {
-      while (i < lines.length && /^[-*] /.test(lines[i].trim())) {
-        const bulletText = lines[i].trim().slice(2);
-        elements.push(
-          <View key={i} style={{ flexDirection: 'row', marginBottom: 2, paddingLeft: 10 }}>
+      case 'bullet_list':
+        return block.items.map((item, itemIndex) => (
+          <View key={`bullet-${index}-${itemIndex}`} style={styles.listRow}>
             <Text style={[theme.bodyText, { width: 10, marginBottom: 0 }]}>{'\u2022'}</Text>
-            <Text style={[theme.bodyText, { flex: 1, marginBottom: 0 }]}>{stripInline(bulletText)}</Text>
+            <Text style={[theme.bodyText, { flex: 1, marginBottom: 0 }]}>
+              {renderInlineText(item, `bullet-${index}-${itemIndex}`)}
+            </Text>
           </View>
-        );
-        i++;
-      }
-      continue;
-    }
+        ));
 
-    // Numbered list
-    if (/^\d+\.\s/.test(line)) {
-      let num = 1;
-      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
-        const itemText = lines[i].trim().replace(/^\d+\.\s*/, '');
-        elements.push(
-          <View key={i} style={{ flexDirection: 'row', marginBottom: 2, paddingLeft: 10 }}>
-            <Text style={[theme.bodyText, { width: 16, marginBottom: 0 }]}>{num}.</Text>
-            <Text style={[theme.bodyText, { flex: 1, marginBottom: 0 }]}>{stripInline(itemText)}</Text>
+      case 'numbered_list':
+        return block.items.map((item, itemIndex) => (
+          <View key={`numbered-${index}-${itemIndex}`} style={styles.listRow}>
+            <Text style={[theme.bodyText, { width: 18, marginBottom: 0 }]}>
+              {block.start + itemIndex}.
+            </Text>
+            <Text style={[theme.bodyText, { flex: 1, marginBottom: 0 }]}>
+              {renderInlineText(item, `numbered-${index}-${itemIndex}`)}
+            </Text>
           </View>
-        );
-        i++;
-        num++;
-      }
-      continue;
-    }
+        ));
 
-    // Regular paragraph
-    elements.push(
-      <Text key={i} style={[theme.bodyText, { marginBottom: 5 }]}>
-        {stripInline(line)}
-      </Text>
-    );
-    i++;
-  }
+      case 'paragraph':
+        return (
+          <Text key={`paragraph-${index}`} style={[theme.bodyText, { marginBottom: 5 }]}>
+            {renderInlineText(block.text, `paragraph-${index}`)}
+          </Text>
+        );
+    }
+  });
 
   return <View style={{ marginVertical: 4 }}>{elements}</View>;
+}
+
+function renderInlineText(text: string, keyPrefix: string): React.ReactNode[] {
+  return parseInlineMarkdown(text).map((segment, index) => {
+    if (!segment.bold && !segment.italic) {
+      return segment.text;
+    }
+
+    const inlineStyles = [];
+    if (segment.bold) {
+      inlineStyles.push(styles.inlineBold);
+    }
+    if (segment.italic) {
+      inlineStyles.push(styles.inlineItalic);
+    }
+
+    return (
+      <Text
+        key={`${keyPrefix}-${index}`}
+        style={inlineStyles}
+      >
+        {segment.text}
+      </Text>
+    );
+  });
 }
 
 // ─── Data Table ─────────────────────────────────────────────────────────────
@@ -256,6 +243,34 @@ export function ValueCallout({ label, value, color }: { label: string; value: st
 const styles = StyleSheet.create({
   sectionHeader: {
     marginBottom: 8,
+  },
+  headingLevelOneTwo: {
+    fontFamily: 'Inter',
+    fontWeight: 700,
+    fontSize: 11,
+    color: colors.inkPrimary,
+    marginTop: 8,
+    marginBottom: 3,
+  },
+  headingLevelThree: {
+    fontFamily: 'Inter',
+    fontWeight: 600,
+    fontSize: 10,
+    color: colors.inkPrimary,
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  listRow: {
+    flexDirection: 'row',
+    marginBottom: 2,
+    paddingLeft: 10,
+  },
+  inlineBold: {
+    fontFamily: 'Inter',
+    fontWeight: 600,
+  },
+  inlineItalic: {
+    fontStyle: 'italic',
   },
   table: {
     marginVertical: 6,

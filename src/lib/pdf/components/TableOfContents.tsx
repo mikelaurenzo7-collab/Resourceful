@@ -59,7 +59,7 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
     { number: 'VII-A', title: 'Highest & Best Use — As Vacant', indent: true },
     { number: 'VII-B', title: 'Highest & Best Use — As Improved', indent: true },
     { number: 'VIII', title: 'Sales Comparison Approach' },
-    { number: 'IX', title: 'Adjustment Reconciliation' },
+    { number: 'IX', title: 'Adjustment Reconciliation & Value Conclusion' },
   ];
 
   if (property.assessment_ratio != null) {

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import Wordmark from '@/components/ui/Wordmark';
+import { getNarrativeDisplayName } from '@/lib/report-narratives';
 
 interface CountyInfo {
   name: string;
@@ -89,30 +90,6 @@ function formatFee(cents: number): string {
   if (cents === 0) return 'Waived';
   return `$${(cents / 100).toFixed(2)}`;
 }
-
-const NARRATIVE_DISPLAY_NAMES: Record<string, string> = {
-  executive_summary: 'Executive Summary',
-  condition_assessment: 'Condition Assessment',
-  appeal_argument_summary: 'Appeal Argument Summary',
-  hearing_script: 'Hearing Presentation Script',
-  sales_comparison_narrative: 'Sales Comparison Analysis',
-  adjustment_grid_narrative: 'Adjustment Grid Analysis',
-  income_approach_narrative: 'Income Approach',
-  cost_approach_narrative: 'Cost Approach',
-  reconciliation_narrative: 'Value Reconciliation',
-  market_analysis: 'Market Analysis',
-  assessment_equity: 'Assessment Equity Analysis',
-  area_analysis_county: 'County Area Analysis',
-  area_analysis_city: 'City Area Analysis',
-  area_analysis_neighborhood: 'Neighborhood Analysis',
-  hbu_as_vacant: 'Highest & Best Use (Vacant)',
-  hbu_as_improved: 'Highest & Best Use (Improved)',
-  pricing_strategy_guide: 'Pricing Strategy Guide',
-  negotiation_guide: 'Negotiation Guide',
-  property_description: 'Property Description',
-  site_description_narrative: 'Site Description',
-  improvement_description_narrative: 'Improvement Description',
-};
 
 /** Priority narratives shown expanded per service type */
 function getPriorityNarratives(serviceType: string): string[] {
@@ -666,7 +643,7 @@ export default function ReportViewerPage() {
                     <div key={n.sectionName} className="card-premium rounded-xl overflow-hidden">
                       <div className="border-b border-gold/10 px-6 py-4 bg-gold/5">
                         <p className="text-xs uppercase tracking-widest text-gold/70">
-                          {NARRATIVE_DISPLAY_NAMES[n.sectionName] ?? n.sectionName.replace(/_/g, ' ')}
+                          {getNarrativeDisplayName(n.sectionName)}
                         </p>
                       </div>
                       <div className="px-6 py-5 text-sm text-cream/70 leading-relaxed">
@@ -690,7 +667,7 @@ export default function ReportViewerPage() {
                         {other.map(n => (
                           <div key={n.sectionName} className="px-6 py-5">
                             <p className="text-xs uppercase tracking-widest text-cream/35 mb-3">
-                              {NARRATIVE_DISPLAY_NAMES[n.sectionName] ?? n.sectionName.replace(/_/g, ' ')}
+                              {getNarrativeDisplayName(n.sectionName)}
                             </p>
                             <div className="text-sm text-cream/60 leading-relaxed">
                               {renderMarkdown(n.content)}

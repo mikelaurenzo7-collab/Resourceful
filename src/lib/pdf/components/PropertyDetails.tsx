@@ -7,6 +7,7 @@ import { View, Text, StyleSheet } from '@react-pdf/renderer';
 import { theme, colors } from '../styles/theme';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { formatCurrency, formatSqFt, formatLotSize, formatNumber } from '@/lib/templates/helpers';
+import FloodZoneAndEnvironmental from './FloodZoneAndEnvironmental';
 
 interface DetailRow {
   label: string;
@@ -96,6 +97,8 @@ export default function PropertyDetails({ data }: { data: ReportTemplateData }) 
       {siteDetails.length > 0 && (
         <DetailGrid title="Site Data" rows={siteDetails} />
       )}
+
+      <FloodZoneAndEnvironmental data={data} />
 
       {/* Improvement Data */}
       {improvementDetails.length > 0 && (

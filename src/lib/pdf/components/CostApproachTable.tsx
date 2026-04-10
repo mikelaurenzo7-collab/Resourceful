@@ -9,6 +9,7 @@ import { theme, colors } from '../styles/theme';
 import { SectionHeader, NarrativeBlock, ValueCallout } from './shared';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { formatCurrency, formatPercent, formatSqFt, formatNumber } from '@/lib/templates/helpers';
+import { findNarrativeContent } from '@/lib/report-narratives';
 
 export default function CostApproachTable({ data }: { data: ReportTemplateData }) {
   const { property, narratives } = data;
@@ -25,7 +26,7 @@ export default function CostApproachTable({ data }: { data: ReportTemplateData }
   const landValue = property.land_value ?? 0;
   const costApproachValue = property.cost_approach_value;
 
-  const costNarrative = narratives.find(n => n.section_name === 'cost_approach');
+  const costNarrative = findNarrativeContent(narratives, 'cost_approach_narrative');
 
   // Details for the computation table
   const buildingSqft = property.building_sqft_gross ?? property.building_sqft_living_area ?? 0;
@@ -101,7 +102,7 @@ export default function CostApproachTable({ data }: { data: ReportTemplateData }
       </View>
 
       {/* AI narrative */}
-      {costNarrative && <NarrativeBlock content={costNarrative.content} />}
+      {costNarrative && <NarrativeBlock content={costNarrative} />}
 
       <ValueCallout
         label="Cost Approach Indication"
