@@ -66,7 +66,7 @@ export default function FAQ() {
             data-animate
             data-delay={String((i + 1) * 100)}
             className={`card-premium rounded-xl overflow-hidden transition-all duration-300 ${
-              openIndex === i ? 'border-l-2 border-l-gold/50 shadow-[0_0_20px_rgba(212,168,71,0.06)]' : 'hover:border-l-2 hover:border-l-gold/20'
+              openIndex === i ? 'border-l-2 border-l-gold/50 shadow-[0_0_20px_rgba(212,168,71,0.06)]' : 'border-l-2 border-l-transparent hover:border-l-gold/20'
             }`}
           >
             <button

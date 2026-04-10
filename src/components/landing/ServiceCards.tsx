@@ -96,11 +96,11 @@ export default function ServiceCards() {
               data-animate
               data-delay={String((i + 1) * 100)}
               className={`
-                group relative p-8 flex flex-col no-underline
+                group relative rounded-xl p-8 flex flex-col no-underline
                 transition-all duration-300 hover:-translate-y-1 hover:shadow-gold-lg focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-navy-deep
                 ${svc.popular ? 'card-elevated ring-2 ring-gold/30' : ''}
                 ${svc.premium ? 'card-shimmer rounded-xl' : ''}
-                ${!svc.popular && !svc.premium ? 'card-premium rounded-xl hover:border-gold/30' : ''}
+                ${!svc.popular && !svc.premium ? 'card-premium hover:border-gold/30' : ''}
               `}
             >
               {/* Most Popular badge */}

@@ -41,6 +41,7 @@ export function validateEnvironment(): void {
   const isProduction = process.env.NODE_ENV === 'production';
   const missing: string[] = [];
   const missingRecommended: string[] = [];
+  const fastProvider = process.env.AI_PROVIDER_FAST?.trim().toLowerCase() || 'anthropic';
 
   for (const name of REQUIRED_VARS) {
     if (!process.env[name]) {
@@ -52,6 +53,14 @@ export function validateEnvironment(): void {
     if (!process.env[name]) {
       missingRecommended.push(name);
     }
+  }
+
+  if (fastProvider === 'groq' && !process.env.GROQ_API_KEY) {
+    missing.push('GROQ_API_KEY');
+  }
+
+  if (fastProvider === 'groq' && !process.env.AI_MODEL_RESEARCH) {
+    missingRecommended.push('AI_MODEL_RESEARCH');
   }
 
   if (missingRecommended.length > 0) {

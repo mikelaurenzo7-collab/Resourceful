@@ -6,11 +6,10 @@
 // Returns AttomSaleComp[] so Stage 2's existing adjustment pipeline runs unchanged.
 // Web-sourced comps are tagged with negative attomId values to distinguish them.
 //
-// Graceful: returns [] if SERPER_API_KEY or ANTHROPIC_API_KEY is not configured,
+// Graceful: returns [] if SERPER_API_KEY or the configured FAST provider is not configured,
 // or if any step fails — pipeline continues with cost/equity approach instead.
 
-import Anthropic from '@anthropic-ai/sdk';
-import { AI_MODELS } from '@/config/ai';
+import { generateFastText, isFastAiConfigured, parseJsonSnippet } from '@/lib/services/fast-ai';
 import type { AttomSaleComp } from './attom';
 import { apiLogger } from '@/lib/logger';
 
@@ -91,8 +90,8 @@ function buildSearchQueries(ctx: WebCompsContext): [string, string] {
 }
 
 // ─── Subject Property Address Filter ───────────────────────────────────────
-// After Claude extraction, strip any comp whose address matches the subject.
-// Claude is instructed to exclude it in the prompt, but occasionally still
+// After FAST-model extraction, strip any comp whose address matches the subject.
+// The model is instructed to exclude it in the prompt, but occasionally still
 // returns the subject property itself (e.g. a Zillow/Redfin listing page for
 // the address). This catches those cases with a normalized string comparison.
 
@@ -111,18 +110,13 @@ function isSubjectProperty(compAddress: string, subjectAddress: string): boolean
   return compTokens.slice(1).some((t) => t.length > 1 && subjSet.has(t));
 }
 
-// ─── Core Extraction (Claude) ────────────────────────────────────────────────
+// ─── Core Extraction (FAST Model) ────────────────────────────────────────────
 
 async function extractCompsFromSearchContent(
   ctx: WebCompsContext,
   searchResults: Array<{ title: string; link: string; snippet: string }>,
   pageContent: string | null
 ): Promise<AttomSaleComp[]> {
-  const client = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    timeout: 60_000,
-  });
-
   const searchBlock = searchResults
     .map((r, i) => `[Result ${i + 1}]\nTitle: ${r.title}\nURL: ${r.link}\nSnippet: ${r.snippet}`)
     .join('\n\n');
@@ -178,29 +172,9 @@ Format:
 
 Return ONLY the JSON array. No explanation, no markdown.`;
 
-  const response = await client.messages.create({
-    model: AI_MODELS.FAST,
-    max_tokens: 2000,
-    messages: [{ role: 'user', content: prompt }],
-  });
-
-  const text = response.content[0]?.type === 'text' ? response.content[0].text.trim() : '';
-
-  let parsed: Array<Record<string, unknown>>;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    // Try extracting JSON array from surrounding text
-    const match = text.match(/\[[\s\S]*\]/);
-    if (!match) return [];
-    try {
-      parsed = JSON.parse(match[0]);
-    } catch {
-      return [];
-    }
-  }
-
-  if (!Array.isArray(parsed)) return [];
+  const text = await generateFastText({ prompt, maxTokens: 2000 });
+  const parsed = parseJsonSnippet<Array<Record<string, unknown>>>(text);
+  if (!parsed || !Array.isArray(parsed)) return [];
 
   const comps: AttomSaleComp[] = parsed
     .filter((c) => {
@@ -248,7 +222,7 @@ Return ONLY the JSON array. No explanation, no markdown.`;
 
 /**
  * Search the web for comparable property sales when ATTOM returns nothing.
- * Uses Serper for discovery and Claude for structured data extraction.
+ * Uses Serper for discovery and the configured FAST model for structured data extraction.
  *
  * @returns Array of AttomSaleComp (web-sourced, negative attomId).
  *          Returns [] if not configured, no results, or any failure.
@@ -258,8 +232,8 @@ export async function findCompsViaWeb(ctx: WebCompsContext): Promise<AttomSaleCo
     apiLogger.info('[web-comps] SERPER_API_KEY not configured — skipping web comp search');
     return [];
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
-    apiLogger.info('[web-comps] ANTHROPIC_API_KEY not configured — skipping web comp search');
+  if (!isFastAiConfigured()) {
+    apiLogger.info('[web-comps] FAST AI provider not configured — skipping web comp search');
     return [];
   }
 
@@ -302,7 +276,7 @@ export async function findCompsViaWeb(ctx: WebCompsContext): Promise<AttomSaleCo
       apiLogger.info({ link: preferredResult.link, length: pageContent.length }, '[web-comps] Fetched page content from ( chars)');
     }
 
-    // Use Claude to extract structured comps from search snippets + page content
+    // Use the configured FAST model to extract structured comps from search snippets + page content
     const comps = await extractCompsFromSearchContent(ctx, allResults, pageContent);
 
     if (comps.length > 0) {
@@ -311,7 +285,7 @@ export async function findCompsViaWeb(ctx: WebCompsContext): Promise<AttomSaleCo
         '[web-comps] Extracted web-sourced comps'
       );
     } else {
-      apiLogger.info('[web-comps] Claude found no confirmed sales in search results');
+      apiLogger.info('[web-comps] FAST model found no confirmed sales in search results');
     }
 
     return comps;
@@ -343,7 +317,7 @@ export async function findSubjectPriorSaleViaWeb(
   city: string,
   state: string
 ): Promise<PriorSaleResult | null> {
-  if (!process.env.SERPER_API_KEY || !process.env.ANTHROPIC_API_KEY) return null;
+  if (!process.env.SERPER_API_KEY || !isFastAiConfigured()) return null;
 
   try {
     const fullAddress = `${address}, ${city}, ${state}`;
@@ -373,8 +347,6 @@ export async function findSubjectPriorSaleViaWeb(
     ) ?? allResults[0];
     const pageContent = subjectPage ? await tryFetchPageContent(subjectPage.link) : null;
 
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60_000 });
-
     const searchBlock = allResults
       .map((r, i) => `[${i + 1}] ${r.title}\nURL: ${r.link}\n${r.snippet}`)
       .join('\n\n');
@@ -395,22 +367,11 @@ Return JSON object or null:
 }
 Only return this exact JSON or the word null. No explanation.`;
 
-    const resp = await client.messages.create({
-      model: AI_MODELS.FAST,
-      max_tokens: 300,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const text = (resp.content[0]?.type === 'text' ? resp.content[0].text : '').trim();
+    const text = await generateFastText({ prompt, maxTokens: 300 });
     if (text === 'null' || !text) return null;
 
-    let parsed: { salePrice: number; saleDate: string; source: string };
-    try {
-      const match = text.match(/\{[\s\S]*\}/);
-      parsed = JSON.parse(match ? match[0] : text);
-    } catch {
-      return null;
-    }
+    const parsed = parseJsonSnippet<{ salePrice: number; saleDate: string; source: string }>(text);
+    if (!parsed) return null;
 
     if (!parsed.salePrice || parsed.salePrice <= 0 || !parsed.saleDate) return null;
 
@@ -436,7 +397,7 @@ export interface AIValueEstimate {
 }
 
 /**
- * Use Claude's training knowledge to estimate market value when all data sources fail.
+ * Use the configured FAST model's training knowledge to estimate market value when all data sources fail.
  * Returns a neighborhood-level estimate clearly labeled as AI-generated.
  * Only called as absolute last resort — after ATTOM, web comps, and deed history all fail.
  */
@@ -448,11 +409,9 @@ export async function estimateValueViaAI(
   latitude: number | null,
   longitude: number | null
 ): Promise<AIValueEstimate | null> {
-  if (!process.env.ANTHROPIC_API_KEY) return null;
+  if (!isFastAiConfigured()) return null;
 
   try {
-    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY, timeout: 60_000 });
-
     const locationHint = latitude && longitude
       ? ` (coordinates: ${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
       : '';
@@ -480,20 +439,9 @@ Rules:
 - reasoning must be factual and neighborhood-specific
 - Return ONLY the JSON object, no explanation`;
 
-    const resp = await client.messages.create({
-      model: AI_MODELS.FAST,
-      max_tokens: 300,
-      messages: [{ role: 'user', content: prompt }],
-    });
-
-    const text = (resp.content[0]?.type === 'text' ? resp.content[0].text : '').trim();
-    let parsed: AIValueEstimate;
-    try {
-      const match = text.match(/\{[\s\S]*\}/);
-      parsed = JSON.parse(match ? match[0] : text);
-    } catch {
-      return null;
-    }
+    const text = await generateFastText({ prompt, maxTokens: 300 });
+    const parsed = parseJsonSnippet<AIValueEstimate>(text);
+    if (!parsed) return null;
 
     if (!parsed.estimatedValue || parsed.estimatedValue <= 0) return null;
 

@@ -3,6 +3,8 @@
 // Use this to verify Supabase, Stripe, and AI are properly configured.
 
 import { NextResponse } from 'next/server';
+import { AI_PROVIDERS } from '@/config/ai';
+import { getFastAiConfigSummary } from '@/lib/services/fast-ai';
 
 interface ServiceStatus {
   status: 'ok' | 'error' | 'not_configured';
@@ -66,6 +68,22 @@ export async function GET(request: Request) {
   } else {
     results.anthropic = { status: 'ok', message: 'Key configured' };
   }
+
+  // ── Groq AI ───────────────────────────────────────────────────────────
+  if (!process.env.GROQ_API_KEY) {
+    results.groq = { status: 'not_configured', message: 'GROQ_API_KEY missing' };
+  } else {
+    results.groq = { status: 'ok', message: 'Key configured' };
+  }
+
+  // ── Active FAST AI Route ──────────────────────────────────────────────
+  const fastAi = getFastAiConfigSummary();
+  const fastKeyPresent = AI_PROVIDERS.FAST === 'groq'
+    ? Boolean(process.env.GROQ_API_KEY)
+    : Boolean(process.env.ANTHROPIC_API_KEY);
+  results.fast_ai = fastKeyPresent && Boolean(process.env.AI_MODEL_FAST)
+    ? { status: 'ok', message: `${fastAi.provider} / ${fastAi.model}` }
+    : { status: 'not_configured', message: `FAST provider ${fastAi.provider} is missing key or AI_MODEL_FAST` };
 
   // ── Stripe ────────────────────────────────────────────────────────────
   if (!process.env.STRIPE_SECRET_KEY) {

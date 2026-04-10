@@ -128,6 +128,14 @@ export default function PrivacyPage() {
                 training.
               </li>
               <li>
+                <strong className="text-cream/80">Google Gemini</strong> — Tax bill OCR and multimodal photo analysis.
+                Your data is processed per Google&apos;s commercial API terms.
+              </li>
+              <li>
+                <strong className="text-cream/80">Groq</strong> — High-speed structured extraction and market research when configured.
+                Your data is processed per Groq&apos;s commercial API terms.
+              </li>
+              <li>
                 <strong className="text-cream/80">Resend</strong> — Transactional email delivery.
               </li>
             </ul>

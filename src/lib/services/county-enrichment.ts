@@ -8,24 +8,9 @@
 //
 // Triggered by Stage 1 when it detects a county with missing critical fields.
 
-import Anthropic from '@anthropic-ai/sdk';
-import { AI_MODELS } from '@/config/ai';
-import { withRetry, isRetryableError } from '@/lib/utils/retry';
+import { generateFastText, parseJsonSnippet } from '@/lib/services/fast-ai';
 import type { CountyRule } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
-
-// ─── AI Client ───────────────────────────────────────────────────────────────
-
-let _client: Anthropic | null = null;
-function getAIClient(): Anthropic {
-  if (!_client) {
-    _client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-      timeout: 90_000,
-    });
-  }
-  return _client;
-}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -133,14 +118,10 @@ async function extractCountyIntelligence(
   const combined = pageTexts.join('\n\n---\n\n').slice(0, 25_000);
 
   try {
-    const response = await withRetry(
-      () => getAIClient().messages.create({
-      model: AI_MODELS.FAST,
-      max_tokens: 3000,
+    const text = await generateFastText({
+      maxTokens: 3000,
       system: `You are a property tax appeal research specialist. Extract county-specific appeal procedure data from web pages. Return ONLY valid JSON, no markdown. If a field cannot be determined, use null.`,
-      messages: [{
-        role: 'user',
-        content: `Extract property tax appeal procedures for ${countyName} County, ${stateName} from these pages:
+      prompt: `Extract property tax appeal procedures for ${countyName} County, ${stateName} from these pages:
 
 ${combined}
 
@@ -174,20 +155,9 @@ Return this exact JSON:
   "board_personality_notes": "<any info about how the board operates, what they respond to, culture>",
   "winning_argument_patterns": "<what types of arguments tend to win in this county>"
 }`,
-      }],
-    }),
-      { maxAttempts: 3, baseDelayMs: 2000, retryOn: isRetryableError }
-    );
+    });
 
-    const text = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map(b => b.text)
-      .join('');
-
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    return JSON.parse(jsonMatch[0]) as ExtractedCountyIntel;
+    return parseJsonSnippet<ExtractedCountyIntel>(text);
   } catch (err) {
     apiLogger.error({ countyName, stateName, err }, '[county-enrichment] AI extraction failed for ,');
     return null;
