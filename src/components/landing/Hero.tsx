@@ -241,7 +241,7 @@ export default function Hero() {
                 onFocus={() => { if (suggestions.length) setShowSuggestions(true); }}
                 onKeyDown={handleKeyDown}
                 placeholder="Enter your property address..."
-                className="w-full bg-navy-light/50 border border-cream/[0.08] rounded-xl pl-12 pr-4 py-4 text-cream placeholder:text-cream/40 focus:border-gold/40 focus:outline-none focus:ring-2 focus:ring-gold/40 focus:bg-navy-light/70 transition-all text-base"
+                className="w-full bg-navy-light/60 border border-cream/[0.1] rounded-xl pl-12 pr-4 py-4.5 text-cream placeholder:text-cream/45 focus:border-gold/50 focus:outline-none focus:ring-2 focus:ring-gold/30 focus:bg-navy-light/80 focus:shadow-[0_0_30px_rgba(212,168,71,0.08)] transition-all text-base"
                 autoComplete="off"
                 role="combobox"
                 aria-controls={showSuggestions && suggestions.length > 0 ? 'hero-address-listbox' : undefined}
@@ -276,7 +276,7 @@ export default function Hero() {
 
           {/* Value display */}
           <div className="mt-6 sm:mt-8 flex justify-center animate-fade-in" style={{ animationDelay: '0.65s' }}>
-            <div className="card-premium border-gradient rounded-xl px-8 py-7 inline-block w-full max-w-3xl">
+            <div className="card-elevated border-gradient rounded-xl px-8 py-7 inline-block w-full max-w-3xl">
               {!hasResult && !loading && (
                 <p className="text-[10px] uppercase tracking-widest text-cream/50 mb-3 text-center">Example Property</p>
               )}
@@ -313,7 +313,7 @@ export default function Hero() {
                       <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
                         Annual Overpayment
                       </p>
-                      <p className="font-display text-xl md:text-2xl text-red-400">
+                      <p className="font-display text-xl md:text-2xl text-red-400 text-glow-gold" style={{ textShadow: '0 0 20px rgba(248, 113, 113, 0.3)' }}>
                         {formatDollar(displayOverpayment)}
                       </p>
                     </div>
@@ -332,7 +332,7 @@ export default function Hero() {
           <div className="mt-8 sm:mt-10 animate-fade-in" style={{ animationDelay: '0.75s' }}>
             <Link
               href={ctaHref}
-              className="btn-glow inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-8 py-4 text-base font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.02] hover:brightness-110"
+              className="btn-glow inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-9 py-4.5 text-base font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.03] hover:brightness-110"
             >
               {hasResult ? 'Get My Full Report' : 'Run the Numbers'}
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

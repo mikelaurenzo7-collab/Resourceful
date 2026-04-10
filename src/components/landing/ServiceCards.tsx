@@ -106,7 +106,7 @@ export default function ServiceCards() {
               {/* Most Popular badge */}
               {svc.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                  <span className="relative bg-gradient-to-r from-gold-light via-gold to-gold-dark text-navy-deep text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider overflow-hidden">
+                  <span className="relative bg-gradient-to-r from-gold-light via-gold to-gold-dark text-navy-deep text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider overflow-hidden animate-badge-pulse">
                     Most Popular
                     <span className="absolute inset-0 animate-shimmer rounded-full" />
                   </span>
@@ -122,7 +122,7 @@ export default function ServiceCards() {
                 </div>
               )}
 
-              <div className="text-gold/80 mb-5 transition-transform duration-300 group-hover:scale-110">{svc.icon}</div>
+              <div className="text-gold/80 mb-5 transition-all duration-300 group-hover:scale-110 group-hover:text-gold group-hover:drop-shadow-[0_0_8px_rgba(212,168,71,0.3)]">{svc.icon}</div>
 
               <h3 className="font-display text-xl text-cream mb-2">{svc.title}</h3>
               <p className="text-[13px] text-cream/40 leading-relaxed mb-6 flex-grow">
@@ -143,11 +143,11 @@ export default function ServiceCards() {
               <div className="flex items-end justify-between mt-auto pt-6" style={{ borderTop: '1px solid rgba(212, 168, 71, 0.08)' }}>
                 <div>
                   <span className="text-[10px] text-cream/35 uppercase tracking-wider">From</span>
-                  <p className="font-display text-3xl text-gold animate-count">
+                  <p className="font-display text-3xl text-gold animate-count group-hover:text-glow-gold transition-all">
                     {formatPrice(getPriceCents(svc.service, 'residential', svc.tier ?? 'auto'))}
                   </p>
                 </div>
-                <span className="text-sm text-gold/70 group-hover:text-gold transition-colors font-medium flex items-center gap-1">
+                <span className="text-sm text-gold/70 group-hover:text-gold group-hover:drop-shadow-[0_0_6px_rgba(212,168,71,0.3)] transition-all duration-200 font-medium flex items-center gap-1">
                   Get Started
                   <svg className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

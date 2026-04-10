@@ -53,20 +53,20 @@ export default function PropertyIntelligence() {
         {capabilities.map((cap, i) => (
           <div
             key={cap.title}
-            className="group relative rounded-xl border border-cream/[0.05] bg-gradient-to-br from-white/[0.02] to-transparent p-6 hover:border-gold/15 transition-all duration-300"
+            className="group relative rounded-xl border border-cream/[0.06] bg-gradient-to-br from-white/[0.03] to-transparent p-6 hover:border-gold/20 hover:shadow-[0_0_30px_rgba(212,168,71,0.04)] transition-all duration-300"
             data-animate={i % 2 === 0 ? 'slide-left' : 'slide-right'}
             data-delay={String((i + 1) * 100)}
           >
             <div className="flex items-start gap-4">
-              <div className="w-10 h-10 rounded-xl bg-gold/[0.06] border border-gold/[0.08] flex items-center justify-center flex-shrink-0 group-hover:bg-gold/[0.10] group-hover:border-gold/15 transition-all">
-                <svg className="w-5 h-5 text-gold/60 group-hover:text-gold/80 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <div className="w-10 h-10 rounded-xl bg-gold/[0.08] border border-gold/[0.1] flex items-center justify-center flex-shrink-0 group-hover:bg-gold/[0.12] group-hover:border-gold/20 group-hover:shadow-[0_0_15px_rgba(212,168,71,0.08)] transition-all">
+                <svg className="w-5 h-5 text-gold/70 group-hover:text-gold transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={cap.icon} />
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
                 <div className="mb-2 flex flex-wrap items-center gap-2.5">
                   <h3 className="font-display text-base text-cream">{cap.title}</h3>
-                  <span className="text-[9px] font-semibold uppercase tracking-widest text-gold/50 bg-gold/[0.06] px-2 py-0.5 rounded-full whitespace-nowrap sm:ml-auto">
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-gold/70 bg-gold/[0.08] border border-gold/10 px-2.5 py-0.5 rounded-full whitespace-nowrap sm:ml-auto">
                     {cap.metric}
                   </span>
                 </div>

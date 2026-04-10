@@ -62,14 +62,14 @@ export default function Testimonials() {
             {/* Stars */}
             <div className="flex gap-0.5 mb-4">
               {[...Array(5)].map((_, j) => (
-                <svg key={j} className="w-4 h-4 text-gold/70" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <svg key={j} className="w-4 h-4 text-gold drop-shadow-[0_0_3px_rgba(212,168,71,0.4)]" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                 </svg>
               ))}
             </div>
 
             {/* Quote */}
-            <blockquote className="text-[13px] text-cream/70 leading-relaxed flex-grow">
+            <blockquote className="text-[13px] text-cream/75 leading-relaxed flex-grow">
               &ldquo;{t.quote}&rdquo;
             </blockquote>
 
@@ -81,7 +81,7 @@ export default function Testimonials() {
               </div>
               <div className="text-right">
                 {t.savings ? (
-                  <p className="text-sm font-display text-emerald-400">{t.savings}</p>
+                  <p className="text-sm font-display text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.3)]">{t.savings}</p>
                 ) : (
                   <p className="text-[11px] text-cream/50">{t.outcome}</p>
                 )}

@@ -99,14 +99,14 @@ export default function PricingTable() {
             >
               {t.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                  <span className="bg-gradient-to-r from-gold-light via-gold to-gold-dark text-navy-deep text-[10px] font-bold px-3.5 py-1 rounded-full uppercase tracking-wider">
+                  <span className="bg-gradient-to-r from-gold-light via-gold to-gold-dark text-navy-deep text-[10px] font-bold px-3.5 py-1 rounded-full uppercase tracking-wider animate-badge-pulse">
                     Most Popular
                   </span>
                 </div>
               )}
               {t.premium && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                  <span className="bg-[#d4a843] text-navy-deep text-[10px] font-bold px-3.5 py-1 rounded-full uppercase tracking-wider">
+                  <span className="bg-[#d4a843] text-navy-deep text-[10px] font-bold px-3.5 py-1 rounded-full uppercase tracking-wider animate-badge-pulse">
                     Premium
                   </span>
                 </div>
@@ -118,7 +118,7 @@ export default function PricingTable() {
               </p>
 
               <div className="mb-6">
-                <span className="font-display text-3xl text-gold">{formatPrice(price)}</span>
+                <span className="font-display text-3xl text-gold text-glow-gold">{formatPrice(price)}</span>
                 <span className="text-xs text-cream/50 ml-1.5">residential</span>
               </div>
 
@@ -140,10 +140,10 @@ export default function PricingTable() {
               <Link
                 href={href}
                 className={`
-                  text-center text-sm font-semibold py-2.5 rounded-lg transition-all duration-200
+                  text-center text-sm font-semibold py-3 rounded-lg transition-all duration-200
                   ${t.popular || t.premium
-                    ? 'bg-gradient-to-r from-gold-light via-gold to-gold-dark text-navy-deep hover:brightness-110 shadow-gold'
-                    : 'border border-gold/20 text-gold hover:border-gold/40 hover:bg-gold/[0.05]'}
+                    ? 'btn-premium-glow text-navy-deep shadow-gold hover:shadow-gold-lg'
+                    : 'border border-gold/20 text-gold hover:border-gold/40 hover:bg-gold/[0.05] hover:shadow-[0_0_15px_rgba(212,168,71,0.05)]'}
                 `}
               >
                 {t.cta}
