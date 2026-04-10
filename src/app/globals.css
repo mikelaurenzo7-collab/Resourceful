@@ -65,11 +65,12 @@ h2 { font-family: var(--font-playfair), Georgia, serif; }
 }
 
 .card-premium:hover {
-  border-color: rgba(212, 168, 71, 0.4);
+  border-color: rgba(212, 168, 71, 0.45);
   box-shadow:
-    0 8px 32px rgba(212, 168, 71, 0.12),
-    0 0 0 1px rgba(212, 168, 71, 0.05);
-  transform: translateY(-2px);
+    0 8px 32px rgba(212, 168, 71, 0.15),
+    0 0 60px rgba(212, 168, 71, 0.04),
+    0 0 0 1px rgba(212, 168, 71, 0.08);
+  transform: translateY(-3px);
 }
 
 /* Static card — no lift on hover (for dashboard info panels) */
@@ -89,12 +90,13 @@ h2 { font-family: var(--font-playfair), Georgia, serif; }
 }
 
 .card-elevated:hover {
-  border-color: rgba(212, 168, 71, 0.5);
+  border-color: rgba(212, 168, 71, 0.55);
   box-shadow:
     0 20px 60px rgba(0, 0, 0, 0.4),
-    0 0 40px rgba(212, 168, 71, 0.08),
-    0 0 0 1px rgba(212, 168, 71, 0.15);
-  transform: translateY(-4px);
+    0 0 50px rgba(212, 168, 71, 0.1),
+    0 0 80px rgba(212, 168, 71, 0.04),
+    0 0 0 1px rgba(212, 168, 71, 0.18);
+  transform: translateY(-5px);
 }
 
 /* Gold glow border */
@@ -102,6 +104,30 @@ h2 { font-family: var(--font-playfair), Georgia, serif; }
   box-shadow:
     0 0 20px rgba(212, 168, 71, 0.08),
     inset 0 0 20px rgba(212, 168, 71, 0.03);
+}
+
+/* Text glow — subtle gold text-shadow for emphasis */
+.text-glow-gold {
+  text-shadow: 0 0 20px rgba(212, 168, 71, 0.3), 0 0 40px rgba(212, 168, 71, 0.1);
+}
+
+/* Badge pulse — subtle for Most Popular / Premium badges */
+@keyframes badgePulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(212, 168, 71, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(212, 168, 71, 0.5), 0 0 40px rgba(212, 168, 71, 0.15); }
+}
+
+.animate-badge-pulse {
+  animation: badgePulse 2.5s ease-in-out infinite;
+}
+
+/* Stat number — large animated counter style */
+.stat-number {
+  font-family: var(--font-playfair);
+  background: linear-gradient(135deg, var(--cream) 30%, var(--gold-light));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -154,8 +180,8 @@ h2 { font-family: var(--font-playfair), Georgia, serif; }
 
 .divider-glow {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(212, 168, 71, 0.4), transparent);
-  box-shadow: 0 0 8px rgba(212, 168, 71, 0.1);
+  background: linear-gradient(90deg, transparent 5%, rgba(212, 168, 71, 0.5) 50%, transparent 95%);
+  box-shadow: 0 0 12px rgba(212, 168, 71, 0.12), 0 0 4px rgba(212, 168, 71, 0.2);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -392,7 +418,22 @@ input:focus, textarea:focus, select:focus {
 }
 
 .btn-glow:hover::before {
-  opacity: 0.4;
+  opacity: 0.5;
+}
+
+/* Sweep shine on btn-glow */
+.btn-glow::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.25), transparent);
+  transform: skewX(-25deg);
+  animation: shine 5s cubic-bezier(0.64, 0, 0.36, 1) infinite;
+  z-index: 1;
+  pointer-events: none;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -532,8 +573,9 @@ a > svg, button > svg, [role="img"] > svg {
   left: -10%;
   width: 70vw;
   height: 70vw;
-  background: radial-gradient(circle, var(--gold) 0%, transparent 60%);
+  background: radial-gradient(circle, var(--gold) 0%, rgba(212, 168, 71, 0.3) 30%, transparent 60%);
   animation-duration: 25s;
+  opacity: 0.18;
 }
 
 .bg-aurora::after {
@@ -541,8 +583,9 @@ a > svg, button > svg, [role="img"] > svg {
   right: -10%;
   width: 60vw;
   height: 60vw;
-  background: radial-gradient(circle, #0e7490 0%, transparent 60%);
+  background: radial-gradient(circle, #0e7490 0%, rgba(14, 116, 144, 0.3) 30%, transparent 60%);
   animation-delay: -5s;
+  opacity: 0.2;
 }
 
 @keyframes aurora-float {

@@ -57,16 +57,16 @@ export default function HowItWorks() {
           >
             {/* Connector line — behind content, clipped to gap between cards */}
             {i < steps.length - 1 && (
-              <div className="hidden md:block absolute top-10 left-[calc(100%-8px)] w-[calc(100%-56px)] h-px bg-gradient-to-r from-gold/20 via-gold/10 to-transparent -z-10" />
+              <div className="hidden md:block absolute top-10 left-[calc(100%-8px)] w-[calc(100%-56px)] h-px bg-gradient-to-r from-gold/30 via-gold/15 to-transparent -z-10" />
             )}
 
             <div className="flex items-center gap-4 mb-6">
               <div
-                className="flex items-center justify-center w-14 h-14 rounded-2xl border border-gold/15 bg-gold/[0.05] text-gold/80 transition-all duration-300 group-hover:border-gold/30 group-hover:bg-gold/[0.08]"
+                className="flex items-center justify-center w-14 h-14 rounded-2xl border border-gold/20 bg-gold/[0.06] text-gold/80 transition-all duration-300 group-hover:border-gold/40 group-hover:bg-gold/[0.1] group-hover:shadow-[0_0_20px_rgba(212,168,71,0.1)]"
               >
                 {step.icon}
               </div>
-              <span className="font-display text-4xl text-cream/[0.06] select-none">{step.number}</span>
+              <span className="font-display text-5xl text-cream/[0.06] select-none">{step.number}</span>
             </div>
 
             <h3 className="font-display text-lg text-cream mb-2">{step.title}</h3>
