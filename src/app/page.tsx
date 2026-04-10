@@ -28,20 +28,20 @@ export default function HomePage() {
       <FAQJsonLd />
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-navy-deep/90 backdrop-blur-xl border-b border-cream/[0.04]">
-        <div className="mx-auto max-w-6xl px-6 flex items-center justify-between h-16">
-          <Link href="/" className="font-display text-xl text-cream hover:text-gold-light transition-colors">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 flex items-center justify-between h-16 md:h-20">
+          <Link href="/" className="font-display text-lg sm:text-xl text-cream hover:text-gold-light transition-colors shrink-0">
             <Wordmark />
           </Link>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-3 sm:gap-5">
             <Link
               href="/login"
-              className="text-sm text-cream/70 hover:text-cream transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:ring-offset-2 focus:ring-offset-navy-deep rounded-md px-3 py-1.5"
+              className="hidden sm:block text-sm text-cream/70 hover:text-cream transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:ring-offset-2 focus:ring-offset-navy-deep rounded-md px-3 py-1.5"
             >
               Sign In
             </Link>
             <Link
               href="/start"
-              className="text-sm font-medium text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark px-5 py-2 rounded-lg hover:shadow-gold hover:brightness-110 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-navy-deep"
+              className="text-xs sm:text-sm font-medium text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg hover:shadow-gold hover:brightness-110 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-navy-deep whitespace-nowrap"
             >
               Get Started
             </Link>
