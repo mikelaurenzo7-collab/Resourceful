@@ -115,7 +115,6 @@ export default function Hero() {
   // Fetch address suggestions from server-side Azure Maps proxy
   const fetchSuggestions = useCallback(async (q: string) => {
     setIsSearching(true);
-    setIsSearching(true);
     if (q.trim().length < 3) {
       setSuggestions([]);
       setIsSearching(false);
@@ -126,11 +125,11 @@ export default function Hero() {
       if (!res.ok) return;
       const data = await res.json();
       setSuggestions(data.suggestions ?? []);
-      setIsSearching(false);
-      setIsSearching(false);
       setShowSuggestions(true);
     } catch {
       // Silent — autocomplete is non-critical
+    } finally {
+      setIsSearching(false);
     }
   }, []);
 

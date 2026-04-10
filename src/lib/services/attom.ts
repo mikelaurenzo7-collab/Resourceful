@@ -537,7 +537,7 @@ function normalizeSaleComps(raw: Record<string, unknown>): AttomSaleComp[] {
     salePrice: s.sale?.amount?.saleamt ?? 0,
     saleDate: s.sale?.amount?.salerecdate ?? '',
     pricePerSqFt: s.sale?.calculation?.pricepersizeunit ?? null,
-    yearBuilt: s.summary?.yearbuilt ?? null,
+    yearBuilt: s.summary?.yearbuilt ?? s.summary?.yearBuilt ?? null,
     buildingSquareFeet: s.building?.size?.universalsize ?? null,
     // lotSize1 is in acres — convert to sqft
     lotSquareFeet: s.lot?.lotSize1 != null ? Math.round(s.lot.lotSize1 * 43560) : null,
@@ -562,7 +562,7 @@ function normalizeRentalComps(raw: Record<string, unknown>): AttomRentalComp[] {
     monthlyRent: r.rental?.rentalAmount ?? 0,
     rentDate: r.rental?.rentalDate ?? null,
     rentPerSqFt: r.rental?.rentPerSqFt ?? null,
-    yearBuilt: r.summary?.yearBuilt ?? null,
+    yearBuilt: r.summary?.yearBuilt ?? r.summary?.yearbuilt ?? null,
     buildingSquareFeet: r.summary?.buildingSqFt ?? null,
     lotSquareFeet: r.summary?.lotSqFt ?? null,
     bedrooms: r.summary?.bedrooms ?? null,

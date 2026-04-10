@@ -57,10 +57,10 @@ export async function runIncomeAnalysis(
   }
 
   // Use report-level lat/lng (set in stage 1)
-  const latitude = report.latitude ?? 0;
-  const longitude = report.longitude ?? 0;
+  const latitude = report.latitude;
+  const longitude = report.longitude;
 
-  if (!latitude || !longitude) {
+  if (latitude == null || longitude == null) {
     return { success: false, error: 'No geocode coordinates found on report' };
   }
 
@@ -72,7 +72,7 @@ export async function runIncomeAnalysis(
 
   // For residential, only multifamily gets income analysis
   if (report.property_type === 'residential' && subtype !== 'residential_multifamily') {
-    pipelineLogger.info({ subtype }, '[stage3] Skipping income analysis for non-multifamily residential (subtype: )');
+    pipelineLogger.info({ subtype }, `[stage3] Skipping income analysis for non-multifamily residential (subtype: ${subtype})`);
     return { success: true };
   }
 

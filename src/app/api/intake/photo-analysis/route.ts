@@ -3,6 +3,10 @@ import { analyzeDeferredMaintenance } from '@/lib/services/gemini';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { apiLogger } from '@/lib/logger';
 
+const ALLOWED_IMAGE_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif',
+]);
+
 export async function POST(req: NextRequest) {
   const rateLimitResponse = await applyRateLimit(req, {
     prefix: 'photo-analysis',
@@ -13,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const formData = await req.formData();
-    const caption = formData.get('caption') as string || 'General condition issue';
+    const caption = (formData.get('caption') as string || 'General condition issue').slice(0, 1000);
     const propertyType = formData.get('propertyType') as string || 'residential';
     
     // Support multiple images for a single analytical inference
@@ -23,6 +27,9 @@ export async function POST(req: NextRequest) {
       if (key.startsWith('image') && value instanceof File) {
         if (value.size > 15 * 1024 * 1024) {
           return NextResponse.json({ error: 'Individual image too large. Max 15MB.' }, { status: 400 });
+        }
+        if (!ALLOWED_IMAGE_TYPES.has(value.type)) {
+          return NextResponse.json({ error: `Unsupported image type: ${value.type}. Accepted: JPEG, PNG, WebP, HEIC.` }, { status: 400 });
         }
         const arrayBuffer = await value.arrayBuffer();
         images.push({

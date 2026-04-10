@@ -24,6 +24,9 @@ async function createWithRetry(params: Anthropic.MessageCreateParamsNonStreaming
 let _client: Anthropic | null = null;
 function getClient(): Anthropic {
   if (!_client) {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error('ANTHROPIC_API_KEY environment variable is not set. AI features will not work.');
+    }
     _client = new Anthropic({
       apiKey: process.env.ANTHROPIC_API_KEY,
       timeout: 300_000, // 5 minute timeout — Opus needs time for full 17-section report

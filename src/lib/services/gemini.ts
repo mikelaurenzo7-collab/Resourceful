@@ -12,10 +12,10 @@ let _client: GoogleGenAI | null = null;
 function getClient(): GoogleGenAI {
   if (!_client) {
     if (!process.env.GEMINI_API_KEY) {
-      apiLogger.warn('GEMINI_API_KEY is not set. Multimodal features will fail.');
+      throw new Error('GEMINI_API_KEY environment variable is not set. Multimodal features will not work.');
     }
     _client = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY || '',
+      apiKey: process.env.GEMINI_API_KEY,
     });
   }
   return _client;
@@ -113,7 +113,7 @@ export async function analyzeDeferredMaintenance(
   const prompt = `
     You are a ${activePersona} serving as a Board of Review hearing officer.
     Focus exclusively on defects and depreciation factors relevant to a ${propertyType.toUpperCase()} property type.
-    Analyze the provided photos of a property. The homeowner noted: "${userCaption}".
+    Analyze the provided photos of a property. The homeowner noted: "${userCaption.replace(/"/g, "'").replace(/\n/g, ' ')}".
 
     A property tax appeal requires concrete, professional evidence. We need to translate the visual data 
     into formal "deferred maintenance" language. 
@@ -121,7 +121,7 @@ export async function analyzeDeferredMaintenance(
     1. Identify the true severity.
     2. Write a professional 'appraiserDescription' to be printed directly into a legal valuation report.
        (e.g., "Subject property exhibits severe exterior deferred maintenance, characterized by significant concrete spalling on the western foundation...").
-    3. Generate a logical 'estimatedCostToCure' if applicable to correct the defect. Use the provided Google Search grounding tool to look up current, real-world estimates for repairing this specific issue.
+    3. Generate a logical 'estimatedCostToCure' if applicable to correct the defect, based on typical contractor pricing for this type of repair.
     4. Categorize the 'primaryDefectType' (e.g., Foundation, Roof, Water Intrusion, Cosmetic Updating).
 
     Return ONLY a JSON object:
@@ -147,7 +147,6 @@ export async function analyzeDeferredMaintenance(
         config: {
           responseMimeType: 'application/json',
           temperature: 0.4, // Slight creative interpretation for the narrative portion
-          tools: [{ googleSearch: {} }], // Automatically ground defect analysis with up-to-date regional cost/repair data
         }
       }),
       { maxAttempts: 3, baseDelayMs: 2000, retryOn: isRetryableError }

@@ -3,6 +3,10 @@ import { parseTaxBill } from '@/lib/services/gemini';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { apiLogger } from '@/lib/logger';
 
+const ALLOWED_DOC_TYPES = new Set([
+  'application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/tiff',
+]);
+
 export async function POST(req: NextRequest) {
   const rateLimitResponse = await applyRateLimit(req, {
     prefix: 'tax-bill-ocr',
@@ -21,6 +25,10 @@ export async function POST(req: NextRequest) {
 
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: 'File too large. Max 10MB.' }, { status: 400 });
+    }
+
+    if (!ALLOWED_DOC_TYPES.has(file.type)) {
+      return NextResponse.json({ error: `Unsupported file type: ${file.type}. Accepted: PDF, JPEG, PNG, WebP, HEIC, TIFF.` }, { status: 400 });
     }
 
     const arrayBuffer = await file.arrayBuffer();
