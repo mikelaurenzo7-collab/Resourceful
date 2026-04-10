@@ -98,10 +98,21 @@ export async function parseTaxBill(mimeType: string, base64Data: string): Promis
  */
 export async function analyzeDeferredMaintenance(
   base64Images: { data: string; mimeType: string }[],
-  userCaption: string
+  userCaption: string,
+  propertyType: string = 'residential'
 ): Promise<DeferredMaintenanceAnalysis | null> {
+  const personas: Record<string, string> = {
+    residential: 'residential real estate appraiser and residential assessor',
+    commercial: 'commercial property appraiser and MAI-certified analyst',
+    industrial: 'industrial facility appraiser specializing in clear heights and logistics',
+    land: 'vacant land appraiser and zoning specialist',
+    agricultural: 'agricultural appraiser specializing in soil productivity and farm acreage'
+  };
+  const activePersona = personas[propertyType.toLowerCase()] || personas.residential;
+
   const prompt = `
-    You are a commercial property appraiser and Board of Review hearing officer.
+    You are a ${activePersona} serving as a Board of Review hearing officer.
+    Focus exclusively on defects and depreciation factors relevant to a ${propertyType.toUpperCase()} property type.
     Analyze the provided photos of a property. The homeowner noted: "${userCaption}".
 
     A property tax appeal requires concrete, professional evidence. We need to translate the visual data 
@@ -124,7 +135,7 @@ export async function analyzeDeferredMaintenance(
   `;
 
   try {
-    const contents: any[] = [prompt];
+    const contents: (string | Record<string, unknown>)[] = [prompt];
     for (const img of base64Images) {
       contents.push({ inlineData: { data: img.data, mimeType: img.mimeType } });
     }

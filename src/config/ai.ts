@@ -14,8 +14,8 @@ function requireEnv(name: string): string {
 export const AI_MODELS = {
   get PRIMARY() { return requireEnv('AI_MODEL_PRIMARY'); }, // report narratives, logical reasoning
   get FAST() { return requireEnv('AI_MODEL_FAST'); }, // quick classification tasks
-  get VISION() { return process.env.GEMINI_MODEL_VISION || 'gemini-2.5-pro'; }, // appraiser-grade defect extraction
-  get DOCUMENT() { return process.env.GEMINI_MODEL_DOCUMENT || 'gemini-2.5-pro'; }, // dense tax bill OCR
+  get VISION() { return process.env.GEMINI_MODEL_VISION || 'gemini-3.1-pro'; }, // appraiser-grade defect extraction
+  get DOCUMENT() { return process.env.GEMINI_MODEL_DOCUMENT || 'gemini-3.1-pro'; }, // dense tax bill OCR
 } as const;
 
 // Token limits cap API costs and prevent runaway bills.
