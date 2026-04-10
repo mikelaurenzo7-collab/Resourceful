@@ -64,9 +64,9 @@ export default function PropertyIntelligence() {
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2.5 mb-2">
+                <div className="mb-2 flex flex-wrap items-center gap-2.5">
                   <h3 className="font-display text-base text-cream">{cap.title}</h3>
-                  <span className="text-[9px] font-semibold uppercase tracking-widest text-gold/50 bg-gold/[0.06] px-2 py-0.5 rounded-full whitespace-nowrap">
+                  <span className="text-[9px] font-semibold uppercase tracking-widest text-gold/50 bg-gold/[0.06] px-2 py-0.5 rounded-full whitespace-nowrap sm:ml-auto">
                     {cap.metric}
                   </span>
                 </div>
@@ -79,10 +79,10 @@ export default function PropertyIntelligence() {
 
       {/* Value Prop Closer */}
       <div className="mt-12 text-center" data-animate>
-        <div className="inline-flex items-center gap-2 text-xs text-cream/50 mb-5">
-          <div className="h-px w-8 bg-cream/10" />
+        <div className="mx-auto mb-5 flex max-w-2xl flex-wrap items-center justify-center gap-x-2 gap-y-2 text-xs text-cream/50">
+          <div className="hidden h-px w-8 bg-cream/10 sm:block" />
           The assessor valued your home from a desk. We bring independent evidence.
-          <div className="h-px w-8 bg-cream/10" />
+          <div className="hidden h-px w-8 bg-cream/10 sm:block" />
         </div>
         <div>
           <Link

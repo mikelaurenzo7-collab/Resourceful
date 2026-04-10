@@ -246,7 +246,7 @@ export async function researchAppealStrategy(
     while (searchCount < MAX_SEARCHES) {
       const response = await withRetry(
         () => getClient().messages.create({
-          model: AI_MODELS.FAST,
+          model: AI_MODELS.RESEARCH,
           max_tokens: 2000,
           system: systemPrompt,
           tools: [SEARCH_TOOL, READ_PAGE_TOOL],
@@ -341,7 +341,7 @@ export async function researchAppealStrategy(
 
     const finalResponse = await withRetry(
       () => getClient().messages.create({
-        model: AI_MODELS.FAST,
+        model: AI_MODELS.RESEARCH,
         max_tokens: 2000,
         system: systemPrompt,
         messages,

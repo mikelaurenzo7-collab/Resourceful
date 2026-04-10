@@ -1,14 +1,13 @@
 // ─── Web Rental Comparables Search ───────────────────────────────────────────
 // Fallback service for when ATTOM returns 0 rental comps and before calling
 // paid RentCast API. Uses Serper to search rental portals (LoopNet, Zillow,
-// Apartments.com, CommercialCafe) and Claude to extract structured rental data.
+// Apartments.com, CommercialCafe) and the configured FAST model to extract structured rental data.
 //
 // Returns ComparableRentalInsert[] matching the pipeline's expected format.
-// Graceful: returns [] if SERPER_API_KEY or ANTHROPIC_API_KEY is not configured,
+// Graceful: returns [] if SERPER_API_KEY or the configured FAST provider is not configured,
 // or if any step fails — pipeline falls through to RentCast or hardcoded fallback.
 
-import Anthropic from '@anthropic-ai/sdk';
-import { AI_MODELS } from '@/config/ai';
+import { generateFastText, isFastAiConfigured, parseJsonSnippet } from '@/lib/services/fast-ai';
 import type { ComparableRentalInsert } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
 
@@ -135,18 +134,13 @@ function isSubjectProperty(compAddress: string, subjectAddress: string): boolean
   return compTokens.slice(1).some((t) => t.length > 1 && subjSet.has(t));
 }
 
-// ─── Claude Extraction ──────────────────────────────────────────────────────
+// ─── FAST-Model Extraction ──────────────────────────────────────────────────
 
 async function extractRentalsFromSearchContent(
   ctx: WebRentalContext,
   searchResults: Array<{ title: string; link: string; snippet: string }>,
   pageContent: string | null,
 ): Promise<ExtractedRental[]> {
-  const client = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    timeout: 60_000,
-  });
-
   const searchBlock = searchResults
     .map(
       (r, i) =>
@@ -218,29 +212,9 @@ IMPORTANT:
 
 Return ONLY the JSON array. No explanation, no markdown.`;
 
-  const response = await client.messages.create({
-    model: AI_MODELS.FAST,
-    max_tokens: 2500,
-    messages: [{ role: 'user', content: prompt }],
-  });
-
-  const text =
-    response.content[0]?.type === 'text' ? response.content[0].text.trim() : '';
-
-  let parsed: Array<Record<string, unknown>>;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    const match = text.match(/\[[\s\S]*\]/);
-    if (!match) return [];
-    try {
-      parsed = JSON.parse(match[0]);
-    } catch {
-      return [];
-    }
-  }
-
-  if (!Array.isArray(parsed)) return [];
+  const text = await generateFastText({ prompt, maxTokens: 2500 });
+  const parsed = parseJsonSnippet<Array<Record<string, unknown>>>(text);
+  if (!parsed || !Array.isArray(parsed)) return [];
 
   return parsed
     .filter((c) => {
@@ -313,7 +287,7 @@ function toComparableRentalInserts(
 
 /**
  * Search the web for comparable rental listings when ATTOM returns nothing.
- * Uses Serper for discovery and Claude for structured data extraction.
+ * Uses Serper for discovery and the configured FAST model for structured data extraction.
  *
  * @returns Object with inserts (ComparableRentalInsert[]) and median rent/sqft/yr.
  *          Returns { inserts: [], medianRentPerSqFtYr: 0 } on failure.
@@ -327,8 +301,8 @@ export async function findRentalsViaWeb(
     apiLogger.info('[web-rentals] SERPER_API_KEY not configured — skipping');
     return empty;
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
-    apiLogger.info('[web-rentals] ANTHROPIC_API_KEY not configured — skipping');
+  if (!isFastAiConfigured()) {
+    apiLogger.info('[web-rentals] FAST AI provider not configured — skipping');
     return empty;
   }
 
@@ -384,7 +358,7 @@ export async function findRentalsViaWeb(
       );
     }
 
-    // Extract structured rental data via Claude
+    // Extract structured rental data via the configured FAST model
     const extracted = await extractRentalsFromSearchContent(
       ctx,
       allResults,
@@ -392,7 +366,7 @@ export async function findRentalsViaWeb(
     );
 
     if (extracted.length === 0) {
-      apiLogger.info('[web-rentals] Claude extracted 0 rental comps from search results');
+      apiLogger.info('[web-rentals] FAST model extracted 0 rental comps from search results');
       return empty;
     }
 

@@ -24,17 +24,7 @@ export const logger = pino({
         },
         timestamp: pino.stdTimeFunctions.isoTime,
       }
-    : {
-        // Pretty output for development
-        transport: {
-          target: 'pino-pretty',
-          options: {
-            colorize: true,
-            translateTime: 'HH:MM:ss',
-            ignore: 'pid,hostname',
-          },
-        },
-      }),
+    : {}),
 });
 
 // ─── Child Loggers for Key Subsystems ────────────────────────────────────────

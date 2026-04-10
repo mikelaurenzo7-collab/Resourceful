@@ -1,6 +1,6 @@
 // ─── Web Market Data Research ────────────────────────────────────────────────
 // Researches real-time market data (cap rates, vacancy rates, construction costs,
-// market appreciation) via Serper + Claude extraction to override hardcoded
+// market appreciation) via Serper + FAST-model extraction to override hardcoded
 // valuation.ts constants with location- and property-type-specific data.
 //
 // Sources: CBRE cap rate surveys, JLL market reports, NAR/CoStar vacancy data,
@@ -9,8 +9,7 @@
 // Returns MarketDataOverrides — each field is optional (null = use hardcoded default).
 // Graceful: returns all-null on any failure, pipeline continues with defaults.
 
-import Anthropic from '@anthropic-ai/sdk';
-import { AI_MODELS } from '@/config/ai';
+import { generateFastText, isFastAiConfigured, parseJsonSnippet } from '@/lib/services/fast-ai';
 import { apiLogger } from '@/lib/logger';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -169,7 +168,7 @@ function buildAppreciationQueries(ctx: MarketDataContext): string[] {
   ];
 }
 
-// ─── Claude Extraction ──────────────────────────────────────────────────────
+// ─── FAST-Model Extraction ──────────────────────────────────────────────────
 
 async function extractMarketDataFromResults(
   ctx: MarketDataContext,
@@ -179,11 +178,6 @@ async function extractMarketDataFromResults(
   appreciationResults: Array<{ title: string; link: string; snippet: string }>,
   pageContent: string | null,
 ): Promise<MarketDataOverrides> {
-  const client = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    timeout: 60_000,
-  });
-
   const formatResults = (
     results: Array<{ title: string; link: string; snippet: string }>,
     section: string,
@@ -272,27 +266,9 @@ Rules:
 
 Return ONLY the JSON object. No explanation, no markdown.`;
 
-  const response = await client.messages.create({
-    model: AI_MODELS.FAST,
-    max_tokens: 1500,
-    messages: [{ role: 'user', content: prompt }],
-  });
-
-  const text =
-    response.content[0]?.type === 'text' ? response.content[0].text.trim() : '';
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return { ...EMPTY_OVERRIDES };
-    try {
-      parsed = JSON.parse(match[0]);
-    } catch {
-      return { ...EMPTY_OVERRIDES };
-    }
-  }
+  const text = await generateFastText({ prompt, maxTokens: 1500 });
+  const parsed = parseJsonSnippet<Record<string, unknown>>(text);
+  if (!parsed) return { ...EMPTY_OVERRIDES };
 
   // Validate and clamp each field
   const safeNum = (val: unknown, min: number, max: number): number | null => {
@@ -326,7 +302,7 @@ Return ONLY the JSON object. No explanation, no markdown.`;
 
 /**
  * Research current market data for a specific location and property type.
- * Uses Serper web search + Claude extraction to find real, current values
+ * Uses Serper web search + FAST-model extraction to find real, current values
  * for cap rates, vacancy, construction costs, and appreciation.
  *
  * @returns MarketDataOverrides with null for any field not found.
@@ -338,8 +314,8 @@ export async function researchMarketData(
     apiLogger.info('[web-market-data] SERPER_API_KEY not configured — skipping');
     return { ...EMPTY_OVERRIDES };
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
-    apiLogger.info('[web-market-data] ANTHROPIC_API_KEY not configured — skipping');
+  if (!isFastAiConfigured()) {
+    apiLogger.info('[web-market-data] FAST AI provider not configured — skipping');
     return { ...EMPTY_OVERRIDES };
   }
 
@@ -419,7 +395,7 @@ export async function researchMarketData(
       );
     }
 
-    // Extract structured market data via Claude
+    // Extract structured market data via the configured FAST model
     const overrides = await extractMarketDataFromResults(
       ctx,
       capRateResults,

@@ -71,7 +71,7 @@ export default function PricingTable() {
           Choose Your Level of Support
         </h2>
         <p className="mt-4 text-cream/40 max-w-xl mx-auto leading-relaxed">
-          Every tier includes the same professional evidence package. Pick how much help you want with filing.
+          Every tier includes the same professional evidence package. Tax-appeal support scales from do-it-yourself filing to full representation.
         </p>
       </div>
 
@@ -88,13 +88,13 @@ export default function PricingTable() {
               data-animate
               data-delay={String((i + 1) * 100)}
               className={`
-                relative p-7 flex flex-col
+                relative rounded-xl p-7 flex flex-col
                 transition-all duration-300
                 ${t.popular
-                  ? 'card-shimmer ring-2 ring-gold/30 rounded-xl'
+                  ? 'card-shimmer ring-2 ring-gold/30'
                   : t.premium
-                  ? 'card-elevated ring-2 ring-[#d4a843]/40 rounded-xl'
-                  : 'card-premium rounded-xl'}
+                  ? 'card-elevated ring-2 ring-[#d4a843]/40'
+                  : 'card-premium'}
               `}
             >
               {t.popular && (

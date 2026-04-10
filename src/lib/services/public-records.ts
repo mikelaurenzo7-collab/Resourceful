@@ -1,21 +1,19 @@
 // ─── Public Records Data Service ──────────────────────────────────────────────
 // Free property data collection via web search + AI extraction.
 // Searches public county assessor records and extracts structured property data
-// using Claude. Falls back gracefully — never blocks the pipeline.
+// using the configured FAST text model. Falls back gracefully — never blocks the pipeline.
 //
 // Strategy:
 //   1. Search web for "[address] property tax assessment [county] [state]"
 //   2. Fetch the top public records results (county assessor, tax collector)
-//   3. Use Claude to extract structured property data from the pages
+//   3. Use the configured FAST model to extract structured property data from the pages
 //   4. Search for recent comparable sales in the area
-//   5. Use Claude to extract structured comp data
+//   5. Use the configured FAST model to extract structured comp data
 //
-// This service is FREE — the only cost is Anthropic API usage we're already paying for.
-// It works for ANY county because Claude can parse any page format.
+// This service is FREE — the only cost is text-model usage we're already paying for.
+// It works for ANY county because the extraction layer can parse arbitrary page formats.
 
-import Anthropic from '@anthropic-ai/sdk';
-import { AI_MODELS } from '@/config/ai';
-import { withRetry, isRetryableError } from '@/lib/utils/retry';
+import { generateFastText, parseJsonSnippet } from '@/lib/services/fast-ai';
 import type {
   AttomPropertyDetail,
   AttomSaleComp,
@@ -35,19 +33,6 @@ export interface PublicRecordsSearchParams {
 export interface ServiceResult<T> {
   data: T | null;
   error: string | null;
-}
-
-// ─── AI Client ───────────────────────────────────────────────────────────────
-
-let _client: Anthropic | null = null;
-function getAIClient(): Anthropic {
-  if (!_client) {
-    _client = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-      timeout: 60_000,
-    });
-  }
-  return _client;
 }
 
 // ─── Web Helpers ─────────────────────────────────────────────────────────────
@@ -101,10 +86,8 @@ async function extractPropertyDataFromText(
   const combinedText = pageTexts.join('\n\n---PAGE BREAK---\n\n').slice(0, 30_000);
 
   try {
-    const response = await withRetry(
-      () => getAIClient().messages.create({
-      model: AI_MODELS.FAST,
-      max_tokens: 2000,
+    const text = await generateFastText({
+      maxTokens: 2000,
       system: `You are a data extraction specialist. Extract structured property data from public county assessor records. Return ONLY valid JSON, no markdown, no explanation. If a field is not found, use null.
 
 CRITICAL EXTRACTION RULES:
@@ -115,9 +98,7 @@ CRITICAL EXTRACTION RULES:
 - assessed_value must be a positive number. If you see "total assessed" vs "taxable value", prefer "total assessed".
 - Do NOT confuse land value with total assessed value.
 - If a field appears in multiple formats or locations, prefer the most specific/recent value.`,
-      messages: [{
-        role: 'user',
-        content: `Extract property data for "${address}, ${city}, ${state}" from these public records pages:
+  prompt: `Extract property data for "${address}, ${city}, ${state}" from these public records pages:
 
 ${combinedText}
 
@@ -150,21 +131,10 @@ Return this exact JSON structure:
   "county_name": <string or null>,
   "county_fips": <string or null>
 }`,
-      }],
-    }),
-      { maxAttempts: 3, baseDelayMs: 2000, retryOn: isRetryableError }
-    );
+    });
 
-    const text = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map(b => b.text)
-      .join('');
-
-    // Parse the JSON from the response
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = parseJsonSnippet<Record<string, unknown>>(text);
+    if (!parsed) return null;
 
     // ── Sanity checks on extracted data ─────────────────────────────────
     const currentYear = new Date().getFullYear();
@@ -292,14 +262,10 @@ async function extractCompsFromText(
   const combinedText = pageTexts.join('\n\n---PAGE BREAK---\n\n').slice(0, 30_000);
 
   try {
-    const response = await withRetry(
-      () => getAIClient().messages.create({
-      model: AI_MODELS.FAST,
-      max_tokens: 4000,
+    const text = await generateFastText({
+      maxTokens: 4000,
       system: `You are a data extraction specialist. Extract recently sold comparable properties from web pages. Return ONLY valid JSON array, no markdown. Each comp should be a recent sale within a few miles of the subject property. Only include sales with actual sale prices (not listings). Return empty array [] if no sold data found.`,
-      messages: [{
-        role: 'user',
-        content: `Find recent comparable SOLD properties near "${address}, ${city}, ${state}" from these pages:
+      prompt: `Find recent comparable SOLD properties near "${address}, ${city}, ${state}" from these pages:
 
 ${combinedText}
 
@@ -320,21 +286,11 @@ Return a JSON array of comparable sales:
     "distance_miles": <number or null>,
     "property_type": "<string or null>"
   }
-]`,
-      }],
-    }),
-      { maxAttempts: 3, baseDelayMs: 2000, retryOn: isRetryableError }
-    );
+],`,
+    });
 
-    const text = response.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map(b => b.text)
-      .join('');
-
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) return [];
-
-    const parsed = JSON.parse(jsonMatch[0]) as Array<Record<string, unknown>>;
+    const parsed = parseJsonSnippet<Array<Record<string, unknown>>>(text);
+    if (!parsed || !Array.isArray(parsed)) return [];
 
     return parsed
       .filter((comp) => {
