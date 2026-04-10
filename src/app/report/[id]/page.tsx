@@ -1228,10 +1228,3 @@ export default function ReportViewerPage() {
   );
 }
 
-export const metadata = {
-  title: 'Secure Report | REsourceful',
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
