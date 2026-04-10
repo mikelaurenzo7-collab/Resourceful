@@ -11,6 +11,14 @@ import { ServiceJsonLd, FAQJsonLd } from '@/components/seo/JsonLd';
 import { ScrollAnimations } from '@/components/ui/ScrollAnimations';
 import Link from 'next/link';
 import Wordmark from '@/components/ui/Wordmark';
+import { buildMetadata } from '@/lib/seo/metadata';
+
+
+
+export const metadata = buildMetadata({
+  title: 'REsourceful | Professional Property Tax Appeal Reports',
+  description: 'Expert-grade property tax appeal reports nationwide. Comparable sales analysis, assessment review, and pro se filing guidance. Save hundreds to thousands on your property taxes with our money-back guarantee.',
+});
 
 export default function HomePage() {
   return (

@@ -88,13 +88,13 @@ export default function PricingTable() {
               data-animate
               data-delay={String((i + 1) * 100)}
               className={`
-                relative rounded-xl p-7 flex flex-col
+                relative p-7 flex flex-col
                 transition-all duration-300
                 ${t.popular
-                  ? 'card-elevated ring-2 ring-gold/30'
+                  ? 'card-shimmer ring-2 ring-gold/30 rounded-xl'
                   : t.premium
-                  ? 'card-elevated ring-2 ring-[#d4a843]/40'
-                  : 'card-premium'}
+                  ? 'card-elevated ring-2 ring-[#d4a843]/40 rounded-xl'
+                  : 'card-premium rounded-xl'}
               `}
             >
               {t.popular && (

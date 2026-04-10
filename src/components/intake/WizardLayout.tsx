@@ -312,9 +312,24 @@ function WizardLayoutInner({ children }: { children: React.ReactNode }) {
 
   if (!hydrated) {
     return (
-      <div className="min-h-screen bg-pattern flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-      </div>
+      <div className="min-h-screen bg-navy-deep overflow-hidden relative flex flex-col items-center justify-center">
+          <div className="bg-aurora" />
+          <div className="relative z-10 flex flex-col items-center gap-6">
+            <div className="scanner-container transform scale-125 opacity-90">
+              <div className="scanner-ring" />
+              <div className="scanner-progress" />
+              <div className="scanner-dot" />
+            </div>
+            <div className="flex flex-col items-center gap-2 text-center">
+              <h1 className="text-xl md:text-2xl font-display text-cream drop-shadow-lg tracking-wide uppercase">
+                <span className="data-stream-text">Syncing Secure Pipeline</span>
+              </h1>
+              <p className="text-gold/60 text-sm tracking-widest uppercase font-semibold animate-pulse">
+                Initiating Session...
+              </p>
+            </div>
+          </div>
+        </div>
     );
   }
 
@@ -384,8 +399,23 @@ export default function WizardLayout({ children }: { children: React.ReactNode }
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-pattern flex items-center justify-center">
-          <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+        <div className="min-h-screen bg-navy-deep overflow-hidden relative flex flex-col items-center justify-center">
+          <div className="bg-aurora" />
+          <div className="relative z-10 flex flex-col items-center gap-6">
+            <div className="scanner-container transform scale-125 opacity-90">
+              <div className="scanner-ring" />
+              <div className="scanner-progress" />
+              <div className="scanner-dot" />
+            </div>
+            <div className="flex flex-col items-center gap-2 text-center">
+              <h1 className="text-xl md:text-2xl font-display text-cream drop-shadow-lg tracking-wide uppercase">
+                <span className="data-stream-text">Syncing Secure Pipeline</span>
+              </h1>
+              <p className="text-gold/60 text-sm tracking-widest uppercase font-semibold animate-pulse">
+                Initiating Session...
+              </p>
+            </div>
+          </div>
         </div>
       }
     >

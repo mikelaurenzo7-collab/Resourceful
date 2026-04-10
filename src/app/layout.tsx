@@ -70,9 +70,6 @@ export const metadata: Metadata = {
       "Save hundreds to thousands on your property taxes. Professional appeal reports with money-back guarantee.",
     images: [`${baseUrl}/og-image.png`],
   },
-  alternates: {
-    canonical: baseUrl,
-  },
   icons: {
     icon: '/favicon.svg',
     apple: '/favicon.svg',

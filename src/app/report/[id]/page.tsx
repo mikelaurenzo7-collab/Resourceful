@@ -1227,3 +1227,11 @@ export default function ReportViewerPage() {
     </main>
   );
 }
+
+export const metadata = {
+  title: 'Secure Report | REsourceful',
+  robots: {
+    index: false,
+    follow: false,
+  },
+};

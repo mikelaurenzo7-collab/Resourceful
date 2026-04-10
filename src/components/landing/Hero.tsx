@@ -48,6 +48,9 @@ export default function Hero() {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [isSearching, setIsSearching] = useState(false);
+
+
   const valuationAbortRef = useRef<AbortController | null>(null);
   const [address, setAddress] = useState<ParsedAddress | null>(null);
   const [valuation, setValuation] = useState<ValuationResult | null>(null);
@@ -111,8 +114,11 @@ export default function Hero() {
 
   // Fetch address suggestions from server-side Azure Maps proxy
   const fetchSuggestions = useCallback(async (q: string) => {
+    setIsSearching(true);
+    setIsSearching(true);
     if (q.trim().length < 3) {
       setSuggestions([]);
+      setIsSearching(false);
       return;
     }
     try {
@@ -120,6 +126,8 @@ export default function Hero() {
       if (!res.ok) return;
       const data = await res.json();
       setSuggestions(data.suggestions ?? []);
+      setIsSearching(false);
+      setIsSearching(false);
       setShowSuggestions(true);
     } catch {
       // Silent — autocomplete is non-critical
@@ -179,28 +187,12 @@ export default function Hero() {
   };
 
   return (
-    <section className="relative overflow-hidden bg-pattern bg-noise">
-      {/* Subtle radial gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-navy-deep via-navy-deep/95 to-navy-deep" />
+    <section className="relative overflow-hidden bg-aurora">
+      <div className="absolute inset-0 bg-pattern bg-noise opacity-50 z-0" />
+      {/* Subtle radial gradient overlay to damp the aurora a bit for readability */}
+      <div className="absolute inset-0 bg-gradient-to-b from-navy-deep/80 via-navy-deep/90 to-navy-deep z-0" />
 
-      {/* Decorative gold gradient orb */}
-      <div
-        className="pointer-events-none absolute -top-32 left-1/2 -translate-x-1/2 h-[600px] w-[600px] animate-float rounded-full opacity-20"
-        style={{
-          background: 'radial-gradient(circle, rgba(212,168,71,0.3) 0%, rgba(212,168,71,0.08) 40%, transparent 70%)',
-          filter: 'blur(80px)',
-        }}
-      />
-      <div
-        className="pointer-events-none absolute -bottom-40 -right-40 h-[700px] w-[700px] animate-float rounded-full opacity-35"
-        style={{
-          background: 'radial-gradient(circle, rgba(30,48,85,0.6) 0%, rgba(30,48,85,0.2) 40%, transparent 70%)',
-          filter: 'blur(100px)',
-          animationDelay: '3s',
-        }}
-      />
-
-      <div className="relative mx-auto max-w-6xl px-6 pt-36 pb-28">
+      <div className="relative mx-auto max-w-6xl px-6 pt-36 pb-28 z-10">
         <div className="text-center">
           {/* Eyebrow */}
           <div className="mb-8 flex items-center justify-center gap-3 animate-fade-in">
@@ -213,14 +205,15 @@ export default function Hero() {
 
           {/* Headline */}
           <h1 className="font-display text-5xl md:text-6xl lg:text-7xl leading-[1.08] text-cream tracking-tight mx-auto max-w-4xl">
-            <span className="inline animate-fade-in" style={{ animationDelay: '0.1s' }}>Stop </span>
-            <span className="inline animate-fade-in" style={{ animationDelay: '0.25s' }}>Overpaying</span>
+            <span className="inline animate-fade-in" style={{ animationDelay: '0.1s' }}>The </span>
+            <span className="inline font-mixed-italic text-gold animate-fade-in" style={{ animationDelay: '0.2s' }}>intelligent</span>
+            <span className="inline animate-fade-in" style={{ animationDelay: '0.3s' }}> way to</span>
             <br className="hidden lg:block" />
-            <span className="inline text-gold-gradient animate-fade-in" style={{ animationDelay: '0.4s' }}> Property Taxes</span>
+            <span className="inline animate-fade-in" style={{ animationDelay: '0.4s' }}> lower your property tax.</span>
           </h1>
 
           <p
-            className="mt-8 max-w-2xl mx-auto text-lg md:text-xl text-cream/70 leading-relaxed animate-fade-in"
+            className="mt-8 max-w-2xl mx-auto text-lg md:text-xl text-gradient-platinum leading-relaxed animate-fade-in"
             style={{ animationDelay: '0.6s' }}
           >
             We compare your property to 5&ndash;10 similar recent sales and adjust for every
@@ -231,10 +224,18 @@ export default function Hero() {
           {/* Address input */}
           <div className="mt-10 max-w-xl mx-auto animate-fade-in" style={{ animationDelay: '0.7s' }}>
             <div className="relative group" ref={containerRef}>
-              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gold/40 group-focus-within:text-gold/70 transition-colors pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+              {isSearching ? (
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 scanner-container transform scale-[0.6] opacity-70">
+                  <div className="scanner-ring" />
+                  <div className="scanner-progress" />
+                  <div className="scanner-dot" />
+                </div>
+              ) : (
+                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gold/40 group-focus-within:text-gold/70 transition-colors pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              )}
               <input
                 ref={inputRef}
                 type="text"

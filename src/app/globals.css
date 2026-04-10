@@ -284,12 +284,12 @@ input:focus, textarea:focus, select:focus {
 
 /* Premium pulse (loading) */
 @keyframes premiumPulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
+  0%, 100% { opacity: 0.7; transform: scale(1); box-shadow: 0 0 15px rgba(212, 168, 71, 0.2); }
+  50% { opacity: 1; transform: scale(1.05); box-shadow: 0 0 35px rgba(212, 168, 71, 0.5), inset 0 0 10px rgba(212, 168, 71, 0.3); }
 }
 
 .animate-premium-pulse {
-  animation: premiumPulse 2s ease-in-out infinite;
+  animation: premiumPulse 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 /* Progress bar */
@@ -505,4 +505,231 @@ a > svg, button > svg, [role="img"] > svg {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AURORA & MESH GRADIENTS (MAX SEX APPEAL)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.bg-aurora {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: -1;
+  background: var(--navy-deep);
+}
+
+.bg-aurora::before,
+.bg-aurora::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(140px);
+  opacity: 0.15;
+  animation: aurora-float 20s ease-in-out infinite alternate;
+}
+
+.bg-aurora::before {
+  top: -10%;
+  left: -10%;
+  width: 70vw;
+  height: 70vw;
+  background: radial-gradient(circle, var(--gold) 0%, transparent 60%);
+  animation-duration: 25s;
+}
+
+.bg-aurora::after {
+  bottom: -20%;
+  right: -10%;
+  width: 60vw;
+  height: 60vw;
+  background: radial-gradient(circle, #0e7490 0%, transparent 60%);
+  animation-delay: -5s;
+}
+
+@keyframes aurora-float {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(5%, 10%) scale(1.1); }
+  100% { transform: translate(-5%, -5%) scale(0.95); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATED SHIMMER BORDER CARDS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.card-shimmer {
+  position: relative;
+  background: var(--navy-deep);
+  border-radius: 1rem;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.card-shimmer::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  background: conic-gradient(from var(--border-angle), transparent 20%, rgba(212, 168, 71, 0.6) 50%, transparent 80%);
+  z-index: -2;
+  animation: rotate-border 4s linear infinite;
+}
+
+.card-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  background: linear-gradient(145deg, rgba(30, 48, 85, 0.9), rgba(15, 20, 25, 0.95));
+  border-radius: inherit;
+  z-index: -1;
+  backdrop-filter: blur(16px);
+}
+
+@property --border-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0turn;
+}
+
+@keyframes rotate-border {
+  to { --border-angle: 1turn; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PREMIUM TYPOGRAPHY MIXTURES
+   ═══════════════════════════════════════════════════════════════════════════ */
+.text-gradient-platinum {
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.font-mixed-italic {
+  font-family: var(--font-playfair);
+  font-style: italic;
+  font-weight: 500;
+  color: var(--gold);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PREMIUM BUTTON SHIMMER
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.btn-premium-glow {
+  position: relative;
+  background: linear-gradient(90deg, var(--gold-light), var(--gold), var(--gold-dark), var(--gold-light));
+  background-size: 300% 100%;
+  animation: bg-pan-x 4s linear infinite;
+  color: var(--navy-deep);
+  font-weight: 600;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+  overflow: hidden;
+  z-index: 1;
+}
+
+.btn-premium-glow::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255,255,255,0.4), transparent);
+  transform: skewX(-25deg);
+  animation: shine 4s cubic-bezier(0.64, 0, 0.36, 1) infinite;
+  z-index: -1;
+}
+
+.btn-premium-glow:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 12px 30px rgba(212, 168, 71, 0.3);
+}
+
+@keyframes bg-pan-x {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+@keyframes shine {
+  0% { left: -100%; }
+  20% { left: 200%; }
+  100% { left: 200%; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INTELLIGENCE SCANNER (Max Sex Appeal Loading State)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.scanner-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.scanner-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid rgba(212, 168, 71, 0.15);
+}
+
+.scanner-progress {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  border-top-color: var(--gold);
+  border-right-color: var(--gold);
+  animation: scan-rotate 1.5s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite;
+  box-shadow: 0 0 10px rgba(212, 168, 71, 0.3), inset 0 0 10px rgba(212, 168, 71, 0.2);
+}
+
+.scanner-dot {
+  position: absolute;
+  width: 0.375rem;
+  height: 0.375rem;
+  background-color: var(--emerald-400, #34d399);
+  border-radius: 50%;
+  box-shadow: 0 0 12px var(--emerald-400, #34d399);
+  animation: scan-pulse 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes scan-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes scan-pulse {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  100% { transform: scale(1.2); opacity: 1; }
+}
+
+/* Data Streaming text effect */
+.data-stream-text {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+}
+
+.data-stream-text::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--navy-deep);
+  animation: reveal-stream 2s steps(20, end) forwards;
+  border-left: 2px solid var(--gold);
+}
+
+@keyframes reveal-stream {
+  from { width: 100%; }
+  to { width: 0%; border-color: transparent; }
 }

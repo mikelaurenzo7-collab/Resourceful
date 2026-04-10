@@ -173,7 +173,7 @@ export default function OutcomeReporter({
             <button
               onClick={handleSubmit}
               disabled={submitting || !outcome}
-              className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-lg bg-gradient-to-r from-gold-light via-gold to-gold-dark text-navy-deep shadow-gold hover:shadow-gold-lg transition-all disabled:opacity-40 disabled:shadow-none"
+              className="flex items-center gap-2 px-5 py-2.5 text-sm rounded-lg btn-premium-glow disabled:opacity-40 disabled:shadow-none"
             >
               {submitting ? (
                 <>

@@ -48,36 +48,47 @@ export default function ValueInsights({
       </div>
 
       {/* Value comparison */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 divide-x divide-gold/[0.06]">
-        {/* County assessed */}
-        <div className="px-5 py-5">
-          <p className="text-[10px] uppercase tracking-widest text-cream/30 mb-1.5">County Assessed</p>
-          <p className="font-display text-lg sm:text-xl text-cream/70">
-            {formatDollar(assessedValue)}
-          </p>
-        </div>
-
-        {/* Our value */}
-        <div className="px-5 py-5">
-          <p className="text-[10px] uppercase tracking-widest text-gold/50 mb-1.5">Our Analysis</p>
-          <p className="font-display text-lg sm:text-xl text-gold">
-            {formatDollar(concludedValue)}
-          </p>
-        </div>
-
-        {/* Savings / difference */}
-        {isTaxAppeal && potentialSavings && potentialSavings > 0 && (
-          <div className="px-5 py-5 col-span-2 sm:col-span-1">
-            <p className="text-[10px] uppercase tracking-widest text-emerald-400/50 mb-1.5">Potential Savings</p>
-            <p className="font-display text-lg sm:text-xl text-emerald-400">
-              {formatDollar(potentialSavings)}
-              <span className="text-xs text-emerald-400/40 font-sans ml-1.5">/yr</span>
+      
+      {/* ── Visual Valuation Tracker (Max Sex Appeal Data Viz) ── */}
+      <div className="px-6 pt-8 pb-10 border-b border-gold/[0.04] relative">
+        <div className="flex items-end justify-between mb-4 relative z-10">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-gold/60 mb-1.5 font-semibold">Our True Market Value</p>
+            <p className="font-display text-4xl text-gold drop-shadow-md">
+              {formatDollar(concludedValue)}
             </p>
           </div>
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-widest text-cream/40 mb-1.5 font-semibold">County Assessed</p>
+            <p className="font-display text-2xl text-cream/70">
+              {formatDollar(assessedValue)}
+            </p>
+          </div>
+        </div>
+
+        {/* The Tracking Bar */}
+        <div className="relative h-3 w-full bg-navy-deep rounded-full overflow-hidden border border-cream/[0.03] shadow-inner z-10">
+          <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500/20 to-emerald-400/80 rounded-full w-full opacity-30" />
+          <div 
+            className="absolute inset-y-0 left-0 bg-gradient-to-r from-gold-dark via-gold to-gold-light rounded-full transition-all duration-1000 ease-out"
+            style={{ width: `${Math.max(10, Math.min(90, (concludedValue / assessedValue) * 100)) }%` }}
+          />
+        </div>
+        
+        {/* Dynamic Highlight Gap */}
+        {isTaxAppeal && potentialSavings && potentialSavings > 0 && (
+          <div className="absolute inset-x-6 top-1/2 mt-4 flex items-center justify-between text-xs font-semibold tracking-wider text-emerald-400 opacity-90 animate-fade-in z-10">
+            <span>&larr; OVERASSESSED BY {overassessedPct}%</span>
+            <span>{formatDollar(potentialSavings)} / YR SAVINGS</span>
+          </div>
         )}
+
+        {/* Ambient background glow for graph */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-24 bg-gold/10 blur-[50px] rounded-full pointer-events-none z-0" />
       </div>
 
       {/* Bottom bar — overassessment + case strength */}
+
       <div className="px-5 py-3 border-t border-gold/[0.06] flex items-center justify-between gap-4 flex-wrap">
         {isOverassessed && isTaxAppeal ? (
           <p className="text-[11px] text-cream/30">

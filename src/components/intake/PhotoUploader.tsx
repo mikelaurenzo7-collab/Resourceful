@@ -202,8 +202,12 @@ export default function PhotoUploader({ propertyType, onPhotosChange, onFileUplo
                   {/* Upload zone or thumbnail */}
                   {uploadingType === req.type ? (
                     <div className="mt-3 flex items-center gap-3 py-2">
-                      <div className="w-5 h-5 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-                      <span className="text-xs text-cream/40">Uploading...</span>
+                      <div className="scanner-container transform scale-[0.5] opacity-80">
+                        <div className="scanner-ring" />
+                        <div className="scanner-progress" />
+                        <div className="scanner-dot" />
+                      </div>
+                      <span className="text-xs text-gold/70 uppercase tracking-widest font-semibold data-stream-text">Secure Processing</span>
                     </div>
                   ) : uploaded && photo ? (
                     <div className="mt-3 flex items-center gap-3">
@@ -235,8 +239,8 @@ export default function PhotoUploader({ propertyType, onPhotosChange, onFileUplo
                       </div>
                     </div>
                   ) : (
-                    <label className="mt-2 flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gold/15 p-4 cursor-pointer hover:border-gold/30 hover:bg-gold/5 transition-all duration-200">
-                      <svg className="w-5 h-5 text-gold/40" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <label className="mt-2 flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gold/15 bg-navy-deep/20 p-5 cursor-pointer hover:border-gold/50 hover:bg-gold-[0.03] hover:shadow-gold-lg transition-all duration-300 group">
+                      <svg className="w-6 h-6 text-gold/40 group-hover:text-gold transition-colors duration-300 group-hover:animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
                       <span className="text-sm text-cream/40">

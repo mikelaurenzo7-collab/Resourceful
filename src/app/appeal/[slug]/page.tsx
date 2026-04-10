@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { buildMetadata } from '@/lib/seo/metadata';
 import { parseCountySlug, buildCountySlug } from '@/lib/utils/county-slug';
 import { getCountyByName, getActiveCounties } from '@/lib/repository/county-rules';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -42,15 +43,11 @@ export async function generateMetadata({
   const title = `Property Tax Appeal in ${county.county_name}, ${stateName} | Resourceful`;
   const description = `Professional property tax appeal reports for ${county.county_name}. ${county.assessment_methodology}. File your appeal ${filingMethod}. ${county.appeal_board_name}.`;
 
-  return {
+  return buildMetadata({
     title,
     description,
-    openGraph: {
-      title,
-      description,
-      type: 'website',
-    },
-  };
+    path: `/appeal/${slug}`,
+  });
 }
 
 // ─── Page Component ──────────────────────────────────────────────────────────

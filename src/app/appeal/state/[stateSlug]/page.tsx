@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { buildMetadata } from '@/lib/seo/metadata';
 import { parseStateSlug, buildStateSlug } from '@/lib/utils/state-slug';
 import { buildCountySlug } from '@/lib/utils/county-slug';
 import { getActiveStates, getActiveCountiesByState } from '@/lib/repository/county-rules';
@@ -33,11 +34,11 @@ export async function generateMetadata({
   const title = `Property Tax Appeals in ${stateName} — All ${counties.length} Counties | Resourceful`;
   const description = `Professional property tax appeal reports for every county in ${stateName}. Find your county's assessment ratio, appeal deadline, filing instructions, and start your appeal today.`;
 
-  return {
+  return buildMetadata({
     title,
     description,
-    openGraph: { title, description, type: 'website' },
-  };
+    path: `/appeal/state/${stateSlug}`,
+  });
 }
 
 // ─── Page ────────────────────────────────────────────────────────────────────

@@ -4,9 +4,9 @@
 
 export default function Wordmark({ className = '' }: { className?: string }) {
   return (
-    <span className={className}>
-      <span className="text-gold">RE</span>
-      <span>sourceful</span>
+    <span className={`tracking-tight ${className}`}>
+      <span className="text-gold-gradient font-bold drop-shadow-[0_0_12px_rgba(212,168,71,0.4)]">RE</span>
+      <span className="font-semibold text-gradient-platinum">sourceful</span>
     </span>
   );
 }

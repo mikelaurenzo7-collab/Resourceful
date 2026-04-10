@@ -43,13 +43,19 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [isSearching, setIsSearching] = useState(false);
+
+
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Fetch suggestions from our server-side Azure Maps proxy
   const fetchSuggestions = useCallback(async (q: string) => {
+    setIsSearching(true);
+    setIsSearching(true);
     if (q.trim().length < 3) {
       setSuggestions([]);
+      setIsSearching(false);
       return;
     }
     try {
@@ -57,6 +63,8 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
       if (!res.ok) return;
       const data = await res.json();
       setSuggestions(data.suggestions ?? []);
+      setIsSearching(false);
+      setIsSearching(false);
       setShowSuggestions(true);
     } catch {
       // Silent — autocomplete is non-critical
@@ -172,12 +180,20 @@ export default function AddressInput({ onAddressSelect, initialAddress = null }:
           aria-controls="address-input-listbox"
           aria-activedescendant={activeIndex >= 0 ? `address-option-${activeIndex}` : undefined}
         />
-        <button
-          onClick={handleManualSubmit}
-          className="mr-2 rounded-md bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:bg-gold/20 transition-colors"
-        >
-          Look Up
-        </button>
+        {isSearching ? (
+          <div className="mr-4 scanner-container transform scale-[0.6] opacity-70">
+            <div className="scanner-ring" />
+            <div className="scanner-progress" />
+            <div className="scanner-dot" />
+          </div>
+        ) : (
+          <button
+            onClick={handleManualSubmit}
+            className="mr-2 rounded-md bg-gold/10 px-4 py-2 text-sm font-medium text-gold hover:bg-gold/20 transition-colors"
+          >
+            Look Up
+          </button>
+        )}
       </div>
 
       {/* Autocomplete dropdown */}

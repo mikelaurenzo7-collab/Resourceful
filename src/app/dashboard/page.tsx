@@ -233,7 +233,10 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-pattern">
+    <div className="min-h-screen bg-pattern relative overflow-hidden">
+      <div className="absolute inset-0 bg-aurora opacity-30 z-0 pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-navy-deep/80 via-navy-deep/90 to-navy-deep z-0 pointer-events-none" />
+      <div className="relative z-10">
       <ScrollAnimations />
 
       {/* ─── Header ───────────────────────────────────────────────────── */}
@@ -782,6 +785,7 @@ export default async function DashboardPage() {
           </div>
         </div>
       </footer>
+    </div>
     </div>
   );
 }
