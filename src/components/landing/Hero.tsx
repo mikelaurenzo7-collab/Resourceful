@@ -197,7 +197,7 @@ export default function Hero() {
           <div className="mb-6 sm:mb-8 flex items-center justify-center gap-3 animate-fade-in">
             <span className="h-px w-8 sm:w-12 bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
             <span className="text-[11px] sm:text-xs font-semibold tracking-[0.2em] text-gold/70 uppercase">
-              Manus-Run Property Intelligence
+              AI-Powered Property Intelligence
             </span>
             <span className="h-px w-8 sm:w-12 bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
           </div>
@@ -213,7 +213,7 @@ export default function Hero() {
             className="mt-6 sm:mt-8 max-w-2xl mx-auto text-base sm:text-lg md:text-xl text-cream/60 leading-relaxed animate-fade-in"
             style={{ animationDelay: '0.4s' }}
           >
-            Resourceful is an AI-led property tax business. Manus runs comparable research,
+            Resourceful is an AI-powered property tax platform. Claude Sonnet runs comparable research,
             condition analysis, county workflow prep, and case assembly so every customer gets
             a faster, smarter path to lower taxes.
           </p>
@@ -240,7 +240,7 @@ export default function Hero() {
                 onChange={(e) => { setQuery(e.target.value); setActiveIndex(-1); }}
                 onFocus={() => { if (suggestions.length) setShowSuggestions(true); }}
                 onKeyDown={handleKeyDown}
-                placeholder="Enter a property address to activate Manus..."
+                placeholder="Enter a property address to get started..."
                 className="w-full bg-navy-light/60 border border-cream/[0.1] rounded-xl pl-12 pr-4 py-4.5 text-cream placeholder:text-cream/45 focus:border-gold/50 focus:outline-none focus:ring-2 focus:ring-gold/30 focus:bg-navy-light/80 focus:shadow-[0_0_30px_rgba(212,168,71,0.08)] transition-all text-base"
                 autoComplete="off"
                 role="combobox"
@@ -303,7 +303,7 @@ export default function Hero() {
                     </div>
                     <div className={`transition-all duration-500 delay-100 ${hasResult ? 'opacity-100 translate-y-0' : ''}`}>
                       <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
-                        Manus Estimate
+                        AI Estimate
                       </p>
                       <p className="font-display text-xl md:text-2xl text-gold">
                         {formatDollar(displayMarket)}
@@ -324,7 +324,7 @@ export default function Hero() {
           </div>
           {lookupFailed && address && (
             <p className="mt-3 text-xs text-cream/50 text-center animate-fade-in">
-              Manus will pull the exact numbers during case generation
+              We&apos;ll pull the exact numbers during case generation
             </p>
           )}
 
@@ -334,7 +334,7 @@ export default function Hero() {
               href={ctaHref}
               className="btn-glow inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-9 py-4.5 text-base font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.03] hover:brightness-110"
             >
-              {hasResult ? 'Open My AI Case' : 'Activate Manus'}
+              {hasResult ? 'Open My AI Case' : 'Start Your Case'}
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
               </svg>

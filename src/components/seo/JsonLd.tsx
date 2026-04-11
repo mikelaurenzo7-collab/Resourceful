@@ -11,7 +11,7 @@ export function OrganizationJsonLd() {
     url: baseUrl,
     logo: `${baseUrl}/logo.png`,
     description:
-      'An AI-led property tax reduction company. Manus runs comparable analysis, case assembly, and filing support for property owners nationwide.',
+      'An AI-powered property tax reduction platform. Claude Sonnet and Gemini run comparable analysis, case assembly, and filing support for property owners nationwide.',
     foundingDate: '2025',
     areaServed: { '@type': 'Country', name: 'United States' },
     contactPoint: {
@@ -100,7 +100,7 @@ export function ServiceJsonLd() {
           price: '399.00',
           priceCurrency: 'USD',
           description:
-            'High-leverage appeal service where Manus runs the workflow and the team handles filing, representation, and full-process management.',
+            'High-leverage appeal service where AI runs the workflow and the team handles filing, representation, and full-process management.',
           url: `${baseUrl}/start?tier=full-representation`,
         },
         {

@@ -1,9 +1,9 @@
 const steps = [
   {
     number: '01',
-    title: 'Point Manus at the Opportunity',
+    title: 'Start With Your Property',
     description:
-      'Enter the address, choose the workflow, and add any context that matters. Uploading a tax bill lowers the price and gives Manus a cleaner starting point.',
+      'Enter the address, choose the workflow, and add any context that matters. Uploading a tax bill lowers the price and gives the AI a cleaner starting point.',
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
@@ -13,9 +13,9 @@ const steps = [
   },
   {
     number: '02',
-    title: 'Manus Builds the Case',
+    title: 'AI Builds the Case',
     description:
-        'Manus pulls the comparables, scores the evidence, maps county workflow requirements, and packages the strongest angle for action. Most AI-built cases are ready within 48 hours.',
+        'Claude Sonnet pulls the comparables, scores the evidence, maps county workflow requirements, and packages the strongest angle for action. Most AI-built cases are ready within 48 hours.',
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -40,7 +40,7 @@ export default function HowItWorks() {
     <section className="mx-auto max-w-6xl px-6 py-24">
       <div className="text-center mb-14">
         <span className="text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase">
-          How Manus Operates
+          How It Works
         </span>
         <h2 className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
           Three Steps to an AI-Run Workflow
