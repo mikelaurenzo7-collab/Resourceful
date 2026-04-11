@@ -43,7 +43,7 @@ const services: ServiceDef[] = [
     title: 'Seller Strategy Intelligence',
     service: 'pre_listing',
     description:
-      'Resourceful equips sellers and agents with a cleaner pricing story, sharper tax narrative, and stronger buyer confidence before the listing ever goes live.',
+      'The AI equips sellers and agents with a cleaner pricing story, sharper tax narrative, and stronger buyer confidence before the listing ever goes live.',
     features: ['Independent pricing benchmark', 'Buyer-facing tax projection', 'Listing support narrative', 'Professional delivery package'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
