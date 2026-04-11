@@ -11,7 +11,7 @@ export function OrganizationJsonLd() {
     url: baseUrl,
     logo: `${baseUrl}/logo.png`,
     description:
-      'Professional property tax appeal reports for homeowners nationwide. Comparable sales analysis, assessment review, and pro se filing guidance.',
+      'An AI-led property tax reduction company. Manus runs comparable analysis, case assembly, and filing support for property owners nationwide.',
     foundingDate: '2025',
     areaServed: { '@type': 'Country', name: 'United States' },
     contactPoint: {
@@ -37,7 +37,7 @@ export function WebSiteJsonLd() {
     '@type': 'WebSite',
     name: 'REsourceful',
     url: baseUrl,
-    description: 'Professional property tax appeal reports with data-driven comparable sales analysis.',
+    description: 'An AI-led property tax operator for valuation research, case assembly, and filing support.',
     potentialAction: {
       '@type': 'SearchAction',
       target: {
@@ -60,7 +60,7 @@ export function ServiceJsonLd() {
   const schema = {
     '@context': 'https://schema.org',
     '@type': 'Service',
-    serviceType: 'Property Tax Appeal Report',
+    serviceType: 'AI Property Tax Reduction Service',
     provider: {
       '@type': 'Organization',
       name: 'REsourceful',
@@ -71,54 +71,54 @@ export function ServiceJsonLd() {
       name: 'United States',
     },
     description:
-      'Property tax appeal reports with comparable sales analysis, assessment review, and county-specific pro se filing instructions. Professional evidence packages for homeowners in all 50 states.',
+      'AI-led property tax reduction services with comparable sales analysis, assessment review, county-specific workflow guidance, and optional full execution support for homeowners in all 50 states.',
     hasOfferCatalog: {
       '@type': 'OfferCatalog',
-      name: 'Property Analysis Reports',
+      name: 'AI Property Intelligence Offers',
       itemListElement: [
         {
           '@type': 'Offer',
-          name: 'Tax Appeal Report',
+          name: 'Tax Reduction Engine',
           price: '49.00',
           priceCurrency: 'USD',
           description:
-            'Professional property tax appeal report with comparable sales analysis, assessment review, condition documentation, and county-specific filing guide.',
+            'AI-built tax reduction case package with comparable sales analysis, assessment review, condition documentation, and county-specific action guidance.',
           url: `${baseUrl}/start`,
         },
         {
           '@type': 'Offer',
-          name: 'Expert-Reviewed Tax Appeal Report',
+          name: 'Operator Mode',
           price: '149.00',
           priceCurrency: 'USD',
           description:
-            'Expert-reviewed property tax appeal report with professional quality review, comparable sales analysis, and detailed filing instructions.',
+            'AI-led property tax case package with expert review, enhanced comparable analysis, and detailed execution guidance.',
           url: `${baseUrl}/start`,
         },
         {
           '@type': 'Offer',
-          name: 'Full Representation',
+          name: 'Autopilot Appeal',
           price: '399.00',
           priceCurrency: 'USD',
           description:
-            'Complete property tax appeal service — we file the appeal on your behalf, represent you at the hearing, and manage the entire process.',
+            'High-leverage appeal service where Manus runs the workflow and the team handles filing, representation, and full-process management.',
           url: `${baseUrl}/start?tier=full-representation`,
         },
         {
           '@type': 'Offer',
-          name: 'Pre-Purchase Property Analysis',
+          name: 'Acquisition Intelligence',
           price: '59.00',
           priceCurrency: 'USD',
           description:
-            'Independent property analysis for buyers with market valuation, tax projections, and appeal feasibility assessment.',
+            'AI-led acquisition analysis for buyers with market valuation, tax projections, and appeal feasibility assessment.',
           url: `${baseUrl}/start`,
         },
         {
           '@type': 'Offer',
-          name: 'Pre-Listing Property Report',
+          name: 'Seller Strategy Intelligence',
           price: '59.00',
           priceCurrency: 'USD',
           description:
-            'Professional property analysis for sellers with market valuation, tax projections, and listing-ready presentation.',
+            'AI-led seller analysis with market valuation, tax projections, and listing-ready strategy materials.',
           url: `${baseUrl}/start`,
         },
       ],

@@ -7,27 +7,27 @@ import Link from 'next/link';
 
 const capabilities = [
   {
-    title: 'Comparable Sales Grid',
-    description: 'We analyze 5-10 recent arm\'s-length sales in your area, adjusting each for size, age, condition, and location — the same methodology licensed appraisers use.',
-    metric: '9 Adjustment Axes',
+    title: 'Comparable Sales Engine',
+    description: 'Manus analyzes recent arm’s-length sales and adjusts each one for size, age, condition, and location, creating the valuation backbone for every case.',
+    metric: 'Case Foundation',
     icon: 'M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z',
   },
   {
-    title: 'AI Photo Analysis',
-    description: 'Upload photos of your property. Our AI inspects every image for condition issues the assessor never saw — deferred maintenance, aging systems, structural wear.',
-    metric: 'Computer Vision',
+    title: 'Photo Evidence Intelligence',
+    description: 'Customers upload property photos and Manus converts them into defensible condition evidence the assessor likely missed, including wear, deferred maintenance, and visible risk factors.',
+    metric: 'Multimodal Review',
     icon: 'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z',
   },
   {
-    title: 'County-Specific Filing',
-    description: 'Every county has different deadlines, forms, and hearing procedures. We research yours and deliver a step-by-step battle plan tailored to your board.',
-    metric: 'All 50 States',
+    title: 'County Workflow Memory',
+    description: 'Every county has different deadlines, forms, and hearing procedures. Manus keeps those requirements organized so each case ships with the right local workflow.',
+    metric: 'Workflow Coverage',
     icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01',
   },
   {
-    title: 'Live Market Research',
-    description: 'For every report, our AI researches current market conditions, recent rule changes, and winning strategies specific to your county and property type.',
-    metric: 'Real-Time Intel',
+    title: 'Outcome Learning Loop',
+    description: 'Every completed case makes the system sharper. Manus compounds market research, county nuance, and outcome signals into a better playbook for the next property.',
+    metric: 'Compounding Edge',
     icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
   },
 ];
@@ -37,15 +37,13 @@ export default function PropertyIntelligence() {
     <section className="mx-auto max-w-6xl px-6 py-24">
       <div className="text-center mb-16" data-animate>
         <span className="text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase">
-          Property Intelligence
+          The Operating System
         </span>
         <h2 className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
-          More Than a Report — Your Evidence Package
+          More Than a Report — The AI That Runs the Case
         </h2>
         <p className="mt-4 text-sm text-cream/35 max-w-xl mx-auto leading-relaxed">
-          Every report is a complete, defensible case file built from independent market data,
-          your own photographic evidence, and county-specific research. The assessor has a spreadsheet.
-          You&apos;ll have proof.
+          Resourceful is designed as an AI-native operating layer, not a static PDF shop. Manus runs the research, assembles the evidence, and keeps the business getting smarter with every case shipped.
         </p>
       </div>
 
@@ -81,7 +79,7 @@ export default function PropertyIntelligence() {
       <div className="mt-12 text-center" data-animate>
         <div className="mx-auto mb-5 flex max-w-2xl flex-wrap items-center justify-center gap-x-2 gap-y-2 text-xs text-cream/50">
           <div className="hidden h-px w-8 bg-cream/10 sm:block" />
-          The assessor valued your home from a desk. We bring independent evidence.
+          The legacy market sells documents. Manus runs a repeatable tax-reduction machine.
           <div className="hidden h-px w-8 bg-cream/10 sm:block" />
         </div>
         <div>
@@ -89,7 +87,7 @@ export default function PropertyIntelligence() {
             href="/start"
             className="inline-flex items-center gap-2 text-sm font-semibold text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark px-7 py-3 rounded-lg hover:shadow-gold hover:brightness-110 transition-all duration-200"
           >
-            Run the Numbers on Your Property
+            Launch My AI Workflow
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
           </Link>
         </div>

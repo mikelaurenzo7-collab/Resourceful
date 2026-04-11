@@ -1,48 +1,93 @@
 # Resourceful
 
-Resourceful is a nationwide property intelligence platform that generates professional property tax appeal reports, pre-purchase analyses, and pre-listing pricing reports. It combines structured public-record data, comparable sales, photo-based condition evidence, and AI-generated narratives into a deliverable that is reviewable in the admin workflow and accessible from the customer dashboard.
+Resourceful is an **AI-led property tax and property intelligence business**. Instead of positioning the product as a one-off report shop, the platform is now framed as an operating system that Manus runs on behalf of the company and its customers. The core idea is simple: Manus handles valuation research, comparable sales analysis, condition evidence review, county workflow preparation, and customer-ready case assembly so the business can scale with more consistency and less manual overhead.
+
+This repository contains the customer-facing application, intake flow, pricing logic, dashboard delivery model, and supporting infrastructure for that business.
+
+## Business Vision
+
+The revised product vision treats Resourceful as a **compounding AI operator**, not just a document generator.
+
+| Dimension | Previous framing | New framing |
+|---|---|---|
+| Core promise | Professional property tax appeal reports | Manus runs the property tax workflow end to end |
+| Business model | Primarily report delivery | Multi-lane AI property intelligence business |
+| Customer value | Get a report | Get an action package and next move |
+| Strategic edge | Faster reporting | A system that compounds county knowledge and outcome data |
+| Expansion path | Appeal support | Appeals, acquisition diligence, and seller strategy |
+
+The business now emphasizes three strategic beliefs.
+
+First, **property tax reduction is the wedge**, because it is painful, urgent, measurable, and easy for customers to understand.
+
+Second, the same operating system can support multiple monetization lanes. Comparable analysis, valuation logic, workflow memory, and customer packaging can power tax reduction, acquisition intelligence, and seller strategy from the same core engine.
+
+Third, the long-term value of the company comes from **compounding operational intelligence**. Every finished case strengthens the workflow library, county-specific playbooks, and the system’s ability to surface the best next action.
 
 ## Core Product Model
 
-- Dashboard-first delivery: reports are delivered to the user dashboard and report page, not as fragile expiring PDF links.
-- Payment before valuation: the customer pays before seeing the completed valuation output.
-- Nationwide coverage: county-specific behavior lives in `county_rules`; application code must not hardcode county logic.
-- Admin-gated delivery: stages 1 through 7 generate the report, then admin approval triggers final delivery and customer notification.
-- Outcome loop: delivered reports request follow-up outcomes later so calibration can improve over time.
+- **Dashboard-first delivery:** outputs are delivered in the customer experience, not as fragile expiring links.
+- **Payment before valuation:** the commercial model still charges before revealing the completed output.
+- **Nationwide workflow memory:** county-specific logic belongs in `county_rules`, not hardcoded UI copy or route handlers.
+- **Admin-gated release:** the pipeline still supports review and approval before final customer delivery.
+- **Outcome loop:** delivered work should continue feeding learning, calibration, and workflow refinement.
+
+## Revenue Lanes
+
+| Lane | Strategic role | Customer outcome |
+|---|---|---|
+| **Tax Reduction Engine** | Core wedge and most direct savings story | Lower an over-assessment with a Manus-built case |
+| **Acquisition Intelligence** | Expand into pre-transaction diligence | Understand price, tax burden, and appeal risk before buying |
+| **Seller Strategy Intelligence** | Strengthen seller and agent positioning | Give buyers a clearer tax story and pricing rationale |
+| **Autopilot Appeal** | High-touch premium offer | Let Manus coordinate the workflow while humans execute filing and hearings where needed |
+
+## Positioning Principles
+
+When editing or extending the product, keep these principles intact.
+
+| Principle | Guidance |
+|---|---|
+| **AI-first, not AI-washed** | Manus should be presented as actually operating core business workflows, not as a decorative assistant. |
+| **Action over artifacts** | The product should feel like a next-step machine, not just a PDF generator. |
+| **Compoundable systems** | Prefer changes that improve reusable workflows, structured memory, and feedback loops. |
+| **Human judgment where necessary** | Use human review and representation for leverage, risk control, and trust. |
+| **Measured value** | Keep copy close to savings, speed, operational leverage, and execution clarity. |
 
 ## Stack
 
 - **Next.js 14** App Router, TypeScript strict mode
-- **Supabase** — Postgres, Auth, Storage, RLS on every table
-- **Anthropic Claude** — report narratives (PRIMARY), classification (FAST)
-- **Google Gemini** — multimodal vision for photo analysis (VISION), tax bill OCR (DOCUMENT)
-- **ATTOM Data API** — property details, sales comps, rental comps, deed history
-- **Azure Maps** — geocoding, static maps, address autocomplete
-- **Mapillary** — street-level imagery (replaces Google Street View)
-- **Stripe** — checkout, payment webhooks, subscription management
-- **Resend** — transactional email (delivery notifications, outcome follow-ups)
-- **@sparticuz/chromium + puppeteer-core** — PDF generation
-- **Vercel** — deployment, edge middleware, cron execution
+- **Supabase** for Postgres, Auth, Storage, and RLS
+- **Anthropic Claude** for narrative generation and classification
+- **Google Gemini** for multimodal image and document analysis
+- **ATTOM Data API** for property details and comparable data
+- **Azure Maps** for geocoding and autocomplete
+- **Mapillary** for street-level imagery
+- **Stripe** for payments and subscriptions
+- **Resend** for transactional email
+- **@sparticuz/chromium + puppeteer-core** for PDF generation
+- **Vercel** for deployment and scheduled execution
 
-Optional data enrichment services: RentCast (rental comps), LightBox RE (property data fallback), Regrid (parcel boundaries), Serper (web search), Lob (certified mail filing).
+Optional enrichment services remain available for specialized workflows.
 
 ## Important Paths
 
-- App routes: `src/app`
-- Report pipeline: `src/lib/pipeline`
-- PDF renderer: `src/lib/pdf`
-- HTML report template helpers: `src/lib/templates`
-- External integrations: `src/lib/services`
-- Repository data access: `src/lib/repository`
-- Database types: `src/types/database.ts`
-- Supabase migrations: `supabase/migrations`
+| Path | Purpose |
+|---|---|
+| `src/app` | App routes and page-level UX |
+| `src/components/landing` | Homepage messaging and positioning |
+| `src/lib/pipeline` | Report and case-generation pipeline |
+| `src/lib/pdf` | PDF assembly logic |
+| `src/lib/templates` | HTML report helpers |
+| `src/lib/services` | External integrations |
+| `src/lib/repository` | Typed data access |
+| `supabase/migrations` | Database schema evolution |
 
 ## Local Development
 
 1. Install dependencies.
 2. Create `.env.local` from `.env.example`.
-3. Start Supabase locally if needed.
-4. Run the app and supporting checks.
+3. Start local services if required.
+4. Run the app and validate the build.
 
 ```bash
 pnpm install
@@ -51,7 +96,7 @@ pnpm lint
 pnpm build
 ```
 
-Helpful scripts:
+Helpful scripts include:
 
 - `scripts/setup-local.sh`
 - `scripts/seed-counties.ts`
@@ -61,52 +106,28 @@ Helpful scripts:
 
 ## Environment
 
-**Required** for production:
+Production requires the standard application, data, and billing keys already documented in `.env.example`, including keys for AI providers, Supabase, ATTOM, Azure Maps, Stripe, Resend, and canonical app configuration.
 
-| Variable | Purpose |
+Optional enrichment keys may be enabled as needed for additional data workflows.
+
+## Shipping Standard
+
+Before deploying changes, confirm the following.
+
+| Check | Requirement |
 |---|---|
-| `ANTHROPIC_API_KEY` | Claude AI — narratives, filing guides |
-| `AI_MODEL_PRIMARY` | e.g. `claude-sonnet-4-6` |
-| `AI_MODEL_FAST` | e.g. `claude-haiku-4-5-20251001` |
-| `GEMINI_API_KEY` | Google Gemini — photo analysis, tax bill OCR |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key (browser-safe) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase admin key (server-only) |
-| `ATTOM_API_KEY` | ATTOM property data API |
-| `AZURE_MAPS_SUBSCRIPTION_KEY` | Azure Maps geocoding + autocomplete |
-| `STRIPE_SECRET_KEY` | Stripe payments |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signature verification |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe client key (browser-safe) |
-| `RESEND_API_KEY` | Transactional email |
-| `NEXT_PUBLIC_APP_URL` | Canonical app URL (e.g. `https://resourceful.app`) |
-| `CRON_SECRET` | Vercel cron job authentication |
+| Quality | `pnpm lint && pnpm build` pass on the release commit |
+| Database | Required migrations are applied |
+| Payments | Stripe checkout and webhook flow are verified |
+| Delivery | End-to-end customer flow works from intake to output |
+| County logic | Jurisdiction rules are stored in data, not hardcoded |
+| Review | Admin approval path remains functional where required |
+| URLs | Canonical app URL is correct for metadata and email links |
 
-**Optional** enrichment keys: `RENTCAST_API_KEY`, `LIGHTBOX_API_KEY`, `LIGHTBOX_API_SECRET`, `REGRID_API_KEY`, `SERPER_API_KEY`, `LOB_API_KEY`, `NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN`.
+## Operational Note
 
-All variables are documented in `.env.example`.
-
-## Production Checklist
-
-Before shipping:
-
-1. `pnpm lint && pnpm build` — must pass clean on the deployed commit.
-2. All Supabase migrations applied (`supabase db push`).
-3. All required env vars set in Vercel project settings (see table above).
-4. Stripe webhook → `/api/webhooks/stripe` with correct `STRIPE_WEBHOOK_SECRET`.
-5. Resend sending domain verified and `RESEND_FROM_ADDRESS` set.
-6. `county_rules` seeded for target jurisdictions (`scripts/seed-counties.ts`).
-7. At least one admin user in the database for report quality review.
-8. End-to-end test: intake → payment → pipeline stages 1–7 → admin approval → delivery email → dashboard access.
-9. Verify cron routes in `vercel.json` and `CRON_SECRET` set.
-10. Confirm `NEXT_PUBLIC_APP_URL` is the production domain (used for canonical URLs, OG images, email links).
-
-## Operational Notes
-
-- Stage 7 PDF assembly is the live report generation path and must stay aligned with `ReportTemplateData`.
-- Report delivery is non-fatal for email; the dashboard remains the source of truth.
-- County enrichment must be stored in `county_rules` and referenced through typed data access, not hardcoded in route handlers.
-- Appraisal-style enhancements should be introduced through the live payload and narrative contracts, not placeholder props.
+The most important architectural rule is that **the operating system must stay real**. If future changes make Manus look more central in the marketing copy, the underlying workflow should become more central in the product as well. The brand promise only works if the business genuinely becomes easier to run, easier to scale, and more valuable with each completed case.
 
 ## Deployment Runbook
 
-See `docs/production-runbook.md` for a practical deployment and incident checklist.
+See `docs/production-runbook.md` for deployment and incident-response details.

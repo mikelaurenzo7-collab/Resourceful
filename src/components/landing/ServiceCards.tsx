@@ -15,11 +15,11 @@ interface ServiceDef {
 
 const services: ServiceDef[] = [
   {
-    title: 'Tax Appeal Report',
+    title: 'Tax Reduction Engine',
     service: 'tax_appeal',
     description:
-      'Comprehensive evidence package for your property tax appeal. Comparable sales analysis, condition documentation, and a professional narrative — everything the Board of Review expects.',
-    features: ['5+ comparable sales with adjustments', 'Condition analysis from your photos', 'Filing instructions for your county', 'Pro se hearing guidance'],
+      'Manus identifies over-assessment, builds the evidence file, and packages the case for filing. This is the core engine of the business and the fastest path to recurring customer savings.',
+    features: ['Comparable sales engine with adjustments', 'Photo-based condition evidence', 'County-specific workflow plan', 'Customer-ready savings narrative'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
@@ -28,11 +28,11 @@ const services: ServiceDef[] = [
     popular: true,
   },
   {
-    title: 'Pre-Purchase Analysis',
+    title: 'Acquisition Intelligence',
     service: 'pre_purchase',
     description:
-      'Know what you\'ll really pay in taxes before you buy. Independent valuation analysis reveals whether the asking price aligns with the assessment — or if a tax appeal is in your future.',
-    features: ['Market value vs. assessed value comparison', 'Projected annual tax liability', 'Appeal feasibility assessment', 'Neighborhood tax trend analysis'],
+      'Before a buyer closes, Manus stress-tests value, taxes, and appeal risk. This turns the platform into a decision engine for acquisitions instead of a post-purchase rescue tool.',
+    features: ['Value vs. assessment comparison', 'Projected annual tax burden', 'Appeal feasibility scoring', 'Neighborhood pricing intelligence'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -40,11 +40,11 @@ const services: ServiceDef[] = [
     ),
   },
   {
-    title: 'Pre-Listing Report',
+    title: 'Seller Strategy Intelligence',
     service: 'pre_listing',
     description:
-      'Attract buyers with evidence their tax burden will be manageable. A professional valuation report that strengthens your listing and removes a common buyer objection.',
-    features: ['Independent market valuation', 'Tax projection for buyers', 'Professional PDF report', 'Listing-ready presentation'],
+      'Manus equips sellers and agents with a cleaner pricing story, sharper tax narrative, and stronger buyer confidence before the listing ever goes live.',
+    features: ['Independent pricing benchmark', 'Buyer-facing tax projection', 'Listing support narrative', 'Professional delivery package'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -52,12 +52,12 @@ const services: ServiceDef[] = [
     ),
   },
   {
-    title: 'Full Representation',
+    title: 'Autopilot Appeal',
     service: 'tax_appeal',
     tier: 'full_representation',
     description:
-      'We handle everything — filing, evidence preparation, and hearing representation. Sit back while our team fights for your reduction. Available in select counties.',
-    features: ['We file the appeal on your behalf', 'Hearing representation included', 'No additional fee if we don\'t win', 'Dedicated case manager assigned'],
+      'For owners who want the highest level of leverage, Manus coordinates the full appeal workflow with humans stepping in for filing and hearing execution where required.',
+    features: ['Appeal filed on the customer\'s behalf', 'Representation workflow included', 'High-touch execution support', 'Dedicated case oversight'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -72,14 +72,13 @@ export default function ServiceCards() {
     <section className="mx-auto max-w-6xl px-6 py-24">
       <div className="text-center mb-14">
         <span className="text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase">
-          Our Reports
+          AI Revenue Engines
         </span>
         <h2 className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
-          Choose Your Report
+          Choose What Manus Runs
         </h2>
         <p className="mt-4 text-cream/40 max-w-xl mx-auto leading-relaxed">
-          Each report is built from real market data, professionally analyzed, and reviewed
-          before delivery.
+          Each lane turns the same underlying system into a different revenue motion, from tax reduction to acquisition diligence to seller strategy.
         </p>
       </div>
 
@@ -107,7 +106,7 @@ export default function ServiceCards() {
               {svc.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                   <span className="relative bg-gradient-to-r from-gold-light via-gold to-gold-dark text-navy-deep text-xs font-bold px-4 py-1 rounded-full uppercase tracking-wider overflow-hidden animate-badge-pulse">
-                    Most Popular
+                    Core Offer
                     <span className="absolute inset-0 animate-shimmer rounded-full" />
                   </span>
                 </div>
@@ -117,7 +116,7 @@ export default function ServiceCards() {
               {svc.premium && (
                 <div className="absolute -top-3 right-6 z-10">
                   <span className="bg-[#d4a843] text-navy-deep text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                    Premium
+                    Highest Leverage
                   </span>
                 </div>
               )}
@@ -148,7 +147,7 @@ export default function ServiceCards() {
                   </p>
                 </div>
                 <span className="text-sm text-gold/70 group-hover:text-gold group-hover:drop-shadow-[0_0_6px_rgba(212,168,71,0.3)] transition-all duration-200 font-medium flex items-center gap-1">
-                  Get Started
+                  Activate
                   <svg className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>

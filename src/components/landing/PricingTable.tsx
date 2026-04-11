@@ -3,24 +3,24 @@ import { formatPrice, getPriceCents } from '@/config/pricing';
 
 const tiers = [
   {
-    name: 'Auto Report',
+    name: 'Starter Intelligence',
     tier: 'auto' as const,
-    description: 'AI-generated evidence package reviewed by our team before delivery.',
+    description: 'The essential Manus workflow: AI-built evidence, prioritized insights, and a clean customer-ready package.',
     features: [
       '5–10 comparable sales with adjustments',
       'Assessment ratio analysis',
       'Condition documentation from photos',
-      'County-specific filing guide',
-      'PDF report delivered in 48 hours',
+      'County-specific action plan',
+      'AI-built package delivered in 48 hours',
     ],
     cta: 'Get Started',
   },
   {
-    name: 'Expert Reviewed',
+    name: 'Operator Mode',
     tier: 'expert_reviewed' as const,
-    description: 'Everything in Auto, plus a licensed appraiser reviews your report line-by-line.',
+    description: 'Everything in Starter Intelligence, plus human review layered on top of the Manus operating system.',
     features: [
-      'Everything in Auto Report',
+      'Everything in Starter Intelligence',
       'Licensed appraiser review',
       'Enhanced comparable selection',
       'Detailed adjustment narratives',
@@ -30,11 +30,11 @@ const tiers = [
     popular: true,
   },
   {
-    name: 'Guided Filing',
+    name: 'Execution Assist',
     tier: 'guided_filing' as const,
-    description: 'Expert-reviewed report plus a live session where we walk you through filing.',
+    description: 'Operator Mode plus live execution support so Manus does the heavy lifting and your customer never feels alone.',
     features: [
-      'Everything in Expert Reviewed',
+      'Everything in Operator Mode',
       'Live guided filing session',
       'Evidence preparation walkthrough',
       'Hearing prep coaching',
@@ -44,11 +44,11 @@ const tiers = [
     appealOnly: true,
   },
   {
-    name: 'Full Representation',
+    name: 'Autopilot Appeal',
     tier: 'full_representation' as const,
-    description: 'We handle everything — filing, evidence, and hearing representation.',
+    description: 'The highest-leverage tier: Manus runs the workflow while the team handles filing and representation.',
     features: [
-      'Everything in Guided Filing',
+      'Everything in Execution Assist',
       'We file the appeal for you',
       'Hearing representation included',
       'Dedicated case manager',
@@ -65,13 +65,13 @@ export default function PricingTable() {
     <section className="mx-auto max-w-6xl px-6 py-24" id="pricing">
       <div className="text-center mb-14">
         <span className="text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase">
-          Transparent Pricing
+          AI-Led Pricing
         </span>
         <h2 className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
-          Choose Your Level of Support
+          Choose How Much Manus Runs
         </h2>
         <p className="mt-4 text-cream/40 max-w-xl mx-auto leading-relaxed">
-          Every tier includes the same professional evidence package. Tax-appeal support scales from do-it-yourself filing to full representation.
+          Every tier uses the same operating system. What changes is how much of the workflow Manus and the team take off the customer’s plate.
         </p>
       </div>
 
@@ -100,14 +100,14 @@ export default function PricingTable() {
               {t.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                   <span className="bg-gradient-to-r from-gold-light via-gold to-gold-dark text-navy-deep text-[10px] font-bold px-3.5 py-1 rounded-full uppercase tracking-wider animate-badge-pulse">
-                    Most Popular
+                    Best Margin Mix
                   </span>
                 </div>
               )}
               {t.premium && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                   <span className="bg-[#d4a843] text-navy-deep text-[10px] font-bold px-3.5 py-1 rounded-full uppercase tracking-wider animate-badge-pulse">
-                    Premium
+                    Full Autopilot
                   </span>
                 </div>
               )}
@@ -146,7 +146,8 @@ export default function PricingTable() {
                     : 'border border-gold/20 text-gold hover:border-gold/40 hover:bg-gold/[0.05] hover:shadow-[0_0_15px_rgba(212,168,71,0.05)]'}
                 `}
               >
-                {t.cta}
+                    Activate
+
               </Link>
             </div>
           );
@@ -154,7 +155,7 @@ export default function PricingTable() {
       </div>
 
       <p className="text-center text-xs text-cream/50 mt-8">
-        Upload your tax bill at checkout and save 15% on any tier. Commercial and industrial properties start at $99.
+        Upload a tax bill at checkout and save 15% on any tier. Commercial and industrial opportunities start at $99.
       </p>
     </section>
   );

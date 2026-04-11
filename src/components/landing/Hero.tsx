@@ -197,25 +197,25 @@ export default function Hero() {
           <div className="mb-6 sm:mb-8 flex items-center justify-center gap-3 animate-fade-in">
             <span className="h-px w-8 sm:w-12 bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
             <span className="text-[11px] sm:text-xs font-semibold tracking-[0.2em] text-gold/70 uppercase">
-              Property Tax Intelligence
+              Manus-Run Property Intelligence
             </span>
             <span className="h-px w-8 sm:w-12 bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
           </div>
 
           {/* Headline */}
           <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[1.1] text-cream tracking-tight mx-auto max-w-4xl animate-fade-in" style={{ animationDelay: '0.15s' }}>
-            The <span className="font-mixed-italic text-gold">intelligent</span> way to
+            Your <span className="font-mixed-italic text-gold">AI cofounder</span> for
             <br className="hidden sm:block" />
-            {' '}lower your property tax.
+            {' '}property tax wins.
           </h1>
 
           <p
             className="mt-6 sm:mt-8 max-w-2xl mx-auto text-base sm:text-lg md:text-xl text-cream/60 leading-relaxed animate-fade-in"
             style={{ animationDelay: '0.4s' }}
           >
-            We compare your property to 5&ndash;10 similar recent sales and adjust for every
-            difference &mdash; the same method licensed appraisers use. Your full evidence
-            package is delivered in hours, not weeks.
+            Resourceful is an AI-led property tax business. Manus runs comparable research,
+            condition analysis, county workflow prep, and case assembly so every customer gets
+            a faster, smarter path to lower taxes.
           </p>
 
           {/* Address input */}
@@ -240,7 +240,7 @@ export default function Hero() {
                 onChange={(e) => { setQuery(e.target.value); setActiveIndex(-1); }}
                 onFocus={() => { if (suggestions.length) setShowSuggestions(true); }}
                 onKeyDown={handleKeyDown}
-                placeholder="Enter your property address..."
+                placeholder="Enter a property address to activate Manus..."
                 className="w-full bg-navy-light/60 border border-cream/[0.1] rounded-xl pl-12 pr-4 py-4.5 text-cream placeholder:text-cream/45 focus:border-gold/50 focus:outline-none focus:ring-2 focus:ring-gold/30 focus:bg-navy-light/80 focus:shadow-[0_0_30px_rgba(212,168,71,0.08)] transition-all text-base"
                 autoComplete="off"
                 role="combobox"
@@ -278,7 +278,7 @@ export default function Hero() {
           <div className="mt-6 sm:mt-8 flex justify-center animate-fade-in" style={{ animationDelay: '0.65s' }}>
             <div className="card-elevated border-gradient rounded-xl px-8 py-7 inline-block w-full max-w-3xl">
               {!hasResult && !loading && (
-                <p className="text-[10px] uppercase tracking-widest text-cream/50 mb-3 text-center">Example Property</p>
+                <p className="text-[10px] uppercase tracking-widest text-cream/50 mb-3 text-center">AI Opportunity Snapshot</p>
               )}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-12 text-center">
                 {loading ? (
@@ -295,7 +295,7 @@ export default function Hero() {
                   <>
                     <div className={`transition-all duration-500 ${hasResult ? 'opacity-100 translate-y-0' : ''}`}>
                       <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
-                        Assessed Value
+                        Current Assessment
                       </p>
                       <p className="font-display text-xl md:text-2xl text-cream">
                         {formatDollar(displayAssessed)}
@@ -303,7 +303,7 @@ export default function Hero() {
                     </div>
                     <div className={`transition-all duration-500 delay-100 ${hasResult ? 'opacity-100 translate-y-0' : ''}`}>
                       <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
-                        Estimated Market Value
+                        Manus Estimate
                       </p>
                       <p className="font-display text-xl md:text-2xl text-gold">
                         {formatDollar(displayMarket)}
@@ -311,7 +311,7 @@ export default function Hero() {
                     </div>
                     <div className={`transition-all duration-500 delay-200 ${hasResult ? 'opacity-100 translate-y-0' : ''}`}>
                       <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
-                        Annual Overpayment
+                        Savings Opportunity
                       </p>
                       <p className="font-display text-xl md:text-2xl text-red-400 text-glow-gold" style={{ textShadow: '0 0 20px rgba(248, 113, 113, 0.3)' }}>
                         {formatDollar(displayOverpayment)}
@@ -324,7 +324,7 @@ export default function Hero() {
           </div>
           {lookupFailed && address && (
             <p className="mt-3 text-xs text-cream/50 text-center animate-fade-in">
-              We&apos;ll look up your exact numbers during report generation
+              Manus will pull the exact numbers during case generation
             </p>
           )}
 
@@ -334,7 +334,7 @@ export default function Hero() {
               href={ctaHref}
               className="btn-glow inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-9 py-4.5 text-base font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.03] hover:brightness-110"
             >
-              {hasResult ? 'Get My Full Report' : 'Run the Numbers'}
+              {hasResult ? 'Open My AI Case' : 'Activate Manus'}
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
               </svg>
@@ -345,9 +345,9 @@ export default function Hero() {
                 Secure checkout
               </span>
               <span className="hidden text-cream/10 sm:inline">&middot;</span>
-              <span className="whitespace-nowrap">Report delivered in 48 hours</span>
+              <span className="whitespace-nowrap">AI-built case in 48 hours</span>
               <span className="hidden text-cream/10 sm:inline">&middot;</span>
-              <span className="whitespace-nowrap">All 50 states</span>
+              <span className="whitespace-nowrap">Learns across all 50 states</span>
             </p>
           </div>
         </div>
