@@ -1,0 +1,21 @@
+{
+  "model": "claude-sonnet-4-5",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm:*)",
+      "Bash(git:*)",
+      "Bash(npx supabase:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(cat:*)",
+      "Bash(ls:*)"
+    ],
+    "deny": [
+      "Bash(curl * | bash:*)",
+      "Bash(wget * | bash:*)"
+    ]
+  },
+  "env": {
+    "PNPM_HOME": "~/.local/share/pnpm"
+  }
+}

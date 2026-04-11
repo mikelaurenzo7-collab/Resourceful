@@ -46,6 +46,8 @@ All model identifiers live in `config/ai.ts` via env vars. Gemini models default
 `gemini-3.1-pro` if env overrides are not set. Gemini uses `@google/genai` SDK with
 JSON response mode — do NOT combine with Google Search Grounding (they're incompatible).
 
+@.claude/rules/ai-conventions.md
+
 ## Key Conventions
 - All AI model identifiers: AI_MODELS.PRIMARY, .FAST, .VISION, .DOCUMENT from config/ai.ts
 - All database queries: typed repository functions in lib/repository/
@@ -77,6 +79,8 @@ If a county is corrupt or wrong, ATTOM inherits that same bad data. Therefore:
   This is the feedback loop that makes our data increasingly independent from
   county sources.
 
+@.claude/rules/data-trust.md
+
 ## Payment & Messaging Rules — CRITICAL
 - ALL payments happen BEFORE the valuation is shown. No exceptions.
 - Never use the word "free" anywhere in user-facing copy. Use "run the numbers"
@@ -86,6 +90,8 @@ If a county is corrupt or wrong, ATTOM inherits that same bad data. Therefore:
   their assessed value). ATTOM is still called for building details and comps.
 - The post-payment optimistic result is a teaser, not the real analysis.
   The real numbers come from the full pipeline with comparable sales.
+
+@.claude/rules/payment-rules.md
 
 ## What NOT To Do
 - Never skip Stage 8 auto-delivery (if delivery fails, fall back to pending_approval)
@@ -97,3 +103,5 @@ If a county is corrupt or wrong, ATTOM inherits that same bad data. Therefore:
 - Never say "free" in any user-facing text
 - Never combine Gemini `responseMimeType: 'application/json'` with `googleSearch` tool (incompatible)
 - Never pass undefined API keys to SDK constructors — throw early with a clear message
+
+@.claude/rules/architecture.md
