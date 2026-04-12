@@ -24,7 +24,9 @@ async function getAdminUserId(): Promise<string> {
   } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
 
-  const { data: rawAdminUser } = await supabase
+  // Use the admin client (service role) to bypass RLS on admin_users
+  const adminClient = createAdminClient();
+  const { data: rawAdminUser } = await adminClient
     .from('admin_users')
     .select('id')
     .eq('user_id', user.id)

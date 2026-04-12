@@ -23,7 +23,9 @@ Font.register({
   family: 'Source Serif 4',
   fonts: [
     { src: path.join(fontsDir, 'SourceSerif4-Regular.ttf'), fontWeight: 400 },
+    { src: path.join(fontsDir, 'SourceSerif4-Regular.ttf'), fontWeight: 400, fontStyle: 'italic' },
     { src: path.join(fontsDir, 'SourceSerif4-SemiBold.ttf'), fontWeight: 600 },
+    { src: path.join(fontsDir, 'SourceSerif4-SemiBold.ttf'), fontWeight: 600, fontStyle: 'italic' },
   ],
 });
 
