@@ -67,6 +67,10 @@ const SEARCH_TIERS: Record<string, SearchTier[]> = {
 
 const MIN_COMPS = 3;
 const MAX_COMPS = 10;
+const SALE_PRICE_LOW_OUTLIER_FACTOR = 0.4;
+const SALE_PRICE_HIGH_OUTLIER_FACTOR = 2.5;
+const PPSF_LOW_OUTLIER_FACTOR = 0.45;
+const PPSF_HIGH_OUTLIER_FACTOR = 2.25;
 
 // ─── Adjustment Calculations ────────────────────────────────────────────────
 
@@ -529,7 +533,7 @@ export async function runComparables(
   );
 
   // ── Calculate adjustments and write to DB ─────────────────────────────
-  const compInserts: ComparableSaleInsert[] = sortedComps.map((comp, idx) => {
+  const prelimComps = sortedComps.map((comp, idx) => {
     const adj = calculateAdjustments(subject, comp, cal);
 
     const pricePerSqft = comp.buildingSquareFeet && comp.buildingSquareFeet > 0
@@ -553,6 +557,58 @@ export async function runComparables(
       : null;
 
     return {
+      comp,
+      idx,
+      adj,
+      pricePerSqft,
+      adjustedPricePerSqft,
+      landToBuildingRatio,
+      comparablePhotoStoragePath,
+      isDistressed,
+      saleNotes,
+      compActualAge,
+    };
+  });
+
+  // Median-based outlier guardrails catch obvious non-market transfers
+  // that can slip through if ATTOM doesn't label them as distressed.
+  const salePrices = prelimComps
+    .map((c) => c.comp.salePrice)
+    .filter((p): p is number => p > 0)
+    .sort((a, b) => a - b);
+  const pricePerSqftValues = prelimComps
+    .map((c) => c.pricePerSqft)
+    .filter((p): p is number => p != null && p > 0)
+    .sort((a, b) => a - b);
+
+  const medianOf = (vals: number[]): number | null => {
+    if (vals.length === 0) return null;
+    const mid = Math.floor(vals.length / 2);
+    return vals.length % 2 === 0 ? (vals[mid - 1] + vals[mid]) / 2 : vals[mid];
+  };
+
+  const medianSalePrice = medianOf(salePrices);
+  const medianPpsf = medianOf(pricePerSqftValues);
+
+  const compInserts: ComparableSaleInsert[] = prelimComps.map((item) => {
+    const { comp, idx, adj, pricePerSqft, adjustedPricePerSqft, landToBuildingRatio, comparablePhotoStoragePath, isDistressed, saleNotes, compActualAge } = item;
+
+    const salePrice = comp.salePrice;
+    const isSalePriceOutlier = medianSalePrice != null && salePrice > 0 && (
+      salePrice < medianSalePrice * SALE_PRICE_LOW_OUTLIER_FACTOR ||
+      salePrice > medianSalePrice * SALE_PRICE_HIGH_OUTLIER_FACTOR
+    );
+    const isPpsfOutlier = medianPpsf != null && pricePerSqft != null && (
+      pricePerSqft < medianPpsf * PPSF_LOW_OUTLIER_FACTOR ||
+      pricePerSqft > medianPpsf * PPSF_HIGH_OUTLIER_FACTOR
+    );
+    const outlierFlag = isSalePriceOutlier || isPpsfOutlier;
+
+    const outlierNote = outlierFlag
+      ? `Outlier transfer flagged: sale price/ppsf materially outside peer range (median sale ${medianSalePrice ? `$${Math.round(medianSalePrice).toLocaleString()}` : 'N/A'}, median ppsf ${medianPpsf ? `$${medianPpsf.toFixed(0)}` : 'N/A'}).`
+      : null;
+
+    return {
       report_id: reportId,
       address: comp.address,
       sale_price: comp.salePrice,
@@ -572,7 +628,7 @@ export async function runComparables(
       clearance_height_ft: null,
       condition_notes: null,
       is_distressed_sale: isDistressed,
-      sale_condition_notes: saleNotes,
+      sale_condition_notes: [saleNotes, outlierNote].filter(Boolean).join(' | ') || null,
       comp_effective_age: compActualAge,
       adjustment_pct_property_rights: adj.adjustment_pct_property_rights,
       adjustment_pct_financing_terms: adj.adjustment_pct_financing_terms,
@@ -585,7 +641,7 @@ export async function runComparables(
       adjustment_pct_other: adj.adjustment_pct_other,
       net_adjustment_pct: adj.net_adjustment_pct,
       adjusted_price_per_sqft: adjustedPricePerSqft,
-      is_weak_comparable: adj.is_weak_comparable,
+      is_weak_comparable: adj.is_weak_comparable || outlierFlag,
       comparable_photo_url: comparablePhotoStoragePath,
     };
   });

@@ -14,6 +14,7 @@ import type {
   Report,
   PropertyData,
   Photo,
+  PhotoAiAnalysis,
   ComparableSale,
   ComparableRental,
   IncomeAnalysis,
@@ -86,6 +87,12 @@ const TABLE_ALT = '#f4f6f9';
 const TABLE_BORDER = '#d0d5dd';
 const MUTED = '#6b7280';
 
+function getPhotoAnalysis(photo: Photo): PhotoAiAnalysis | null {
+  const raw = photo.ai_analysis as unknown as (PhotoAiAnalysis & { analysis?: PhotoAiAnalysis }) | null;
+  if (!raw) return null;
+  return raw.analysis ?? raw;
+}
+
 function toRoman(n: number): string {
   const vals = [1000, 900, 500, 400, 100, 90, 50, 40, 10, 9, 5, 4, 1];
   const syms = ['M', 'CM', 'D', 'CD', 'C', 'XC', 'L', 'XL', 'X', 'IX', 'V', 'IV', 'I'];
@@ -133,7 +140,7 @@ export function generateReportHtml(data: ReportTemplateData): string {
   const clientName = report.client_name ?? 'Property Owner';
 
   const hasCostApproach = data.property.cost_approach_value != null && data.property.cost_approach_value > 0;
-  const hasPhotoDefects = photos.some(p => (p.ai_analysis?.defects?.length ?? 0) > 0);
+  const hasPhotoDefects = photos.some((p) => (getPhotoAnalysis(p)?.defects?.length ?? 0) > 0);
 
   // Build section list for TOC
   let sectionCounter = 8; // after VII-B
@@ -1027,7 +1034,7 @@ function renderSummarySection(
 
   // Valuation findings table
   const valuationRows: [string, string][] = [
-    ['Current Assessed Value', formatCurrency(property.assessed_value ?? 0)],
+    ['Current Assessed Value', property.assessed_value != null && property.assessed_value > 0 ? formatCurrency(property.assessed_value) : 'N/A'],
     ['Market Value Estimate (Low)', formatCurrency(property.market_value_estimate_low ?? 0)],
     ['Market Value Estimate (High)', formatCurrency(property.market_value_estimate_high ?? 0)],
     ['Concluded Market Value', formatCurrency(concludedValue)],
@@ -1681,13 +1688,14 @@ function renderCostApproachSection(data: ReportTemplateData): string {
 // ─── Property Condition & Cost-to-Cure Analysis ─────────────────────────────
 
 function renderPhotoConditionSection(data: ReportTemplateData, photos: Photo[]): string {
-  const defectPhotos = photos.filter(p => (p.ai_analysis?.defects?.length ?? 0) > 0);
+  const defectPhotos = photos.filter((p) => (getPhotoAnalysis(p)?.defects?.length ?? 0) > 0);
   if (defectPhotos.length === 0) return '';
 
   // Collect all defects with their photo source
   const allDefects: { photo: Photo; defect: import('@/types/database').PhotoDefect }[] = [];
   for (const photo of defectPhotos) {
-    for (const defect of photo.ai_analysis!.defects) {
+    const analysis = getPhotoAnalysis(photo);
+    for (const defect of analysis?.defects ?? []) {
       allDefects.push({ photo, defect });
     }
   }
@@ -1769,12 +1777,18 @@ function renderPhotoConditionSection(data: ReportTemplateData, photos: Photo[]):
     <h3 style="margin-top:1.5em; margin-bottom:0.8em;">Photographic Evidence</h3>
     <div class="photo-grid">
       ${defectPhotos.slice(0, 6).map(p => `
+      ${(() => {
+        const analysis = getPhotoAnalysis(p);
+        const severities = (analysis?.defects ?? []).map(d => d.severity).filter((v, i, a) => a.indexOf(v) === i).join(', ');
+        return `
       <div class="photo-cell">
         <div class="img-container">
-          <img src="${imageOrPlaceholder(p.storage_path ?? '')}" alt="${escapeHtml(String(p.ai_analysis?.professional_caption ?? p.photo_type ?? ''))}" />
+          <img src="${imageOrPlaceholder(p.storage_path ?? '')}" alt="${escapeHtml(String(analysis?.professional_caption ?? p.photo_type ?? ''))}" />
         </div>
-        <div class="img-caption">${escapeHtml(String(p.ai_analysis?.professional_caption ?? p.photo_type?.replace(/_/g, ' ') ?? ''))} — ${(p.ai_analysis?.defects ?? []).map(d => d.severity).filter((v, i, a) => a.indexOf(v) === i).join(', ')} defect(s)</div>
-      </div>`).join('')}
+        <div class="img-caption">${escapeHtml(String(analysis?.professional_caption ?? p.photo_type?.replace(/_/g, ' ') ?? ''))} — ${severities} defect(s)</div>
+      </div>`;
+      })()}
+      `).join('')}
     </div>` : ''}
   </div>`;
 }

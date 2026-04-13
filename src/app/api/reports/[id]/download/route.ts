@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
+import { verifyReportAccessToken } from '@/lib/utils/report-access';
 
 const SIGNED_URL_EXPIRY_SECONDS = 60 * 60; // 1 hour
 
@@ -31,6 +32,7 @@ export async function GET(
   }
 
   const supabase = createAdminClient();
+  const accessToken = _req.nextUrl.searchParams.get('token');
 
   const { data: reportData, error: reportError } = await supabase
     .from('reports')
@@ -45,23 +47,25 @@ export async function GET(
   const report = reportData as Pick<Report, 'status' | 'report_pdf_storage_path' | 'user_id' | 'client_email'>;
 
   // ── Verify ownership: session user must own the report ────────────────
-  const userSupabase = await createClient();
-  const { data: { user } } = await userSupabase.auth.getUser();
+  const hasAccessToken = verifyReportAccessToken(accessToken, reportId);
+  if (!hasAccessToken) {
+    const userSupabase = await createClient();
+    const { data: { user } } = await userSupabase.auth.getUser();
 
-  if (!user) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-  }
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
 
-  const isOwner = report.user_id
-    ? report.user_id === user.id
-    : report.client_email === user.email;
+    const isOwner = report.user_id
+      ? report.user_id === user.id
+      : report.client_email === user.email;
 
-  if (!isOwner) {
-    // Also allow admin access
-    const { isAdmin } = await import('@/lib/repository/admin');
-    const adminCheck = await isAdmin(user.id);
-    if (!adminCheck) {
-      return NextResponse.json({ error: 'Not authorized to download this report' }, { status: 403 });
+    if (!isOwner) {
+      const { isAdmin } = await import('@/lib/repository/admin');
+      const adminCheck = await isAdmin(user.id);
+      if (!adminCheck) {
+        return NextResponse.json({ error: 'Not authorized to download this report' }, { status: 403 });
+      }
     }
   }
 

@@ -251,7 +251,8 @@ export async function runNarratives(
   const photoAnalyses = photos
     .filter((p) => p.ai_analysis != null)
     .map((p) => {
-      const analysis = p.ai_analysis as unknown as PhotoAiAnalysis | null;
+      const rawAnalysis = p.ai_analysis as unknown as (PhotoAiAnalysis & { analysis?: PhotoAiAnalysis }) | null;
+      const analysis = (rawAnalysis?.analysis ?? rawAnalysis) as PhotoAiAnalysis | null;
       return {
         photo_type: (p.photo_type ?? 'other') as string,
         condition_rating: analysis?.condition_rating ?? 'average',
@@ -646,14 +647,17 @@ export async function runNarratives(
   // to the assessor's implied market value before comparing against our
   // concluded market value.
   // e.g. Cook County: $78K assessed / 0.10 = $780K assessor-implied market value
-  const rawAssessed = propertyData.assessed_value ?? 0;
-  const assessorImpliedMarket = assessmentRatio && assessmentRatio > 0 && assessmentRatio < 1.0
-    ? Math.round(rawAssessed / assessmentRatio)
-    : rawAssessed;
-  const overassessmentDollars = concludedValue > 0 && assessorImpliedMarket > concludedValue
+  const rawAssessed = propertyData.assessed_value;
+  const hasAssessedValue = rawAssessed != null && rawAssessed > 0;
+  const assessorImpliedMarket = hasAssessedValue
+    ? (assessmentRatio && assessmentRatio > 0 && assessmentRatio < 1.0
+      ? Math.round(rawAssessed / assessmentRatio)
+      : rawAssessed)
+    : null;
+  const overassessmentDollars = assessorImpliedMarket != null && concludedValue > 0 && assessorImpliedMarket > concludedValue
     ? assessorImpliedMarket - concludedValue
-    : 0;
-  const underassessmentPct = concludedValue > 0 && assessorImpliedMarket > 0 && concludedValue > assessorImpliedMarket
+    : null;
+  const underassessmentPct = concludedValue > 0 && assessorImpliedMarket != null && assessorImpliedMarket > 0 && concludedValue > assessorImpliedMarket
     ? Math.round(((concludedValue - assessorImpliedMarket) / concludedValue) * 1000) / 10
     : 0;
   const isUnderassessed = underassessmentPct > 5; // meaningful underassessment threshold
@@ -663,7 +667,7 @@ export async function runNarratives(
   let strengthScore = 0;
 
   // Overassessment magnitude (0-40 pts): 2 pts per % overassessed, capped at 40
-  if (overassessmentDollars > 0 && concludedValue > 0) {
+  if (overassessmentDollars != null && overassessmentDollars > 0 && concludedValue > 0) {
     const overPct = (overassessmentDollars / concludedValue) * 100;
     strengthScore += Math.min(
       Math.round(overPct * CASE_STRENGTH.overassessment_pts_per_pct),
@@ -695,7 +699,7 @@ export async function runNarratives(
     .from('reports')
     .update({
       case_strength_score: strengthScore,
-      case_value_at_stake: overassessmentDollars > 0 ? overassessmentDollars : 0,
+      case_value_at_stake: overassessmentDollars,
       is_underassessed: isUnderassessed,
       underassessment_pct: isUnderassessed ? underassessmentPct : null,
     })
@@ -706,7 +710,7 @@ export async function runNarratives(
   }
 
   pipelineLogger.info(
-    { strengthScore, valueAtStake: overassessmentDollars, isUnderassessed, underassessmentPct: isUnderassessed ? underassessmentPct : undefined },
+    { strengthScore, valueAtStake: overassessmentDollars, hasAssessedValue, isUnderassessed, underassessmentPct: isUnderassessed ? underassessmentPct : undefined },
     '[stage5] Case intelligence computed'
   );
 
@@ -895,7 +899,7 @@ export async function runNarratives(
     underassessmentPct: isUnderassessed ? underassessmentPct : null,
     // Case intelligence
     caseStrengthScore: strengthScore,
-    caseValueAtStake: overassessmentDollars,
+    caseValueAtStake: overassessmentDollars ?? 0,
     // Cost approach
     costApproachRcn,
     costApproachValue,
@@ -958,7 +962,7 @@ export async function runNarratives(
       current_assessed_value: propertyData.assessed_value,
       concluded_market_value: concludedValue,
       requested_assessed_value: requestedAssessedValue,
-      reduction_requested_dollars: overassessmentDollars > 0 ? overassessmentDollars : null,
+      reduction_requested_dollars: overassessmentDollars,
       property_type: report.property_type,
       year_built: propertyData.year_built,
       building_sqft: propertyData.building_sqft_gross,

@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { PropertyData, CountyRule } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
+import { verifyReportAccessToken } from '@/lib/utils/report-access';
 
 const SIGNED_URL_EXPIRY_SECONDS = 7 * 24 * 60 * 60; // 7 days
 
@@ -32,6 +33,7 @@ export async function GET(
 
   try {
   const supabase = createAdminClient();
+  const accessToken = _req.nextUrl.searchParams.get('token');
 
   // Fetch report
   const { data: reportData, error: reportError } = await supabase
@@ -48,19 +50,22 @@ export async function GET(
   const report = reportData as any; // Dynamic field access throughout this route
 
   // ── Authenticate + verify ownership ────────────────────────────────────
-  const userSupabase = await createClient();
-  const { data: { user } } = await userSupabase.auth.getUser();
+  const hasAccessToken = verifyReportAccessToken(accessToken, reportId);
+  if (!hasAccessToken) {
+    const userSupabase = await createClient();
+    const { data: { user } } = await userSupabase.auth.getUser();
 
-  if (!user) {
-    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-  }
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+    }
 
-  const isOwner = report.user_id
-    ? report.user_id === user.id
-    : report.client_email === user.email;
+    const isOwner = report.user_id
+      ? report.user_id === user.id
+      : report.client_email === user.email;
 
-  if (!isOwner) {
-    return NextResponse.json({ error: 'Not authorized to view this report' }, { status: 403 });
+    if (!isOwner) {
+      return NextResponse.json({ error: 'Not authorized to view this report' }, { status: 403 });
+    }
   }
 
   // Only show reports that have been delivered or are in the delivery pipeline
@@ -83,12 +88,12 @@ export async function GET(
 
   // Fetch in parallel: property data, narratives (all), county rules, comps (full), photos
   const [propertyResult, narrativesResult, countyResult, compsResult, photosResult] = await Promise.all([
-    supabase.from('property_data').select('assessed_value, concluded_value, building_sqft_gross, photo_defect_count, photo_impact_dollars, photo_impact_pct, valuation_method').eq('report_id', reportId).single(),
+    supabase.from('property_data').select('assessed_value, concluded_value, building_sqft_gross, photo_defect_count, photo_defect_count_significant, photo_impact_dollars, photo_impact_pct, valuation_method').eq('report_id', reportId).single(),
     supabase.from('report_narratives').select('section_name, content').eq('report_id', reportId),
     report.county_fips
-      ? supabase.from('county_rules').select('county_name, state_name, appeal_board_name, appeal_board_address, appeal_board_phone, accepts_online_filing, portal_url, accepts_email_filing, filing_email, requires_mail_filing, appeal_deadline_rule, next_appeal_deadline, current_tax_year, assessment_cycle, appeal_form_name, form_download_url, filing_fee_cents, filing_fee_notes, required_documents, filing_steps, hearing_typically_required, hearing_format, hearing_duration_minutes, virtual_hearing_available, virtual_hearing_platform, informal_review_available, informal_review_notes, typical_resolution_weeks_min, typical_resolution_weeks_max, further_appeal_body, pro_se_tips').eq('county_fips', report.county_fips).single()
+      ? supabase.from('county_rules').select('county_name, state_name, appeal_board_name, appeal_board_address, appeal_board_phone, accepts_online_filing, portal_url, accepts_email_filing, filing_email, requires_mail_filing, appeal_deadline_rule, next_appeal_deadline, current_tax_year, assessment_cycle, appeal_form_name, form_download_url, filing_fee_cents, filing_fee_notes, required_documents, filing_steps, hearing_typically_required, hearing_format, hearing_duration_minutes, virtual_hearing_available, virtual_hearing_platform, informal_review_available, informal_review_notes, typical_resolution_weeks_min, typical_resolution_weeks_max, further_appeal_body, pro_se_tips, assessment_ratio_residential, assessment_ratio_commercial, assessment_ratio_industrial').eq('county_fips', report.county_fips).single()
       : report.county && report.state
-        ? supabase.from('county_rules').select('county_name, state_name, appeal_board_name, appeal_board_address, appeal_board_phone, accepts_online_filing, portal_url, accepts_email_filing, filing_email, requires_mail_filing, appeal_deadline_rule, next_appeal_deadline, current_tax_year, assessment_cycle, appeal_form_name, form_download_url, filing_fee_cents, filing_fee_notes, required_documents, filing_steps, hearing_typically_required, hearing_format, hearing_duration_minutes, virtual_hearing_available, virtual_hearing_platform, informal_review_available, informal_review_notes, typical_resolution_weeks_min, typical_resolution_weeks_max, further_appeal_body, pro_se_tips').eq('county_name', report.county).eq('state_abbreviation', report.state).single()
+        ? supabase.from('county_rules').select('county_name, state_name, appeal_board_name, appeal_board_address, appeal_board_phone, accepts_online_filing, portal_url, accepts_email_filing, filing_email, requires_mail_filing, appeal_deadline_rule, next_appeal_deadline, current_tax_year, assessment_cycle, appeal_form_name, form_download_url, filing_fee_cents, filing_fee_notes, required_documents, filing_steps, hearing_typically_required, hearing_format, hearing_duration_minutes, virtual_hearing_available, virtual_hearing_platform, informal_review_available, informal_review_notes, typical_resolution_weeks_min, typical_resolution_weeks_max, further_appeal_body, pro_se_tips, assessment_ratio_residential, assessment_ratio_commercial, assessment_ratio_industrial').eq('county_name', report.county).eq('state_abbreviation', report.state).single()
         : Promise.resolve({ data: null, error: null }),
     supabase.from('comparable_sales')
       .select('address, sale_price, sale_date, building_sqft, adjusted_price_per_sqft, distance_miles, net_adjustment_pct, is_distressed_sale, is_weak_comparable')
@@ -148,10 +153,34 @@ export async function GET(
   const caseStrengthScore = report.case_strength_score as number | null ?? null;
   const photoCount = (photosResult.data ?? []).length;
   const compCount = comps.length;
+  const qualifiedCompCount = comps.filter((c) => c.is_weak_comparable !== true).length;
   const photoDefectCount = propertyData?.photo_defect_count ?? null;
+  const photoDefectCountSignificant = propertyData?.photo_defect_count_significant ?? null;
   const photoImpactDollars = propertyData?.photo_impact_dollars ?? null;
   const photoImpactPct = propertyData?.photo_impact_pct ?? null;
   const valuationMethod = propertyData?.valuation_method ?? null;
+  const countyAssessmentRatio = countyRule
+    ? (() => {
+        switch (report.property_type) {
+          case 'commercial':
+            return countyRule.assessment_ratio_commercial;
+          case 'industrial':
+            return countyRule.assessment_ratio_industrial;
+          default:
+            return countyRule.assessment_ratio_residential;
+        }
+      })()
+    : null;
+
+  const rawAssessedValue = propertyData?.assessed_value ?? 0;
+  const assessedValueKnown = rawAssessedValue > 0;
+  const estimatedAssessedValue = !assessedValueKnown && countyAssessmentRatio != null && countyAssessmentRatio > 0 && concludedValue > 0
+    ? Math.round((concludedValue * countyAssessmentRatio) / 1000) * 1000
+    : 0;
+  const assessedValue = assessedValueKnown ? rawAssessedValue : estimatedAssessedValue;
+  const assessedValueEstimated = !assessedValueKnown && assessedValue > 0;
+  const potentialSavings = (report.case_value_at_stake as number | null) ??
+    (assessedValueKnown ? Math.max(0, assessedValue - concludedValue) : 0);
 
   return NextResponse.json({
     ready: true,
@@ -160,17 +189,22 @@ export async function GET(
     propertyAddress: [report.property_address, report.city, report.state].filter(Boolean).join(', '),
     serviceType: report.service_type,
     reviewTier: report.review_tier ?? 'auto',
-    assessedValue: propertyData?.assessed_value ?? 0,
+    assessedValue,
     concludedValue,
-    potentialSavings: report.case_value_at_stake as number ?? Math.max(0, (propertyData?.assessed_value ?? 0) - concludedValue),
+    potentialSavings,
+    assessedValueKnown,
+    assessedValueEstimated,
+    countyAssessmentRatio,
     pdfUrl,
     filingGuide,
     deliveredAt: report.delivered_at,
     // Case intelligence
     caseStrengthScore,
     compCount,
+    qualifiedCompCount,
     photoCount,
     photoDefectCount,
+    photoDefectCountSignificant,
     photoImpactDollars,
     photoImpactPct,
     valuationMethod,

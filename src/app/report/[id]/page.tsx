@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Wordmark from '@/components/ui/Wordmark';
 import { getNarrativeDisplayName } from '@/lib/report-narratives';
@@ -52,6 +52,9 @@ interface ReportData {
   assessedValue: number;
   concludedValue: number;
   potentialSavings: number;
+  assessedValueKnown?: boolean;
+  assessedValueEstimated?: boolean;
+  countyAssessmentRatio?: number | null;
   pdfUrl: string | null;
   filingGuide: string | null;
   deliveredAt: string | null;
@@ -60,8 +63,10 @@ interface ReportData {
   appealOutcome: string | null;
   caseStrengthScore: number | null;
   compCount: number;
+  qualifiedCompCount?: number;
   photoCount: number;
   photoDefectCount: number | null;
+  photoDefectCountSignificant?: number | null;
   photoImpactDollars: number | null;
   photoImpactPct: number | null;
   valuationMethod: string | null;
@@ -189,7 +194,15 @@ function renderMarkdown(content: string): React.ReactNode[] {
 
 export default function ReportViewerPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const reportId = params.id as string;
+  const reportAccessToken = searchParams.get('token');
+  const viewerUrl = reportAccessToken
+    ? `/api/reports/${reportId}/viewer?token=${encodeURIComponent(reportAccessToken)}`
+    : `/api/reports/${reportId}/viewer`;
+  const downloadUrl = reportAccessToken
+    ? `/api/reports/${reportId}/download?token=${encodeURIComponent(reportAccessToken)}`
+    : `/api/reports/${reportId}/download`;
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -228,7 +241,7 @@ export default function ReportViewerPage() {
 
     const fetchReport = async () => {
       try {
-        const res = await fetch(`/api/reports/${reportId}/viewer`);
+        const res = await fetch(viewerUrl);
         if (!res.ok) {
           setError(res.status === 404 ? 'Report not found.' : 'Failed to load report.');
           return;
@@ -259,7 +272,7 @@ export default function ReportViewerPage() {
       const delay = Math.min(10000 * Math.pow(1.5, Math.min(pollCount - 1, 3)), 30000);
       pollTimer = setTimeout(async () => {
         try {
-          const res = await fetch(`/api/reports/${reportId}/viewer`);
+          const res = await fetch(viewerUrl);
           if (res.ok) {
             const json = await res.json();
             setData(json);
@@ -277,7 +290,7 @@ export default function ReportViewerPage() {
       cancelled = true;
       clearTimeout(pollTimer);
     };
-  }, [reportId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [reportId, viewerUrl]);
 
   if (loading) {
     return (
@@ -372,7 +385,7 @@ export default function ReportViewerPage() {
             </Link>
           </div>
           <a
-            href={`/api/reports/${reportId}/download`}
+            href={downloadUrl}
             className="flex items-center gap-2 text-sm font-medium text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark px-4 py-2 rounded-lg hover:shadow-gold transition-all"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -430,7 +443,13 @@ export default function ReportViewerPage() {
                 <p className="font-display text-3xl text-cream">
                   {data.assessedValue > 0 ? formatDollar(data.assessedValue) : '—'}
                 </p>
-                <p className="text-xs text-cream/25 mt-1.5">Per county records</p>
+                <p className="text-xs text-cream/25 mt-1.5">
+                  {data.assessedValue > 0
+                    ? (data.assessedValueEstimated
+                      ? `Estimated using county assessment ratio${data.countyAssessmentRatio ? ` (${(data.countyAssessmentRatio * 100).toFixed(1).replace(/\.0$/, '')}%)` : ''}. Verify with tax bill.`
+                      : 'Per county records')
+                    : 'Not found in records. Upload tax bill for accurate savings estimate.'}
+                </p>
               </div>
               {data.concludedValue > 0 && (
                 <div className="card-premium rounded-xl p-6 ring-1 ring-gold/20">
@@ -519,6 +538,9 @@ export default function ReportViewerPage() {
                     <p className="text-[10px] mt-0.5 text-cream/20">
                       {data.caseStrengthScore >= 75 ? 'Strong' : data.caseStrengthScore >= 50 ? 'Moderate' : 'Developing'}
                     </p>
+                    <p className="text-[10px] text-cream/15 mt-0.5">
+                      {`${data.qualifiedCompCount ?? data.compCount}/${data.compCount} qualified comps, ${data.photoDefectCount ?? 0} defects`}
+                    </p>
                   </div>
                 )}
                 {data.compCount > 0 && (
@@ -527,7 +549,7 @@ export default function ReportViewerPage() {
                       <span className="text-xl font-bold text-blue-400">{data.compCount}</span>
                     </div>
                     <p className="text-[10px] uppercase tracking-widest text-cream/35">Comparable Sales</p>
-                    <p className="text-[10px] mt-0.5 text-cream/20">Market evidence</p>
+                    <p className="text-[10px] mt-0.5 text-cream/20">{`${data.qualifiedCompCount ?? data.compCount} qualified`}</p>
                   </div>
                 )}
                 {data.photoCount > 0 && (
@@ -539,13 +561,17 @@ export default function ReportViewerPage() {
                     <p className="text-[10px] mt-0.5 text-cream/20">AI-inspected evidence</p>
                   </div>
                 )}
-                {data.photoDefectCount != null && data.photoDefectCount > 0 && (
+                {data.photoCount > 0 && (
                   <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-center">
                     <div className="w-14 h-14 mx-auto mb-2 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                      <span className="text-xl font-bold text-amber-400">{data.photoDefectCount}</span>
+                      <span className="text-xl font-bold text-amber-400">{data.photoDefectCount ?? 0}</span>
                     </div>
                     <p className="text-[10px] uppercase tracking-widest text-cream/35">Issues Documented</p>
-                    <p className="text-[10px] mt-0.5 text-cream/20">Condition evidence</p>
+                    <p className="text-[10px] mt-0.5 text-cream/20">
+                      {(data.photoDefectCount ?? 0) > 0
+                        ? `${data.photoDefectCountSignificant ?? 0} significant`
+                        : 'No material defects documented'}
+                    </p>
                   </div>
                 )}
               </div>
@@ -560,7 +586,7 @@ export default function ReportViewerPage() {
                 </p>
               </div>
               <a
-                href={`/api/reports/${reportId}/download`}
+                href={downloadUrl}
                 className="flex items-center gap-2 text-sm font-semibold text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark px-5 py-2.5 rounded-lg hover:shadow-gold hover:brightness-110 transition-all flex-shrink-0 w-full sm:w-auto justify-center"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

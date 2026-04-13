@@ -107,6 +107,20 @@ const REQUIRED_PHOTO_TYPES: Record<string, string[]> = {
   agricultural: ['exterior_front', 'exterior_rear', 'exterior_east', 'exterior_west', 'aerial'],
 };
 
+const STORAGE_MIME_TYPES: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  gif: 'image/gif',
+  heic: 'image/heic',
+};
+
+function inferMimeTypeFromStoragePath(storagePath: string): string {
+  const ext = storagePath.split('.').pop()?.toLowerCase() ?? 'jpeg';
+  return STORAGE_MIME_TYPES[ext] ?? 'image/jpeg';
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
@@ -226,6 +240,7 @@ export async function runPhotoAnalysis(
   // ── Analyze photos in parallel batches of 3 ──────────────────────────
   const conditionRatings: string[] = [];
   const analyzedPhotos: PhotoAiAnalysis[] = [];
+  const downloadedImages = new Map<string, { data: string; mimeType: string }>();
   const BATCH_SIZE = 3;
 
   for (let i = 0; i < photos.length; i += BATCH_SIZE) {
@@ -233,19 +248,28 @@ export async function runPhotoAnalysis(
 
     const batchResults = await Promise.allSettled(
       batch.map(async (photo) => {
-        // Get a signed URL if the photo is in Supabase storage
-        let imageUrl: string | null = null;
+        let imageData = downloadedImages.get(photo.id);
 
-        if (photo.storage_path) {
-          const { data: signedUrl } = await supabase
+        if (!imageData && photo.storage_path) {
+          const { data: blob, error: downloadError } = await supabase
             .storage
             .from('photos')
-            .createSignedUrl(photo.storage_path, 3600); // 1 hour
+            .download(photo.storage_path);
 
-          imageUrl = signedUrl?.signedUrl ?? null;
+          if (downloadError || !blob) {
+            pipelineLogger.warn({ id: photo.id, error: downloadError?.message }, '[stage4] Failed to download photo for analysis');
+            return null;
+          }
+
+          const arrayBuffer = await blob.arrayBuffer();
+          imageData = {
+            data: Buffer.from(arrayBuffer).toString('base64'),
+            mimeType: inferMimeTypeFromStoragePath(photo.storage_path),
+          };
+          downloadedImages.set(photo.id, imageData);
         }
 
-        if (!imageUrl) {
+        if (!imageData) {
           pipelineLogger.warn({ id: photo.id }, '[stage4] No URL available for photo , skipping');
           return null;
         }
@@ -260,14 +284,14 @@ export async function runPhotoAnalysis(
         const fullPrompt = photoIntelContext
           ? `${basePrompt}\n\n${photoIntelContext}`
           : basePrompt;
-        const result = await analyzePhoto(imageUrl, fullPrompt, userContext);
+        const result = await analyzePhoto(imageData, fullPrompt, userContext);
 
         if (result.error || !result.data) {
           pipelineLogger.warn({ id: photo.id, error: result.error }, '[stage4] Photo analysis failed for');
           return null;
         }
 
-        const analysis = result.data as unknown as PhotoAiAnalysis;
+        const analysis = result.data.analysis as unknown as PhotoAiAnalysis;
 
         // Update photo record with analysis results.
         // We preserve the owner's original caption in the caption field if no
@@ -332,25 +356,30 @@ export async function runPhotoAnalysis(
       // Download base64 data from Supabase Storage
       const base64Images: { data: string; mimeType: string }[] = [];
       for (const photo of photosToAnalyze) {
-        if (!photo.storage_path) continue;
-        const { data: blob, error: dlError } = await supabase
-          .storage
-          .from('photos')
-          .download(photo.storage_path);
+        let imageData = downloadedImages.get(photo.id);
 
-        if (dlError || !blob) {
-          pipelineLogger.warn({ id: photo.id, error: dlError?.message }, '[stage4] Failed to download photo for Gemini');
-          continue;
+        if (!imageData && photo.storage_path) {
+          const { data: blob, error: dlError } = await supabase
+            .storage
+            .from('photos')
+            .download(photo.storage_path);
+
+          if (dlError || !blob) {
+            pipelineLogger.warn({ id: photo.id, error: dlError?.message }, '[stage4] Failed to download photo for Gemini');
+            continue;
+          }
+
+          const arrayBuffer = await blob.arrayBuffer();
+          imageData = {
+            data: Buffer.from(arrayBuffer).toString('base64'),
+            mimeType: inferMimeTypeFromStoragePath(photo.storage_path),
+          };
+          downloadedImages.set(photo.id, imageData);
         }
 
-        const arrayBuffer = await blob.arrayBuffer();
-        const base64 = Buffer.from(arrayBuffer).toString('base64');
-        // Infer MIME type from storage path extension
-        const ext = photo.storage_path.split('.').pop()?.toLowerCase() ?? 'jpeg';
-        const mimeMap: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', heic: 'image/heic' };
-        const mimeType = mimeMap[ext] ?? 'image/jpeg';
-
-        base64Images.push({ data: base64, mimeType });
+        if (imageData) {
+          base64Images.push(imageData);
+        }
       }
 
       if (base64Images.length > 0) {

@@ -3,6 +3,51 @@ import { AI_MODELS } from '@/config/ai';
 import { apiLogger } from '@/lib/logger';
 import { withRetry, isRetryableError } from '@/lib/utils/retry';
 
+const GEMINI_MODEL_FALLBACKS = ['gemini-2.5-pro'];
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function shouldRetryWithFallback(error: unknown): boolean {
+  const message = getErrorMessage(error).toLowerCase();
+  return message.includes('not found') || message.includes('not supported for generatecontent');
+}
+
+async function generateJsonContent(
+  preferredModel: string,
+  contents: (string | Record<string, unknown>)[],
+  temperature: number
+) {
+  const modelCandidates = [preferredModel, ...GEMINI_MODEL_FALLBACKS.filter((model) => model !== preferredModel)];
+  let lastError: unknown;
+
+  for (let i = 0; i < modelCandidates.length; i += 1) {
+    const model = modelCandidates[i];
+    try {
+      return await withRetry(
+        () => getClient().models.generateContent({
+          model,
+          contents,
+          config: {
+            responseMimeType: 'application/json',
+            temperature,
+          }
+        }),
+        { maxAttempts: 3, baseDelayMs: 2000, retryOn: isRetryableError }
+      );
+    } catch (error) {
+      lastError = error;
+      if (i === modelCandidates.length - 1 || !shouldRetryWithFallback(error)) {
+        throw error;
+      }
+      apiLogger.warn({ model, fallbackModel: modelCandidates[i + 1], err: getErrorMessage(error) }, 'Gemini model unavailable, retrying with fallback');
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error('Gemini request failed');
+}
+
 /**
  * Gemini AI Service for Multimodal Processing
  * Handles complex document OCR (Tax Bills) and Spatial/Vision Reasoning (Deferred Maintenance)
@@ -63,19 +108,13 @@ export async function parseTaxBill(mimeType: string, base64Data: string): Promis
   `;
 
   try {
-    const response = await withRetry(
-      () => getClient().models.generateContent({
-        model: AI_MODELS.DOCUMENT,
-        contents: [
-          prompt,
-          { inlineData: { data: base64Data, mimeType } }
-        ],
-        config: {
-          responseMimeType: 'application/json',
-          temperature: 0.1, // Near-deterministic extraction
-        }
-      }),
-      { maxAttempts: 3, baseDelayMs: 1500, retryOn: isRetryableError }
+    const response = await generateJsonContent(
+      AI_MODELS.DOCUMENT,
+      [
+        prompt,
+        { inlineData: { data: base64Data, mimeType } }
+      ],
+      0.1
     );
 
     const text = response.text;
@@ -140,16 +179,10 @@ export async function analyzeDeferredMaintenance(
       contents.push({ inlineData: { data: img.data, mimeType: img.mimeType } });
     }
 
-    const response = await withRetry(
-      () => getClient().models.generateContent({
-        model: AI_MODELS.VISION,
-        contents,
-        config: {
-          responseMimeType: 'application/json',
-          temperature: 0.4, // Slight creative interpretation for the narrative portion
-        }
-      }),
-      { maxAttempts: 3, baseDelayMs: 2000, retryOn: isRetryableError }
+    const response = await generateJsonContent(
+      AI_MODELS.VISION,
+      contents,
+      0.4
     );
 
     const text = response.text;

@@ -676,11 +676,12 @@ export async function generateFilingGuide(
  *                     who lives in/owns the property.
  */
 export async function analyzePhoto(
-  imageUrl: string,
+  image: string | { data: string; mimeType: string },
   systemPrompt: string,
   userContext?: string
 ): Promise<ServiceResult<PhotoAnalysisResponse>> {
   const startMs = Date.now();
+  const photoAnalysisToolName = 'record_photo_analysis';
 
   const ownerContext = userContext?.trim()
     ? `\n\nOWNER'S DESCRIPTION OF THIS PHOTO:\n"${userContext.trim()}"\n\nTreat the owner's description as firsthand testimony. They live in and own this property — they know issues that may not be fully visible in a photograph. If they identify a specific defect or condition, document it even if it's only partially visible or the photo angle limits your view.`
@@ -691,19 +692,55 @@ export async function analyzePhoto(
       model: AI_MODELS.PRIMARY, // Photos are the owner's strongest independent evidence — use best model
       max_tokens: AI_CONFIG.maxTokens.photoAnalysis,
       system: systemPrompt,
+      tools: [
+        {
+          name: photoAnalysisToolName,
+          description: 'Return the structured property photo analysis.',
+          input_schema: {
+            type: 'object',
+            properties: {
+              condition_rating: {
+                type: 'string',
+                enum: ['excellent', 'good', 'average', 'fair', 'poor'],
+              },
+              defects: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    type: { type: 'string' },
+                    description: { type: 'string' },
+                    severity: { type: 'string', enum: ['minor', 'moderate', 'significant'] },
+                    value_impact: { type: 'string', enum: ['low', 'medium', 'high'] },
+                    report_language: { type: 'string' },
+                  },
+                  required: ['type', 'description', 'severity', 'value_impact', 'report_language'],
+                },
+              },
+              inferred_direction: { type: 'string' },
+              professional_caption: { type: 'string' },
+              comparable_adjustment_note: { type: 'string' },
+            },
+            required: ['condition_rating', 'defects', 'inferred_direction', 'professional_caption', 'comparable_adjustment_note'],
+          },
+        },
+      ],
+      tool_choice: { type: 'tool', name: photoAnalysisToolName },
       messages: [
         {
           role: 'user',
           content: [
             {
               type: 'image',
-              source: { type: 'url', url: imageUrl },
+              source: typeof image === 'string'
+                ? { type: 'url', url: image }
+                : { type: 'base64', media_type: image.mimeType, data: image.data },
             },
             {
               type: 'text',
               text: `Analyze this property photo.${ownerContext}
 
-Return a JSON object with:
+Use the provided tool to return:
 - "condition_rating": one of "excellent", "good", "average", "fair", "poor"
 - "defects": array of objects, each with { "type": string, "description": string, "severity": "minor"|"moderate"|"significant", "value_impact": "low"|"medium"|"high", "report_language": string }
 - "inferred_direction": string describing the apparent direction/angle of the photo (e.g. "front elevation facing north")
@@ -716,12 +753,19 @@ Return a JSON object with:
     });
 
     const durationMs = Date.now() - startMs;
-    const textContent = response.content
-      .filter((block): block is Anthropic.TextBlock => block.type === 'text')
-      .map((block) => block.text)
-      .join('');
+    const toolUseBlock = response.content.find(
+      (block): block is Anthropic.ToolUseBlock => block.type === 'tool_use' && block.name === photoAnalysisToolName
+    );
 
-    const parsed = parsePhotoAnalysisJson(textContent);
+    const parsed = toolUseBlock?.input
+      ? parsePhotoAnalysisJson(JSON.stringify(toolUseBlock.input))
+      : parsePhotoAnalysisJson(
+        response.content
+          .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+          .map((block) => block.text)
+          .join('')
+      );
+
     if (!parsed) {
       return {
         data: null,
@@ -1152,6 +1196,56 @@ function validateNarrativeSections(raw: RawNarrativeSection[]): NarrativeSection
 }
 
 function parsePhotoAnalysisJson(text: string): PhotoAiAnalysis | null {
+  function tryParse(candidate: string): PhotoAiAnalysis | null {
+    try {
+      const parsed = JSON.parse(candidate) as RawPhotoAnalysis;
+      return normalize(parsed);
+    } catch {
+      return null;
+    }
+  }
+
+  function extractBalancedJsonObject(input: string): string | null {
+    const start = input.indexOf('{');
+    if (start === -1) return null;
+
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+
+    for (let i = start; i < input.length; i += 1) {
+      const char = input[i];
+
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+
+      if (char === '\\') {
+        escaped = true;
+        continue;
+      }
+
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+
+      if (inString) {
+        continue;
+      }
+
+      if (char === '{') depth += 1;
+      if (char === '}') depth -= 1;
+
+      if (depth === 0) {
+        return input.slice(start, i + 1);
+      }
+    }
+
+    return null;
+  }
+
   function normalize(parsed: RawPhotoAnalysis): PhotoAiAnalysis {
     const defects = Array.isArray(parsed.defects) ? parsed.defects as RawPhotoDefect[] : [];
 
@@ -1184,18 +1278,24 @@ function parsePhotoAnalysisJson(text: string): PhotoAiAnalysis | null {
     };
   }
 
-  try {
-    const parsed = JSON.parse(text);
-    return normalize(parsed);
-  } catch {
-    const match = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (match) {
-      try {
-        const parsed = JSON.parse(match[1]);
-        return normalize(parsed);
-      } catch {
-        // fall through
-      }
+  const direct = tryParse(text);
+  if (direct) {
+    return direct;
+  }
+
+  const fencedMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fencedMatch) {
+    const fenced = tryParse(fencedMatch[1]);
+    if (fenced) {
+      return fenced;
+    }
+  }
+
+  const extracted = extractBalancedJsonObject(text);
+  if (extracted) {
+    const parsed = tryParse(extracted);
+    if (parsed) {
+      return parsed;
     }
   }
   apiLogger.error('[anthropic] Could not parse photo analysis JSON from response');
