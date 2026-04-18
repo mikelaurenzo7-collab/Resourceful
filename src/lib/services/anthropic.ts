@@ -734,7 +734,7 @@ export async function analyzePhoto(
               type: 'image',
               source: typeof image === 'string'
                 ? { type: 'url', url: image }
-                : { type: 'base64', media_type: image.mimeType, data: image.data },
+                : { type: 'base64', media_type: image.mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp', data: image.data },
             },
             {
               type: 'text',
