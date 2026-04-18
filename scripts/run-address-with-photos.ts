@@ -181,7 +181,7 @@ async function main() {
   const { runDelivery } = await import('../src/lib/pipeline/stages/stage8-delivery');
   log('Running delivery (stage 8)...');
 
-  const deliveryResult = await runDelivery(reportId, null, sb);
+  const deliveryResult = await runDelivery(reportId, 'local-dev-script', sb);
   if (!deliveryResult.success) {
     log(`Delivery failed: ${deliveryResult.error || 'unknown error'}`);
     process.exit(1);
