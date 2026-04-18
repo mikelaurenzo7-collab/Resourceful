@@ -18,7 +18,7 @@ const SERVICE_OPTIONS: {
     title: 'Reduce My Property Taxes',
     subtitle: 'Tax Reduction Engine',
     description:
-      'Manus analyzes your assessment, builds the comparable set, and prepares the evidence package needed to pursue a reduction.',
+      'The AI analyzes your assessment, builds the comparable set, and prepares the evidence package needed to pursue a reduction.',
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -30,7 +30,7 @@ const SERVICE_OPTIONS: {
     title: "I'm Buying a Property",
     subtitle: 'Acquisition Intelligence',
     description:
-      "Before you buy, Manus tests price, taxes, and downside risk so you know whether the deal is actually worth pursuing.",
+      "Before you buy, the AI tests price, taxes, and downside risk so you know whether the deal is actually worth pursuing.",
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -42,7 +42,7 @@ const SERVICE_OPTIONS: {
     title: "I'm Selling a Property",
     subtitle: 'Seller Strategy Intelligence',
     description:
-      "Before you list, Manus sharpens your pricing story and gives buyers a clearer view of the tax burden attached to the property.",
+      "Before you list, the AI sharpens your pricing story and gives buyers a clearer view of the tax burden attached to the property.",
     icon: (
       <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -67,13 +67,13 @@ export default function GoalsPage() {
     <main className="max-w-3xl mx-auto px-6 py-12">
       <div className="text-center mb-10 animate-fade-in">
         <span className="inline-block text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase mb-3">
-          Step 1 — Activate Manus
+          Step 1 — Get Started
         </span>
         <h1 className="font-display text-3xl md:text-4xl text-cream mb-3">
-          What should Manus run?
+          What should the AI run?
         </h1>
         <p className="text-cream/50 max-w-lg mx-auto">
-          Select the workflow you want Manus to operate and we&apos;ll tailor the system to your property, county, and objective.
+          Select the workflow you want the AI to run and we&apos;ll tailor the system to your property, county, and objective.
         </p>
       </div>
 
@@ -140,7 +140,7 @@ export default function GoalsPage() {
       {state.serviceType === 'tax_appeal' && (
         <div className="mt-8 animate-fade-in">
           <label className="block text-sm text-cream/60 mb-2">
-            Tell Manus about your situation <span className="text-cream/30">(optional)</span>
+            Tell us about your situation <span className="text-cream/30">(optional)</span>
           </label>
           <textarea
             value={state.desiredOutcome}
@@ -149,7 +149,7 @@ export default function GoalsPage() {
             rows={3}
             className="w-full rounded-lg bg-navy-light border border-gold/15 px-4 py-3 text-sm text-cream placeholder-cream/25 focus:outline-none focus:border-gold/40 focus:ring-1 focus:ring-gold/20 resize-none"
           />
-          <p className="text-xs text-cream/25 mt-1.5">This helps Manus prioritize the case and identify the strongest angle for action.</p>
+          <p className="text-xs text-cream/25 mt-1.5">This helps the AI prioritize the case and identify the strongest angle for action.</p>
         </div>
       )}
 

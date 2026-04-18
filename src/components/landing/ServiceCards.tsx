@@ -18,7 +18,7 @@ const services: ServiceDef[] = [
     title: 'Tax Reduction Engine',
     service: 'tax_appeal',
     description:
-      'Manus identifies over-assessment, builds the evidence file, and packages the case for filing. This is the core engine of the business and the fastest path to recurring customer savings.',
+      'The AI identifies over-assessment, builds the evidence file, and packages the case for filing. This is the core engine of the business and the fastest path to recurring customer savings.',
     features: ['Comparable sales engine with adjustments', 'Photo-based condition evidence', 'County-specific workflow plan', 'Customer-ready savings narrative'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -31,7 +31,7 @@ const services: ServiceDef[] = [
     title: 'Acquisition Intelligence',
     service: 'pre_purchase',
     description:
-      'Before a buyer closes, Manus stress-tests value, taxes, and appeal risk. This turns the platform into a decision engine for acquisitions instead of a post-purchase rescue tool.',
+      'Before a buyer closes, the AI stress-tests value, taxes, and appeal risk. This turns the platform into a decision engine for acquisitions instead of a post-purchase rescue tool.',
     features: ['Value vs. assessment comparison', 'Projected annual tax burden', 'Appeal feasibility scoring', 'Neighborhood pricing intelligence'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -43,7 +43,7 @@ const services: ServiceDef[] = [
     title: 'Seller Strategy Intelligence',
     service: 'pre_listing',
     description:
-      'Manus equips sellers and agents with a cleaner pricing story, sharper tax narrative, and stronger buyer confidence before the listing ever goes live.',
+      'The AI equips sellers and agents with a cleaner pricing story, sharper tax narrative, and stronger buyer confidence before the listing ever goes live.',
     features: ['Independent pricing benchmark', 'Buyer-facing tax projection', 'Listing support narrative', 'Professional delivery package'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -56,7 +56,7 @@ const services: ServiceDef[] = [
     service: 'tax_appeal',
     tier: 'full_representation',
     description:
-      'For owners who want the highest level of leverage, Manus coordinates the full appeal workflow with humans stepping in for filing and hearing execution where required.',
+      'For owners who want the highest level of leverage, the AI coordinates the full appeal workflow with humans stepping in for filing and hearing execution where required.',
     features: ['Appeal filed on the customer\'s behalf', 'Representation workflow included', 'High-touch execution support', 'Dedicated case oversight'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -75,7 +75,7 @@ export default function ServiceCards() {
           AI Revenue Engines
         </span>
         <h2 className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
-          Choose What Manus Runs
+          Choose Your Workflow
         </h2>
         <p className="mt-4 text-cream/40 max-w-xl mx-auto leading-relaxed">
           Each lane turns the same underlying system into a different revenue motion, from tax reduction to acquisition diligence to seller strategy.

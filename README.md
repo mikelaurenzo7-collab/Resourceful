@@ -1,16 +1,16 @@
 # Resourceful
 
-Resourceful is an **AI-led property tax and property intelligence business**. Instead of positioning the product as a one-off report shop, the platform is now framed as an operating system that Manus runs on behalf of the company and its customers. The core idea is simple: Manus handles valuation research, comparable sales analysis, condition evidence review, county workflow preparation, and customer-ready case assembly so the business can scale with more consistency and less manual overhead.
+Resourceful is an **AI-powered property tax and property intelligence platform** built on **Claude Sonnet** (Anthropic) for narrative generation and case reasoning, and **Gemini** (Google) for multimodal photo analysis and document OCR. The platform handles valuation research, comparable sales analysis, condition evidence review, county workflow preparation, and customer-ready case assembly so property owners can reduce their taxes with less effort.
 
 This repository contains the customer-facing application, intake flow, pricing logic, dashboard delivery model, and supporting infrastructure for that business.
 
 ## Business Vision
 
-The revised product vision treats Resourceful as a **compounding AI operator**, not just a document generator.
+The product vision treats Resourceful as a **compounding AI-powered platform**, not just a document generator.
 
 | Dimension | Previous framing | New framing |
 |---|---|---|
-| Core promise | Professional property tax appeal reports | Manus runs the property tax workflow end to end |
+| Core promise | Professional property tax appeal reports | AI runs the property tax workflow end to end |
 | Business model | Primarily report delivery | Multi-lane AI property intelligence business |
 | Customer value | Get a report | Get an action package and next move |
 | Strategic edge | Faster reporting | A system that compounds county knowledge and outcome data |
@@ -36,10 +36,10 @@ Third, the long-term value of the company comes from **compounding operational i
 
 | Lane | Strategic role | Customer outcome |
 |---|---|---|
-| **Tax Reduction Engine** | Core wedge and most direct savings story | Lower an over-assessment with a Manus-built case |
+| **Tax Reduction Engine** | Core wedge and most direct savings story | Lower an over-assessment with an AI-built case |
 | **Acquisition Intelligence** | Expand into pre-transaction diligence | Understand price, tax burden, and appeal risk before buying |
 | **Seller Strategy Intelligence** | Strengthen seller and agent positioning | Give buyers a clearer tax story and pricing rationale |
-| **Autopilot Appeal** | High-touch premium offer | Let Manus coordinate the workflow while humans execute filing and hearings where needed |
+| **Autopilot Appeal** | High-touch premium offer | AI coordinates the workflow while humans execute filing and hearings where needed |
 
 ## Positioning Principles
 
@@ -47,7 +47,7 @@ When editing or extending the product, keep these principles intact.
 
 | Principle | Guidance |
 |---|---|
-| **AI-first, not AI-washed** | Manus should be presented as actually operating core business workflows, not as a decorative assistant. |
+| **AI-first, not AI-washed** | The AI layer (Claude Sonnet + Gemini) should actually operate core business workflows, not serve as a decorative assistant. |
 | **Action over artifacts** | The product should feel like a next-step machine, not just a PDF generator. |
 | **Compoundable systems** | Prefer changes that improve reusable workflows, structured memory, and feedback loops. |
 | **Human judgment where necessary** | Use human review and representation for leverage, risk control, and trust. |
@@ -126,7 +126,7 @@ Before deploying changes, confirm the following.
 
 ## Operational Note
 
-The most important architectural rule is that **the operating system must stay real**. If future changes make Manus look more central in the marketing copy, the underlying workflow should become more central in the product as well. The brand promise only works if the business genuinely becomes easier to run, easier to scale, and more valuable with each completed case.
+The most important architectural rule is that **the operating system must stay real**. If future changes make the AI capabilities look more central in the marketing copy, the underlying workflow should become more central in the product as well. The brand promise only works if the business genuinely becomes easier to run, easier to scale, and more valuable with each completed case.
 
 ## Deployment Runbook
 

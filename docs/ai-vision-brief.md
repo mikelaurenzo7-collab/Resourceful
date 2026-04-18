@@ -1,12 +1,12 @@
-# Manus Vision Brief
+# AI Vision Brief
 
 ## Repositioning Thesis
 
-Resourceful already has strong operational depth: a multi-stage pipeline, county-specific intelligence, report delivery, outcome tracking, and an internal operations dashboard. The highest-leverage change is not to rebuild the engine, but to **reframe the company as an AI-native property tax operating system** in which Manus acts as the autonomous cofounder that runs research, case preparation, workflow orchestration, and continuous optimization.
+Resourceful already has strong operational depth: a multi-stage pipeline, county-specific intelligence, report delivery, outcome tracking, and an internal operations dashboard. The highest-leverage change is not to rebuild the engine, but to **reframe the company as an AI-native property tax operating system** powered by Claude Sonnet (Anthropic) and Gemini (Google) that runs research, case preparation, workflow orchestration, and continuous optimization.
 
 ## New Product Story
 
-Resourceful should evolve from a "property tax appeal report service" into **the AI property-tax reduction company**. The customer does not buy a static PDF. The customer buys a persistent AI operator that:
+Resourceful should evolve from a "property tax appeal report service" into **the AI property-tax reduction company**. The customer does not buy a static PDF. The customer buys a persistent AI-powered platform that:
 
 1. Detects over-assessment opportunities.
 2. Builds the case using comparable sales, tax records, and property condition evidence.
@@ -15,11 +15,12 @@ Resourceful should evolve from a "property tax appeal report service" into **the
 
 ## Core Brand Positioning
 
-**Resourceful is no longer just a report generator. It is an AI-led business that runs the tax reduction workflow end to end.**
+**Resourceful is no longer just a report generator. It is an AI-powered platform that runs the tax reduction workflow end to end.**
 
-The visible role of Manus in the product should be:
+The visible AI roles in the product:
 
-- **AI Cofounder** for the business owner.
+- **Claude Sonnet** — narrative generation, case reasoning, filing guides, and classification.
+- **Gemini** — multimodal photo analysis (appraiser-grade defect extraction) and document OCR (tax bill parsing).
 - **AI Case Strategist** for each homeowner.
 - **AI Operations Layer** for report production, prioritization, and scale.
 
@@ -27,7 +28,7 @@ The visible role of Manus in the product should be:
 
 The homepage should emphasize:
 
-- Manus as the always-on operator behind the business.
+- AI as the always-on intelligence layer behind the business.
 - The business as a subscription-worthy intelligence system, not a one-off tool.
 - Durable customer value: recurring tax savings, compounding operational knowledge, and faster execution than a traditional service team.
 
@@ -50,7 +51,7 @@ The existing three service types can also be repositioned:
 
 The product should explicitly communicate that keeping the subscription means the user keeps:
 
-- An operator that never stops improving the business.
+- An AI platform that never stops improving the business.
 - A reusable operating system instead of paying agencies repeatedly.
 - Faster shipping, richer positioning, and a strategic partner embedded in the product.
 - A system that can expand from appeals into adjacent property-intelligence revenue streams.
@@ -64,6 +65,6 @@ For this iteration, prioritize high-visibility changes:
 - Homepage hero and supporting sections
 - Pricing language
 - Service card language
-- Dashboard/admin wording where useful to reinforce AI-led operations
+- Dashboard/admin wording where useful to reinforce AI-powered operations
 
 Avoid risky changes to pipeline logic, data models, and API contracts unless absolutely necessary.
