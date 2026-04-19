@@ -5,7 +5,7 @@ const tiers = [
   {
     name: 'Starter Intelligence',
     tier: 'auto' as const,
-    description: 'The essential Manus workflow: AI-built evidence, prioritized insights, and a clean customer-ready package.',
+    description: 'The essential Claude workflow: AI-built evidence, prioritized insights, and a clean customer-ready package.',
     features: [
       '5–10 comparable sales with adjustments',
       'Assessment ratio analysis',
@@ -18,7 +18,7 @@ const tiers = [
   {
     name: 'Operator Mode',
     tier: 'expert_reviewed' as const,
-    description: 'Everything in Starter Intelligence, plus human review layered on top of the Manus operating system.',
+    description: 'Everything in Starter Intelligence, plus human review layered on top of the Claude operating system.',
     features: [
       'Everything in Starter Intelligence',
       'Licensed appraiser review',
@@ -32,7 +32,7 @@ const tiers = [
   {
     name: 'Execution Assist',
     tier: 'guided_filing' as const,
-    description: 'Operator Mode plus live execution support so Manus does the heavy lifting and your customer never feels alone.',
+    description: 'Operator Mode plus live execution support so Claude does the heavy lifting and your customer never feels alone.',
     features: [
       'Everything in Operator Mode',
       'Live guided filing session',
@@ -46,7 +46,7 @@ const tiers = [
   {
     name: 'Autopilot Appeal',
     tier: 'full_representation' as const,
-    description: 'The highest-leverage tier: Manus runs the workflow while the team handles filing and representation.',
+    description: 'The highest-leverage tier: Claude runs the workflow while the team handles filing and representation.',
     features: [
       'Everything in Execution Assist',
       'We file the appeal for you',
@@ -68,10 +68,10 @@ export default function PricingTable() {
           AI-Led Pricing
         </span>
         <h2 className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
-          Choose How Much Manus Runs
+          Choose How Much Claude Runs
         </h2>
         <p className="mt-4 text-cream/40 max-w-xl mx-auto leading-relaxed">
-          Every tier uses the same operating system. What changes is how much of the workflow Manus and the team take off the customer’s plate.
+          Every tier uses the same operating system. What changes is how much of the workflow Claude and the team take off the customer’s plate.
         </p>
       </div>
 

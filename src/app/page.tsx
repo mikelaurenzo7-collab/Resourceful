@@ -17,7 +17,7 @@ import { buildMetadata } from '@/lib/seo/metadata';
 
 export const metadata = buildMetadata({
   title: 'REsourceful | The AI Property Tax Operator',
-  description: 'An AI-led property tax reduction company. Manus runs valuation research, case assembly, filing support, and workflow intelligence so property owners move faster and save more.',
+  description: 'An AI-led property tax reduction company. Claude runs valuation research, case assembly, filing support, and workflow intelligence so property owners move faster and save more.',
 });
 
 export default function HomePage() {
@@ -43,7 +43,7 @@ export default function HomePage() {
               href="/start"
               className="text-xs sm:text-sm font-medium text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg hover:shadow-gold hover:brightness-110 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-navy-deep whitespace-nowrap"
             >
-              Activate Manus
+              Start Your Case
             </Link>
           </div>
         </div>
@@ -64,7 +64,7 @@ export default function HomePage() {
             </div>
             <div>
               <p className="stat-number text-2xl">24/7 Operator</p>
-              <p className="text-[11px] text-cream/40 leading-tight">Manus keeps the pipeline moving without adding headcount</p>
+              <p className="text-[11px] text-cream/40 leading-tight">Claude keeps the pipeline moving without adding headcount</p>
             </div>
           </div>
           <div className="hidden md:block h-10 w-px bg-gradient-to-b from-transparent via-gold/20 to-transparent" />
@@ -194,7 +194,7 @@ export default function HomePage() {
             </div>
             <h3 className="font-display text-lg text-cream mb-2">Built To Operate Safely</h3>
             <p className="text-sm text-cream/40 leading-relaxed">
-              Manus can only run the business if trust is durable. Photos, tax bills, and personal information stay protected with strong security controls and customer-controlled deletion.
+              An AI operator can only run the business if trust is durable. Photos, tax bills, and personal information stay protected with strong security controls and customer-controlled deletion.
             </p>
           </div>
           <div className="card-premium rounded-xl p-8 text-center group" data-animate data-delay="300">
@@ -219,19 +219,19 @@ export default function HomePage() {
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[400px] h-[200px] bg-gold/[0.02] rounded-full blur-[80px] pointer-events-none" />
 
           <h2 className="relative font-display text-3xl md:text-5xl text-cream leading-tight tracking-tight text-glow-gold">
-            Ready to Let Manus Run the Case?
+            Ready to Let Claude Run the Case?
           </h2>
           <p className="relative mt-5 text-cream/45 max-w-lg mx-auto text-lg leading-relaxed">
             In a few minutes, you can hand the workflow to an AI-led operating system that researches the property, builds the case, and prepares the next move.
           </p>
           <p className="relative mt-3 text-sm text-gold/60 font-medium">
-            Upload a tax bill and save 15% while giving Manus better source data to work from.
+            Upload a tax bill and save 15% while giving Claude better source data to work from.
           </p>
           <Link
             href="/start"
             className="relative mt-10 inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-10 py-4.5 text-base font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.03] hover:brightness-110 btn-glow animate-glow"
           >
-            Activate Manus
+            Start Your Case
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
