@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     template: "%s | REsourceful",
   },
   description:
-    "An AI-led property tax reduction company. Manus runs valuation research, case assembly, filing support, and workflow intelligence so property owners move faster and save more.",
+    "An AI-led property tax reduction company. Claude runs valuation research, case assembly, filing support, and workflow intelligence so property owners move faster and save more.",
   keywords: [
     "ai property tax",
     "property tax appeal",
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "REsourceful | The AI Property Tax Operator",
     description:
-      "An AI-led property tax reduction company. Manus runs valuation research, comparable analysis, and filing support for property owners nationwide.",
+      "An AI-led property tax reduction company. Claude runs valuation research, comparable analysis, and filing support for property owners nationwide.",
     type: "website",
     siteName: "REsourceful",
     url: baseUrl,
@@ -67,7 +67,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "REsourceful | The AI Property Tax Operator",
     description:
-      "Manus runs property tax research, case assembly, and filing support so property owners move faster and save more.",
+      "Claude runs property tax research, case assembly, and filing support so property owners move faster and save more.",
     images: [`${baseUrl}/og-image.png`],
   },
   icons: {
