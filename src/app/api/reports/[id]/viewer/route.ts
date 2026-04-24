@@ -38,7 +38,7 @@ export async function GET(
   // Fetch report
   const { data: reportData, error: reportError } = await supabase
     .from('reports')
-    .select('id, status, user_id, client_email, property_address, city, state, county_fips, county, service_type, review_tier, report_pdf_storage_path, delivered_at, outcome_reported_at, appeal_outcome, case_strength_score, case_value_at_stake')
+    .select('id, status, user_id, client_email, property_address, city, state, county_fips, county, service_type, review_tier, property_type, report_pdf_storage_path, delivered_at, outcome_reported_at, appeal_outcome, case_strength_score, case_value_at_stake')
     .eq('id', reportId)
     .single();
 
@@ -46,8 +46,29 @@ export async function GET(
     return NextResponse.json({ error: 'Report not found' }, { status: 404 });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const report = reportData as any; // Dynamic field access throughout this route
+  // Narrowly typed view of the report row. Fields must match the select above —
+  // a missing column surfaces as a TS error instead of a silent `undefined`.
+  type ReportViewerRow = {
+    id: string;
+    status: string;
+    user_id: string | null;
+    client_email: string | null;
+    property_address: string;
+    city: string | null;
+    state: string | null;
+    county_fips: string | null;
+    county: string | null;
+    service_type: string;
+    review_tier: string | null;
+    property_type: string | null;
+    report_pdf_storage_path: string | null;
+    delivered_at: string | null;
+    outcome_reported_at: string | null;
+    appeal_outcome: string | null;
+    case_strength_score: number | null;
+    case_value_at_stake: number | null;
+  };
+  const report = reportData as unknown as ReportViewerRow;
 
   // ── Authenticate + verify ownership ────────────────────────────────────
   const hasAccessToken = verifyReportAccessToken(accessToken, reportId);

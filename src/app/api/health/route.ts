@@ -3,8 +3,10 @@
 // Use this to verify Supabase, Stripe, and AI are properly configured.
 
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { AI_PROVIDERS } from '@/config/ai';
 import { getFastAiConfigSummary } from '@/lib/services/fast-ai';
+import { verifyCronAuth } from '@/lib/utils/cron-auth';
 
 interface ServiceStatus {
   status: 'ok' | 'error' | 'not_configured';
@@ -12,11 +14,16 @@ interface ServiceStatus {
   latencyMs?: number;
 }
 
-export async function GET(request: Request) {
-  // Detailed health check requires CRON_SECRET auth; public gets minimal status
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-  const isAuthorized = cronSecret && authHeader === `Bearer ${cronSecret}`;
+export async function GET(request: NextRequest) {
+  // ── Public: minimal boolean status (no env introspection, no DB calls) ─
+  // Authed requests (CRON_SECRET) get the full service matrix.
+  const authFailure = verifyCronAuth(request);
+  if (authFailure) {
+    return NextResponse.json({
+      healthy: true,
+      timestamp: new Date().toISOString(),
+    });
+  }
 
   const results: Record<string, ServiceStatus> = {};
 
@@ -129,14 +136,6 @@ export async function GET(request: Request) {
 
   // ── Overall ───────────────────────────────────────────────────────────
   const allOk = Object.values(results).every(r => r.status === 'ok' || r.status === 'not_configured');
-
-  // Public: minimal status only. Authenticated: full service details.
-  if (!isAuthorized) {
-    return NextResponse.json({
-      healthy: allOk,
-      timestamp: new Date().toISOString(),
-    });
-  }
 
   return NextResponse.json({
     healthy: allOk,

@@ -11,6 +11,10 @@ import { sendDisputeAlert, sendPaymentReceipt } from '@/lib/services/resend-emai
 import type Stripe from 'stripe';
 import { paymentLogger } from '@/lib/logger';
 
+// Webhook triggers the full pipeline inline. Vercel default function timeout
+// would kill the pipeline mid-stage. Must match vercel.json functions config.
+export const maxDuration = 300;
+
 export async function POST(request: NextRequest) {
   // ── Read raw body for signature verification ────────────────────────────
   const body = await request.text();

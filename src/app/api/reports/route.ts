@@ -17,6 +17,13 @@ import { validateReferralCode, applyReferralCode } from '@/lib/services/referral
 import type { Report } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
 
+// Founder-bypass path triggers the full pipeline inline via runPipeline().catch(...).
+// Without an extended maxDuration, Vercel kills the function after the default
+// (10s Hobby / 60s Pro), dropping the pipeline mid-stage. The stale-pipeline
+// cron would recover it within ~1 hour, but raising maxDuration lets the
+// first attempt actually finish for small-to-medium reports.
+export const maxDuration = 300;
+
 export async function POST(request: NextRequest) {
   try {
     // ── Rate limit: 10 reports per 15 minutes per IP ─────────────────────
