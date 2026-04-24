@@ -591,7 +591,7 @@ export async function runComparables(
   const medianPpsf = medianOf(pricePerSqftValues);
 
   const compInserts: ComparableSaleInsert[] = prelimComps.map((item) => {
-    const { comp, idx, adj, pricePerSqft, adjustedPricePerSqft, landToBuildingRatio, comparablePhotoStoragePath, isDistressed, saleNotes, compActualAge } = item;
+    const { comp, adj, pricePerSqft, adjustedPricePerSqft, landToBuildingRatio, comparablePhotoStoragePath, isDistressed, saleNotes, compActualAge } = item;
 
     const salePrice = comp.salePrice;
     const isSalePriceOutlier = medianSalePrice != null && salePrice > 0 && (

@@ -239,30 +239,13 @@ export default function ReportViewerPage() {
   useEffect(() => {
     if (!reportId) return;
 
-    const fetchReport = async () => {
-      try {
-        const res = await fetch(viewerUrl);
-        if (!res.ok) {
-          setError(res.status === 404 ? 'Report not found.' : 'Failed to load report.');
-          return;
-        }
-        const json = await res.json();
-        setData(json);
-      } catch {
-        setError('Failed to load report. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchReport();
     // Poll with backoff: 10s → 20s → 30s → 30s (max), up to 60 attempts (~25 min)
     let pollCount = 0;
     const maxPolls = 60;
     let pollTimer: ReturnType<typeof setTimeout>;
     let cancelled = false;
 
-    const poll = async () => {
+    const poll = () => {
       if (cancelled) return;
       if (pollCount >= maxPolls) {
         setPollExhausted(true);
@@ -283,8 +266,27 @@ export default function ReportViewerPage() {
       }, delay);
     };
 
-    // Only start polling if initial fetch didn't return ready data
-    if (!data?.ready) poll();
+    const fetchReport = async () => {
+      try {
+        const res = await fetch(viewerUrl);
+        if (!res.ok) {
+          setError(res.status === 404 ? 'Report not found.' : 'Failed to load report.');
+          return;
+        }
+        const json = await res.json();
+        setData(json);
+        // Only start polling if the initial fetch didn't return ready data.
+        // Checking `json.ready` here (not closed-over `data.ready`) ensures
+        // we respect the just-fetched state, not a stale null.
+        if (!json.ready && !cancelled) poll();
+      } catch {
+        setError('Failed to load report. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReport();
 
     return () => {
       cancelled = true;
