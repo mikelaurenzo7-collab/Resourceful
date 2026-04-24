@@ -55,6 +55,19 @@ export default async function AdminLayout({
     redirect('/');
   }
 
+  // Defense in depth: refuse to serve admin UI if the admin_users.email does
+  // not match the authenticated session email. Protects against stale rows or
+  // accidental inserts with mismatched user_id.
+  const adminEmail = adminUser.email?.toLowerCase().trim();
+  const sessionEmail = user.email?.toLowerCase().trim();
+  if (!adminEmail || !sessionEmail || adminEmail !== sessionEmail) {
+    adminLogger.warn(
+      { userId: user.id },
+      '[admin] admin_users.email / session email mismatch — denying access'
+    );
+    redirect('/');
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#0c1220]">
       <AdminSidebar

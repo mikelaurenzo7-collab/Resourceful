@@ -10,9 +10,14 @@ type ReportAccessPayload = {
 };
 
 function getSigningSecret(): string {
-  return process.env.REPORT_ACCESS_TOKEN_SECRET
-    || process.env.SUPABASE_SERVICE_ROLE_KEY
-    || '';
+  // REPORT_ACCESS_TOKEN_SECRET must be explicitly set in production. Conflating
+  // it with SUPABASE_SERVICE_ROLE_KEY means rotating one forces rotating the
+  // other, and any compromise of access tokens would force a DB key rotation.
+  const explicit = process.env.REPORT_ACCESS_TOKEN_SECRET;
+  if (explicit) return explicit;
+  if (process.env.NODE_ENV === 'production') return '';
+  // Dev-only fallback keeps local testing friction-free.
+  return process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 }
 
 function encodeBase64Url(input: Buffer | string): string {

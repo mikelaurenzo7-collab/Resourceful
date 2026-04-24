@@ -40,6 +40,23 @@ export async function isAdmin(
   return admin !== null;
 }
 
+/**
+ * Stricter admin check: requires BOTH an admin_users row AND a matching email
+ * on the authenticated user record. Protects against stale admin_users rows
+ * (e.g. after a user was deleted and their UUID reassigned) and against an
+ * accidental admin_users insert with a mismatched user_id.
+ */
+export async function isAdminWithEmailMatch(
+  userId: string,
+  authEmail: string | null | undefined,
+  supabase?: SupabaseAdmin
+): Promise<boolean> {
+  if (!authEmail) return false;
+  const admin = await getAdminUser(userId, supabase);
+  if (!admin) return false;
+  return admin.email?.toLowerCase().trim() === authEmail.toLowerCase().trim();
+}
+
 export async function getApprovalEvents(
   reportId: string,
   supabase?: SupabaseAdmin

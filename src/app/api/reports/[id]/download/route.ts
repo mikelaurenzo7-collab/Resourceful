@@ -61,8 +61,8 @@ export async function GET(
       : report.client_email === user.email;
 
     if (!isOwner) {
-      const { isAdmin } = await import('@/lib/repository/admin');
-      const adminCheck = await isAdmin(user.id);
+      const { isAdminWithEmailMatch } = await import('@/lib/repository/admin');
+      const adminCheck = await isAdminWithEmailMatch(user.id, user.email);
       if (!adminCheck) {
         return NextResponse.json({ error: 'Not authorized to download this report' }, { status: 403 });
       }

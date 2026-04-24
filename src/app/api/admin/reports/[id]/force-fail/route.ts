@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isAdmin, createApprovalEvent } from '@/lib/repository/admin';
+import { isAdminWithEmailMatch, createApprovalEvent } from '@/lib/repository/admin';
 import { getReportById } from '@/lib/repository/reports';
 import { apiLogger } from '@/lib/logger';
 import { releasePipelineLock } from '@/lib/supabase/rpc';
@@ -29,7 +29,7 @@ export async function POST(
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    if (!(await isAdmin(user.id))) {
+    if (!(await isAdminWithEmailMatch(user.id, user.email))) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 

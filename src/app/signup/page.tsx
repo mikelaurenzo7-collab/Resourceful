@@ -46,7 +46,6 @@ export default function SignupPage() {
         if (authError.message.includes('password')) {
           throw new Error('Password must be at least 8 characters.');
         }
-        console.error('[signup] Auth error:', authError.message);
         throw new Error('Unable to create account. Please try again.');
       }
 

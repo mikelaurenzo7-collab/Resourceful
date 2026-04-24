@@ -5,7 +5,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { isAdmin } from '@/lib/repository/admin';
+import { isAdminWithEmailMatch } from '@/lib/repository/admin';
 import { createApprovalEvent } from '@/lib/repository/admin';
 import { getReportById } from '@/lib/repository/reports';
 import { runDelivery } from '@/lib/pipeline/stages/stage8-delivery';
@@ -33,7 +33,7 @@ export async function POST(
     }
 
     // ── Verify admin ───────────────────────────────────────────────────────
-    const adminCheck = await isAdmin(user.id);
+    const adminCheck = await isAdminWithEmailMatch(user.id, user.email);
     if (!adminCheck) {
       return NextResponse.json(
         { error: 'Admin access required' },

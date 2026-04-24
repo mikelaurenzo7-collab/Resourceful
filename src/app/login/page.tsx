@@ -43,9 +43,10 @@ function LoginForm() {
       });
 
       if (authError) {
-        // Translate common Supabase errors to user-friendly messages
+        // Translate common Supabase errors to user-friendly messages.
+        // Raw Supabase messages are never shown — Sentry captures the thrown
+        // Error for server-side debugging.
         if (authError.message.includes('schema') || authError.message.includes('relation')) {
-          console.error('[login] Database schema error:', authError.message);
           throw new Error('A temporary system error occurred. Please try again in a few minutes.');
         }
         if (authError.message.includes('Email not confirmed')) {
@@ -54,8 +55,6 @@ function LoginForm() {
         if (authError.message.includes('Invalid login credentials')) {
           throw new Error('Invalid email or password. Please try again.');
         }
-        // Fallback: don't expose raw Supabase message
-        console.error('[login] Auth error:', authError.message);
         throw new Error('Unable to sign in. Please check your credentials and try again.');
       }
 
