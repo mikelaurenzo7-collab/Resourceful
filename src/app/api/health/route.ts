@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { AI_PROVIDERS } from '@/config/ai';
-import { getFastAiConfigSummary } from '@/lib/services/fast-ai';
+import { getFastAiConfigSummary, generateFastText } from '@/lib/services/fast-ai';
 
 interface ServiceStatus {
   status: 'ok' | 'error' | 'not_configured';
@@ -13,6 +13,9 @@ interface ServiceStatus {
 }
 
 export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const deepCheck = searchParams.get('deep') === 'true';
+
   // Detailed health check requires CRON_SECRET auth; public gets minimal status
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
@@ -42,20 +45,22 @@ export async function GET(request: Request) {
         results.supabase = { status: 'ok', message: 'Connected', latencyMs: latency };
       }
 
-      // Test Storage (connectivity only, don't leak bucket names)
-      const { error: storageError } = await supabase.storage.listBuckets();
-      if (storageError) {
-        results.supabase_storage = { status: 'error', message: `Storage error: ${storageError.message}` };
-      } else {
-        results.supabase_storage = { status: 'ok', message: 'Storage accessible' };
-      }
+      if (isAuthorized) {
+        // Test Storage (connectivity only, don't leak bucket names)
+        const { error: storageError } = await supabase.storage.listBuckets();
+        if (storageError) {
+          results.supabase_storage = { status: 'error', message: `Storage error: ${storageError.message}` };
+        } else {
+          results.supabase_storage = { status: 'ok', message: 'Storage accessible' };
+        }
 
-      // Test Auth (connectivity only, don't leak user count)
-      const { error: authError } = await supabase.auth.admin.listUsers({ perPage: 1 });
-      if (authError) {
-        results.supabase_auth = { status: 'error', message: `Auth error: ${authError.message}` };
-      } else {
-        results.supabase_auth = { status: 'ok', message: 'Auth working' };
+        // Test Auth (connectivity only, don't leak user count)
+        const { error: authError } = await supabase.auth.admin.listUsers({ perPage: 1 });
+        if (authError) {
+          results.supabase_auth = { status: 'error', message: `Auth error: ${authError.message}` };
+        } else {
+          results.supabase_auth = { status: 'ok', message: 'Auth working' };
+        }
       }
     } catch (err) {
       results.supabase = { status: 'error', message: `Connection failed: ${err instanceof Error ? err.message : String(err)}` };
@@ -81,9 +86,23 @@ export async function GET(request: Request) {
   const fastKeyPresent = AI_PROVIDERS.FAST === 'groq'
     ? Boolean(process.env.GROQ_API_KEY)
     : Boolean(process.env.ANTHROPIC_API_KEY);
-  results.fast_ai = fastKeyPresent && Boolean(process.env.AI_MODEL_FAST)
-    ? { status: 'ok', message: `${fastAi.provider} / ${fastAi.model}` }
-    : { status: 'not_configured', message: `FAST provider ${fastAi.provider} is missing key or AI_MODEL_FAST` };
+
+  if (fastKeyPresent && Boolean(process.env.AI_MODEL_FAST)) {
+    if (deepCheck && isAuthorized) {
+      try {
+        const start = Date.now();
+        await generateFastText({ prompt: 'respond with ok', maxTokens: 5 });
+        const latency = Date.now() - start;
+        results.fast_ai = { status: 'ok', message: `${fastAi.provider} / ${fastAi.model} (verified)`, latencyMs: latency };
+      } catch (err) {
+        results.fast_ai = { status: 'error', message: `Verification failed: ${err instanceof Error ? err.message : String(err)}` };
+      }
+    } else {
+      results.fast_ai = { status: 'ok', message: `${fastAi.provider} / ${fastAi.model}` };
+    }
+  } else {
+    results.fast_ai = { status: 'not_configured', message: `FAST provider ${fastAi.provider} is missing key or AI_MODEL_FAST` };
+  }
 
   // ── Stripe ────────────────────────────────────────────────────────────
   if (!process.env.STRIPE_SECRET_KEY) {
@@ -99,48 +118,32 @@ export async function GET(request: Request) {
     results.stripe_publishable = { status: 'ok', message: 'Configured' };
   }
 
-  // ── Azure Maps ────────────────────────────────────────────────────────
-  if (!process.env.AZURE_MAPS_SUBSCRIPTION_KEY) {
-    results.azure_maps = { status: 'not_configured', message: 'AZURE_MAPS_SUBSCRIPTION_KEY missing (geocoding will use Census fallback)' };
-  } else {
-    results.azure_maps = { status: 'ok', message: 'Configured' };
-  }
-
-  // ── Mapillary ─────────────────────────────────────────────────────────
-  if (!process.env.NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN) {
-    results.mapillary = { status: 'not_configured', message: 'NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN missing (street imagery disabled)' };
-  } else {
-    results.mapillary = { status: 'ok', message: 'Configured' };
-  }
-
   // ── Resend Email ──────────────────────────────────────────────────────
   if (!process.env.RESEND_API_KEY) {
     results.resend = { status: 'not_configured', message: 'RESEND_API_KEY missing (email delivery disabled)' };
   } else {
-    results.resend = { status: 'ok', message: `Configured. From: ${process.env.RESEND_FROM_ADDRESS ?? 'not set'}` };
-  }
-
-  // ── ATTOM (optional) ─────────────────────────────────────────────────
-  if (!process.env.ATTOM_API_KEY) {
-    results.attom = { status: 'not_configured', message: 'Not configured — falling back to public records enrichment' };
-  } else {
-    results.attom = { status: 'ok', message: 'Configured' };
+    results.resend = { status: 'ok', message: 'Configured' };
   }
 
   // ── Overall ───────────────────────────────────────────────────────────
   const allOk = Object.values(results).every(r => r.status === 'ok' || r.status === 'not_configured');
 
-  // Public: minimal status only. Authenticated: full service details.
-  if (!isAuthorized) {
-    return NextResponse.json({
-      healthy: allOk,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
-  return NextResponse.json({
+  const responseBody: {
+    healthy: boolean;
+    timestamp: string;
+    version: string;
+    services?: Record<string, ServiceStatus>;
+    env?: string;
+  } = {
     healthy: allOk,
     timestamp: new Date().toISOString(),
-    services: results,
-  });
+    version: process.env.VERCEL_GIT_COMMIT_SHA ?? 'development',
+  };
+
+  if (isAuthorized) {
+    responseBody.services = results;
+    responseBody.env = process.env.NODE_ENV;
+  }
+
+  return NextResponse.json(responseBody);
 }
