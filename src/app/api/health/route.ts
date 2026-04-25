@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { AI_PROVIDERS } from '@/config/ai';
+import { AI_PROVIDERS, AI_MODELS } from '@/config/ai';
 import { getFastAiConfigSummary } from '@/lib/services/fast-ai';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 
@@ -15,6 +15,9 @@ interface ServiceStatus {
 }
 
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const deepCheck = searchParams.get('deepCheck') === 'true';
+
   // ── Public: minimal boolean status (no env introspection, no DB calls) ─
   // Authed requests (CRON_SECRET) get the full service matrix.
   const authFailure = verifyCronAuth(request);
@@ -49,20 +52,22 @@ export async function GET(request: NextRequest) {
         results.supabase = { status: 'ok', message: 'Connected', latencyMs: latency };
       }
 
-      // Test Storage (connectivity only, don't leak bucket names)
-      const { error: storageError } = await supabase.storage.listBuckets();
-      if (storageError) {
-        results.supabase_storage = { status: 'error', message: `Storage error: ${storageError.message}` };
-      } else {
-        results.supabase_storage = { status: 'ok', message: 'Storage accessible' };
-      }
+      if (deepCheck) {
+        // Test Storage (connectivity only, don't leak bucket names)
+        const { error: storageError } = await supabase.storage.listBuckets();
+        if (storageError) {
+          results.supabase_storage = { status: 'error', message: `Storage error: ${storageError.message}` };
+        } else {
+          results.supabase_storage = { status: 'ok', message: 'Storage accessible' };
+        }
 
-      // Test Auth (connectivity only, don't leak user count)
-      const { error: authError } = await supabase.auth.admin.listUsers({ perPage: 1 });
-      if (authError) {
-        results.supabase_auth = { status: 'error', message: `Auth error: ${authError.message}` };
-      } else {
-        results.supabase_auth = { status: 'ok', message: 'Auth working' };
+        // Test Auth (connectivity only, don't leak user count)
+        const { error: authError } = await supabase.auth.admin.listUsers({ perPage: 1 });
+        if (authError) {
+          results.supabase_auth = { status: 'error', message: `Auth error: ${authError.message}` };
+        } else {
+          results.supabase_auth = { status: 'ok', message: 'Auth working' };
+        }
       }
     } catch (err) {
       results.supabase = { status: 'error', message: `Connection failed: ${err instanceof Error ? err.message : String(err)}` };
@@ -72,13 +77,69 @@ export async function GET(request: NextRequest) {
   // ── Anthropic AI ──────────────────────────────────────────────────────
   if (!process.env.ANTHROPIC_API_KEY) {
     results.anthropic = { status: 'not_configured', message: 'ANTHROPIC_API_KEY missing' };
+  } else if (deepCheck) {
+    try {
+      const start = Date.now();
+      const { default: Anthropic } = await import('@anthropic-ai/sdk');
+      const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+      // Simple non-streaming message to verify key
+      await anthropic.messages.create({
+        model: AI_MODELS.FAST,
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'hi' }],
+      });
+      results.anthropic = { status: 'ok', message: 'Active', latencyMs: Date.now() - start };
+    } catch (err) {
+      results.anthropic = { status: 'error', message: `Anthropic check failed: ${err instanceof Error ? err.message : String(err)}` };
+    }
   } else {
     results.anthropic = { status: 'ok', message: 'Key configured' };
+  }
+
+  // ── Gemini AI ─────────────────────────────────────────────────────────
+  if (!process.env.GEMINI_API_KEY) {
+    results.gemini = { status: 'not_configured', message: 'GEMINI_API_KEY missing' };
+  } else if (deepCheck) {
+    try {
+      const start = Date.now();
+      const { GoogleGenAI } = await import('@google/genai');
+      const genAI = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+      });
+      // The @google/genai SDK v1 uses models.generateContent
+      await genAI.models.generateContent({
+        model: AI_MODELS.VISION,
+        contents: [{ role: 'user', parts: [{ text: 'hi' }] }],
+        config: { maxOutputTokens: 1 }
+      });
+      results.gemini = { status: 'ok', message: 'Active', latencyMs: Date.now() - start };
+    } catch (err) {
+      results.gemini = { status: 'error', message: `Gemini check failed: ${err instanceof Error ? err.message : String(err)}` };
+    }
+  } else {
+    results.gemini = { status: 'ok', message: 'Key configured' };
   }
 
   // ── Groq AI ───────────────────────────────────────────────────────────
   if (!process.env.GROQ_API_KEY) {
     results.groq = { status: 'not_configured', message: 'GROQ_API_KEY missing' };
+  } else if (deepCheck && AI_PROVIDERS.FAST === 'groq') {
+    try {
+      const start = Date.now();
+      const { default: OpenAI } = await import('openai');
+      const groq = new OpenAI({
+        apiKey: process.env.GROQ_API_KEY,
+        baseURL: 'https://api.groq.com/openai/v1',
+      });
+      await groq.chat.completions.create({
+        model: AI_MODELS.FAST,
+        max_tokens: 1,
+        messages: [{ role: 'user', content: 'hi' }],
+      });
+      results.groq = { status: 'ok', message: 'Active', latencyMs: Date.now() - start };
+    } catch (err) {
+      results.groq = { status: 'error', message: `Groq check failed: ${err instanceof Error ? err.message : String(err)}` };
+    }
   } else {
     results.groq = { status: 'ok', message: 'Key configured' };
   }
@@ -97,7 +158,19 @@ export async function GET(request: NextRequest) {
     results.stripe = { status: 'not_configured', message: 'STRIPE_SECRET_KEY missing' };
   } else {
     const isTest = process.env.STRIPE_SECRET_KEY.startsWith('sk_test_');
-    results.stripe = { status: 'ok', message: `Key configured (${isTest ? 'TEST mode' : 'LIVE mode'})` };
+    if (deepCheck) {
+      try {
+        const start = Date.now();
+        const { default: Stripe } = await import('stripe');
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2025-01-27.acacia' as any });
+        await stripe.balance.retrieve();
+        results.stripe = { status: 'ok', message: `Active (${isTest ? 'TEST mode' : 'LIVE mode'})`, latencyMs: Date.now() - start };
+      } catch (err) {
+        results.stripe = { status: 'error', message: `Stripe check failed: ${err instanceof Error ? err.message : String(err)}` };
+      }
+    } else {
+      results.stripe = { status: 'ok', message: `Key configured (${isTest ? 'TEST mode' : 'LIVE mode'})` };
+    }
   }
 
   if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
