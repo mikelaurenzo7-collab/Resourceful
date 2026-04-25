@@ -3,12 +3,7 @@
 // and Sentry initialization (server + edge runtimes).
 // https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
 
-// Mask email addresses anywhere in a string to keep PII out of Sentry payloads.
-const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-function maskEmails(input: string | undefined | null): string | undefined {
-  if (!input) return input ?? undefined;
-  return input.replace(EMAIL_RE, '[EMAIL]');
-}
+import { maskEmails } from '@/lib/utils/pii';
 
 export async function register() {
   const sentryDsn = process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN;
