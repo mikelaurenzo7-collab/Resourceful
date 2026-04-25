@@ -16,12 +16,12 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 8
+          version: 9
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -55,3 +55,5 @@ jobs:
           CRON_SECRET: placeholder
           ATTOM_API_KEY: placeholder
           REPORT_ACCESS_TOKEN_SECRET: placeholder
+          SENTRY_DSN: https://placeholder@sentry.io/123
+          NEXT_PUBLIC_SENTRY_DSN: https://placeholder@sentry.io/123
