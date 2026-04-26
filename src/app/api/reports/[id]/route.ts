@@ -9,6 +9,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { getReportWithDetails } from '@/lib/repository/reports';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { apiLogger } from '@/lib/logger';
+import type { ReportUpdate } from '@/types/database';
 
 export async function GET(
   _request: NextRequest,
@@ -106,7 +107,7 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const updates: Record<string, unknown> = {};
+    const updates: ReportUpdate = {};
 
     // email_delivery_preference: boolean
     if ('email_delivery_preference' in body) {

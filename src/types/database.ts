@@ -346,6 +346,7 @@ export type IncomeAnalysis = {
   investor_survey_reference: string | null;
   capitalized_value: number | null;
   concluded_value_income_approach: number | null;
+  rental_comp_confidence: 'low' | 'medium' | 'high' | 'none' | null;
   created_at: string;
 };
 
@@ -654,9 +655,10 @@ export type ComparableRentalInsert = Omit<ComparableRental, 'id' | 'created_at'>
   created_at?: string;
 };
 
-export type IncomeAnalysisInsert = Omit<IncomeAnalysis, 'id' | 'created_at'> & {
+export type IncomeAnalysisInsert = Omit<IncomeAnalysis, 'id' | 'created_at' | 'rental_comp_confidence'> & {
   id?: string;
   created_at?: string;
+  rental_comp_confidence?: 'low' | 'medium' | 'high' | 'none' | null;
 };
 
 export type ReportNarrativeInsert = Omit<ReportNarrative, 'id' | 'generated_at'> & {
