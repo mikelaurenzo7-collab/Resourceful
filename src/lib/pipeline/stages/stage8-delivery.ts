@@ -9,7 +9,7 @@
 // and enables outcome collection for the calibration feedback loop.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Report, PropertyData } from '@/types/database';
+import type { Database, Report, PropertyData, ReportUpdate } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { sendReportReadyNotification } from '@/lib/services/resend-email';
 import { subscribeToReminders } from '@/lib/services/reminder-service';
@@ -155,7 +155,7 @@ export async function runDelivery(
       // Stamp successful notification — prevents retry cron from re-sending
       await supabase
         .from('reports')
-        .update({ notification_sent_at: new Date().toISOString() } as Record<string, unknown>)
+        .update({ notification_sent_at: new Date().toISOString() } as ReportUpdate)
         .eq('id', reportId);
       pipelineLogger.info(
         { reportId, clientEmail, emailId: emailResult.data?.id },

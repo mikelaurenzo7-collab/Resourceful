@@ -3,17 +3,9 @@
 // and Sentry initialization (server + edge runtimes).
 // https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
 
-// Mask email addresses anywhere in a string to keep PII out of Sentry payloads.
-const EMAIL_RE = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-function maskEmails(input: string | undefined | null): string | undefined {
-  if (!input) return input ?? undefined;
-  return input.replace(EMAIL_RE, '[EMAIL]');
-}
-
 export async function register() {
   const sentryDsn = process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN;
   const isProd = process.env.NODE_ENV === 'production';
-  const sentryEnabled = isProd && !!sentryDsn;
 
   if (process.env.NEXT_RUNTIME === 'nodejs') {
     const { validateEnvironment } = await import('@/lib/utils/validate-env');
@@ -27,9 +19,10 @@ export async function register() {
       );
     }
 
-    // Sentry server-side initialization
-    if (sentryEnabled) {
+    // Sentry server-side initialization (v10 style)
+    if (isProd && sentryDsn) {
       const Sentry = await import('@sentry/nextjs');
+      const { maskEmails } = await import('@/lib/utils/pii');
       Sentry.init({
         dsn: sentryDsn,
         enabled: true,
@@ -68,8 +61,8 @@ export async function register() {
   }
 
   if (process.env.NEXT_RUNTIME === 'edge') {
-    // Sentry edge runtime initialization
-    if (sentryEnabled) {
+    // Sentry edge runtime initialization (v10 style)
+    if (isProd && sentryDsn) {
       const Sentry = await import('@sentry/nextjs');
       Sentry.init({
         dsn: sentryDsn,

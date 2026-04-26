@@ -16,7 +16,7 @@
 // but are never required. See data-router.ts for the adapter pattern.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Report, PropertyData, PropertyDataInsert, CountyRule } from '@/types/database';
+import type { Database, Report, PropertyData, PropertyDataInsert, CountyRule, ReportUpdate } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { geocodeAddress } from '@/lib/services/azure-maps';
 import { collectPropertyData } from '@/lib/services/data-router';
@@ -409,7 +409,7 @@ export async function runDataCollection(
     return { success: false, error: 'Geocoding returned invalid coordinates (0,0). Check the property address.' };
   }
 
-  const reportUpdate: Record<string, unknown> = {
+  const reportUpdate: ReportUpdate = {
     latitude: geo.latitude,
     longitude: geo.longitude,
   };

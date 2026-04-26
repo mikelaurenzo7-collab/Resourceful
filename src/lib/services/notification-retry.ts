@@ -9,7 +9,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendReportReadyNotification } from '@/lib/services/resend-email';
-import type { Report, PropertyData } from '@/types/database';
+import type { Report, PropertyData, ReportUpdate } from '@/types/database';
 import { emailLogger } from '@/lib/logger';
 
 /** Only retry within 3 days of delivery — after that, assume user found it via dashboard */
@@ -98,7 +98,7 @@ export async function retryFailedNotifications(): Promise<{ sent: number; errors
         // Stamp success — won't be retried again
         await supabase
           .from('reports')
-          .update({ notification_sent_at: new Date().toISOString() } as Record<string, unknown>)
+          .update({ notification_sent_at: new Date().toISOString() } as ReportUpdate)
           .eq('id', report.id);
 
         emailLogger.info({ id: report.id }, '[notification-retry] Sent for report');
