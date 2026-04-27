@@ -49,12 +49,23 @@ export async function GET(request: NextRequest) {
         results.supabase = { status: 'ok', message: 'Connected', latencyMs: latency };
       }
 
-      // Test Storage (connectivity only, don't leak bucket names)
-      const { error: storageError } = await supabase.storage.listBuckets();
+      // Test Storage (connectivity and bucket existence)
+      const { data: buckets, error: storageError } = await supabase.storage.listBuckets();
       if (storageError) {
         results.supabase_storage = { status: 'error', message: `Storage error: ${storageError.message}` };
       } else {
-        results.supabase_storage = { status: 'ok', message: 'Storage accessible' };
+        const requiredBuckets = ['reports', 'photos', 'tax-bills'];
+        const existingBuckets = buckets?.map((b) => b.name) ?? [];
+        const missingBuckets = requiredBuckets.filter((b) => !existingBuckets.includes(b));
+
+        if (missingBuckets.length > 0) {
+          results.supabase_storage = {
+            status: 'error',
+            message: `Missing required buckets: ${missingBuckets.join(', ')}`,
+          };
+        } else {
+          results.supabase_storage = { status: 'ok', message: 'Storage accessible (all buckets present)' };
+        }
       }
 
       // Test Auth (connectivity only, don't leak user count)

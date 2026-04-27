@@ -165,10 +165,10 @@ export async function POST(request: NextRequest) {
         try {
           await createAdminClient().from('reports').update({
             status: 'failed',
-            pipeline_error_log: [{ stage: 'pipeline', error: message, timestamp: new Date().toISOString() }],
-          } as never).eq('id', report.id);
+            pipeline_error_log: { stage: 'pipeline', error: message, timestamp: new Date().toISOString() },
+          }).eq('id', report.id);
         } catch (dbErr) {
-          apiLogger.error({ id: report.id, dbErr, message }, '[api/reports] CRITICAL: Pipeline failed AND error recording failed for founder report . Exception: . Pipeline error');
+          apiLogger.error({ id: report.id, dbErr, message }, '[api/reports] CRITICAL: Pipeline failed AND error recording failed for founder report');
         }
       });
       return NextResponse.json(

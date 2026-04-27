@@ -90,13 +90,13 @@ export async function POST(
         const { createAdminClient: adminClient } = await import('@/lib/supabase/admin');
         await adminClient().from('reports').update({
           status: 'failed',
-          pipeline_error_log: [{
+          pipeline_error_log: {
             stage: 'pipeline',
             error: errMessage,
             stack: stack ?? errMessage,
             timestamp: new Date().toISOString(),
-          }],
-        } as never).eq('id', reportId);
+          },
+        }).eq('id', reportId);
       } catch (dbErr) {
         apiLogger.error(
           { reportId, dbErr: String(dbErr), pipelineError: errMessage },

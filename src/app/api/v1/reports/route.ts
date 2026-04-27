@@ -147,13 +147,13 @@ export async function POST(request: NextRequest) {
       try {
         await createAdminClient().from('reports').update({
           status: 'failed',
-          pipeline_error_log: [{
+          pipeline_error_log: {
             stage: 'pipeline',
             error: message,
             stack: stack ?? message,
             timestamp: new Date().toISOString(),
-          }],
-        } as never).eq('id', report.id);
+          },
+        }).eq('id', report.id);
       } catch (dbErr) {
         apiLogger.error(
           { reportId: report.id, dbErr: String(dbErr), pipelineError: message },
