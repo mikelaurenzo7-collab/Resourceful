@@ -48,7 +48,7 @@ export async function GET(
       .from('reports')
       .select('*')
       .eq('id', reportId)
-      .eq('api_partner_id' as never, partner.id)
+      .eq('api_partner_id', partner.id)
       .single();
 
     if (fetchError || !rawReport) {
