@@ -1,0 +1,74 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "validate-photo-runner-script",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"tsx",
+				"scripts/run-address-with-photos.ts"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "run-kenmore-photo-test",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"tsx",
+				"scripts/run-address-with-photos.ts",
+				"5633 N Kenmore",
+				"Chicago",
+				"IL",
+				"Cook County",
+				"17031",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7478.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7479.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7480.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7481.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7482.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7483.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7484.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7485.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7486.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7487.jpg"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "run-kenmore-photo-test",
+			"type": "shell",
+			"command": "npx",
+			"args": [
+				"tsx",
+				"scripts/run-address-with-photos.ts",
+				"5633 N Kenmore",
+				"Chicago",
+				"IL",
+				"Cook County",
+				"17031",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7478.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7479.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7480.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7481.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7482.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7483.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7484.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7485.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7486.jpg",
+				"C:\\Users\\jorda\\Pictures\\kenmore\\IMG_7487.jpg"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "dev-server",
+			"type": "shell",
+			"command": "pnpm.cmd",
+			"args": [
+				"dev"
+			],
+			"isBackground": true
+		}
+	]
+}

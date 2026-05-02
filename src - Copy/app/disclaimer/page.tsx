@@ -1,0 +1,174 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+
+export const metadata: Metadata = {
+  title: 'Disclaimer | Resourceful',
+  description:
+    'Important disclaimers about Resourceful property analysis reports. Understand the limitations of our reports and your responsibilities as a property owner.',
+  openGraph: {
+    title: 'Disclaimer | Resourceful',
+    description: 'Important disclaimers about Resourceful property analysis reports and services.',
+    type: 'website',
+  },
+};
+
+export default function DisclaimerPage() {
+  return (
+    <main className="min-h-screen bg-pattern">
+      {/* Nav */}
+      <nav className="bg-navy-deep/80 backdrop-blur-xl nav-shadow">
+        <div className="mx-auto max-w-4xl px-6 flex items-center justify-between h-16">
+          <Link href="/" className="font-display text-xl text-gold">
+            Resourceful
+          </Link>
+          <Link href="/" className="text-sm text-cream/50 hover:text-cream transition-colors">
+            Back to Home
+          </Link>
+        </div>
+      </nav>
+
+      <div className="mx-auto max-w-3xl px-6 py-16">
+        <h1 className="font-display text-3xl md:text-4xl text-cream mb-2">Disclaimer</h1>
+        <p className="text-sm text-cream/30 mb-12">Last updated: March 17, 2026</p>
+
+        <div className="prose-legal space-y-10 text-sm text-cream/60 leading-relaxed">
+          <section className="rounded-xl border border-amber-500/20 bg-amber-950/10 p-6">
+            <h2 className="text-lg font-semibold text-amber-400 mb-3">Not Legal Advice</h2>
+            <p>
+              Resourceful is <strong className="text-cream/80">not a law firm</strong> and does not provide
+              legal advice. Our Reports are informational tools generated using
+              publicly available property data. Nothing in our Reports, website, emails, or communications
+              should be construed as legal, tax, or financial advice. No attorney-client, fiduciary, or
+              professional advisory relationship is created by purchasing or using our services.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-cream mb-3">Not an Appraisal</h2>
+            <p>
+              Our Reports are <strong className="text-cream/80">not formal property appraisals</strong> and
+              should not be used as such. A formal appraisal requires a physical inspection by a state-licensed
+              or state-certified appraiser who complies with the Uniform Standards of Professional Appraisal
+              Practice (USPAP). Our analysis is a comparable market analysis tool, not a substitute
+              for a licensed appraisal. If you need a formal appraisal for lending, legal proceedings, or other
+              official purposes, engage a licensed appraiser.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-cream mb-3">Pro Se Representation</h2>
+            <p>
+              Tax appeal reports are designed to support property owners who choose to represent themselves
+              (&quot;pro se&quot;) before their county&apos;s Board of Review, Assessment Appeals Board, or
+              equivalent body. <strong className="text-cream/80">You are solely responsible for:</strong>
+            </p>
+            <ul className="list-disc pl-6 mt-3 space-y-2">
+              <li>Deciding whether to file an appeal</li>
+              <li>Verifying all data, deadlines, and filing requirements with your county</li>
+              <li>Completing and submitting all required forms</li>
+              <li>Attending any scheduled hearings or proceedings</li>
+              <li>Meeting all applicable filing deadlines</li>
+              <li>Understanding the rules and procedures of your jurisdiction</li>
+            </ul>
+            <p className="mt-3">
+              We strongly recommend consulting a licensed attorney or property tax consultant if you are unsure
+              about the legal process in your jurisdiction, especially for high-value properties or complex
+              situations.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-cream mb-3">Data Accuracy</h2>
+            <p>
+              Our Reports rely on data from third-party sources including public property records, the ATTOM
+              Data API, county assessor databases, and comparable sales records. While we strive for accuracy:
+            </p>
+            <ul className="list-disc pl-6 mt-3 space-y-2">
+              <li>
+                Third-party data may contain errors, omissions, or outdated information.
+              </li>
+              <li>
+                Comparable sales selected may not perfectly reflect your property&apos;s unique
+                characteristics.
+              </li>
+              <li>
+                Assessment ratios, filing deadlines, and procedural rules may change without notice.
+              </li>
+              <li>
+                This analysis, while based on sound methodology, may contain errors in reasoning or
+                calculation.
+              </li>
+            </ul>
+            <p className="mt-3">
+              <strong className="text-cream/80">Always independently verify</strong> property data, comparable
+              sales, assessment values, and filing requirements before relying on them.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-cream mb-3">Analysis Methodology</h2>
+            <p>
+              Reports are generated using advanced analytical methods. Analysis content
+              may occasionally produce inaccurate statements, incorrect calculations, or conclusions that do
+              not reflect current market conditions. While our system is designed with safeguards and uses
+              real property data as inputs, all output should be reviewed critically and verified independently
+              before use in any legal or financial proceeding.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-cream mb-3">Filing Deadlines</h2>
+            <p>
+              Filing deadlines vary by county and state and may change year to year. While our Reports include
+              deadline information to the best of our knowledge, <strong className="text-cream/80">you must
+              confirm all deadlines directly with your county&apos;s assessment office or Board of Review</strong>.
+              We are not responsible for missed deadlines, expired filing windows, or procedural errors.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-cream mb-3">Photographs and Street-Level Imagery</h2>
+            <p>
+              Our Reports may include street-level imagery automatically retrieved for your property
+              address. Street-level images may be outdated and not reflect current property conditions. Photos
+              you submit are used solely for generating your Report and are not independently verified for
+              accuracy or authenticity.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-cream mb-3">Jurisdictional Variations</h2>
+            <p>
+              Property tax assessment and appeal processes vary significantly across the approximately 3,000+
+              counties in the United States. Our platform provides general guidance that may not account for
+              every local rule, procedure, or exception. Some jurisdictions may have unique requirements,
+              restrictions on who may file appeals, or specific evidence standards that our general guidance
+              does not cover.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-cream mb-3">Limitation of Liability</h2>
+            <p>
+              To the fullest extent permitted by law, Resourceful and its affiliates, officers, employees, and
+              agents shall not be liable for any damages — direct, indirect, incidental, special, consequential,
+              or punitive — arising from or related to use of our Reports, including but not limited to: failed
+              appeals, increased assessments, missed deadlines, reliance on inaccurate data, or any decisions
+              made based on our Reports.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-lg font-semibold text-cream mb-3">Questions</h2>
+            <p>
+              If you have questions about these disclaimers or our services, contact us at{' '}
+              <a href="mailto:support@resourceful.app" className="text-gold hover:text-gold-light transition-colors">
+                support@resourceful.app
+              </a>.
+            </p>
+          </section>
+        </div>
+      </div>
+    </main>
+  );
+}

@@ -1,0 +1,105 @@
+import Link from 'next/link';
+import Wordmark from '@/components/ui/Wordmark';
+
+export default function Footer() {
+  return (
+    <footer className="relative bg-navy-deep">
+      {/* Top gradient line */}
+      <div className="h-px bg-gradient-to-r from-transparent via-cream/[0.06] to-transparent" />
+
+      <div className="mx-auto max-w-6xl px-6 py-14">
+        <div className="grid md:grid-cols-4 gap-12">
+          {/* Brand */}
+          <div className="md:col-span-2">
+            <Link href="/" className="font-display text-xl text-cream hover:text-gold-light transition-colors">
+              <Wordmark />
+            </Link>
+            <p className="mt-4 text-sm text-cream/50 leading-relaxed max-w-sm">
+              Professional property tax appeal reports built on real comparable sales data
+              and IAAO appraisal standards. Serving homeowners in all 50 states.
+            </p>
+          </div>
+
+          {/* Services */}
+          <div>
+            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-cream/40 mb-4">
+              Services
+            </h4>
+            <ul className="space-y-3">
+              <li>
+                <Link href="/start" className="text-sm text-cream/50 hover:text-cream/90 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
+                  Tax Appeal Report
+                </Link>
+              </li>
+              <li>
+                <Link href="/start" className="text-sm text-cream/50 hover:text-cream/90 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
+                  Pre-Purchase Analysis
+                </Link>
+              </li>
+              <li>
+                <Link href="/start" className="text-sm text-cream/50 hover:text-cream/90 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
+                  Pre-Listing Report
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div>
+            <h4 className="text-[11px] font-semibold uppercase tracking-wider text-cream/40 mb-4">
+              Legal
+            </h4>
+            <ul className="space-y-3">
+              <li>
+                <Link href="/terms" className="text-sm text-cream/50 hover:text-cream/90 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link href="/privacy" className="text-sm text-cream/50 hover:text-cream/90 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/disclaimer" className="text-sm text-cream/50 hover:text-cream/90 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
+                  Disclaimer
+                </Link>
+              </li>
+              <li>
+                <a href="mailto:support@resourceful.app" className="text-sm text-cream/50 hover:text-cream/90 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 rounded">
+                  Contact Support
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Bottom bar */}
+        <div className="mt-16 pt-8 space-y-3" style={{ borderTop: '1px solid rgba(212, 168, 71, 0.06)' }}>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-xs text-cream/50">
+              &copy; {new Date().getFullYear()} REsourceful. All rights reserved.
+            </p>
+            <div className="flex items-center gap-4 text-xs text-cream/50">
+              <Link href="/terms" className="hover:text-cream/40 transition-colors">Terms</Link>
+              <span className="text-cream/10">&middot;</span>
+              <Link href="/privacy" className="hover:text-cream/40 transition-colors">Privacy</Link>
+              <span className="text-cream/10">&middot;</span>
+              <Link href="/disclaimer" className="hover:text-cream/40 transition-colors">Disclaimer</Link>
+            </div>
+          </div>
+          <p className="text-xs text-cream/15 text-center md:text-left leading-relaxed max-w-3xl">
+            REsourceful is not a law firm and does not provide legal advice. Reports are data-driven
+            informational tools based on public property data, not formal appraisals. You are responsible for
+            verifying all data, meeting filing deadlines, and making your own decisions regarding property tax
+            appeals. See our{' '}
+            <Link href="/disclaimer" className="underline hover:text-cream/50 transition-colors">
+              full disclaimer
+            </Link>{' '}
+            for details.
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+}

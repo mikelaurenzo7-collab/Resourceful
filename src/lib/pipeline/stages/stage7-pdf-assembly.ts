@@ -24,14 +24,19 @@ export async function runPdfAssembly(
 
   // ── QA Pre-flight Checks ──────────────────────────────────────────────
   const qaIssues: string[] = [];
+  const hasComps = !!templateData.comparableSales && templateData.comparableSales.length > 0;
+  const hasConcludedValue = !!templateData.concludedValue && templateData.concludedValue > 0;
 
-  if (!templateData.comparableSales || templateData.comparableSales.length === 0) {
-    qaIssues.push('No comparable sales found');
+  if (!hasComps) {
+    // Soft warning only — Stage 5 may have produced a defensible value via
+    // cost approach, income approach, prior-sale extrapolation, or analyst
+    // estimate when ATTOM and web search returned no comparable sales.
+    qaIssues.push('No comparable sales found (informational — value derived from alternate approach)');
   } else if (templateData.comparableSales.length < 3) {
     qaIssues.push(`Only ${templateData.comparableSales.length} comparable sales (minimum 3 recommended)`);
   }
 
-  if (!templateData.concludedValue || templateData.concludedValue <= 0) {
+  if (!hasConcludedValue) {
     qaIssues.push('Concluded value is missing or zero');
   }
 
@@ -57,9 +62,11 @@ export async function runPdfAssembly(
 
   if (qaIssues.length > 0) {
     pipelineLogger.warn({ reportId, qaIssues }, '[stage7] QA pre-flight warnings');
-    // Hard-fail on critical issues (no comps, no concluded value, no executive summary)
+    // Hard-fail only on truly missing valuation outputs — not on missing comps
+    // when an alternate approach has already produced a concluded value.
     const hardFails = qaIssues.filter(
-      i => i.includes('No comparable sales') || i.includes('Concluded value') || i.includes('Missing critical narrative: executive_summary')
+      i => i.includes('Concluded value is missing') ||
+           i.includes('Missing critical narrative: executive_summary')
     );
     if (hardFails.length > 0) {
       return { success: false, error: `QA pre-flight failed: ${hardFails.join('; ')}` };

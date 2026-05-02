@@ -1,0 +1,21 @@
+[2026-04-13T21:04:06.802Z] Starting pipeline test for 5633 N Kenmore, Chicago, IL
+[2026-04-13T21:04:06.832Z] Created report: 236c7f77-094e-4533-8591-afca89c60f43
+[2026-04-13T21:04:06.865Z] Uploaded photo 1/10: IMG_7478.jpg
+[2026-04-13T21:04:06.894Z] Uploaded photo 2/10: IMG_7479.jpg
+[2026-04-13T21:04:06.925Z] Uploaded photo 3/10: IMG_7480.jpg
+[2026-04-13T21:04:06.952Z] Uploaded photo 4/10: IMG_7481.jpg
+[2026-04-13T21:04:06.974Z] Uploaded photo 5/10: IMG_7482.jpg
+[2026-04-13T21:04:06.994Z] Uploaded photo 6/10: IMG_7483.jpg
+[2026-04-13T21:04:07.013Z] Uploaded photo 7/10: IMG_7484.jpg
+[2026-04-13T21:04:07.034Z] Uploaded photo 8/10: IMG_7485.jpg
+[2026-04-13T21:04:07.051Z] Uploaded photo 9/10: IMG_7486.jpg
+[2026-04-13T21:04:07.076Z] Uploaded photo 10/10: IMG_7487.jpg
+[2026-04-13T21:04:07.980Z] Running pipeline (stages 1-7)...
+[2026-04-13T21:12:24.692Z] Running delivery (stage 8)...
+[2026-04-13T21:12:24.906Z] Pipeline success for report 236c7f77-094e-4533-8591-afca89c60f43
+[2026-04-13T21:12:24.906Z] Status: delivered
+[2026-04-13T21:12:24.906Z] Last stage: stage-7-pdf
+[2026-04-13T21:12:24.906Z] PDF path: 236c7f77-094e-4533-8591-afca89c60f43/report_236c7f77_20260413.pdf
+[2026-04-13T21:12:24.907Z] Delivered at: 2026-04-13T21:12:24.697+00:00
+[2026-04-13T21:12:24.907Z] Open report: http://localhost:3000/report/236c7f77-094e-4533-8591-afca89c60f43?token=eyJ2IjoxLCJyZXBvcnRJZCI6IjIzNmM3Zjc3LTA5NGUtNDUzMy04NTkxLWFmY2E4OWM2MGY0MyIsImV4cCI6MTc3NjcxOTU0NH0.EG1tCU79vZNUILsEKHzX125zBfnIoc3UJbfyEM4KtHg
+[2026-04-13T21:12:24.907Z] Local run log saved to pipeline-run-1776114246789.log

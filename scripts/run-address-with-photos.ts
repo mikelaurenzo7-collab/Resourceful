@@ -12,7 +12,6 @@ import { existsSync, readFileSync, createWriteStream } from 'fs';
 import { basename, extname, resolve } from 'path';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../src/types/database';
-import { generateReportAccessToken } from '../src/lib/utils/report-access';
 
 function loadEnvLocal() {
   const envPath = resolve(process.cwd(), '.env.local');
@@ -187,8 +186,6 @@ async function main() {
     process.exit(1);
   }
 
-  const accessToken = generateReportAccessToken(reportId);
-
   const { data: finalReport } = await sb
     .from('reports')
     .select('status,pipeline_last_completed_stage,report_pdf_storage_path,delivered_at')
@@ -200,7 +197,8 @@ async function main() {
   log(`Last stage: ${finalReport?.pipeline_last_completed_stage || 'unknown'}`);
   log(`PDF path: ${finalReport?.report_pdf_storage_path || 'not generated'}`);
   log(`Delivered at: ${finalReport?.delivered_at || 'not delivered'}`);
-  log(`Open report: http://localhost:3000/report/${reportId}?token=${accessToken}`);
+  log(`Open report (login required): http://localhost:3000/report/${reportId}`);
+  log('If redirected, sign in at http://localhost:3000/login then reopen the report URL.');
   log(`Local run log saved to ${logFile}`);
 
   logStream.end();

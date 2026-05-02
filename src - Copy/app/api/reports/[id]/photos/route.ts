@@ -1,0 +1,211 @@
+// ─── Photo Upload API ───────────────────────────────────────────────────────
+// POST: Accept multipart form data, upload to Supabase Storage, create photos
+// row, return photo record. Requires authenticated user who owns the report.
+
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { photoUploadSchema } from '@/lib/validations/report';
+import { getReportById } from '@/lib/repository/reports';
+import { applyRateLimit } from '@/lib/rate-limit';
+import type { PhotoInsert } from '@/types/database';
+import { apiLogger } from '@/lib/logger';
+
+function validateImageMagicBytes(buffer: Buffer, declaredType: string): boolean {
+  if (buffer.length < 12) return false;
+
+  const signatures: Record<string, (b: Buffer) => boolean> = {
+    'image/jpeg': (b) => b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF,
+    'image/png': (b) => b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47,
+    'image/webp': (b) => b.slice(0, 4).toString() === 'RIFF' && b.slice(8, 12).toString() === 'WEBP',
+    'image/heic': (b) => {
+      const ftyp = b.slice(4, 8).toString();
+      return ftyp === 'ftyp' && ['heic', 'heix', 'mif1'].some(t => b.slice(8, 12).toString().startsWith(t));
+    },
+    'image/heif': (b) => {
+      const ftyp = b.slice(4, 8).toString();
+      return ftyp === 'ftyp' && ['heic', 'heix', 'mif1'].some(t => b.slice(8, 12).toString().startsWith(t));
+    },
+  };
+
+  const check = signatures[declaredType];
+  return check ? check(buffer) : false;
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // ── Rate limit: 60 photo uploads per 15 minutes per IP ───────────────
+    const rateLimited = await applyRateLimit(request, { prefix: 'photo-upload', limit: 60, windowSeconds: 900 });
+    if (rateLimited) return rateLimited;
+
+    const { id: reportId } = await params;
+
+    // ── Authenticate user ──────────────────────────────────────────────────
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // ── Verify report ownership ────────────────────────────────────────────
+    const report = await getReportById(reportId);
+
+    if (!report) {
+      return NextResponse.json(
+        { error: 'Report not found' },
+        { status: 404 }
+      );
+    }
+
+    // For auth-based reports: match user_id. For email-only reports (user_id is null): match email.
+    const isOwner = report.user_id
+      ? report.user_id === user.id
+      : report.client_email === user.email;
+
+    if (!isOwner) {
+      return NextResponse.json(
+        { error: 'Not authorized to upload photos to this report' },
+        { status: 403 }
+      );
+    }
+
+    // ── Enforce per-report photo limit (max 30 photos) ────────────────────
+    const admin = createAdminClient();
+    const { count: existingPhotos } = await admin
+      .from('photos')
+      .select('*', { count: 'exact', head: true })
+      .eq('report_id', reportId);
+
+    if (existingPhotos != null && existingPhotos >= 30) {
+      return NextResponse.json(
+        { error: 'Maximum of 30 photos per report reached' },
+        { status: 400 }
+      );
+    }
+
+    // ── Parse multipart form data ──────────────────────────────────────────
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    const photoType = formData.get('photo_type') as string | null;
+    const sortOrder = formData.get('sort_order') as string | null;
+    const caption = formData.get('caption') as string | null;
+
+    if (!file) {
+      return NextResponse.json(
+        { error: 'No file provided' },
+        { status: 400 }
+      );
+    }
+
+    // ── Validate file size (max 50MB) ────────────────────────────────────
+    const MAX_FILE_SIZE = 50 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: 'File too large. Maximum size is 50MB.' },
+        { status: 413 }
+      );
+    }
+
+    // ── Validate file type ───────────────────────────────────────────────
+    const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return NextResponse.json(
+        { error: 'Invalid file type. Accepted: JPEG, PNG, WebP, HEIC.' },
+        { status: 400 }
+      );
+    }
+
+    // ── Validate metadata ──────────────────────────────────────────────────
+    const parsed = photoUploadSchema.safeParse({
+      photo_type: photoType,
+      sort_order: sortOrder ? parseInt(sortOrder, 10) : 0,
+      caption: caption ?? null,
+    });
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: 'Validation failed', details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    // ── Upload to Supabase Storage ─────────────────────────────────────────
+    // Reuses admin client created above for photo count check
+    // Clean filename: {reportId}/{type}_{order}_{timestamp}.{ext}
+    const fileExt = file.name.split('.').pop()?.toLowerCase() ?? 'jpg';
+    const uploadType = parsed.data.photo_type ?? 'other';
+    const uploadOrder = String(parsed.data.sort_order ?? 0).padStart(2, '0');
+    const filename = `${reportId}/${uploadType}_${uploadOrder}_${Date.now()}.${fileExt}`;
+
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+
+    // ── Validate magic bytes (prevent MIME spoofing) ─────────────────────
+    const magicBytesValid = validateImageMagicBytes(fileBuffer, file.type);
+    if (!magicBytesValid) {
+      return NextResponse.json(
+        { error: 'File content does not match declared type. Upload a valid image.' },
+        { status: 400 }
+      );
+    }
+
+    const { error: uploadError } = await admin.storage
+      .from('photos')
+      .upload(filename, fileBuffer, {
+        contentType: file.type,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      apiLogger.error({ err: uploadError.message }, 'Upload error');
+      return NextResponse.json(
+        { error: 'Failed to upload file' },
+        { status: 500 }
+      );
+    }
+
+    // ── Create photos row ──────────────────────────────────────────────────
+    const photoData: PhotoInsert = {
+      report_id: reportId,
+      photo_type: parsed.data.photo_type,
+      storage_path: filename,
+      sort_order: parsed.data.sort_order,
+      caption: parsed.data.caption ?? null,
+      ai_analysis: null,
+    };
+
+    const { data: photo, error: insertError } = await admin
+      .from('photos')
+      .insert(photoData)
+      .select()
+      .single();
+
+    if (insertError || !photo) {
+      apiLogger.error({ err: insertError?.message }, 'Insert error');
+      // Clean up uploaded file on DB insert failure
+      await admin.storage.from('photos').remove([filename]);
+      return NextResponse.json(
+        { error: 'Failed to create photo record' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ photo }, { status: 201 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    apiLogger.error({ err: message }, 'Unhandled error');
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}

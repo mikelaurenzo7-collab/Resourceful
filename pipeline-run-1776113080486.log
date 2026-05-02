@@ -1,0 +1,19 @@
+[2026-04-13T20:44:40.500Z] Starting pipeline test for 5633 N Kenmore, Chicago, IL
+[2026-04-13T20:44:40.542Z] Created report: e4ee87a9-9b3d-4ff8-a4e7-a241502c96e8
+[2026-04-13T20:44:40.629Z] Uploaded photo 1/10: IMG_7478.jpg
+[2026-04-13T20:44:40.664Z] Uploaded photo 2/10: IMG_7479.jpg
+[2026-04-13T20:44:40.707Z] Uploaded photo 3/10: IMG_7480.jpg
+[2026-04-13T20:44:40.727Z] Uploaded photo 4/10: IMG_7481.jpg
+[2026-04-13T20:44:40.747Z] Uploaded photo 5/10: IMG_7482.jpg
+[2026-04-13T20:44:40.868Z] Uploaded photo 6/10: IMG_7483.jpg
+[2026-04-13T20:44:40.890Z] Uploaded photo 7/10: IMG_7484.jpg
+[2026-04-13T20:44:40.911Z] Uploaded photo 8/10: IMG_7485.jpg
+[2026-04-13T20:44:40.931Z] Uploaded photo 9/10: IMG_7486.jpg
+[2026-04-13T20:44:40.956Z] Uploaded photo 10/10: IMG_7487.jpg
+[2026-04-13T20:44:42.225Z] Running pipeline (stages 1-7)...
+[2026-04-13T20:50:37.112Z] Pipeline success for report e4ee87a9-9b3d-4ff8-a4e7-a241502c96e8
+[2026-04-13T20:50:37.112Z] Status: pending_approval
+[2026-04-13T20:50:37.112Z] Last stage: stage-7-pdf
+[2026-04-13T20:50:37.112Z] PDF path: e4ee87a9-9b3d-4ff8-a4e7-a241502c96e8/report_e4ee87a9_20260413.pdf
+[2026-04-13T20:50:37.112Z] Open report: http://localhost:3000/report/e4ee87a9-9b3d-4ff8-a4e7-a241502c96e8
+[2026-04-13T20:50:37.112Z] Local run log saved to pipeline-run-1776113080486.log

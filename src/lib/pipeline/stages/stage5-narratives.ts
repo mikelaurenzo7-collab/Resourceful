@@ -407,11 +407,15 @@ export async function runNarratives(
             report.longitude ?? null,
           );
           if (aiEst && aiEst.estimatedValue > 0) {
-            (propertyData as Record<string, unknown>)['_priorSaleExtrapolated'] = aiEst.estimatedValue;
-            (propertyData as Record<string, unknown>)['_priorSaleDate'] = new Date().toISOString().substring(0, 10);
-            (propertyData as Record<string, unknown>)['_priorSalePrice'] = aiEst.estimatedValue;
+            // CRITICAL: AI knowledge-based estimate is NOT a prior sale.
+            // Store ONLY in dedicated AI-estimate fields — do NOT populate
+            // _priorSalePrice / _priorSaleDate (those represent confirmed
+            // arm's-length transactions and would be presented as such by
+            // the narrative model, fabricating a "sold today" claim).
+            (propertyData as Record<string, unknown>)['_aiEstimateValue'] = aiEst.estimatedValue;
             (propertyData as Record<string, unknown>)['_aiEstimateReasoning'] = aiEst.reasoning;
             (propertyData as Record<string, unknown>)['_aiEstimateRange'] = { low: aiEst.rangeLow, high: aiEst.rangeHigh };
+            (propertyData as Record<string, unknown>)['_aiEstimateConfidence'] = aiEst.confidence;
           } else {
             return {
               success: false,
@@ -445,6 +449,7 @@ export async function runNarratives(
 
   let concludedValue: number;
   const _priorSaleExtrapolated = (propertyData as Record<string, unknown>)['_priorSaleExtrapolated'] as number | undefined;
+  const _aiEstimateValue = (propertyData as Record<string, unknown>)['_aiEstimateValue'] as number | undefined;
   if (comps.length > 0) {
     concludedValue = computeMedianValue(comps, propertyData.building_sqft_gross, (c) => c.adjusted_price_per_sqft);
   } else if (incomeData?.concluded_value_income_approach) {
@@ -455,6 +460,10 @@ export async function runNarratives(
     // Prior sale extrapolated to current market (last resort)
     concludedValue = _priorSaleExtrapolated;
     pipelineLogger.warn({ concludedValue: concludedValue.toLocaleString() }, '[stage5] using prior-sale extrapolated value as concluded value: $');
+  } else if (_aiEstimateValue) {
+    // AI knowledge-based estimate (absolute last resort — no comps, no income, no cost, no prior sale)
+    concludedValue = _aiEstimateValue;
+    pipelineLogger.warn({ concludedValue: concludedValue.toLocaleString() }, '[stage5] using AI knowledge-based estimate as concluded value: $');
   } else {
     // Cost approach only (validated above)
     // Re-run with the same estimated land value logic used in the guard above.
@@ -1245,14 +1254,46 @@ export async function runNarratives(
   const _psd = (propertyData as Record<string, unknown>)['_priorSaleDate'] as string | undefined;
   const _psp = (propertyData as Record<string, unknown>)['_priorSalePrice'] as number | undefined;
   if (_pse && _psd && _psp) {
-    const yearsElapsed = (Date.now() - new Date(_psd).getTime()) / (365.25 * 24 * 3600 * 1000);
-    payload.priorSaleAnalysis = {
-      lastSalePrice: _psp,
-      lastSaleDate: _psd,
-      yearsElapsed: Math.round(yearsElapsed * 10) / 10,
-      annualAppreciationPct: appreciationRate * 100,
-      extrapolatedValue: _pse,
+    // Sanity guard: reject sales dated in the future or within the last 30 days
+    // (a "sale" younger than 30 days is almost certainly a hallucination or a
+    // pending listing mis-extracted from a search snippet — not a closed
+    // arm's-length transaction useable as appraisal evidence).
+    const saleMs = new Date(_psd).getTime();
+    const ageDays = (Date.now() - saleMs) / (24 * 3600 * 1000);
+    if (Number.isFinite(ageDays) && ageDays >= 30) {
+      const yearsElapsed = ageDays / 365.25;
+      payload.priorSaleAnalysis = {
+        lastSalePrice: _psp,
+        lastSaleDate: _psd,
+        yearsElapsed: Math.round(yearsElapsed * 10) / 10,
+        annualAppreciationPct: appreciationRate * 100,
+        extrapolatedValue: _pse,
+      };
+    } else {
+      pipelineLogger.warn(
+        { _psd, ageDays },
+        '[stage5] Rejected suspicious prior sale (date in future or <30 days old) — likely hallucinated; omitting from payload'
+      );
+    }
+  }
+
+  // ── Inject AI knowledge-based estimate (separate field — NOT a sale) ──
+  const _aiv = (propertyData as Record<string, unknown>)['_aiEstimateValue'] as number | undefined;
+  if (_aiv && _aiv > 0) {
+    const range = (propertyData as Record<string, unknown>)['_aiEstimateRange'] as { low: number; high: number } | undefined;
+    const reasoning = (propertyData as Record<string, unknown>)['_aiEstimateReasoning'] as string | undefined;
+    const confidence = (propertyData as Record<string, unknown>)['_aiEstimateConfidence'] as 'low' | 'medium' | undefined;
+    payload.aiKnowledgeEstimate = {
+      estimatedValue: _aiv,
+      rangeLow: range?.low ?? Math.round(_aiv * 0.85),
+      rangeHigh: range?.high ?? Math.round(_aiv * 1.15),
+      confidence: confidence ?? 'low',
+      reasoning: reasoning ?? '',
     };
+    pipelineLogger.warn(
+      { estimatedValue: _aiv, rangeLow: payload.aiKnowledgeEstimate.rangeLow, rangeHigh: payload.aiKnowledgeEstimate.rangeHigh },
+      '[stage5] AI knowledge-based estimate injected into payload (NOT a prior sale)'
+    );
   }
 
   // ── Call Anthropic to generate narratives ──────────────────────────────

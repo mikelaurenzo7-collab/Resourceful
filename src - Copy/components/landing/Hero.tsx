@@ -1,0 +1,357 @@
+'use client';
+
+import { useState, useRef, useEffect, useCallback } from 'react';
+import Link from 'next/link';
+
+// ─── Types ──────────────────────────────────────────────────────────────────
+
+interface ParsedAddress {
+  line1: string;
+  city: string;
+  state: string;
+  zip: string;
+  county: string;
+}
+
+interface ValuationResult {
+  assessedValue: number;
+  estimatedOverassessment: number;
+  estimatedAnnualSavings: number | null;
+}
+
+interface AddressSuggestion {
+  formattedAddress: string;
+  streetNumber: string | null;
+  route: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  county: string | null;
+  latitude: number;
+  longitude: number;
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function formatDollar(value: number): string {
+  return `$${value.toLocaleString('en-US', { minimumFractionDigits: 0 })}`;
+}
+
+// ─── Component ──────────────────────────────────────────────────────────────
+
+export default function Hero() {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const [isSearching, setIsSearching] = useState(false);
+
+
+  const valuationAbortRef = useRef<AbortController | null>(null);
+  const [address, setAddress] = useState<ParsedAddress | null>(null);
+  const [valuation, setValuation] = useState<ValuationResult | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [hasResult, setHasResult] = useState(false);
+  const [lookupFailed, setLookupFailed] = useState(false);
+
+  // Static fallback values
+  const staticValues = { assessed: 320000, market: 265000, overpayment: 1180 };
+
+  const displayAssessed = hasResult && valuation ? valuation.assessedValue : staticValues.assessed;
+  const displayMarket = hasResult && valuation
+    ? valuation.assessedValue - valuation.estimatedOverassessment
+    : staticValues.market;
+  const displayOverpayment = hasResult && valuation
+    ? (valuation.estimatedAnnualSavings ?? staticValues.overpayment)
+    : staticValues.overpayment;
+
+  const ctaHref = address
+    ? `/start?address=${encodeURIComponent(JSON.stringify(address))}`
+    : '/start';
+
+  const fetchValuation = useCallback(async (addr: ParsedAddress) => {
+    // Cancel any in-flight valuation request to prevent stale data
+    valuationAbortRef.current?.abort();
+    const controller = new AbortController();
+    valuationAbortRef.current = controller;
+
+    setLoading(true);
+    setLookupFailed(false);
+    try {
+      const res = await fetch('/api/valuation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          address: addr.line1,
+          city: addr.city,
+          state: addr.state,
+          county: addr.county || undefined,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!res.ok) throw new Error('API error');
+      const data = await res.json();
+
+      setValuation({
+        assessedValue: data.assessedValue,
+        estimatedOverassessment: data.estimatedOverassessment,
+        estimatedAnnualSavings: data.estimatedAnnualSavings,
+      });
+      setHasResult(true);
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      setHasResult(false);
+      setLookupFailed(true);
+    } finally {
+      if (!controller.signal.aborted) setLoading(false);
+    }
+  }, []);
+
+  // Fetch address suggestions from server-side Azure Maps proxy
+  const fetchSuggestions = useCallback(async (q: string) => {
+    setIsSearching(true);
+    if (q.trim().length < 3) {
+      setSuggestions([]);
+      setIsSearching(false);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/address-search?q=${encodeURIComponent(q)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setSuggestions(data.suggestions ?? []);
+      setShowSuggestions(true);
+    } catch {
+      // Silent — autocomplete is non-critical
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  // Debounced search on input change
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchSuggestions(query), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query, fetchSuggestions]);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const handleSelect = (s: AddressSuggestion) => {
+    const line1 = [s.streetNumber, s.route].filter(Boolean).join(' ');
+    const parsed: ParsedAddress = {
+      line1: line1 || s.formattedAddress,
+      city: s.city ?? '',
+      state: s.state ?? '',
+      zip: s.zip ?? '',
+      county: s.county ?? '',
+    };
+    setQuery(s.formattedAddress);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    setActiveIndex(-1);
+    setAddress(parsed);
+    fetchValuation(parsed);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions || suggestions.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev + 1) % suggestions.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev - 1 + suggestions.length) % suggestions.length);
+    } else if (e.key === 'Enter' && activeIndex >= 0) {
+      e.preventDefault();
+      handleSelect(suggestions[activeIndex]);
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+      setActiveIndex(-1);
+    }
+  };
+
+  return (
+    <section className="relative overflow-hidden bg-aurora">
+      {/* Decorative overlays */}
+      <div className="absolute inset-0 bg-pattern opacity-40 z-[1] pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-navy-deep/60 via-navy-deep/80 to-navy-deep z-[1] pointer-events-none" />
+
+      <div className="relative mx-auto max-w-6xl px-6 pt-32 sm:pt-36 pb-24 sm:pb-28 z-10">
+        <div className="text-center">
+          {/* Eyebrow */}
+          <div className="mb-6 sm:mb-8 flex items-center justify-center gap-3 animate-fade-in">
+            <span className="h-px w-8 sm:w-12 bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+            <span className="text-[11px] sm:text-xs font-semibold tracking-[0.2em] text-gold/70 uppercase">
+              Claude-Run Property Intelligence
+            </span>
+            <span className="h-px w-8 sm:w-12 bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+          </div>
+
+          {/* Headline */}
+          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl leading-[1.1] text-cream tracking-tight mx-auto max-w-4xl animate-fade-in" style={{ animationDelay: '0.15s' }}>
+            Your <span className="font-mixed-italic text-gold">AI cofounder</span> for
+            <br className="hidden sm:block" />
+            {' '}property tax wins.
+          </h1>
+
+          <p
+            className="mt-6 sm:mt-8 max-w-2xl mx-auto text-base sm:text-lg md:text-xl text-cream/60 leading-relaxed animate-fade-in"
+            style={{ animationDelay: '0.4s' }}
+          >
+            Resourceful is an AI-led property tax business. Claude runs comparable research,
+            condition analysis, county workflow prep, and case assembly so every customer gets
+            a faster, smarter path to lower taxes.
+          </p>
+
+          {/* Address input */}
+          <div className="mt-8 sm:mt-10 max-w-xl mx-auto animate-fade-in" style={{ animationDelay: '0.55s' }}>
+            <div className="relative group" ref={containerRef}>
+              {isSearching ? (
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 scanner-container transform scale-[0.6] opacity-70">
+                  <div className="scanner-ring" />
+                  <div className="scanner-progress" />
+                  <div className="scanner-dot" />
+                </div>
+              ) : (
+                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gold/40 group-focus-within:text-gold/70 transition-colors pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              )}
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={(e) => { setQuery(e.target.value); setActiveIndex(-1); }}
+                onFocus={() => { if (suggestions.length) setShowSuggestions(true); }}
+                onKeyDown={handleKeyDown}
+                placeholder="Enter a property address to get started..."
+                className="w-full bg-navy-light/60 border border-cream/[0.1] rounded-xl pl-12 pr-4 py-4.5 text-cream placeholder:text-cream/45 focus:border-gold/50 focus:outline-none focus:ring-2 focus:ring-gold/30 focus:bg-navy-light/80 focus:shadow-[0_0_30px_rgba(212,168,71,0.08)] transition-all text-base"
+                autoComplete="off"
+                role="combobox"
+                aria-controls={showSuggestions && suggestions.length > 0 ? 'hero-address-listbox' : undefined}
+                aria-expanded={showSuggestions && suggestions.length > 0}
+                aria-autocomplete="list"
+                aria-activedescendant={activeIndex >= 0 ? `hero-suggestion-${activeIndex}` : undefined}
+              />
+              {/* Autocomplete dropdown */}
+              {showSuggestions && suggestions.length > 0 && (
+                <ul id="hero-address-listbox" className="absolute z-50 mt-1 w-full rounded-xl border border-gold/20 bg-navy-deep/95 backdrop-blur-sm shadow-xl overflow-hidden" role="listbox">
+                  {suggestions.map((s, i) => (
+                    <li key={i}>
+                      <button
+                        id={`hero-suggestion-${i}`}
+                        type="button"
+                        className={`w-full text-left px-4 py-3 text-sm text-cream transition-colors border-b border-gold/5 last:border-0 ${
+                          i === activeIndex ? 'bg-gold/15' : 'hover:bg-gold/10'
+                        }`}
+                        onMouseDown={() => handleSelect(s)}
+                        onMouseEnter={() => setActiveIndex(i)}
+                        role="option"
+                        aria-selected={i === activeIndex}
+                      >
+                        {s.formattedAddress}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          {/* Value display */}
+          <div className="mt-6 sm:mt-8 flex justify-center animate-fade-in" style={{ animationDelay: '0.65s' }}>
+            <div className="card-elevated border-gradient rounded-xl px-8 py-7 inline-block w-full max-w-3xl">
+              {!hasResult && !loading && (
+                <p className="text-[10px] uppercase tracking-widest text-cream/50 mb-3 text-center">AI Opportunity Snapshot</p>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-12 text-center">
+                {loading ? (
+                  /* Skeleton loader */
+                  <>
+                    {[0, 1, 2].map((i) => (
+                      <div key={i}>
+                        <div className="h-3 w-20 mx-auto bg-cream/10 rounded animate-pulse mb-3" />
+                        <div className="h-7 w-28 mx-auto bg-cream/10 rounded animate-pulse" />
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <div className={`transition-all duration-500 ${hasResult ? 'opacity-100 translate-y-0' : ''}`}>
+                      <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
+                        Current Assessment
+                      </p>
+                      <p className="font-display text-xl md:text-2xl text-cream">
+                        {formatDollar(displayAssessed)}
+                      </p>
+                    </div>
+                    <div className={`transition-all duration-500 delay-100 ${hasResult ? 'opacity-100 translate-y-0' : ''}`}>
+                      <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
+                        AI Estimate
+                      </p>
+                      <p className="font-display text-xl md:text-2xl text-gold">
+                        {formatDollar(displayMarket)}
+                      </p>
+                    </div>
+                    <div className={`transition-all duration-500 delay-200 ${hasResult ? 'opacity-100 translate-y-0' : ''}`}>
+                      <p className="text-[10px] md:text-xs uppercase tracking-wider text-cream/35 mb-1.5">
+                        Savings Opportunity
+                      </p>
+                      <p className="font-display text-xl md:text-2xl text-red-400 text-glow-gold" style={{ textShadow: '0 0 20px rgba(248, 113, 113, 0.3)' }}>
+                        {formatDollar(displayOverpayment)}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          {lookupFailed && address && (
+            <p className="mt-3 text-xs text-cream/50 text-center animate-fade-in">
+              Claude will pull the exact numbers during case generation
+            </p>
+          )}
+
+          {/* CTA */}
+          <div className="mt-8 sm:mt-10 animate-fade-in" style={{ animationDelay: '0.75s' }}>
+            <Link
+              href={ctaHref}
+              className="btn-glow inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-9 py-4.5 text-base font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.03] hover:brightness-110"
+            >
+              {hasResult ? 'Open My AI Case' : 'Start Your Case'}
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </svg>
+            </Link>
+            <p className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-cream/50">
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
+                <svg className="w-3.5 h-3.5 text-cream/20" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                Secure checkout
+              </span>
+              <span className="hidden text-cream/10 sm:inline">&middot;</span>
+              <span className="whitespace-nowrap">AI-built case in 48 hours</span>
+              <span className="hidden text-cream/10 sm:inline">&middot;</span>
+              <span className="whitespace-nowrap">Learns across all 50 states</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}

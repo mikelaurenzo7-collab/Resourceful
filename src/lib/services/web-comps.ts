@@ -358,7 +358,14 @@ Address: ${fullAddress}
 Search results:
 ${searchBlock}${pageContent ? `\n\nPage content:\n${pageContent.substring(0, 4000)}` : ''}
 
-Extract the most recent arm's-length sale (not foreclosure, not short sale, not gift deed) for this exact address.
+Extract the most recent CLOSED arm's-length sale (not foreclosure, not short sale, not gift deed, not a current/active/pending listing) for this exact address.
+
+CRITICAL RULES:
+- Only return a result if a specific historical closing price AND closing date are explicitly stated in the search snippets or page content above. Do NOT infer, estimate, or guess.
+- The saleDate must be a real, fully-specified historical date (year/month/day). Reject anything dated within the last 30 days, anything in the future, or anything described as "listed," "for sale," "asking," "estimated," "Zestimate," or "Redfin Estimate."
+- The source must be a real URL from the search results above.
+- If no closed historical sale is unambiguously documented in the source material, return exactly the word: null
+
 Return JSON object or null:
 {
   "salePrice": 425000,
@@ -374,6 +381,28 @@ Only return this exact JSON or the word null. No explanation.`;
     if (!parsed) return null;
 
     if (!parsed.salePrice || parsed.salePrice <= 0 || !parsed.saleDate) return null;
+
+    // Sanity guard — reject sales dated in the future or within the last 30 days.
+    // The model is prone to hallucinating "today's" date when search snippets
+    // describe a current listing rather than a closed sale. Closed comparable
+    // transactions for appraisal work should be at least a month old.
+    const saleMs = new Date(parsed.saleDate).getTime();
+    if (!Number.isFinite(saleMs)) {
+      apiLogger.warn({ saleDate: parsed.saleDate }, '[web-comps] Rejected prior sale: unparseable date');
+      return null;
+    }
+    const ageDays = (Date.now() - saleMs) / (24 * 3600 * 1000);
+    if (ageDays < 30) {
+      apiLogger.warn(
+        { saleDate: parsed.saleDate, ageDays: Math.round(ageDays) },
+        '[web-comps] Rejected prior sale: date is in the future or <30 days old (likely hallucination or active listing)'
+      );
+      return null;
+    }
+    if (!parsed.source || !/^https?:\/\//i.test(parsed.source)) {
+      apiLogger.warn({ source: parsed.source }, '[web-comps] Rejected prior sale: missing or invalid source URL');
+      return null;
+    }
 
     apiLogger.info(
       { salePrice: parsed.salePrice, saleDate: parsed.saleDate, source: parsed.source },

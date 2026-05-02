@@ -215,6 +215,17 @@ export interface NarrativePayload {
     annualAppreciationPct: number;
     extrapolatedValue: number;
   } | null;
+  // AI knowledge-based estimate — ABSOLUTE LAST RESORT when no comps, no income,
+  // no cost-approach inputs, and no documented prior sale exist. This is a
+  // model-generated neighborhood-level range, NOT a transaction. Narratives
+  // MUST NOT describe it as a sale or cite it as evidence of a transaction.
+  aiKnowledgeEstimate?: {
+    estimatedValue: number;
+    rangeLow: number;
+    rangeHigh: number;
+    confidence: 'low' | 'medium';
+    reasoning: string;
+  } | null;
   // Gemini Vision aggregate deferred maintenance analysis — whole-property condition assessment
   // from multi-image spatial reasoning. Complements Anthropic's per-photo defect analysis.
   deferredMaintenanceAnalysis?: {
@@ -1105,6 +1116,13 @@ ${payload.deferredMaintenanceAnalysis.primaryDefectType ? `- Primary defect cate
 
 Integrate this cost-to-cure estimate into the condition_assessment and reconciliation_narrative. A documented cost-to-cure is powerful evidence of economic depreciation that the assessor failed to account for.` : ''}
 
+ANTI-HALLUCINATION RULES — VIOLATIONS WILL INVALIDATE THE REPORT:
+1. NEVER state, imply, or summarize that the subject property "sold," "was sold," "recently sold," or has any specific sale price unless the input payload contains a non-null \`priorSaleAnalysis\` object AND its \`lastSaleDate\` is at least 30 days in the past. If \`priorSaleAnalysis\` is null, the property has NO documented sale — do not invent one.
+2. The \`aiKnowledgeEstimate\` field, when present, is a model-generated neighborhood-level RANGE, NOT a transaction. NEVER describe it as a sale, a closing, an arm's-length transaction, a "comp," or evidence of market value. Refer to it only as "an analyst estimate based on neighborhood-level market knowledge" with the confidence level stated, and acknowledge the absence of MLS comps. Do NOT cite a single point value without the range; do NOT use phrases like "sold for," "purchased for," "transacted at."
+3. NEVER fabricate market statistics, sale prices, MLS days-on-market, or appreciation percentages. Cite only numbers present in the input payload or in the LIVE RESEARCH INTELLIGENCE block. If a number is not provided, say so plainly ("recent local market data was not available for this report").
+4. When \`priorSaleAnalysis\` IS present, cite the exact \`lastSaleDate\` from the payload — never substitute "today," the current date, or an approximate phrase. If the gap from \`lastSaleDate\` to the assessment date is less than 12 months, do not time-adjust; if greater, use only the \`annualAppreciationPct\` provided in the payload.
+5. If \`comparableSales\` is empty AND \`priorSaleAnalysis\` is null AND only \`aiKnowledgeEstimate\` and/or cost approach is available, the executive_summary and appeal_argument_summary MUST disclose this in plain language ("This analysis was prepared without access to current MLS comparable sales; the indicated value relies on [cost approach / analyst estimate]"). Frame the appeal as a request for the assessor to produce sales evidence supporting the current assessment, rather than asserting a market-supported reduction.
+
 TONE: Write with the confidence of an expert witness who has testified before ${payload.countyRules.appealBoardName || 'boards of review'} hundreds of times. Be specific, cite numbers, and make every paragraph advance the homeowner's case. Professional but assertive — never timid, never hedging. The homeowner is paying for advocacy, not neutrality.`;
 }
 
@@ -1124,6 +1142,7 @@ function buildNarrativeUserMessage(payload: NarrativePayload): string {
       overvaluationAnalysis: payload.overvaluationAnalysis ?? null,
       assessmentEquity: payload.assessmentEquity ?? null,
       priorSaleAnalysis: payload.priorSaleAnalysis ?? null,
+      aiKnowledgeEstimate: payload.aiKnowledgeEstimate ?? null,
     },
     null,
     2

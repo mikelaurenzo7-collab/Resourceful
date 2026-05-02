@@ -1,0 +1,164 @@
+'use server';
+
+import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
+import { countyAdminSchema } from '@/lib/validations/report';
+import { revalidatePath } from 'next/cache';
+
+function parseOptionalInt(val: FormDataEntryValue | null): number | null {
+  if (!val || val === '') return null;
+  const n = parseInt(String(val), 10);
+  return isNaN(n) ? null : n;
+}
+
+function parseOptionalFloat(val: FormDataEntryValue | null): number | null {
+  if (!val || val === '') return null;
+  const n = parseFloat(String(val));
+  return isNaN(n) ? null : n;
+}
+
+function parseOptionalString(val: FormDataEntryValue | null): string | null {
+  if (!val || String(val).trim() === '') return null;
+  return String(val).trim();
+}
+
+function parseStringArray(val: FormDataEntryValue | null): string[] | null {
+  if (!val || String(val).trim() === '') return null;
+  return String(val)
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function parseCheckbox(form: FormData, name: string): boolean {
+  return form.has(name);
+}
+
+function formatValidationMessage(fieldErrors: Record<string, string[] | undefined>): string {
+  const messages = Object.entries(fieldErrors)
+    .flatMap(([field, errors]) => (errors ?? []).map((error) => `${field.replace(/_/g, ' ')}: ${error}`));
+
+  return messages[0] ?? 'County rule validation failed.';
+}
+
+export async function saveCounty(existingFips: string | null, formData: FormData) {
+  // Verify the caller is an authenticated admin
+  const authClient = await createClient();
+  const { data: { user } } = await authClient.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  const { data: adminCheck } = await authClient
+    .from('admin_users')
+    .select('id')
+    .eq('user_id', user.id)
+    .single();
+  if (!adminCheck) throw new Error('Not authorized — admin access required');
+
+  const supabase = createAdminClient();
+
+  const countyFips = String(formData.get('county_fips') ?? '').trim();
+  const countyName = String(formData.get('county_name') ?? '').trim();
+  const stateName = String(formData.get('state_name') ?? '').trim();
+  const stateAbbr = String(formData.get('state_abbreviation') ?? '').trim().toUpperCase();
+
+  if (!countyFips || !countyName || !stateName || !stateAbbr) {
+    throw new Error('FIPS code, county name, state name, and state abbreviation are required.');
+  }
+
+  const record = {
+    county_fips: countyFips,
+    county_name: countyName,
+    state_name: stateName,
+    state_abbreviation: stateAbbr,
+    is_active: parseCheckbox(formData, 'is_active'),
+    assessment_methodology: (parseOptionalString(formData.get('assessment_methodology')) as string) ?? null,
+    assessment_methodology_notes: parseOptionalString(formData.get('assessment_methodology_notes')),
+    assessment_ratio_residential: parseOptionalFloat(formData.get('assessment_ratio_residential')),
+    assessment_ratio_commercial: parseOptionalFloat(formData.get('assessment_ratio_commercial')),
+    assessment_ratio_industrial: parseOptionalFloat(formData.get('assessment_ratio_industrial')),
+    level_of_assessment_commercial: parseOptionalFloat(formData.get('level_of_assessment_commercial')),
+    level_of_assessment_residential: parseOptionalFloat(formData.get('level_of_assessment_residential')),
+    cost_approach_disfavored: parseCheckbox(formData, 'cost_approach_disfavored'),
+    valuation_date_convention: parseOptionalString(formData.get('valuation_date_convention')),
+    fair_cash_value_synonym: parseCheckbox(formData, 'fair_cash_value_synonym'),
+    appeal_board_name: parseOptionalString(formData.get('appeal_board_name')),
+    appeal_board_address: parseOptionalString(formData.get('appeal_board_address')),
+    appeal_board_phone: parseOptionalString(formData.get('appeal_board_phone')),
+    portal_url: parseOptionalString(formData.get('portal_url')),
+    filing_email: parseOptionalString(formData.get('filing_email')),
+    accepts_online_filing: parseCheckbox(formData, 'accepts_online_filing'),
+    accepts_email_filing: parseCheckbox(formData, 'accepts_email_filing'),
+    requires_mail_filing: parseCheckbox(formData, 'requires_mail_filing'),
+    state_appeal_board_name: parseOptionalString(formData.get('state_appeal_board_name')),
+    state_appeal_board_url: parseOptionalString(formData.get('state_appeal_board_url')),
+    appeal_deadline_rule: parseOptionalString(formData.get('appeal_deadline_rule')),
+    tax_year_appeal_window: parseOptionalString(formData.get('tax_year_appeal_window')),
+    hearing_typically_required: parseCheckbox(formData, 'hearing_typically_required'),
+    hearing_format: (parseOptionalString(formData.get('hearing_format')) as string) ?? null,
+    appeal_form_name: parseOptionalString(formData.get('appeal_form_name')),
+    form_download_url: parseOptionalString(formData.get('form_download_url')),
+    evidence_requirements: parseStringArray(formData.get('evidence_requirements')),
+    filing_fee_cents: parseOptionalInt(formData.get('filing_fee_cents')) ?? 0,
+    filing_fee_notes: parseOptionalString(formData.get('filing_fee_notes')),
+    pro_se_tips: parseOptionalString(formData.get('pro_se_tips')),
+    // Representation rules
+    authorized_rep_allowed: parseCheckbox(formData, 'authorized_rep_allowed'),
+    authorized_rep_form_url: parseOptionalString(formData.get('authorized_rep_form_url')),
+    authorized_rep_types: parseStringArray(formData.get('authorized_rep_types')),
+    rep_restrictions_notes: parseOptionalString(formData.get('rep_restrictions_notes')),
+    // Further appeal / escalation
+    further_appeal_body: parseOptionalString(formData.get('further_appeal_body')),
+    further_appeal_url: parseOptionalString(formData.get('further_appeal_url')),
+    further_appeal_deadline_rule: parseOptionalString(formData.get('further_appeal_deadline_rule')),
+    further_appeal_fee_cents: parseOptionalInt(formData.get('further_appeal_fee_cents')) ?? 0,
+    notes: parseOptionalString(formData.get('notes')),
+    // Assessment schedule & deadlines
+    assessment_cycle: parseOptionalString(formData.get('assessment_cycle')),
+    current_tax_year: parseOptionalInt(formData.get('current_tax_year')),
+    next_appeal_deadline: parseOptionalString(formData.get('next_appeal_deadline')),
+    appeal_window_days: parseOptionalInt(formData.get('appeal_window_days')),
+    assessment_notices_mailed: parseOptionalString(formData.get('assessment_notices_mailed')),
+    typical_resolution_weeks_min: parseOptionalInt(formData.get('typical_resolution_weeks_min')),
+    typical_resolution_weeks_max: parseOptionalInt(formData.get('typical_resolution_weeks_max')),
+    required_documents: parseStringArray(formData.get('required_documents')),
+    // Informal review & hearing details
+    informal_review_available: parseCheckbox(formData, 'informal_review_available'),
+    informal_review_notes: parseOptionalString(formData.get('informal_review_notes')),
+    hearing_duration_minutes: parseOptionalInt(formData.get('hearing_duration_minutes')),
+    virtual_hearing_available: parseCheckbox(formData, 'virtual_hearing_available'),
+    virtual_hearing_platform: parseOptionalString(formData.get('virtual_hearing_platform')),
+    hearing_scheduling_notes: parseOptionalString(formData.get('hearing_scheduling_notes')),
+    // Board intelligence & strategy
+    board_personality_notes: parseOptionalString(formData.get('board_personality_notes')),
+    winning_argument_patterns: parseOptionalString(formData.get('winning_argument_patterns')),
+    common_assessor_errors: parseOptionalString(formData.get('common_assessor_errors')),
+    success_rate_pct: parseOptionalFloat(formData.get('success_rate_pct')),
+    success_rate_source: parseOptionalString(formData.get('success_rate_source')),
+    avg_savings_pct: parseOptionalFloat(formData.get('avg_savings_pct')),
+    // Data freshness
+    last_verified_date: parseOptionalString(formData.get('last_verified_date')),
+    verified_by: parseOptionalString(formData.get('verified_by')),
+  };
+
+  const parsedRecord = countyAdminSchema.safeParse(record);
+
+  if (!parsedRecord.success) {
+    throw new Error(formatValidationMessage(parsedRecord.error.flatten().fieldErrors));
+  }
+
+  const validatedRecord = parsedRecord.data;
+
+  if (existingFips) {
+    const { error } = await supabase
+      .from('county_rules')
+      .update(validatedRecord as never)
+      .eq('county_fips', existingFips);
+
+    if (error) throw new Error(`Failed to update county: ${error.message}`);
+  } else {
+    const { error } = await supabase.from('county_rules').insert(validatedRecord as never);
+
+    if (error) throw new Error(`Failed to create county: ${error.message}`);
+  }
+
+  revalidatePath('/admin/counties');
+}
