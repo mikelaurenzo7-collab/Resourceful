@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_calibration_params_type_county
 -- Admin queue: review tier + status + created_at for sorting
 CREATE INDEX IF NOT EXISTS idx_reports_review_status_created 
   ON reports(review_tier, status, created_at DESC) 
-  WHERE status IN ('pending_approval', 'delivering');
+  WHERE status IN ('pending_approval', 'delivered');
 
 -- ── 2. Fix Tax Bill Field Types ──────────────────────────────────────────────
 -- tax_bill_assessed_value and tax_bill_tax_amount were created as numeric

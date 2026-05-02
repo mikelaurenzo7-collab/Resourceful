@@ -71,10 +71,26 @@ function buildSearchQueries(ctx: WebCompsContext): [string, string] {
   const year = new Date().getFullYear();
   const prevYear = year - 1;
 
+  const isCommercialOrIndustrial = ctx.propertyType === 'commercial' || ctx.propertyType === 'industrial';
+
+  if (isCommercialOrIndustrial) {
+    // Commercial/industrial comps appear on CRE portals, not Redfin/Zillow.
+    // Use LoopNet, CREXi, and county assessor search for confirmed sales.
+    const propLabel: Record<string, string> = {
+      commercial: 'commercial',
+      industrial: 'industrial flex warehouse',
+    };
+    const label = propLabel[ctx.propertyType] ?? 'commercial';
+    const sqftClause = ctx.buildingSqFt > 0 ? ` ${Math.round(ctx.buildingSqFt)} sqft` : '';
+
+    const q1 = `${label} property sold ${ctx.city} ${ctx.state} ${year} ${prevYear} comparable sales price per square foot site:loopnet.com OR site:crexi.com OR site:cbre.com OR site:costar.com`;
+    const q2 = `"${ctx.city}" ${ctx.state} ${label} building sold ${year} ${prevYear}${sqftClause} assessed value appeal comparable sales`;
+
+    return [q1, q2];
+  }
+
   const propLabel: Record<string, string> = {
     residential: 'single family home',
-    commercial: 'commercial property',
-    industrial: 'industrial property',
     land: 'vacant land',
     agricultural: 'agricultural land',
   };
@@ -127,8 +143,8 @@ async function extractCompsFromSearchContent(
 
   const propLabel: Record<string, string> = {
     residential: 'single family home',
-    commercial: 'commercial property',
-    industrial: 'industrial property',
+    commercial: 'commercial building',
+    industrial: 'industrial/flex building',
     land: 'vacant land',
     agricultural: 'agricultural land',
   };
