@@ -8,15 +8,15 @@ import {
   analyzePhoto,
   generateFilingGuide,
   generateNarratives as generateStandardNarratives,
-} from '@/lib/services/openai-appraiser';
+} from './openai-appraiser';
 import type {
   NarrativePayload,
   NarrativeResponse,
   NarrativeSectionName,
   ServiceResult,
-} from '@/lib/services/anthropic';
+} from './anthropic';
 
-export type * from '@/lib/services/anthropic';
+export type * from './anthropic';
 export { analyzePhoto, generateFilingGuide };
 
 const INDEPENDENT_VALUATION_MARKER = '[INDEPENDENT_VALUATION]';
