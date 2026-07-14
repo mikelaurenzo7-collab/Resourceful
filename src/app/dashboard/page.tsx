@@ -9,6 +9,7 @@ import {
   getCustomerStatusMessage,
   isEvidenceInsufficient,
 } from '@/lib/dashboard/report-status';
+import { buildValueComparison } from '@/lib/dashboard/value-comparison';
 import PipelineProgress from '@/components/dashboard/PipelineProgress';
 import ReportDownload from '@/components/dashboard/ReportDownload';
 import AppealJourney from '@/components/dashboard/AppealJourney';
@@ -57,7 +58,7 @@ function formatDate(value: string | null | undefined): string {
   });
 }
 
-function formatDollars(cents: number): string {
+function formatLegacyCents(cents: number): string {
   return `$${Math.round(cents / 100).toLocaleString('en-US')}`;
 }
 
@@ -149,9 +150,10 @@ export default async function DashboardPage() {
     activeReport?.status === 'failed' && isEvidenceInsufficient(activeReport.pipeline_error_log)
   );
 
-  let assessedValue: number | null = null;
+  let rawAssessedValue: number | null = null;
+  let assessorImpliedMarketValue: number | null = null;
   let concludedValue: number | null = null;
-  let potentialSavings: number | null = null;
+  let reportedAssessmentReduction: number | null = null;
   let filingDeadlineDate: string | null = null;
   let filingDeadlineRule: string | null = null;
 
@@ -162,7 +164,7 @@ export default async function DashboardPage() {
       const [{ data: property }, { data: countyRules }] = await Promise.all([
         admin
           .from('property_data')
-          .select('assessed_value, concluded_value')
+          .select('assessed_value, concluded_value, assessment_ratio')
           .eq('report_id', activeReport.id)
           .maybeSingle(),
         activeReport.county_fips
@@ -174,11 +176,17 @@ export default async function DashboardPage() {
           : Promise.resolve({ data: null }),
       ]);
 
-      assessedValue = property?.assessed_value ?? null;
-      concludedValue = property?.concluded_value ?? null;
-      if (assessedValue && concludedValue && assessedValue > concludedValue) {
-        potentialSavings = Math.round((assessedValue - concludedValue) * 0.011);
-      }
+      rawAssessedValue = property?.assessed_value ?? null;
+      const comparison = buildValueComparison({
+        rawAssessedValue,
+        assessmentRatio: property?.assessment_ratio ?? null,
+        concludedMarketValue: property?.concluded_value ?? null,
+        reportedAssessmentReductionCents: activeReport.actual_savings_cents,
+        appealOutcome: activeReport.appeal_outcome,
+      });
+      assessorImpliedMarketValue = comparison.assessorImpliedMarketValue;
+      concludedValue = comparison.concludedMarketValue;
+      reportedAssessmentReduction = comparison.reportedAssessmentReduction;
 
       const countyRule = countyRules?.[0] as
         | { next_appeal_deadline: string | null; appeal_deadline_rule: string | null }
@@ -191,7 +199,7 @@ export default async function DashboardPage() {
   }
 
   const wonReports = reports.filter((report) => report.appeal_outcome === 'won');
-  const totalSavingsCents = wonReports.reduce(
+  const totalAssessmentReductionCents = wonReports.reduce(
     (total, report) => total + (report.actual_savings_cents ?? 0),
     0
   );
@@ -243,8 +251,10 @@ export default async function DashboardPage() {
                   <p className="font-display text-xl text-cream">{reports.length}</p>
                 </div>
                 <div className="rounded-xl border border-emerald-400/15 bg-emerald-500/[0.04] px-4 py-3 text-right">
-                  <p className="text-[10px] uppercase tracking-widest text-emerald-300/55">Documented Savings</p>
-                  <p className="font-display text-xl text-emerald-300">{formatDollars(totalSavingsCents)}</p>
+                  <p className="text-[10px] uppercase tracking-widest text-emerald-300/55">Documented Assessment Reduction</p>
+                  <p className="font-display text-xl text-emerald-300">
+                    {formatLegacyCents(totalAssessmentReductionCents)}
+                  </p>
                 </div>
               </div>
             )}
@@ -364,11 +374,10 @@ export default async function DashboardPage() {
 
                   <div className="space-y-6">
                     <ValueInsights
-                      assessedValue={assessedValue}
+                      assessorImpliedMarketValue={assessorImpliedMarketValue}
                       concludedValue={concludedValue}
-                      potentialSavings={potentialSavings}
+                      reportedAssessmentReduction={reportedAssessmentReduction}
                       caseStrength={activeReport.case_strength_score}
-                      propertyType={activeReport.property_type}
                       serviceType={activeReport.service_type}
                     />
 
@@ -384,7 +393,7 @@ export default async function DashboardPage() {
                       <OutcomeReporter
                         reportId={activeReport.id}
                         currentOutcome={activeReport.appeal_outcome}
-                        assessedValue={assessedValue}
+                        assessedValue={rawAssessedValue}
                       />
                     )}
                   </div>
@@ -429,8 +438,10 @@ export default async function DashboardPage() {
                         </div>
                         <div className="sm:text-right flex-shrink-0">
                           <p className="text-sm text-cream/60">{reportStatus.title}</p>
-                          {report.actual_savings_cents != null && report.actual_savings_cents > 0 && (
-                            <p className="text-xs text-emerald-300 mt-1">Saved {formatDollars(report.actual_savings_cents)}</p>
+                          {report.appeal_outcome === 'won' && report.actual_savings_cents != null && report.actual_savings_cents > 0 && (
+                            <p className="text-xs text-emerald-300 mt-1">
+                              Assessment reduced {formatLegacyCents(report.actual_savings_cents)}
+                            </p>
                           )}
                         </div>
                       </div>
