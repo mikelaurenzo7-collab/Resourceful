@@ -8,9 +8,7 @@ const REQUIRED_VARS = [
   'NEXT_PUBLIC_SUPABASE_URL',
   'NEXT_PUBLIC_SUPABASE_ANON_KEY',
   'SUPABASE_SERVICE_ROLE_KEY',
-  'ANTHROPIC_API_KEY',
-  'AI_MODEL_PRIMARY',
-  'AI_MODEL_FAST',
+  'OPENAI_API_KEY',
   'STRIPE_SECRET_KEY',
   'STRIPE_WEBHOOK_SECRET',
   'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
@@ -22,6 +20,11 @@ const REQUIRED_VARS = [
 ] as const;
 
 const RECOMMENDED_VARS = [
+  'AI_MODEL_PRIMARY',
+  'AI_MODEL_FAST',
+  'AI_MODEL_RESEARCH',
+  'AI_MODEL_VISION',
+  'AI_MODEL_DOCUMENT',
   'AZURE_MAPS_SUBSCRIPTION_KEY',
   'NEXT_PUBLIC_AZURE_MAPS_CLIENT_ID',
   'NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN',
@@ -39,16 +42,15 @@ const MIN_SECRET_LENGTHS: Record<string, number> = {
 /**
  * Validate critical environment variables.
  *
- * Gemini is intentionally not required: vision and document extraction now use
- * the Anthropic primary model. Requiring a dead-provider key caused otherwise
- * valid production deployments to fail at startup.
+ * Model variables are recommended rather than required because src/config/ai.ts
+ * has explicit GPT-5.6 Sol/Terra/Luna defaults. Anthropic, Gemini, and Groq keys
+ * are intentionally not part of Resourceful's production contract.
  */
 export function validateEnvironment(): void {
   const isProduction = process.env.NODE_ENV === 'production';
   const missing: string[] = [];
   const missingRecommended: string[] = [];
   const weakSecrets: string[] = [];
-  const fastProvider = process.env.AI_PROVIDER_FAST?.trim().toLowerCase() || 'anthropic';
 
   for (const name of REQUIRED_VARS) {
     if (!process.env[name]?.trim()) {
@@ -60,18 +62,6 @@ export function validateEnvironment(): void {
     if (!process.env[name]?.trim()) {
       missingRecommended.push(name);
     }
-  }
-
-  if (fastProvider !== 'anthropic' && fastProvider !== 'groq') {
-    missing.push('AI_PROVIDER_FAST (must be anthropic or groq)');
-  }
-
-  if (fastProvider === 'groq' && !process.env.GROQ_API_KEY?.trim()) {
-    missing.push('GROQ_API_KEY');
-  }
-
-  if (fastProvider === 'groq' && !process.env.AI_MODEL_RESEARCH?.trim()) {
-    missingRecommended.push('AI_MODEL_RESEARCH');
   }
 
   // Either server-only or public DSN enables Sentry. Do not warn that both are
@@ -90,7 +80,7 @@ export function validateEnvironment(): void {
   if (missingRecommended.length > 0) {
     logger.warn(
       { vars: missingRecommended },
-      'Recommended env vars not set — some features will be degraded'
+      'Recommended env vars not set — defaults or degraded features will be used'
     );
   }
 
