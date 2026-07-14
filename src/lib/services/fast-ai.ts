@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { AI_MODELS, AI_PROVIDERS, AI_REASONING } from '@/config/ai';
+import { AI_MODELS, AI_PROVIDERS, AI_REASONING, type ReasoningEffort } from '@/config/ai';
 import { apiLogger } from '@/lib/logger';
 import { withRetry, isRetryableError } from '@/lib/utils/retry';
 
@@ -28,6 +28,10 @@ function getOpenAIClient(): OpenAI {
   return openaiClient;
 }
 
+function reasoning(effort: ReasoningEffort) {
+  return { effort } as unknown as { effort: 'none' | 'low' | 'medium' | 'high' };
+}
+
 export function getFastAiProvider(): FastAiProvider {
   return AI_PROVIDERS.FAST;
 }
@@ -54,7 +58,7 @@ export async function generateFastText({
       model: AI_MODELS.FAST,
       store: false,
       max_output_tokens: maxTokens,
-      reasoning: { effort: AI_REASONING.FAST },
+      reasoning: reasoning(AI_REASONING.FAST),
       input: [
         ...(system ? [{ role: 'system' as const, content: system }] : []),
         { role: 'user' as const, content: prompt },
