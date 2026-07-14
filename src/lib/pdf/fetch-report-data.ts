@@ -22,6 +22,18 @@ function asNonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function asHttpUrl(value: unknown): string | null {
+  const candidate = asNonEmptyString(value);
+  if (!candidate) return null;
+
+  try {
+    const url = new URL(candidate);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 function asStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value
@@ -95,7 +107,7 @@ function defaultFilingSteps(): string[] {
   ];
 }
 
-function parseStructuredFilingGuide(
+export function parseStructuredFilingGuide(
   content: string,
   report: Report,
   countyRule: CountyRule | null
@@ -124,7 +136,7 @@ function parseStructuredFilingGuide(
             'Verify all deadlines, forms, fees, signatures, notarization rules, and submission channels directly with the jurisdiction.',
             'Resourceful provides informational filing support and valuation analysis, not legal advice.',
           ]),
-      online_filing_url: countyRule?.portal_url ?? asNonEmptyString(parsed.online_filing_url),
+      online_filing_url: asHttpUrl(countyRule?.portal_url) ?? asHttpUrl(parsed.online_filing_url),
       fee_amount: formatCountyFee(countyRule) ?? asNonEmptyString(parsed.fee_amount),
       hearing_format: countyRule?.hearing_format ?? asNonEmptyString(parsed.hearing_format),
     };
@@ -133,7 +145,7 @@ function parseStructuredFilingGuide(
   }
 }
 
-function recoverLegacyFilingGuide(
+export function recoverLegacyFilingGuide(
   content: string,
   report: Report,
   countyRule: CountyRule | null
@@ -172,7 +184,7 @@ function recoverLegacyFilingGuide(
     steps,
     required_documents: requiredDocuments,
     tips,
-    online_filing_url: countyRule?.portal_url ?? null,
+    online_filing_url: asHttpUrl(countyRule?.portal_url),
     fee_amount: formatCountyFee(countyRule),
     hearing_format: countyRule?.hearing_format ?? null,
   };
