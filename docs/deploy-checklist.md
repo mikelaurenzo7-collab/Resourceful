@@ -1,190 +1,163 @@
-# Production Deploy Checklist
+# Production Relaunch Checklist
 
-Follow these steps top-to-bottom before opening the platform to real users.
-Everything here is an action **you** take — the codebase itself is production-ready.
+Resourceful is not considered launch-ready until every blocking item below is verified against the actual production accounts. A green local build is necessary, but it does not prove that the database, vendors, payments, email, or scheduled jobs are operational.
 
----
+## 0. Credential incident response
 
-## 1. Environment Variables (Vercel → Project Settings → Environment Variables → Production)
+- Revoke and rotate the ATTOM credential that appeared in public Git history.
+- Review ATTOM usage logs and billing for unexpected activity.
+- Replace the credential only in the production secret manager; never place keys in commits, issue text, screenshots, or commit messages.
+- Decide whether to make the repository private and whether the exposed commit history should be rewritten. Rotate first; history cleanup does not invalidate a leaked key.
 
-### Required secrets
+## 1. Restore the production infrastructure
 
-| Variable | Source |
-|---|---|
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API (service_role key) |
-| `ANTHROPIC_API_KEY` | console.anthropic.com → API Keys |
-| `GEMINI_API_KEY` | aistudio.google.com/app/apikey |
-| `STRIPE_SECRET_KEY` | dashboard.stripe.com → Developers → API keys (**live** `sk_live_…`) |
-| `STRIPE_WEBHOOK_SECRET` | Generated when you create the webhook in step 3 |
-| `RESEND_API_KEY` | resend.com → API Keys |
-| `ATTOM_API_KEY` | api.gateway.attomdata.com |
-| `AZURE_MAPS_SUBSCRIPTION_KEY` | portal.azure.com → Maps Account → Authentication |
-| `CRON_SECRET` | Generate: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `REPORT_ACCESS_TOKEN_SECRET` | Generate (same command as CRON_SECRET). **Do not reuse any other secret.** |
-| `FOUNDER_EMAILS` | Comma-separated, e.g. `mikelaurenzo7@gmail.com` |
+### Supabase
 
-### Required public vars
+- Locate the original Resourceful project in the correct Supabase account or organization. Do not reuse the Wireline project.
+- If the original project cannot be recovered, create a dedicated Resourceful project and treat it as a clean rebuild.
+- Record the project ref and region in the operator password manager.
+- Apply every migration in `supabase/migrations` in order.
+- Create the private `reports` and `photos` storage buckets defined in `supabase/config.toml`.
+- Verify Row Level Security, policies, database functions, indexes, and storage policies against the deployed schema.
+- Seed and manually validate the initial launch counties before enabling nationwide checkout.
 
-| Variable | Value |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Settings → API |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Settings → API (anon key) |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe (live `pk_live_…`) |
-| `NEXT_PUBLIC_APP_URL` | `https://<your-domain>` (no trailing slash) |
-| `NEXT_PUBLIC_AZURE_MAPS_CLIENT_ID` | Azure Maps Web SDK client ID |
-| `NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN` | mapillary.com/developer |
+### Vercel
 
-### Required config
+- Connect this repository to a dedicated Resourceful project.
+- Set the production branch to `main`.
+- Configure all production environment variables and redeploy from a reviewed commit.
+- Confirm cron jobs, function durations, domains, redirects, and deployment protection settings.
 
-| Variable | Value |
-|---|---|
-| `AI_MODEL_PRIMARY` | `claude-sonnet-4-6` |
-| `AI_MODEL_FAST` | `claude-haiku-4-5-20251001` |
-| `RESEND_FROM_ADDRESS` | e.g. `reports@yourdomain.com` — must be a verified Resend domain |
-| `ADMIN_NOTIFICATION_EMAIL` | Your inbox |
+## 2. Required environment variables
 
-### Strongly recommended
+### Application and database
 
-| Variable | Notes |
-|---|---|
-| `SENTRY_DSN` | sentry.io project DSN (server-side) |
-| `NEXT_PUBLIC_SENTRY_DSN` | Same DSN (client-side). Without Sentry, errors disappear silently. |
-| `SENTRY_AUTH_TOKEN` | Enables source-map upload; creates readable stack traces |
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `NEXT_PUBLIC_APP_URL`
+- `CRON_SECRET` — unique random secret, at least 32 characters
+- `REPORT_ACCESS_TOKEN_SECRET` — separate unique random secret, at least 32 characters
+- `FOUNDER_EMAILS`
 
-### Optional (features degrade gracefully without them)
+### AI
 
-`SERPER_API_KEY`, `LIGHTBOX_API_KEY`, `LIGHTBOX_API_SECRET`, `RENTCAST_API_KEY`,
-`REGRID_API_KEY`, `LOB_API_KEY`, `GROQ_API_KEY`.
+Resourceful currently uses Anthropic for narratives, photo analysis, multi-image deferred-maintenance analysis, and tax-document extraction. Gemini is not a required production dependency.
 
----
+- `ANTHROPIC_API_KEY`
+- `AI_MODEL_PRIMARY`
+- `AI_MODEL_FAST`
+- `AI_PROVIDER_FAST=anthropic` by default
+- `AI_MODEL_RESEARCH` when explicitly separating research traffic
+- `GROQ_API_KEY` only when `AI_PROVIDER_FAST=groq`
 
-## 2. Supabase
+### Property data and mapping
 
-1. **Apply all migrations** against the production project:
-   ```bash
-   supabase link --project-ref <your-project-ref>
-   supabase db push
-   ```
-   30 migrations total (`001_initial_schema.sql` through `030_county_rules_enrichment.sql`).
+- `ATTOM_API_KEY`
+- `AZURE_MAPS_SUBSCRIPTION_KEY`
+- `NEXT_PUBLIC_AZURE_MAPS_CLIENT_ID`
+- `NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN`
 
-2. **Verify RLS is enabled on every table:**
-   ```sql
-   select tablename, rowsecurity
-   from pg_tables
-   where schemaname = 'public'
-   order by tablename;
-   ```
-   Every row must show `rowsecurity = true`. If any is `false`, fix before going live.
+Optional integrations must be enabled only after their contract, allowed use, cost, and failure behavior are documented: `SERPER_API_KEY`, `LIGHTBOX_API_KEY`, `LIGHTBOX_API_SECRET`, `RENTCAST_API_KEY`, `REGRID_API_KEY`, and `LOB_API_KEY`.
 
-3. **Seed county rules:**
-   ```bash
-   pnpm tsx scripts/seed-top-counties.ts
-   pnpm tsx scripts/seed-extended-counties.ts   # optional — broader coverage
-   ```
+### Payments and delivery
 
-4. **Create your admin account:**
-   - Sign up at `https://<your-domain>/signup` using your founder email
-   - Visit `/admin` — the layout auto-provisions the `admin_users` row the first time a founder email loads it
+- `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `RESEND_API_KEY`
+- `RESEND_FROM_ADDRESS`
+- `ADMIN_NOTIFICATION_EMAIL`
 
----
+### Observability
 
-## 3. Stripe
+- `SENTRY_DSN` or `NEXT_PUBLIC_SENTRY_DSN`
+- `SENTRY_AUTH_TOKEN` for readable production source maps
+- `LOG_LEVEL=info`
 
-1. Switch to **Live mode** in dashboard.stripe.com (top-left toggle)
-2. Copy the live keys into Vercel env vars (`STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`)
-3. Create a webhook endpoint:
-   - URL: `https://<your-domain>/api/webhooks/stripe`
-   - Events to send:
-     - `payment_intent.succeeded`
-     - `charge.dispute.created`
-     - `charge.dispute.closed`
-   - Copy the signing secret into `STRIPE_WEBHOOK_SECRET`
-4. Click **"Send test webhook"** in Stripe — expect a `200` response
+## 3. Vendor and legal acceptance
 
----
+Before accepting money:
 
-## 4. Resend (email)
+- Confirm that each property-data agreement permits the intended caching, transformation, display, PDF inclusion, customer delivery, and commercial resale use.
+- Confirm county-by-county filing deadlines and evidence requirements from official sources.
+- Restrict guided filing and representation to jurisdictions where the operating entity and assigned professional are legally authorized.
+- Review customer terms, privacy policy, refund policy, outcome disclaimers, AI disclosure, data retention, and authorization language with qualified counsel.
+- Never market an AI-generated product as an appraisal, legal opinion, guaranteed reduction, or licensed representation unless the service and responsible professional actually satisfy those requirements.
 
-1. Add your sending domain in Resend
-2. Add the SPF, DKIM, and DMARC DNS records Resend provides to your DNS host
-3. Wait for verification (usually minutes)
-4. Confirm `RESEND_FROM_ADDRESS` uses that verified domain
+## 4. Database verification
 
----
+Run against the dedicated Resourceful production project:
 
-## 5. Sentry (recommended)
+```sql
+select tablename, rowsecurity
+from pg_tables
+where schemaname = 'public'
+order by tablename;
+```
 
-1. Create a new project in sentry.io
-2. Copy the DSN into **both** `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN`
-3. Create an auth token with `project:releases` scope → `SENTRY_AUTH_TOKEN`
+Every customer-data table must have RLS enabled and an intentional policy set. Then verify:
 
-Without these, the deploy still works — you'll just see a warning in Vercel logs
-and lose stack-trace visibility.
+- no anonymous reads of reports, photos, property data, admin data, or access tokens;
+- service-role use is limited to server-only routes;
+- report access tokens are signed, scoped to one report, and independently rotatable;
+- payment events are idempotent;
+- pipeline locks recover safely;
+- required indexes and cleanup jobs exist;
+- generated TypeScript types match production.
 
----
+## 5. Stripe
 
-## 6. Vercel
+- Use test mode until the entire flow passes.
+- Configure the webhook at `/api/webhooks/stripe`.
+- Verify signature rejection, duplicate-event idempotency, successful payment, failed payment, refund, and dispute behavior.
+- Confirm prices displayed in the UI exactly match server-calculated PaymentIntent amounts.
+- Switch to live keys only after the production smoke test plan is approved.
 
-1. Connect the repo to a new Vercel project
-2. Set production branch to `main`
-3. After first deploy, confirm in Vercel dashboard:
-   - **Cron Jobs** tab shows 7 crons active (reminders, cleanup, outcome-followup,
-     calibration, notification-retry, cart-recovery, stale-pipeline)
-   - **Functions** tab shows timeouts applied: webhook 300s, download 120s,
-     cron routes 60–120s
+## 6. Email and domain
 
----
+- Verify the sending domain with Resend.
+- Configure SPF, DKIM, and DMARC.
+- Test admin alerts, customer notifications, access links, retry behavior, and suppression/bounce handling.
+- Confirm customer access remains dashboard-first when email delivery is delayed.
 
-## 7. Smoke Test (before opening to real users)
+## 7. Quality gate
 
-Use a real credit card on a real address you own — refund via Stripe after.
+Every release commit must pass:
 
-1. `/start` → complete onboarding
-2. Complete Stripe checkout
-3. Watch Vercel logs: pipeline should run stages 1–7 in roughly 5–10 minutes
-4. Report lands in `/admin` with status `pending_approval`
-5. Click approve — stage 8 runs, status becomes `delivered`, notification email lands
-6. Open `/report/[id]`, download the PDF via the signed URL
-7. In an incognito window with a different account, try downloading — expect `403`
-8. Confirm the payment receipt email arrived
+```bash
+pnpm install --frozen-lockfile
+pnpm check
+```
 
-If any step fails, check `docs/production-runbook.md` for the known failure modes.
+The GitHub Actions `CI` workflow must be green. A failed or absent status is a blocker.
 
----
+## 8. End-to-end release test
 
-## 8. First 48 Hours
+Use a controlled test property and test payment first, then one refunded live transaction before public launch.
 
-- **Sentry** — watch for new error patterns; triage anything that fires more than twice
-- **Vercel Cron Jobs** — all 7 should fire on schedule with `200` responses
-- **Stripe** — no failed webhook attempts, no unexpected dispute activity
-- **Report quality** — spot-check 3–5 real reports; regenerate individual sections
-  from `/admin/reports/[id]/review` if narrative quality is off
+1. Complete intake and tax-bill/photo upload paths.
+2. Confirm server-side pricing and PaymentIntent amount.
+3. Confirm the webhook transitions the case exactly once.
+4. Observe stages 1–7, timeout handling, retries, and pipeline lock release.
+5. Review source provenance, comparable relevance, assessment-ratio math, narrative consistency, and PDF output.
+6. Approve through the admin experience and verify delivery.
+7. Test signed report access in an incognito session and confirm unauthorized access is rejected.
+8. Test a failed vendor call, failed AI call, failed email, stale pipeline, and duplicate webhook.
+9. Confirm Sentry and structured logs contain enough context without customer PII or secrets.
 
----
+## 9. Controlled launch
 
-## 9. Non-Blockers (documented, do not "fix")
+Launch with a deliberately narrow service area and human review on every case. Start with counties where the operator understands the filing process and where the county rules, forms, deadlines, and evidence standards have been verified manually. Do not expose nationwide checkout merely because the schema supports nationwide data.
 
-These look flaggable in a security scan but are intentional and correct:
+During the first 30 paid cases, track:
 
-- `unsafe-inline` in CSP `script-src` — required by Next.js. Standard.
-- `NEXT_PUBLIC_SENTRY_DSN` in the client bundle — Sentry DSNs are designed to be
-  public; they identify the project but cannot read data.
-- In-memory rate-limit fallback during Supabase outage — intentional trade-off.
-  Per-instance limits still prevent unbounded abuse; the alternative is open firehose.
-- Migration `018_founder_admin_lockdown.sql` has a hardcoded
-  `DELETE FROM admin_users WHERE email != 'mikelaurenzo7@gmail.com'` — this is
-  intentional lockdown behavior and only runs once per Supabase migration history.
-  **Do not modify already-applied migrations.**
+- data-source success and fallback rates;
+- comparable acceptance/rejection reasons;
+- AI cost, vendor cost, human review time, refund rate, and gross margin per case;
+- proposed versus reviewer-approved valuation;
+- filing completion and outcome;
+- customer acquisition channel and conversion;
+- support burden and time to delivery.
 
----
-
-## 10. Operational Runbook
-
-Day-to-day ops, stuck reports, failed PDFs, failed webhooks, email issues, and
-county-rules hygiene are documented in [`docs/production-runbook.md`](./production-runbook.md).
-
-Scripts for common fixes:
-- `scripts/debug-lock.ts` — inspect pipeline lock state
-- `scripts/unlock.sql` — release stale locks (read the comments first)
-- `scripts/rerun-report.ts` — re-run a stuck report
-- `scripts/run-setauket-e2e.mjs` — full live E2E smoke test (25W050 Setauket Ave, DuPage County)
+Only automate release or expand jurisdictions after the quality and unit economics data support it.
