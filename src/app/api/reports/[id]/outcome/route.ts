@@ -5,7 +5,8 @@
 // outcome_followup_token (for unauthenticated submission via email link).
 //
 // After recording the outcome:
-// 1. Updates report fields (appeal_outcome, actual_savings_cents, etc.)
+// 1. Updates report fields (including the legacy actual_savings_cents field,
+//    which stores assessed-value reduction rather than annual tax savings)
 // 2. Creates a calibration entry (predicted vs actual)
 // 3. Recalculates county-level stats
 
@@ -15,6 +16,11 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { createCalibrationEntry } from '@/lib/services/calibration';
+import {
+  calculateAssessmentReductionCents,
+  validateOutcomeSubmission,
+  validateWinningAssessmentReduction,
+} from '@/lib/outcomes/validation';
 import type { Report, PropertyData } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
 
@@ -23,9 +29,6 @@ function tokensMatch(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
 }
-
-const VALID_OUTCOMES = ['won', 'lost', 'pending', 'withdrew', 'didnt_file'] as const;
-type AppealOutcome = typeof VALID_OUTCOMES[number];
 
 export async function POST(
   req: NextRequest,
@@ -45,39 +48,34 @@ export async function POST(
     return NextResponse.json({ error: 'Report ID required' }, { status: 400 });
   }
 
-  const body = await req.json();
-  const { outcome, new_assessed_value, notes, token } = body as {
-    outcome?: string;
-    new_assessed_value?: number;
-    notes?: string;
-    token?: string;
-  };
+  const body = await req.json().catch(() => null) as {
+    outcome?: unknown;
+    new_assessed_value?: unknown;
+    notes?: unknown;
+    token?: unknown;
+  } | null;
 
-  // Validate outcome
-  if (!outcome || !VALID_OUTCOMES.includes(outcome as AppealOutcome)) {
+  if (!body) {
+    return NextResponse.json({ error: 'A valid JSON request body is required.' }, { status: 400 });
+  }
+
+  const validation = validateOutcomeSubmission({
+    outcome: body.outcome,
+    newAssessedValue: body.new_assessed_value,
+    notes: body.notes,
+  });
+
+  if (!validation.valid || !validation.outcome) {
     return NextResponse.json(
-      { error: `Invalid outcome. Must be one of: ${VALID_OUTCOMES.join(', ')}` },
+      { error: validation.error ?? 'Invalid outcome submission.' },
       { status: 400 }
     );
   }
 
-  // Validate notes max length
-  if (notes !== undefined && notes !== null && (typeof notes !== 'string' || notes.length > 5000)) {
-    return NextResponse.json(
-      { error: 'Notes must be a string of 5000 characters or less.' },
-      { status: 400 }
-    );
-  }
-
-  // Validate new_assessed_value if provided
-  if (new_assessed_value !== undefined && new_assessed_value !== null) {
-    if (typeof new_assessed_value !== 'number' || !isFinite(new_assessed_value) || new_assessed_value < 0 || new_assessed_value > 100_000_000_00) {
-      return NextResponse.json(
-        { error: 'Invalid assessed value. Must be a positive number.' },
-        { status: 400 }
-      );
-    }
-  }
+  const outcome = validation.outcome;
+  const newAssessedValue = validation.newAssessedValue ?? null;
+  const notes = validation.notes ?? null;
+  const token = typeof body.token === 'string' ? body.token : null;
 
   const adminSupabase = createAdminClient();
 
@@ -143,13 +141,26 @@ export async function POST(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // ── Calculate savings ─────────────────────────────────────────────────
   const propertyData = report.property_data?.[0] ?? null;
-  let actualSavingsCents: number | null = null;
+  let assessmentReductionCents: number | null = null;
 
-  if (outcome === 'won' && new_assessed_value != null && propertyData?.assessed_value) {
-    const reduction = propertyData.assessed_value - new_assessed_value;
-    actualSavingsCents = Math.max(0, Math.round(reduction * 100));
+  if (outcome === 'won') {
+    const reductionValidation = validateWinningAssessmentReduction(
+      propertyData?.assessed_value,
+      newAssessedValue
+    );
+
+    if (!reductionValidation.valid || newAssessedValue == null || propertyData?.assessed_value == null) {
+      return NextResponse.json(
+        { error: reductionValidation.error ?? 'Winning appeal reduction could not be validated.' },
+        { status: 400 }
+      );
+    }
+
+    assessmentReductionCents = calculateAssessmentReductionCents(
+      propertyData.assessed_value,
+      newAssessedValue
+    );
   }
 
   // ── Update report ─────────────────────────────────────────────────────
@@ -157,12 +168,15 @@ export async function POST(
     .from('reports')
     .update({
       appeal_outcome: outcome,
-      actual_savings_cents: actualSavingsCents,
-      outcome_notes: notes ?? null,
+      // Legacy column name retained for compatibility. The stored value is the
+      // assessment-base reduction in cents, not annual tax-dollar savings.
+      actual_savings_cents: assessmentReductionCents,
+      outcome_notes: notes,
       outcome_reported_at: new Date().toISOString(),
       outcome_followup_token: null, // Invalidate token after use
       appeal_outcome_details: {
-        new_assessed_value: new_assessed_value ?? null,
+        new_assessed_value: newAssessedValue,
+        metric: 'assessment_value_reduction',
         reported_by: 'client',
         reported_via: token ? 'email_followup' : 'dashboard',
       },
@@ -178,7 +192,7 @@ export async function POST(
   try {
     await createCalibrationEntry(reportId, adminSupabase);
   } catch (err) {
-    apiLogger.error({ err: err, reportId }, 'Calibration entry failed');
+    apiLogger.error({ err, reportId }, 'Calibration entry failed');
     // Don't fail the outcome recording if calibration fails
   }
 
@@ -201,29 +215,31 @@ export async function POST(
       const outcomes = (countyOutcomes ?? []) as unknown as OutcomeRow[];
 
       if (outcomes.length > 0) {
-        const wins = outcomes.filter(r => r.appeal_outcome === 'won');
+        const wins = outcomes.filter((row) => row.appeal_outcome === 'won');
         const winRate = wins.length / outcomes.length;
 
-        // Compute avg_savings_pct as the mean percentage reduction in assessed value
-        // across winning appeals. actual_savings_cents is the assessment reduction in cents.
-        let avgSavingsPct: number | null = null;
+        // Legacy avg_savings_pct stores the mean percentage reduction in assessed
+        // value across winning appeals, not a tax-bill savings percentage.
+        let averageAssessmentReductionPct: number | null = null;
         if (wins.length > 0) {
-          const savingsPcts = wins
-            .map((r) => {
-              const savingsCents = (r.actual_savings_cents as number) ?? 0;
-              const pd = Array.isArray(r.property_data) ? r.property_data[0] : r.property_data;
-              const assessed = (pd as { assessed_value: number | null } | null)?.assessed_value ?? 0;
-              if (savingsCents > 0 && assessed > 0) {
-                // savings in dollars / assessed value = percentage
-                return ((savingsCents / 100) / assessed) * 100;
+          const reductionPcts = wins
+            .map((row) => {
+              const reductionCents = row.actual_savings_cents ?? 0;
+              const property = Array.isArray(row.property_data)
+                ? row.property_data[0]
+                : row.property_data;
+              const assessed = property?.assessed_value ?? 0;
+              if (reductionCents > 0 && assessed > 0) {
+                return ((reductionCents / 100) / assessed) * 100;
               }
               return null;
             })
-            .filter((p): p is number => p != null);
+            .filter((percentage): percentage is number => percentage != null);
 
-          if (savingsPcts.length > 0) {
-            avgSavingsPct = Math.round(
-              savingsPcts.reduce((sum, p) => sum + p, 0) / savingsPcts.length * 10
+          if (reductionPcts.length > 0) {
+            averageAssessmentReductionPct = Math.round(
+              (reductionPcts.reduce((sum, percentage) => sum + percentage, 0) /
+                reductionPcts.length) * 10
             ) / 10;
           }
         }
@@ -232,21 +248,31 @@ export async function POST(
           .from('county_rules')
           .update({
             success_rate_pct: Math.round(winRate * 100),
-            avg_savings_pct: avgSavingsPct,
+            avg_savings_pct: averageAssessmentReductionPct,
             success_rate_source: 'client_reported_outcomes',
           })
           .eq('county_fips', report.county_fips);
       }
     } catch (err) {
-      apiLogger.error({ err: err, countyFips: report.county_fips }, 'County stats update failed');
+      apiLogger.error({ err, countyFips: report.county_fips }, 'County stats update failed');
     }
   }
 
-  apiLogger.info({ outcome, reportId }, '[outcome] Recorded for report');
+  const assessmentReduction = assessmentReductionCents != null
+    ? assessmentReductionCents / 100
+    : null;
+
+  apiLogger.info(
+    { outcome, reportId, assessmentReduction },
+    '[outcome] Recorded appeal outcome'
+  );
 
   return NextResponse.json({
     success: true,
     outcome,
-    savings: actualSavingsCents != null ? actualSavingsCents / 100 : null,
+    assessment_reduction: assessmentReduction,
+    assessment_reduction_metric: 'assessed_value',
+    // Deprecated compatibility alias. This is not annual tax savings.
+    savings: assessmentReduction,
   });
 }
