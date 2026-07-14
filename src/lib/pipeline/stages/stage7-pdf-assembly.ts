@@ -7,9 +7,8 @@ import type { Database } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { generateReportPDF } from '@/lib/pdf';
 import { fetchReportTemplateData } from '@/lib/pdf/fetch-report-data';
+import { evaluatePdfReleasePolicy } from '@/lib/valuation/pdf-release-policy';
 import { pipelineLogger } from '@/lib/logger';
-
-const ALTERNATIVE_APPROACH_RECONCILIATION_TOLERANCE = 0.35;
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
 
@@ -28,62 +27,25 @@ export async function runPdfAssembly(
   const qaIssues: string[] = [];
   const hardFails: string[] = [];
 
-  const comparableSales = templateData.comparableSales ?? [];
-  const hasComps = comparableSales.length > 0;
-  const concludedValue = templateData.concludedValue ?? 0;
-  const hasConcludedValue = concludedValue > 0;
+  const valuationRelease = evaluatePdfReleasePolicy({
+    comparableSaleCount: templateData.comparableSales?.length ?? 0,
+    concludedValue: templateData.concludedValue,
+    incomeApproach: templateData.incomeAnalysis
+      ? {
+          netOperatingIncome: templateData.incomeAnalysis.net_operating_income,
+          concludedCapRate: templateData.incomeAnalysis.concluded_cap_rate,
+          concludedValue: templateData.incomeAnalysis.concluded_value_income_approach,
+        }
+      : null,
+    costApproach: {
+      replacementCostNew: templateData.property.cost_approach_rcn,
+      concludedValue: templateData.property.cost_approach_value,
+      physicalDepreciationPct: templateData.property.physical_depreciation_pct,
+    },
+  });
 
-  const incomeAnalysis = templateData.incomeAnalysis;
-  const incomeValue = incomeAnalysis?.concluded_value_income_approach ?? 0;
-  const hasIncomeApproach =
-    (incomeAnalysis?.net_operating_income ?? 0) > 0 &&
-    (incomeAnalysis?.concluded_cap_rate ?? 0) > 0 &&
-    incomeValue > 0;
-
-  const costValue = templateData.property.cost_approach_value ?? 0;
-  const hasCostApproach =
-    (templateData.property.cost_approach_rcn ?? 0) > 0 &&
-    costValue > 0 &&
-    templateData.property.physical_depreciation_pct != null;
-
-  const evidenceBackedAlternatives = [
-    hasIncomeApproach ? { label: 'income approach', value: incomeValue } : null,
-    hasCostApproach ? { label: 'cost approach', value: costValue } : null,
-  ].filter((approach): approach is { label: string; value: number } => approach != null);
-
-  const conclusionReconcilesToAlternative =
-    hasConcludedValue &&
-    evidenceBackedAlternatives.some(({ value }) => {
-      const minimum = value * (1 - ALTERNATIVE_APPROACH_RECONCILIATION_TOLERANCE);
-      const maximum = value * (1 + ALTERNATIVE_APPROACH_RECONCILIATION_TOLERANCE);
-      return concludedValue >= minimum && concludedValue <= maximum;
-    });
-
-  if (!hasComps) {
-    if (evidenceBackedAlternatives.length === 0) {
-      const issue = 'No evidence-backed valuation approach available';
-      qaIssues.push(issue);
-      hardFails.push(issue);
-    } else if (!conclusionReconcilesToAlternative) {
-      const issue = 'Concluded value is not reconciled to the available income or cost evidence';
-      qaIssues.push(issue);
-      hardFails.push(issue);
-    } else {
-      qaIssues.push(
-        `No comparable sales found; PDF relies on ${evidenceBackedAlternatives
-          .map(({ label }) => label)
-          .join(' and ')}`
-      );
-    }
-  } else if (comparableSales.length < 3) {
-    qaIssues.push(`Only ${comparableSales.length} comparable sales (minimum 3 recommended)`);
-  }
-
-  if (!hasConcludedValue) {
-    const issue = 'Concluded value is missing or zero';
-    qaIssues.push(issue);
-    hardFails.push(issue);
-  }
+  qaIssues.push(...valuationRelease.warnings, ...valuationRelease.hardFailures);
+  hardFails.push(...valuationRelease.hardFailures);
 
   // appeal_argument_summary and filingGuide are only required for tax_appeal reports
   const isTaxAppeal = templateData.report.service_type === 'tax_appeal';
@@ -112,9 +74,9 @@ export async function runPdfAssembly(
       {
         reportId,
         qaIssues,
-        evidenceBackedAlternatives,
-        concludedValue,
-        conclusionReconcilesToAlternative,
+        evidenceBackedAlternatives: valuationRelease.evidenceBackedAlternatives,
+        concludedValue: templateData.concludedValue,
+        conclusionReconcilesToAlternative: valuationRelease.conclusionReconcilesToAlternative,
       },
       '[stage7] QA pre-flight warnings'
     );
