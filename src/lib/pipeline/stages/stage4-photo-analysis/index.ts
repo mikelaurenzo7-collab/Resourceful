@@ -9,7 +9,7 @@
 // judgments require market/cost support and human review.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Photo, PhotoAiAnalysis } from '@/types/database';
+import type { Database, Photo, PhotoAiAnalysis, PropertyDataUpdate } from '@/types/database';
 import type { StageResult } from '../../orchestrator';
 import { analyzePhoto } from '@/lib/services/anthropic';
 import { analyzeDeferredMaintenance } from '@/lib/services/gemini';
@@ -321,7 +321,7 @@ export async function runPhotoAnalysis(
     }
   }
 
-  const propertyUpdate: Record<string, unknown> = {
+  const propertyUpdate: PropertyDataUpdate = {
     overall_condition: overallCondition,
   };
   if (aggregateNotes) propertyUpdate.condition_notes = aggregateNotes;
