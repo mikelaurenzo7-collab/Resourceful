@@ -1,50 +1,61 @@
 // ─── AI Configuration ────────────────────────────────────────────────────────
-// This is the ONLY file where model names appear.
-// Everything else imports from here.
-// To upgrade models, change the environment variables — not this file.
+// Resourceful is OpenAI-first. GPT-5.6 Sol performs the high-judgment valuation,
+// appraisal-analysis, vision, and filing work. Terra handles research and Luna
+// handles low-latency extraction/classification. Every model remains overridable
+// through environment variables so production can pin snapshots after evals.
 
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`${name} environment variable is not set. AI features will not work.`);
-  }
-  return value;
+export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+
+function modelFromEnv(name: string, fallback: string): string {
+  return process.env[name]?.trim() || fallback;
 }
 
-function getFastProvider(): 'anthropic' | 'groq' {
-  const explicit = process.env.AI_PROVIDER_FAST?.trim().toLowerCase();
-  if (explicit === 'anthropic' || explicit === 'groq') {
-    return explicit;
-  }
-  return 'anthropic';
+function reasoningFromEnv(
+  name: string,
+  fallback: ReasoningEffort
+): ReasoningEffort {
+  const value = process.env[name]?.trim().toLowerCase();
+  const allowed = new Set<ReasoningEffort>(['none', 'low', 'medium', 'high', 'xhigh', 'max']);
+  return value && allowed.has(value as ReasoningEffort)
+    ? (value as ReasoningEffort)
+    : fallback;
 }
-
-const DEFAULT_RESEARCH_MODEL = 'claude-haiku-4-5-20251001';
 
 export const AI_PROVIDERS = {
-  get FAST() { return getFastProvider(); },
+  PRIMARY: 'openai',
+  FAST: 'openai',
+  RESEARCH: 'openai',
+  VISION: 'openai',
+  DOCUMENT: 'openai',
 } as const;
 
 export const AI_MODELS = {
-  get PRIMARY() { return requireEnv('AI_MODEL_PRIMARY'); }, // report narratives, logical reasoning
-  get FAST() { return requireEnv('AI_MODEL_FAST'); }, // quick classification tasks
-  get RESEARCH() {
-    if (process.env.AI_MODEL_RESEARCH) return process.env.AI_MODEL_RESEARCH;
-    return AI_PROVIDERS.FAST === 'anthropic' ? requireEnv('AI_MODEL_FAST') : DEFAULT_RESEARCH_MODEL;
-  }, // tool-using county research stays on Anthropic for now
-  get VISION() { return process.env.GEMINI_MODEL_VISION || 'gemini-3.1-pro'; }, // appraiser-grade defect extraction
-  get DOCUMENT() { return process.env.GEMINI_MODEL_DOCUMENT || 'gemini-3.1-pro'; }, // dense tax bill OCR
+  get PRIMARY() { return modelFromEnv('AI_MODEL_PRIMARY', 'gpt-5.6-sol'); },
+  get FAST() { return modelFromEnv('AI_MODEL_FAST', 'gpt-5.6-luna'); },
+  get RESEARCH() { return modelFromEnv('AI_MODEL_RESEARCH', 'gpt-5.6-terra'); },
+  get VISION() { return modelFromEnv('AI_MODEL_VISION', 'gpt-5.6-sol'); },
+  get DOCUMENT() { return modelFromEnv('AI_MODEL_DOCUMENT', 'gpt-5.6-sol'); },
 } as const;
 
-// Token limits cap API costs and prevent runaway bills.
+export const AI_REASONING = {
+  get APPRAISER() { return reasoningFromEnv('AI_REASONING_APPRAISER', 'high'); },
+  get RESEARCH() { return reasoningFromEnv('AI_REASONING_RESEARCH', 'medium'); },
+  get VISION() { return reasoningFromEnv('AI_REASONING_VISION', 'high'); },
+  get DOCUMENT() { return reasoningFromEnv('AI_REASONING_DOCUMENT', 'high'); },
+  get FAST() { return reasoningFromEnv('AI_REASONING_FAST', 'low'); },
+} as const;
+
+// Output limits cap API cost while leaving room for a complete professional workfile.
 export const AI_TOKEN_LIMITS = {
-  REPORT_NARRATIVES: 16000,
-  VISION_ANALYSIS: 1000,
-  FILING_GUIDE: 3000,
-  CLASSIFICATION: 300,
+  REPORT_NARRATIVES: 24000,
+  VISION_ANALYSIS: 2500,
+  FILING_GUIDE: 5000,
+  CLASSIFICATION: 600,
+  DOCUMENT_EXTRACTION: 2500,
+  DEFERRED_MAINTENANCE: 3500,
 } as const;
 
-// Backward-compatible alias used by existing service code
+// Backward-compatible alias used by existing service code.
 export const AI_CONFIG = {
   maxTokens: {
     narrative: AI_TOKEN_LIMITS.REPORT_NARRATIVES,
