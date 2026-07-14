@@ -1,16 +1,24 @@
-// ─── Valuation API ──────────────────────────────────────────────────────────
-// Public endpoint (no auth). Takes an address, returns ATTOM assessment data
-// and estimated savings. Rate-limited to prevent abuse.
+// ─── Public Property Record Check ─────────────────────────────────────────────
+// This endpoint confirms whether usable assessment data exists for an address.
+// It deliberately does not claim that a property is overassessed or estimate
+// savings before independent comparable and condition analysis is complete.
 
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { getPropertyDetail } from '@/lib/services/attom';
 import { getCountyByName } from '@/lib/repository/county-rules';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { apiLogger } from '@/lib/logger';
 
+const recordCheckSchema = z.object({
+  address: z.string().trim().min(3).max(200),
+  city: z.string().trim().min(1).max(100),
+  state: z.string().trim().min(2).max(50),
+  county: z.string().trim().max(100).optional(),
+});
+
 export async function POST(request: NextRequest) {
   try {
-    // ── Rate limit: 10 valuations per 15 minutes per IP ──────────────────
     const rateLimited = await applyRateLimit(request, {
       prefix: 'valuation',
       limit: 10,
@@ -18,85 +26,56 @@ export async function POST(request: NextRequest) {
     });
     if (rateLimited) return rateLimited;
 
-    // ── Parse request ────────────────────────────────────────────────────
-    const body = await request.json();
-    const { address, city, state, county } = body as {
-      address: string;
-      city: string;
-      state: string;
-      county?: string;
-    };
-
-    if (!address || !city || !state) {
+    const parsed = recordCheckSchema.safeParse(await request.json());
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Address, city, and state are required' },
+        { error: 'A valid property address, city, and state are required.' },
         { status: 400 }
       );
     }
 
-    // ── ATTOM property lookup ────────────────────────────────────────────
-    const fullAddress = [address, city, state].filter(Boolean).join(', ');
-    const { data: propertyDetail, error: attomError } =
-      await getPropertyDetail(fullAddress);
+    const { address, city, state, county } = parsed.data;
+    const fullAddress = [address, city, state].join(', ');
+    const { data: propertyDetail, error: attomError } = await getPropertyDetail(fullAddress);
 
     if (attomError || !propertyDetail) {
-      return NextResponse.json(
-        { error: 'Unable to retrieve property data for this address', details: attomError },
-        { status: 502 }
+      apiLogger.info(
+        { city, state, providerError: attomError ?? undefined },
+        'Public property record was not available during landing-page screening'
       );
+      return NextResponse.json({
+        recordFound: false,
+        message: 'We could not confirm a complete public record yet. You can still start a case and provide the tax bill or parcel number.',
+      });
     }
 
-    // ── County rules lookup ──────────────────────────────────────────────
     const countyName = county || propertyDetail.location.countyName;
-    const countyRule = countyName
-      ? await getCountyByName(countyName, state)
-      : null;
-
-    // ── Calculate values ─────────────────────────────────────────────────
-    // IMPORTANT: We do NOT compare ATTOM assessedValue vs ATTOM marketValue.
-    // Both come from county records — circular validation. If the county is
-    // wrong, ATTOM inherits the same bad data. We use a statistical estimate
-    // based on IAAO mass-appraisal error rates instead.
-    const assessedValue = propertyDetail.assessment.assessedValue;
-    const taxAmount = propertyDetail.assessment.taxAmount;
-
-    const conservativeErrorRate = 0.08;
-    const estimatedOverassessment = Math.round(assessedValue * conservativeErrorRate);
-
-    // Use actual tax rate when available; fall back to 1% effective rate
-    // estimate when ATTOM returns $0 tax amount (common for new construction,
-    // exempt properties, or stale records).
-    const taxRate =
-      taxAmount > 0 && assessedValue > 0
-        ? taxAmount / assessedValue
-        : 0.01;
-
-    const estimatedAnnualSavings = Math.max(Math.round(estimatedOverassessment * taxRate), 50);
+    const countyRule = countyName ? await getCountyByName(countyName, state) : null;
+    const assessedValue = propertyDetail.assessment.assessedValue || null;
+    const taxAmount = propertyDetail.assessment.taxAmount || null;
 
     return NextResponse.json({
+      recordFound: true,
       assessedValue,
-      landValue: propertyDetail.assessment.landValue,
-      improvementValue: propertyDetail.assessment.improvementValue,
-      assessmentYear: propertyDetail.assessment.assessmentYear,
       taxAmount,
-      estimatedOverassessment,
-      estimatedAnnualSavings,
+      assessmentYear: propertyDetail.assessment.assessmentYear || null,
       countyName: countyName || null,
       appealDeadlineRule: countyRule?.appeal_deadline_rule ?? null,
+      message: 'Public assessment data found. Appeal potential requires independent comparable, condition, and jurisdiction analysis.',
       propertySummary: {
-        yearBuilt: propertyDetail.summary.yearBuilt,
-        buildingSqFt: propertyDetail.summary.buildingSquareFeet,
-        lotSqFt: propertyDetail.summary.lotSquareFeet,
-        bedrooms: propertyDetail.summary.bedrooms,
-        bathrooms: propertyDetail.summary.bathrooms,
-        stories: propertyDetail.summary.stories,
+        yearBuilt: propertyDetail.summary.yearBuilt || null,
+        buildingSqFt: propertyDetail.summary.buildingSquareFeet || null,
+        lotSqFt: propertyDetail.summary.lotSquareFeet || null,
+        bedrooms: propertyDetail.summary.bedrooms || null,
+        bathrooms: propertyDetail.summary.bathrooms || null,
+        stories: propertyDetail.summary.stories || null,
       },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error({ err: message }, 'Unhandled error');
+    apiLogger.error({ err: message }, 'Public property record check failed');
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'The property record check is temporarily unavailable.' },
       { status: 500 }
     );
   }
