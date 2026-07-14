@@ -1,27 +1,34 @@
-// ─── Appeal Filing Service ────────────────────────────────────────────────────
-// Handles the actual filing of property tax appeals on behalf of users.
-// Three filing methods based on county capabilities and user's service tier:
-//
-//   1. ONLINE FILING: Auto-submit via county portal (counties with online filing)
-//   2. MAIL FILING: Generate filled PDF + mail via Lob API
-//   3. GUIDED FILING: Prepare all documents, guide user through self-filing
-//
-// Triggered after admin approves a report (status = 'approved') for users
-// who purchased guided_filing or full_representation tiers.
+// ─── Appeal Filing Preparation Service ───────────────────────────────────────
+// Builds a filing-ready workflow after report delivery. This module deliberately
+// does NOT claim or perform a completed filing. Submission requires a verified
+// jurisdiction adapter or a human operator who records durable proof.
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { Report, CountyRule } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+export type FilingMethod =
+  | 'online'
+  | 'mail'
+  | 'email'
+  | 'guided_self_file'
+  | 'representation_review';
 
-export type FilingMethod = 'online' | 'mail' | 'email' | 'guided_self_file';
+export type FilingSubmissionStatus =
+  | 'prepared'
+  | 'authorization_required'
+  | 'ready_for_manual_submission'
+  | 'submitted'
+  | 'accepted'
+  | 'failed';
 
 export interface FilingResult {
+  /** True means the workflow/packet was prepared successfully—not that a filing occurred. */
   success: boolean;
   method: FilingMethod;
+  submissionStatus: FilingSubmissionStatus;
   confirmationNumber: string | null;
-  trackingNumber: string | null;  // For mail filings
+  trackingNumber: string | null;
   filedAt: string | null;
   error: string | null;
   details: Record<string, unknown>;
@@ -43,306 +50,217 @@ export interface FilingPacket {
   formSubmissionData: Record<string, unknown> | null;
 }
 
-// ─── Filing Method Resolution ────────────────────────────────────────────────
+function emptyFailure(error: string): FilingResult {
+  return {
+    success: false,
+    method: 'guided_self_file',
+    submissionStatus: 'failed',
+    confirmationNumber: null,
+    trackingNumber: null,
+    filedAt: null,
+    error,
+    details: {},
+  };
+}
 
 /**
- * Determine the best filing method for a county + service tier combination.
+ * Resolve the preparation path. Full representation never proceeds automatically
+ * when representative authority is missing or unknown.
  */
 export function resolveFilingMethod(
   countyRule: CountyRule | null,
   reviewTier: string
 ): FilingMethod {
-  // Guided filing and auto tiers = user files themselves (we prepare docs)
-  if (reviewTier === 'auto' || reviewTier === 'expert_reviewed' || reviewTier === 'guided_filing') {
+  if (reviewTier !== 'full_representation') {
     return 'guided_self_file';
   }
 
-  // Full representation = we file for them
-  if (reviewTier === 'full_representation') {
-    if (countyRule?.accepts_online_filing && countyRule.portal_url) {
-      return 'online';
-    }
-    if (countyRule?.accepts_email_filing && countyRule.filing_email) {
-      return 'email';
-    }
-    return 'mail';
+  if (countyRule?.authorized_rep_allowed !== true) {
+    return 'representation_review';
   }
 
-  return 'guided_self_file';
+  if (countyRule.accepts_online_filing && countyRule.portal_url) return 'online';
+  if (countyRule.accepts_email_filing && countyRule.filing_email) return 'email';
+  return 'mail';
 }
 
-// ─── Filing Packet Builder ───────────────────────────────────────────────────
-
-/**
- * Build a complete filing packet from a report and its related data.
- */
+/** Build the filing packet from the same authoritative conclusion delivered to the client. */
 export async function buildFilingPacket(reportId: string): Promise<FilingPacket | null> {
   const supabase = createAdminClient();
 
-  // Fetch report
-  const { data: report } = await supabase
-    .from('reports')
-    .select('*')
-    .eq('id', reportId)
-    .single();
+  const [{ data: reportData }, { data: propertyData }, { data: formData }] = await Promise.all([
+    supabase.from('reports').select('*').eq('id', reportId).single(),
+    supabase
+      .from('property_data')
+      .select('assessed_value, assessment_ratio, concluded_value')
+      .eq('report_id', reportId)
+      .single(),
+    supabase.from('form_submissions').select('form_data').eq('report_id', reportId).maybeSingle(),
+  ]);
 
-  if (!report) return null;
-  const r = report as unknown as Report;
+  const report = reportData as unknown as Report | null;
+  if (!report || !propertyData) return null;
 
-  // Fetch property data for values
-  const { data: pd } = await supabase
-    .from('property_data')
-    .select('assessed_value, assessment_ratio')
-    .eq('report_id', reportId)
-    .single();
+  const assessedValue = Number(propertyData.assessed_value) || 0;
+  const concludedValue = Number(propertyData.concluded_value) || 0;
+  const ratio = Number(propertyData.assessment_ratio) || 1;
 
-  // Fetch concluded value from comps
-  const { data: comps } = await supabase
-    .from('comparable_sales')
-    .select('adjusted_price_per_sqft')
-    .eq('report_id', reportId);
-
-  const { data: pdFull } = await supabase
-    .from('property_data')
-    .select('building_sqft_gross')
-    .eq('report_id', reportId)
-    .single();
-
-  let concludedValue = 0;
-  const adjPrices = (comps ?? [])
-    .map((c: { adjusted_price_per_sqft: number | null }) => c.adjusted_price_per_sqft)
-    .filter((p): p is number => p != null && p > 0)
-    .sort((a, b) => a - b);
-
-  if (adjPrices.length > 0 && pdFull?.building_sqft_gross) {
-    const mid = Math.floor(adjPrices.length / 2);
-    const median = adjPrices.length % 2 === 0
-      ? (adjPrices[mid - 1] + adjPrices[mid]) / 2
-      : adjPrices[mid];
-    concludedValue = Math.round((median * Number(pdFull.building_sqft_gross)) / 1000) * 1000;
+  if (assessedValue <= 0 || concludedValue <= 0) {
+    apiLogger.warn({ reportId }, '[filing] Cannot prepare packet without assessed and concluded values');
+    return null;
   }
 
-  // Fetch form submission data (pre-filled form fields from Stage 5)
-  const { data: formSub } = await supabase
-    .from('form_submissions')
-    .select('*')
-    .eq('report_id', reportId)
-    .single() as { data: Record<string, unknown> | null };
-
-  const assessedValue = Number(pd?.assessed_value) || 0;
-  const ratio = Number(pd?.assessment_ratio) || 1;
-  const requestedValue = ratio < 1
-    ? Math.round(concludedValue * ratio / 1000) * 1000
-    : concludedValue;
+  const requestedValue = ratio > 0 && ratio < 1
+    ? Math.round((concludedValue * ratio) / 1000) * 1000
+    : Math.round(concludedValue / 1000) * 1000;
 
   return {
     reportId,
-    clientEmail: r.client_email ?? '',
-    clientName: r.client_name ?? null,
-    propertyAddress: r.property_address,
-    county: r.county ?? '',
-    state: r.state ?? '',
-    countyFips: r.county_fips ?? null,
+    clientEmail: report.client_email ?? '',
+    clientName: report.client_name ?? null,
+    propertyAddress: report.property_address,
+    county: report.county ?? '',
+    state: report.state ?? '',
+    countyFips: report.county_fips ?? null,
     assessedValue,
     concludedValue,
     requestedValue,
-    reviewTier: r.review_tier ?? 'auto',
-    reportPdfPath: r.report_pdf_storage_path ?? null,
-    formSubmissionData: (formSub?.form_data as Record<string, unknown>) ?? null,
+    reviewTier: report.review_tier ?? 'auto',
+    reportPdfPath: report.report_pdf_storage_path ?? null,
+    formSubmissionData:
+      ((formData as { form_data?: Record<string, unknown> } | null)?.form_data ?? null),
   };
 }
 
-// ─── Online Filing ───────────────────────────────────────────────────────────
-
-/**
- * Submit an appeal through a county's online portal.
- * Uses the form_submission data to auto-fill fields.
- *
- * NOTE: This is the framework — actual portal automation requires
- * county-specific Playwright scripts added incrementally.
- * For now, it prepares the packet and logs the filing intent.
- */
-async function fileOnline(
+async function setPreparedState(
   packet: FilingPacket,
-  countyRule: CountyRule
-): Promise<FilingResult> {
-  apiLogger.info(
-    { address: packet.propertyAddress, portalUrl: countyRule.portal_url },
-    '[filing] Online filing initiated'
-  );
-
-  // ROADMAP: County-specific Playwright automation (Phase 3 enhancement)
-  // For now, record the intent and notify admin to file manually
-  const supabase = createAdminClient();
-  await supabase
+  method: FilingMethod,
+  filingStatus: string,
+  note: string
+): Promise<void> {
+  const { error } = await createAdminClient()
     .from('reports')
     .update({
-      filing_status: 'ready_to_file',
-      filing_method: 'online',
-      admin_notes: `Ready for online filing at ${countyRule.portal_url}. Form data pre-filled. Requested value: $${packet.requestedValue.toLocaleString()}.`,
+      filing_status: filingStatus,
+      filing_method: method,
+      admin_notes: note,
     })
     .eq('id', packet.reportId);
 
-  return {
-    success: true,
-    method: 'online',
-    confirmationNumber: null,
-    trackingNumber: null,
-    filedAt: null,
-    error: null,
-    details: {
-      portalUrl: countyRule.portal_url,
-      requestedValue: packet.requestedValue,
-      status: 'ready_to_file',
-      note: 'Packet prepared. Admin to complete online submission or automate via Playwright.',
-    },
-  };
+  if (error) throw new Error(`Failed to save filing preparation state: ${error.message}`);
 }
-
-// ─── Email Filing ────────────────────────────────────────────────────────────
-
-async function fileByEmail(
-  packet: FilingPacket,
-  countyRule: CountyRule
-): Promise<FilingResult> {
-  apiLogger.info(
-    { address: packet.propertyAddress, filingEmail: countyRule.filing_email },
-    '[filing] Email filing initiated'
-  );
-
-  // Prepare email with report PDF attached
-  // ROADMAP: Email filing with PDF attachment via Resend (Phase 3 enhancement)
-  const supabase = createAdminClient();
-  await supabase
-    .from('reports')
-    .update({
-      filing_status: 'ready_to_file',
-      filing_method: 'email',
-      admin_notes: `Ready for email filing to ${countyRule.filing_email}. Report PDF attached. Requested value: $${packet.requestedValue.toLocaleString()}.`,
-    })
-    .eq('id', packet.reportId);
-
-  return {
-    success: true,
-    method: 'email',
-    confirmationNumber: null,
-    trackingNumber: null,
-    filedAt: null,
-    error: null,
-    details: {
-      filingEmail: countyRule.filing_email,
-      requestedValue: packet.requestedValue,
-      status: 'ready_to_file',
-    },
-  };
-}
-
-// ─── Mail Filing (Lob API) ───────────────────────────────────────────────────
-
-async function fileByMail(
-  packet: FilingPacket,
-  countyRule: CountyRule
-): Promise<FilingResult> {
-  apiLogger.info(
-    { address: packet.propertyAddress, mailingAddress: countyRule.appeal_board_address ?? 'address TBD' },
-    '[filing] Mail filing initiated'
-  );
-
-  const lobApiKey = process.env.LOB_API_KEY;
-
-  if (!lobApiKey) {
-    // No Lob API — flag for manual mailing
-    const supabase = createAdminClient();
-    await supabase
-      .from('reports')
-      .update({
-        filing_status: 'ready_to_file',
-        filing_method: 'mail',
-        admin_notes: `Ready for mail filing to ${countyRule.appeal_board_address ?? countyRule.appeal_board_name}. Print and mail report + appeal form. Requested value: $${packet.requestedValue.toLocaleString()}.`,
-      })
-      .eq('id', packet.reportId);
-
-    return {
-      success: true,
-      method: 'mail',
-      confirmationNumber: null,
-      trackingNumber: null,
-      filedAt: null,
-      error: null,
-      details: {
-        address: countyRule.appeal_board_address,
-        status: 'ready_to_file',
-        note: 'Lob API not configured. Admin to print and mail.',
-      },
-    };
-  }
-
-  // ROADMAP: Lob API integration for automated certified mail (Phase 3)
-
-  return {
-    success: true,
-    method: 'mail',
-    confirmationNumber: null,
-    trackingNumber: null,
-    filedAt: null,
-    error: null,
-    details: { status: 'ready_to_file' },
-  };
-}
-
-// ─── Guided Self-Filing ──────────────────────────────────────────────────────
 
 async function prepareGuidedFiling(
   packet: FilingPacket,
   countyRule: CountyRule | null
 ): Promise<FilingResult> {
-  apiLogger.info({ propertyAddress: packet.propertyAddress }, '[filing] Preparing guided filing packet for');
-
-  const supabase = createAdminClient();
-  await supabase
-    .from('reports')
-    .update({
-      filing_status: 'guided_ready',
-      filing_method: 'guided_self_file',
-    })
-    .eq('id', packet.reportId);
+  await setPreparedState(
+    packet,
+    'guided_self_file',
+    'guided_ready',
+    `Pro se filing packet ready. Requested assessed value: $${packet.requestedValue.toLocaleString()}. Owner must verify the current deadline and submit through the county-approved channel.`
+  );
 
   return {
     success: true,
     method: 'guided_self_file',
+    submissionStatus: 'prepared',
     confirmationNumber: null,
     trackingNumber: null,
     filedAt: null,
     error: null,
     details: {
-      status: 'guided_ready',
-      note: 'Report + filing guide delivered. User files themselves.',
       portalUrl: countyRule?.portal_url ?? null,
+      filingEmail: countyRule?.filing_email ?? null,
+      formUrl: countyRule?.form_download_url ?? null,
+      requestedValue: packet.requestedValue,
+      proofRequired: true,
     },
   };
 }
 
-// ─── Public API ──────────────────────────────────────────────────────────────
+async function prepareRepresentationReview(
+  packet: FilingPacket,
+  countyRule: CountyRule | null
+): Promise<FilingResult> {
+  const authorityKnown = countyRule?.authorized_rep_allowed;
+  const note = authorityKnown === false
+    ? 'County rules indicate third-party representation is not allowed. Convert this case to guided pro se filing or obtain legal review.'
+    : 'Representative authority is unverified. Confirm eligible representative type, current authorization form, signature requirements, and hearing authority before submission.';
+
+  await setPreparedState(
+    packet,
+    'representation_review',
+    'authorization_required',
+    note
+  );
+
+  return {
+    success: true,
+    method: 'representation_review',
+    submissionStatus: 'authorization_required',
+    confirmationNumber: null,
+    trackingNumber: null,
+    filedAt: null,
+    error: null,
+    details: {
+      authorizedRepAllowed: authorityKnown ?? null,
+      authorizedRepTypes: countyRule?.authorized_rep_types ?? null,
+      authorizationFormUrl: countyRule?.authorized_rep_form_url ?? null,
+      restrictions: countyRule?.rep_restrictions_notes ?? null,
+      requestedValue: packet.requestedValue,
+    },
+  };
+}
+
+async function prepareManagedSubmission(
+  packet: FilingPacket,
+  countyRule: CountyRule,
+  method: Exclude<FilingMethod, 'guided_self_file' | 'representation_review'>
+): Promise<FilingResult> {
+  if (countyRule.authorized_rep_allowed !== true) {
+    return prepareRepresentationReview(packet, countyRule);
+  }
+
+  const destination = method === 'online'
+    ? countyRule.portal_url
+    : method === 'email'
+      ? countyRule.filing_email
+      : countyRule.appeal_board_address;
+
+  await setPreparedState(
+    packet,
+    method,
+    'ready_to_file',
+    `Managed filing packet prepared for ${method} submission. Destination: ${destination ?? 'verification required'}. Requested assessed value: $${packet.requestedValue.toLocaleString()}. Do not mark filed until durable submission proof is recorded.`
+  );
+
+  return {
+    success: true,
+    method,
+    submissionStatus: 'ready_for_manual_submission',
+    confirmationNumber: null,
+    trackingNumber: null,
+    filedAt: null,
+    error: null,
+    details: {
+      destination,
+      requestedValue: packet.requestedValue,
+      authorizationFormUrl: countyRule.authorized_rep_form_url,
+      proofRequired: true,
+      note: 'Human review and executed authorization are required before submission.',
+    },
+  };
+}
 
 /**
- * File an appeal for an approved report.
- * Determines the best filing method and executes it.
+ * Prepare the post-delivery filing workflow. Despite the historical function name,
+ * this function does not submit an appeal or set filed_at.
  */
 export async function fileAppeal(reportId: string): Promise<FilingResult> {
   const packet = await buildFilingPacket(reportId);
-  if (!packet) {
-    return {
-      success: false,
-      method: 'guided_self_file',
-      confirmationNumber: null,
-      trackingNumber: null,
-      filedAt: null,
-      error: 'Report not found or missing data',
-      details: {},
-    };
-  }
+  if (!packet) return emptyFailure('Report not found or missing authoritative valuation data');
 
-  // Look up county rules
   const supabase = createAdminClient();
   let countyRule: CountyRule | null = null;
 
@@ -351,34 +269,26 @@ export async function fileAppeal(reportId: string): Promise<FilingResult> {
       .from('county_rules')
       .select('*')
       .eq('county_fips', packet.countyFips)
-      .single();
+      .maybeSingle();
     countyRule = data as CountyRule | null;
   }
 
   const method = resolveFilingMethod(countyRule, packet.reviewTier);
+  apiLogger.info(
+    { reportId, method, reviewTier: packet.reviewTier, countyFips: packet.countyFips },
+    '[filing] Preparing filing workflow'
+  );
 
-  apiLogger.info({ method, reviewTier: packet.reviewTier, county: packet.county }, '[filing] Method resolved: for tier=, county=');
-
-  switch (method) {
-    case 'online':
-      return fileOnline(packet, countyRule!);
-    case 'email':
-      return fileByEmail(packet, countyRule!);
-    case 'mail':
-      return fileByMail(packet, countyRule!);
-    case 'guided_self_file':
-      return prepareGuidedFiling(packet, countyRule);
-    default:
-      return prepareGuidedFiling(packet, countyRule);
-  }
+  if (method === 'guided_self_file') return prepareGuidedFiling(packet, countyRule);
+  if (method === 'representation_review') return prepareRepresentationReview(packet, countyRule);
+  if (!countyRule) return prepareRepresentationReview(packet, null);
+  return prepareManagedSubmission(packet, countyRule, method);
 }
 
-/**
- * Check if a report is eligible for filing.
- */
+/** Delivered tax-appeal reports can enter filing preparation once. */
 export function isFilingEligible(report: Report): boolean {
   return (
-    report.status === 'approved' &&
+    report.status === 'delivered' &&
     report.service_type === 'tax_appeal' &&
     (report.filing_status === 'not_started' || report.filing_status === null)
   );
