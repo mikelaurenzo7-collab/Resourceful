@@ -18,6 +18,7 @@
       }
     ],
     "paths": {
+      "@/lib/services/anthropic": ["./src/lib/services/narrative-router.ts"],
       "@/*": ["./src/*"]
     }
   },
