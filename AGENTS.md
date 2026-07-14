@@ -1,38 +1,46 @@
-# Resourceful AI Operational Standards
+# Resourceful Operational Standards
 
-This document codifies the engineering and operational standards for the Resourceful platform. All AI agents and human contributors must adhere to these principles.
+These standards govern every human and automated change to Resourceful.
 
-## Core Engineering Principles
+## Product and Engineering
 
-- **Dashboard-First Delivery:** All outputs must be delivered through the customer dashboard. Direct links to artifacts (like PDFs) should be signed, temporary, and generated on-demand.
-- **Nationwide-First Architecture:** No county-specific logic should be hardcoded in the application. All jurisdiction-specific behavior must be driven by data in the `county_rules` table.
-- **Strict Environment Validation:** All critical environment variables must be validated at startup via `src/instrumentation.ts` and `src/lib/utils/validate-env.ts`.
-- **Structured Logging:** Use `src/lib/logger.ts` for all logging. Avoid `console.log` in production-bound code. Ensure PII (like emails) is masked using `src/lib/utils/pii.ts` before logging or sending to error trackers.
-- **Type Safety:** Maintain strict TypeScript mode. Avoid `any` or `never` casts where possible. Ensure database row types match the schema exactly (see `src/types/database.ts`).
+- **Action-first delivery:** The product must move a property owner from assessment notice to evidence, filing, hearing, and outcome—not stop at a PDF.
+- **Jurisdiction-driven behavior:** County and state requirements belong in versioned jurisdiction data and filing adapters, never scattered through UI copy or route handlers.
+- **Fail closed:** Unknown deadlines, authority, forms, filing rules, or data rights must create a verification task rather than a confident guess.
+- **Dashboard-first delivery:** Reports, filing packets, confirmations, hearing dates, and outcomes live in the customer dashboard. Shared artifacts use signed, temporary access.
+- **Dedicated infrastructure:** Resourceful must use its own Supabase and Vercel projects. Never point Resourceful migrations, service-role credentials, or deployment variables at Wireline.
+- **Strict environment validation:** Critical configuration is validated through `src/instrumentation.ts` and `src/lib/utils/validate-env.ts`.
+- **Structured logging and privacy:** Use `src/lib/logger.ts`; mask PII before external logging; do not log full documents, report contents, credentials, or authorization forms.
+- **Type and schema integrity:** Strict TypeScript, generated/verified database types, migrations for schema changes, and no unexplained `any`/`never` casts.
 
-## AI & Data Trust
+## AI Appraiser and Evidence Trust
 
-- **Payment Before Valuation:** The commercial model requires payment before revealing the full valuation.
-- **Independent Evidence:** We prioritize proprietary data (user photos, measurements) and independent comparable analysis over county assessment data, which is treated as a baseline but not ground truth.
-- **Dual-Provider Strategy:** Anthropic is our primary reasoning and narrative engine. Google Gemini handles multimodal vision and dense document OCR.
+- **OpenAI-first runtime:** GPT-5.6 Sol is the primary valuation, narrative, vision, document, and filing model. Terra handles research and Luna handles lower-cost extraction/classification unless evals justify different routing.
+- **Evidence outranks persuasion:** The model may advocate for the customer only within the evidence. It may not manufacture comps, adjustments, defects, deadlines, market statistics, inspection findings, or representative authority.
+- **Source separation:** Clearly distinguish owner statements, photographs, public records, licensed data, calculations, assumptions, and professional judgment.
+- **No false appraisal claims:** Unsigned AI work is an AI-assisted valuation analysis, not a certified, licensed, lender, or USPAP appraisal. A credentialed appraiser must inspect/review as required, sign, and assume responsibility before a regulated appraisal is marketed or delivered.
+- **No false filing claims:** A packet marked ready is not filed. Filing status becomes submitted/accepted only after durable proof such as a confirmation number, timestamped receipt, accepted email, or certified-mail tracking event.
+- **Human review gates:** High-value conclusions, representative filings, portal submissions, and regulated appraisal products require explicit human approval.
+- **Evaluation before model changes:** Model, prompt, and reasoning changes require representative residential, commercial, thin-market, photo-heavy, and county-rule evals.
 
-## Testing & Quality Assurance
+## Filing and Representation
 
-- **Zero Regressions:** Every PR should be verified against the existing test suite (`pnpm test`).
-- **Critical Paths:** Prioritize test coverage for:
-    - Pricing logic (`src/config/pricing.ts`)
-    - Template helpers for legal documents (`src/lib/templates/helpers.ts`)
-    - Pipeline orchestration and stage skipping (`src/lib/pipeline/orchestrator.ts`)
-    - API boundary validations (`src/lib/validations/report.ts`)
-- **Pre-Deployment Check:** `pnpm lint && pnpm build` must pass before any deployment.
+- **Pro se by default:** When representation authority is unknown or unavailable, Resourceful prepares and coaches the owner to file in their own name.
+- **POA is jurisdiction-specific:** Full representation requires verified eligibility, the correct county/state authorization form, an executed authorization, identity/signature controls, and a retained audit trail.
+- **Adapter-based automation:** Automated filing uses a tested jurisdiction adapter with deterministic field mapping, screenshots/receipts, idempotency, and a human review step before final submission.
+- **No generic browser bot:** Never submit a legal/tax filing through an unverified universal Playwright flow.
+- **Outcome loop:** Track filing, hearing, decision, requested value, granted value, savings, failure reason, and source documents to improve county playbooks and model calibration.
 
-## Observability & Health
+## Quality Gates
 
-- **Sentry Integration:** All errors in production must be tracked in Sentry. PII masking must be applied in the `beforeSend` hook.
-- **Health Checks:** The `/api/health` endpoint serves as the source of truth for service connectivity and environment readiness.
+- Run `pnpm check` before deployment or merge.
+- Maintain tests around pricing, payment/webhook idempotency, access controls, valuation math, filing-state transitions, jurisdiction routing, document extraction, and AI output validation.
+- Browser-level tests must cover intake, payment, report review, pro se packet completion, proof-of-filing upload, and admin approval.
+- `/api/health` is the authenticated source of truth for production dependencies.
+- Sentry must mask PII and production source maps must be verifiable.
 
 ## Security
 
-- **RLS Everywhere:** Every table in Supabase must have Row Level Security enabled.
-- **Least Privilege:** API keys and service roles should only be used where necessary and never exposed to the client.
-- **Content Security Policy:** Maintain a strict CSP in `next.config.mjs` to mitigate XSS and injection risks.
+- RLS on every customer-data table, least-privilege service-role usage, strict report-access tokens, webhook signature verification, and a restrictive CSP.
+- Any credential exposed in source, logs, commit text, screenshots, or tickets is compromised and must be rotated before release.
+- Vendor contracts and licenses must permit every stored field, derivative analysis, customer-facing output, and retention period used by the product.
