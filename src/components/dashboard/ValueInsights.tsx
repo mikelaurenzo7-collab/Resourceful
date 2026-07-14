@@ -1,11 +1,10 @@
 'use client';
 
 interface ValueInsightsProps {
-  assessedValue: number | null;
+  assessorImpliedMarketValue: number | null;
   concludedValue: number | null;
-  potentialSavings: number | null;
+  reportedAssessmentReduction: number | null;
   caseStrength: number | null;
-  propertyType: string;
   serviceType: string;
 }
 
@@ -22,86 +21,115 @@ function strengthLabel(score: number): { label: string; classes: string } {
 }
 
 export default function ValueInsights({
-  assessedValue,
+  assessorImpliedMarketValue,
   concludedValue,
-  potentialSavings,
+  reportedAssessmentReduction,
   caseStrength,
-  // propertyType reserved for future use (commercial vs residential display)
   serviceType,
 }: ValueInsightsProps) {
   const isTaxAppeal = serviceType === 'tax_appeal';
-  const hasValues = assessedValue && assessedValue > 0 && concludedValue && concludedValue > 0;
-  const overassessedPct = hasValues
-    ? Math.round(((assessedValue - concludedValue) / concludedValue) * 100)
-    : 0;
-  const isOverassessed = overassessedPct > 0;
+  const hasValues =
+    assessorImpliedMarketValue != null &&
+    assessorImpliedMarketValue > 0 &&
+    concludedValue != null &&
+    concludedValue > 0;
 
   if (!hasValues) return null;
 
+  const marketValueGap = Math.max(0, assessorImpliedMarketValue - concludedValue);
+  const marketValueGapPct = marketValueGap > 0
+    ? Math.round((marketValueGap / concludedValue) * 1000) / 10
+    : 0;
+  const isAboveConclusion = marketValueGapPct > 0;
+  const conclusionShare = Math.max(
+    10,
+    Math.min(100, (concludedValue / assessorImpliedMarketValue) * 100)
+  );
+
   return (
     <div className="card-premium rounded-xl overflow-hidden" data-animate>
-      {/* Header strip */}
       <div className="px-5 py-3 border-b border-gold/[0.08] bg-gold/[0.03]">
         <h3 className="text-xs font-semibold tracking-widest text-gold/60 uppercase">
-          {isTaxAppeal ? 'Value Analysis' : 'Property Valuation'}
+          {isTaxAppeal ? 'Assessment Comparison' : 'Property Valuation'}
         </h3>
       </div>
 
-      {/* Value comparison */}
-      
-      {/* ── Visual Valuation Tracker (Max Sex Appeal Data Viz) ── */}
-      <div className="px-6 pt-8 pb-10 border-b border-gold/[0.04] relative">
-        <div className="flex items-end justify-between mb-4 relative z-10">
+      <div className="px-6 pt-7 pb-7 border-b border-gold/[0.04] relative">
+        <div className="grid sm:grid-cols-2 gap-5 relative z-10">
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-gold/60 mb-1.5 font-semibold">Our True Market Value</p>
-            <p className="font-display text-4xl text-gold drop-shadow-md">
+            <p className="text-[10px] uppercase tracking-widest text-gold/60 mb-1.5 font-semibold">
+              Resourceful Concluded Value
+            </p>
+            <p className="font-display text-3xl sm:text-4xl text-gold drop-shadow-md">
               {formatDollar(concludedValue)}
             </p>
+            <p className="text-[11px] text-cream/30 mt-2">
+              AI-assisted valuation conclusion based on the evidence available in this workfile.
+            </p>
           </div>
-          <div className="text-right">
-            <p className="text-[10px] uppercase tracking-widest text-cream/40 mb-1.5 font-semibold">County Assessed</p>
-            <p className="font-display text-2xl text-cream/70">
-              {formatDollar(assessedValue)}
+
+          <div className="sm:text-right">
+            <p className="text-[10px] uppercase tracking-widest text-cream/40 mb-1.5 font-semibold">
+              {isTaxAppeal ? 'Assessor-Implied Market Value' : 'Reference Market Value'}
+            </p>
+            <p className="font-display text-2xl sm:text-3xl text-cream/70">
+              {formatDollar(assessorImpliedMarketValue)}
+            </p>
+            <p className="text-[11px] text-cream/30 mt-2">
+              {isTaxAppeal
+                ? 'Raw assessment normalized by the jurisdiction assessment ratio when applicable.'
+                : 'Reference value used for the comparison.'}
             </p>
           </div>
         </div>
 
-        {/* The Tracking Bar */}
-        <div className="relative h-3 w-full bg-navy-deep rounded-full overflow-hidden border border-cream/[0.03] shadow-inner z-10">
-          <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-emerald-500/20 to-emerald-400/80 rounded-full w-full opacity-30" />
-          <div 
+        <div className="mt-6 relative h-3 w-full bg-navy-deep rounded-full overflow-hidden border border-cream/[0.03] shadow-inner z-10">
+          <div className="absolute inset-0 bg-gradient-to-r from-cream/[0.03] to-cream/[0.08]" />
+          <div
             className="absolute inset-y-0 left-0 bg-gradient-to-r from-gold-dark via-gold to-gold-light rounded-full transition-all duration-1000 ease-out"
-            style={{ width: `${Math.max(10, Math.min(90, (concludedValue / assessedValue) * 100)) }%` }}
+            style={{ width: `${conclusionShare}%` }}
           />
         </div>
-        
-        {/* Dynamic Highlight Gap */}
-        {isTaxAppeal && potentialSavings && potentialSavings > 0 && (
-          <div className="absolute inset-x-6 top-1/2 mt-4 flex items-center justify-between text-xs font-semibold tracking-wider text-emerald-400 opacity-90 animate-fade-in z-10">
-            <span>&larr; OVERASSESSED BY {overassessedPct}%</span>
-            <span>{formatDollar(potentialSavings)} / YR SAVINGS</span>
+
+        {isTaxAppeal && isAboveConclusion && (
+          <div className="mt-4 flex items-center justify-between gap-4 text-[11px] font-semibold tracking-wide text-emerald-300/90 relative z-10">
+            <span>ASSESSOR-IMPLIED VALUE IS {marketValueGapPct}% ABOVE THE CONCLUSION</span>
+            <span>{formatDollar(marketValueGap)} VALUE GAP</span>
           </div>
         )}
 
-        {/* Ambient background glow for graph */}
+        {isTaxAppeal && reportedAssessmentReduction != null && reportedAssessmentReduction > 0 && (
+          <div className="mt-5 rounded-lg border border-emerald-400/20 bg-emerald-500/[0.06] px-4 py-3 relative z-10">
+            <p className="text-[10px] uppercase tracking-[0.18em] font-semibold text-emerald-300/70">
+              Client-Reported Appeal Result
+            </p>
+            <p className="font-display text-xl text-emerald-300 mt-1">
+              {formatDollar(reportedAssessmentReduction)} assessment reduction
+            </p>
+            <p className="text-[11px] text-cream/35 mt-1">
+              This is the reported reduction in assessed value, not an estimate of annual tax-dollar savings.
+            </p>
+          </div>
+        )}
+
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-24 bg-gold/10 blur-[50px] rounded-full pointer-events-none z-0" />
       </div>
 
-      {/* Bottom bar — overassessment + case strength */}
-
-      <div className="px-5 py-3 border-t border-gold/[0.06] flex items-center justify-between gap-4 flex-wrap">
-        {isOverassessed && isTaxAppeal ? (
-          <p className="text-[11px] text-cream/30">
-            Property overassessed by <span className="text-gold/70 font-medium">{overassessedPct}%</span>
+      <div className="px-5 py-3 flex items-center justify-between gap-4 flex-wrap">
+        {isAboveConclusion && isTaxAppeal ? (
+          <p className="text-[11px] text-cream/35">
+            The assessor-implied market value exceeds the evidence-backed conclusion.
           </p>
         ) : (
-          <p className="text-[11px] text-cream/20">
-            {isTaxAppeal ? 'Assessment appears within range' : 'Based on comparable sales analysis'}
+          <p className="text-[11px] text-cream/25">
+            {isTaxAppeal
+              ? 'Assessment appears within the concluded market-value range.'
+              : 'Conclusion reflects the available market, income, cost, and property evidence.'}
           </p>
         )}
         {caseStrength != null && isTaxAppeal && (
           <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${strengthLabel(caseStrength).classes}`}>
-            Case: {strengthLabel(caseStrength).label}
+            Appeal evidence: {strengthLabel(caseStrength).label}
           </span>
         )}
       </div>
