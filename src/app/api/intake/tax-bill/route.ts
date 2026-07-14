@@ -4,7 +4,11 @@ import { applyRateLimit } from '@/lib/rate-limit';
 import { apiLogger } from '@/lib/logger';
 
 const ALLOWED_DOC_TYPES = new Set([
-  'application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/tiff',
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
 ]);
 
 export async function POST(req: NextRequest) {
@@ -28,25 +32,31 @@ export async function POST(req: NextRequest) {
     }
 
     if (!ALLOWED_DOC_TYPES.has(file.type)) {
-      return NextResponse.json({ error: `Unsupported file type: ${file.type}. Accepted: PDF, JPEG, PNG, WebP, HEIC, TIFF.` }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: `Unsupported file type: ${file.type || 'unknown'}. Accepted: PDF, JPEG, PNG, GIF, or WebP. Convert HEIC/TIFF files before uploading.`,
+        },
+        { status: 400 }
+      );
     }
 
     const arrayBuffer = await file.arrayBuffer();
     const base64Data = Buffer.from(arrayBuffer).toString('base64');
-    const mimeType = file.type;
-
-    const extractedData = await parseTaxBill(mimeType, base64Data);
+    const extractedData = await parseTaxBill(file.type, base64Data);
 
     if (!extractedData) {
-      return NextResponse.json({ error: 'Failed to extract text. Image too blurry or incompatible format.' }, { status: 422 });
+      return NextResponse.json(
+        { error: 'Unable to read this document reliably. Upload a clearer scan or enter the values manually.' },
+        { status: 422 }
+      );
     }
 
-    return NextResponse.json({
-      success: true,
-      data: extractedData,
-    });
+    return NextResponse.json({ success: true, data: extractedData });
   } catch (error) {
-    apiLogger.error({ err: error instanceof Error ? error.message : error }, '/api/intake/tax-bill route failed');
+    apiLogger.error(
+      { err: error instanceof Error ? error.message : error },
+      '/api/intake/tax-bill route failed'
+    );
     return NextResponse.json({ error: 'Internal server error processing document' }, { status: 500 });
   }
 }
