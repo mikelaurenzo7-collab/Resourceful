@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { AI_PROVIDERS } from '@/config/ai';
+import { AI_MODELS } from '@/config/ai';
 import { getFastAiConfigSummary } from '@/lib/services/fast-ai';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
 
@@ -72,21 +72,27 @@ export async function GET(request: NextRequest) {
   }
 
   // ── AI ────────────────────────────────────────────────────────────────
-  results.anthropic = process.env.ANTHROPIC_API_KEY
+  const openAiConfigured = Boolean(process.env.OPENAI_API_KEY);
+  results.openai = openAiConfigured
     ? { status: 'ok', message: 'Key configured' }
-    : { status: 'not_configured', message: 'ANTHROPIC_API_KEY missing' };
+    : { status: 'not_configured', message: 'OPENAI_API_KEY missing' };
 
-  results.groq = process.env.GROQ_API_KEY
-    ? { status: 'ok', message: 'Key configured' }
-    : { status: 'not_configured', message: 'GROQ_API_KEY missing (optional unless selected as FAST provider)' };
+  results.ai_appraiser = openAiConfigured
+    ? { status: 'ok', message: `OpenAI / ${AI_MODELS.PRIMARY}` }
+    : { status: 'not_configured', message: `OpenAI appraiser ${AI_MODELS.PRIMARY} cannot run without OPENAI_API_KEY` };
+
+  results.ai_vision = openAiConfigured
+    ? { status: 'ok', message: `OpenAI / ${AI_MODELS.VISION}` }
+    : { status: 'not_configured', message: `OpenAI vision ${AI_MODELS.VISION} cannot run without OPENAI_API_KEY` };
+
+  results.ai_document = openAiConfigured
+    ? { status: 'ok', message: `OpenAI / ${AI_MODELS.DOCUMENT}` }
+    : { status: 'not_configured', message: `OpenAI document model ${AI_MODELS.DOCUMENT} cannot run without OPENAI_API_KEY` };
 
   const fastAi = getFastAiConfigSummary();
-  const fastKeyPresent = AI_PROVIDERS.FAST === 'groq'
-    ? Boolean(process.env.GROQ_API_KEY)
-    : Boolean(process.env.ANTHROPIC_API_KEY);
-  results.fast_ai = fastKeyPresent && Boolean(process.env.AI_MODEL_FAST)
+  results.fast_ai = fastAi.configured
     ? { status: 'ok', message: `${fastAi.provider} / ${fastAi.model}` }
-    : { status: 'not_configured', message: `FAST provider ${fastAi.provider} is missing key or AI_MODEL_FAST` };
+    : { status: 'not_configured', message: `FAST model ${fastAi.model} cannot run without OPENAI_API_KEY` };
 
   // ── Billing and delivery ─────────────────────────────────────────────
   if (!process.env.STRIPE_SECRET_KEY) {
