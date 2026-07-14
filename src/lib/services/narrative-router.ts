@@ -6,10 +6,12 @@ import { apiLogger } from '@/lib/logger';
 import { withRetry, isRetryableError } from '@/lib/utils/retry';
 import {
   analyzePhoto,
-  generateFilingGuide,
+  generateFilingGuide as generateLegacyFilingGuide,
   generateNarratives as generateStandardNarratives,
 } from './openai-appraiser';
 import type {
+  FilingGuidePayload,
+  FilingGuideResponse,
   NarrativePayload,
   NarrativeResponse,
   NarrativeSectionName,
@@ -17,7 +19,7 @@ import type {
 } from './anthropic';
 
 export type * from './anthropic';
-export { analyzePhoto, generateFilingGuide };
+export { analyzePhoto };
 
 const INDEPENDENT_VALUATION_MARKER = '[INDEPENDENT_VALUATION]';
 const LEGACY_SYNTHETIC_SALE_NOTE =
@@ -58,6 +60,17 @@ const NarrativeSchema = z.object({
     section_name: z.enum(NARRATIVE_SECTIONS),
     content: z.string().min(1),
   })).min(1),
+});
+
+const TaxAppealFilingGuideSchema = z.object({
+  appeal_board_name: z.string().min(1),
+  filing_deadline: z.string().min(1),
+  steps: z.array(z.string().min(1)).min(1),
+  required_documents: z.array(z.string().min(1)),
+  tips: z.array(z.string().min(1)),
+  online_filing_url: z.string().url().nullable(),
+  fee_amount: z.string().nullable(),
+  hearing_format: z.string().nullable(),
 });
 
 let client: OpenAI | null = null;
@@ -224,6 +237,111 @@ async function generateIndependentNarratives(
     );
     return { data: null, error: `Independent valuation generation failed: ${message}` };
   }
+}
+
+function formatFeeAmount(payload: FilingGuidePayload): string | null {
+  const cents = payload.filingFeeCents ?? payload.appealFeeCents;
+  if (cents == null) return null;
+  if (cents === 0) return '$0.00';
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function taxAppealFilingSystemPrompt(payload: FilingGuidePayload): string {
+  const tier = payload.reviewTier ?? 'auto';
+
+  return `You are Resourceful's property-tax appeal filing coach operating on GPT-5.6 Sol.
+
+Create a structured, county-specific filing guide from the supplied workfile. The response must fit the provided schema exactly.
+
+TIER: ${tier}
+- auto/expert_reviewed: the owner files pro se; provide a complete checklist and submission script.
+- guided_filing: the owner still files pro se; include a screen-share workflow, mock-hearing preparation, and completion checklist.
+- full_representation: describe representative filing only when authorizedRepAllowed is explicitly true and a county-accepted authorization will be executed. Otherwise route to guided pro se filing.
+
+NON-NEGOTIABLE EVIDENCE RULES:
+1. Use only county, state, deadline, form, fee, URL, hearing, and authority facts present in the payload.
+2. Never invent a deadline, portal URL, email address, filing fee, form, board name, hearing format, or representative authority.
+3. When a required fact is unknown, say exactly what the owner must verify before submission.
+4. Never claim the appeal is filed without a confirmation number, accepted-mail record, or timestamp.
+5. steps must be executable, ordered, plain-English actions. Include eligibility/deadline verification, form completion, evidence assembly, submission, proof retention, informal review when available, hearing preparation, and further-appeal verification.
+6. required_documents must list only supplied requirements or clearly labeled verification items.
+7. tips must be concise, evidence-led, and include the informational-support/not-legal-advice boundary.
+8. online_filing_url must be null unless the exact URL is in the payload.
+9. fee_amount must be null unless the fee is supplied in the payload.
+10. hearing_format must be null unless supplied in the payload.
+
+Property: ${payload.propertyAddress}
+Jurisdiction: ${payload.countyName}, ${payload.state}`;
+}
+
+async function generateStructuredTaxAppealFilingGuide(
+  payload: FilingGuidePayload
+): Promise<ServiceResult<FilingGuideResponse>> {
+  const startedAt = Date.now();
+
+  try {
+    const response = await withRetry(
+      () => getClient().responses.parse({
+        model: AI_MODELS.PRIMARY,
+        store: false,
+        reasoning: reasoning(AI_REASONING.APPRAISER),
+        max_output_tokens: AI_TOKEN_LIMITS.FILING_GUIDE,
+        input: [
+          { role: 'system', content: taxAppealFilingSystemPrompt(payload) },
+          { role: 'user', content: JSON.stringify(payload, null, 2) },
+        ],
+        text: {
+          format: zodTextFormat(TaxAppealFilingGuideSchema, 'resourceful_tax_appeal_filing_guide'),
+        },
+      }),
+      { maxAttempts: 3, baseDelayMs: 2000, maxDelayMs: 30_000, retryOn: isRetryableError }
+    );
+
+    if (!response.output_parsed) {
+      return { data: null, error: 'GPT-5.6 Sol returned no structured filing guide.' };
+    }
+
+    const parsed = response.output_parsed;
+    const exactPortalUrl = payload.portalUrl ?? payload.onlineFilingUrl ?? null;
+    const exactDeadline = payload.appealDeadline ?? payload.nextAppealDeadline ?? parsed.filing_deadline;
+    const exactBoardName = payload.appealBoardName ?? parsed.appeal_board_name;
+    const exactHearingFormat = payload.hearingFormat ?? parsed.hearing_format;
+
+    const guide = {
+      ...parsed,
+      appeal_board_name: exactBoardName,
+      filing_deadline: exactDeadline,
+      online_filing_url: exactPortalUrl,
+      fee_amount: formatFeeAmount(payload),
+      hearing_format: exactHearingFormat,
+    };
+
+    return {
+      data: {
+        guide: JSON.stringify(guide),
+        prompt_tokens: response.usage?.input_tokens ?? 0,
+        completion_tokens: response.usage?.output_tokens ?? 0,
+        generation_duration_ms: Date.now() - startedAt,
+      },
+      error: null,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    apiLogger.error(
+      { message, model: AI_MODELS.PRIMARY },
+      '[narrative-router] structured filing guide generation failed'
+    );
+    return { data: null, error: `Structured filing guide generation failed: ${message}` };
+  }
+}
+
+export async function generateFilingGuide(
+  payload: FilingGuidePayload
+): Promise<ServiceResult<FilingGuideResponse>> {
+  if ((payload.serviceType ?? 'tax_appeal') === 'tax_appeal') {
+    return generateStructuredTaxAppealFilingGuide(payload);
+  }
+  return generateLegacyFilingGuide(payload);
 }
 
 export async function generateNarratives(
