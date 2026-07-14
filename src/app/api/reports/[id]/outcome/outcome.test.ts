@@ -1,141 +1,99 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
+import {
+  MAX_ASSESSED_VALUE,
+  calculateAssessmentReductionCents,
+  validateOutcomeSubmission,
+  validateWinningAssessmentReduction,
+} from '@/lib/outcomes/validation';
 
-// ─── Outcome Validation Logic Tests ──────────────────────────────────────────
-// Tests for the validation rules in POST /api/reports/[id]/outcome.
-// These mirror the inline validation in the route handler.
+describe('appeal outcome validation', () => {
+  it('accepts valid non-winning outcomes without a new assessed value', () => {
+    for (const outcome of ['lost', 'pending', 'withdrew', 'didnt_file']) {
+      expect(validateOutcomeSubmission({ outcome }).valid).toBe(true);
+    }
+  });
 
-const VALID_OUTCOMES = ['won', 'lost', 'pending', 'withdrew', 'didnt_file'] as const;
-type AppealOutcome = (typeof VALID_OUTCOMES)[number];
+  it('rejects missing, empty, and unsupported outcomes', () => {
+    expect(validateOutcomeSubmission({ outcome: null }).valid).toBe(false);
+    expect(validateOutcomeSubmission({ outcome: '' }).valid).toBe(false);
+    expect(validateOutcomeSubmission({ outcome: 'victory' }).valid).toBe(false);
+    expect(validateOutcomeSubmission({ outcome: 42 }).valid).toBe(false);
+  });
 
-function validateOutcome(outcome: unknown): { valid: boolean; error?: string } {
-  if (!outcome || !VALID_OUTCOMES.includes(outcome as AppealOutcome)) {
-    return { valid: false, error: `Invalid outcome. Must be one of: ${VALID_OUTCOMES.join(', ')}` };
-  }
-  return { valid: true };
-}
+  it('requires a new assessed value for a winning appeal', () => {
+    const result = validateOutcomeSubmission({ outcome: 'won' });
 
-function validateAssessedValue(value: unknown): { valid: boolean; error?: string } {
-  if (value === undefined || value === null) return { valid: true };
-  if (typeof value !== 'number' || !isFinite(value) || value < 0 || value > 100_000_000_00) {
-    return { valid: false, error: 'Invalid assessed value. Must be a positive number.' };
-  }
-  return { valid: true };
-}
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain('required');
+  });
 
-function validateNotes(notes: unknown): { valid: boolean; error?: string } {
-  if (notes === undefined || notes === null) return { valid: true };
-  if (typeof notes !== 'string' || notes.length > 5000) {
-    return { valid: false, error: 'Notes must be a string of 5000 characters or less.' };
-  }
-  return { valid: true };
-}
-
-describe('outcome validation', () => {
-  describe('outcome field', () => {
-    it('accepts all valid outcome values', () => {
-      for (const outcome of VALID_OUTCOMES) {
-        expect(validateOutcome(outcome).valid).toBe(true);
-      }
+  it('accepts a valid quantified winning outcome', () => {
+    const result = validateOutcomeSubmission({
+      outcome: 'won',
+      newAssessedValue: 285_000,
+      notes: 'Board adopted the requested value.',
     });
 
-    it('rejects null outcome', () => {
-      expect(validateOutcome(null).valid).toBe(false);
-    });
-
-    it('rejects undefined outcome', () => {
-      expect(validateOutcome(undefined).valid).toBe(false);
-    });
-
-    it('rejects empty string outcome', () => {
-      expect(validateOutcome('').valid).toBe(false);
-    });
-
-    it('rejects invalid outcome value', () => {
-      expect(validateOutcome('victory').valid).toBe(false);
-    });
-
-    it('rejects numeric outcome', () => {
-      expect(validateOutcome(42).valid).toBe(false);
+    expect(result).toEqual({
+      valid: true,
+      outcome: 'won',
+      newAssessedValue: 285_000,
+      notes: 'Board adopted the requested value.',
     });
   });
 
-  describe('assessed value', () => {
-    it('accepts null (optional field)', () => {
-      expect(validateAssessedValue(null).valid).toBe(true);
-    });
-
-    it('accepts undefined (optional field)', () => {
-      expect(validateAssessedValue(undefined).valid).toBe(true);
-    });
-
-    it('accepts zero', () => {
-      expect(validateAssessedValue(0).valid).toBe(true);
-    });
-
-    it('accepts positive numbers', () => {
-      expect(validateAssessedValue(250000).valid).toBe(true);
-    });
-
-    it('rejects negative numbers', () => {
-      expect(validateAssessedValue(-1).valid).toBe(false);
-    });
-
-    it('rejects NaN', () => {
-      expect(validateAssessedValue(NaN).valid).toBe(false);
-    });
-
-    it('rejects Infinity', () => {
-      expect(validateAssessedValue(Infinity).valid).toBe(false);
-    });
-
-    it('rejects values exceeding max (10 billion cents)', () => {
-      expect(validateAssessedValue(100_000_000_01).valid).toBe(false);
-    });
-
-    it('accepts value at the max boundary', () => {
-      expect(validateAssessedValue(100_000_000_00).valid).toBe(true);
-    });
-
-    it('rejects string values', () => {
-      expect(validateAssessedValue('250000').valid).toBe(false);
-    });
+  it('rejects invalid assessed values', () => {
+    expect(validateOutcomeSubmission({ outcome: 'won', newAssessedValue: -1 }).valid).toBe(false);
+    expect(validateOutcomeSubmission({ outcome: 'won', newAssessedValue: Number.NaN }).valid).toBe(false);
+    expect(validateOutcomeSubmission({ outcome: 'won', newAssessedValue: Infinity }).valid).toBe(false);
+    expect(validateOutcomeSubmission({ outcome: 'won', newAssessedValue: MAX_ASSESSED_VALUE + 1 }).valid).toBe(false);
+    expect(validateOutcomeSubmission({ outcome: 'won', newAssessedValue: '285000' }).valid).toBe(false);
   });
 
-  describe('notes', () => {
-    it('accepts null (optional field)', () => {
-      expect(validateNotes(null).valid).toBe(true);
+  it('accepts zero and the maximum boundary when the underlying assessment permits them', () => {
+    expect(validateOutcomeSubmission({ outcome: 'won', newAssessedValue: 0 }).valid).toBe(true);
+    expect(
+      validateOutcomeSubmission({ outcome: 'won', newAssessedValue: MAX_ASSESSED_VALUE }).valid
+    ).toBe(true);
+  });
+
+  it('rejects a new assessed value for non-winning outcomes', () => {
+    const result = validateOutcomeSubmission({
+      outcome: 'lost',
+      newAssessedValue: 285_000,
     });
 
-    it('accepts undefined (optional field)', () => {
-      expect(validateNotes(undefined).valid).toBe(true);
-    });
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain('only be submitted for a winning appeal');
+  });
 
-    it('accepts empty string', () => {
-      expect(validateNotes('').valid).toBe(true);
-    });
+  it('normalizes empty notes and trims supplied notes', () => {
+    expect(validateOutcomeSubmission({ outcome: 'pending', notes: '' }).notes).toBeNull();
+    expect(
+      validateOutcomeSubmission({ outcome: 'pending', notes: '  Hearing continued  ' }).notes
+    ).toBe('Hearing continued');
+  });
 
-    it('accepts valid notes up to 5000 chars', () => {
-      expect(validateNotes('Won the appeal with comps evidence.').valid).toBe(true);
-    });
+  it('rejects notes over 5000 characters or non-string notes', () => {
+    expect(validateOutcomeSubmission({ outcome: 'pending', notes: 'a'.repeat(5001) }).valid).toBe(false);
+    expect(validateOutcomeSubmission({ outcome: 'pending', notes: 42 }).valid).toBe(false);
+    expect(validateOutcomeSubmission({ outcome: 'pending', notes: ['note'] }).valid).toBe(false);
+  });
+});
 
-    it('accepts notes at exactly 5000 characters', () => {
-      expect(validateNotes('a'.repeat(5000)).valid).toBe(true);
-    });
+describe('winning assessment reduction validation', () => {
+  it('requires an available positive original assessment', () => {
+    expect(validateWinningAssessmentReduction(null, 250_000).valid).toBe(false);
+    expect(validateWinningAssessmentReduction(0, 0).valid).toBe(false);
+  });
 
-    it('rejects notes over 5000 characters', () => {
-      expect(validateNotes('a'.repeat(5001)).valid).toBe(false);
-    });
+  it('requires the new assessment to be lower than the original assessment', () => {
+    expect(validateWinningAssessmentReduction(300_000, 300_000).valid).toBe(false);
+    expect(validateWinningAssessmentReduction(300_000, 325_000).valid).toBe(false);
+    expect(validateWinningAssessmentReduction(300_000, 275_000).valid).toBe(true);
+  });
 
-    it('rejects non-string notes (number)', () => {
-      expect(validateNotes(42).valid).toBe(false);
-    });
-
-    it('rejects non-string notes (array)', () => {
-      expect(validateNotes(['note1', 'note2']).valid).toBe(false);
-    });
-
-    it('rejects non-string notes (object)', () => {
-      expect(validateNotes({ text: 'some note' }).valid).toBe(false);
-    });
+  it('calculates the legacy cents field as assessed-value reduction', () => {
+    expect(calculateAssessmentReductionCents(300_000, 275_000)).toBe(2_500_000);
   });
 });
