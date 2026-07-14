@@ -9,6 +9,8 @@ import { generateReportPDF } from '@/lib/pdf';
 import { fetchReportTemplateData } from '@/lib/pdf/fetch-report-data';
 import { pipelineLogger } from '@/lib/logger';
 
+const ALTERNATIVE_APPROACH_RECONCILIATION_TOLERANCE = 0.35;
+
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
 
 export async function runPdfAssembly(
@@ -19,20 +21,68 @@ export async function runPdfAssembly(
   const templateData = await fetchReportTemplateData(reportId, supabase);
 
   if (!templateData) {
-    return { success: false, error: `Failed to fetch report data for PDF assembly` };
+    return { success: false, error: 'Failed to fetch report data for PDF assembly' };
   }
 
   // ── QA Pre-flight Checks ──────────────────────────────────────────────
   const qaIssues: string[] = [];
+  const hardFails: string[] = [];
 
-  if (!templateData.comparableSales || templateData.comparableSales.length === 0) {
-    qaIssues.push('No comparable sales found');
-  } else if (templateData.comparableSales.length < 3) {
-    qaIssues.push(`Only ${templateData.comparableSales.length} comparable sales (minimum 3 recommended)`);
+  const comparableSales = templateData.comparableSales ?? [];
+  const hasComps = comparableSales.length > 0;
+  const concludedValue = templateData.concludedValue ?? 0;
+  const hasConcludedValue = concludedValue > 0;
+
+  const incomeAnalysis = templateData.incomeAnalysis;
+  const incomeValue = incomeAnalysis?.concluded_value_income_approach ?? 0;
+  const hasIncomeApproach =
+    (incomeAnalysis?.net_operating_income ?? 0) > 0 &&
+    (incomeAnalysis?.concluded_cap_rate ?? 0) > 0 &&
+    incomeValue > 0;
+
+  const costValue = templateData.property.cost_approach_value ?? 0;
+  const hasCostApproach =
+    (templateData.property.cost_approach_rcn ?? 0) > 0 &&
+    costValue > 0 &&
+    templateData.property.physical_depreciation_pct != null;
+
+  const evidenceBackedAlternatives = [
+    hasIncomeApproach ? { label: 'income approach', value: incomeValue } : null,
+    hasCostApproach ? { label: 'cost approach', value: costValue } : null,
+  ].filter((approach): approach is { label: string; value: number } => approach != null);
+
+  const conclusionReconcilesToAlternative =
+    hasConcludedValue &&
+    evidenceBackedAlternatives.some(({ value }) => {
+      const minimum = value * (1 - ALTERNATIVE_APPROACH_RECONCILIATION_TOLERANCE);
+      const maximum = value * (1 + ALTERNATIVE_APPROACH_RECONCILIATION_TOLERANCE);
+      return concludedValue >= minimum && concludedValue <= maximum;
+    });
+
+  if (!hasComps) {
+    if (evidenceBackedAlternatives.length === 0) {
+      const issue = 'No evidence-backed valuation approach available';
+      qaIssues.push(issue);
+      hardFails.push(issue);
+    } else if (!conclusionReconcilesToAlternative) {
+      const issue = 'Concluded value is not reconciled to the available income or cost evidence';
+      qaIssues.push(issue);
+      hardFails.push(issue);
+    } else {
+      qaIssues.push(
+        `No comparable sales found; PDF relies on ${evidenceBackedAlternatives
+          .map(({ label }) => label)
+          .join(' and ')}`
+      );
+    }
+  } else if (comparableSales.length < 3) {
+    qaIssues.push(`Only ${comparableSales.length} comparable sales (minimum 3 recommended)`);
   }
 
-  if (!templateData.concludedValue || templateData.concludedValue <= 0) {
-    qaIssues.push('Concluded value is missing or zero');
+  if (!hasConcludedValue) {
+    const issue = 'Concluded value is missing or zero';
+    qaIssues.push(issue);
+    hardFails.push(issue);
   }
 
   // appeal_argument_summary and filingGuide are only required for tax_appeal reports
@@ -40,10 +90,12 @@ export async function runPdfAssembly(
   const criticalSections = isTaxAppeal
     ? ['executive_summary', 'appeal_argument_summary']
     : ['executive_summary'];
-  const existingSections = new Set(templateData.narratives.map(n => n.section_name));
+  const existingSections = new Set(templateData.narratives.map((n) => n.section_name));
   for (const section of criticalSections) {
     if (!existingSections.has(section)) {
-      qaIssues.push(`Missing critical narrative: ${section}`);
+      const issue = `Missing critical narrative: ${section}`;
+      qaIssues.push(issue);
+      if (section === 'executive_summary') hardFails.push(issue);
     }
   }
 
@@ -56,14 +108,20 @@ export async function runPdfAssembly(
   }
 
   if (qaIssues.length > 0) {
-    pipelineLogger.warn({ reportId, qaIssues }, '[stage7] QA pre-flight warnings');
-    // Hard-fail on critical issues (no comps, no concluded value, no executive summary)
-    const hardFails = qaIssues.filter(
-      i => i.includes('No comparable sales') || i.includes('Concluded value') || i.includes('Missing critical narrative: executive_summary')
+    pipelineLogger.warn(
+      {
+        reportId,
+        qaIssues,
+        evidenceBackedAlternatives,
+        concludedValue,
+        conclusionReconcilesToAlternative,
+      },
+      '[stage7] QA pre-flight warnings'
     );
-    if (hardFails.length > 0) {
-      return { success: false, error: `QA pre-flight failed: ${hardFails.join('; ')}` };
-    }
+  }
+
+  if (hardFails.length > 0) {
+    return { success: false, error: `QA pre-flight failed: ${hardFails.join('; ')}` };
   }
 
   // ── Generate PDF ─────────────────────────────────────────────────────
