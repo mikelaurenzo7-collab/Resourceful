@@ -1,133 +1,108 @@
 # Resourceful
 
-Resourceful is an **AI-led property tax and property intelligence business**. Instead of positioning the product as a one-off report shop, the platform is now framed as an operating system that Claude (Anthropic) runs on behalf of the company and its customers, with Gemini Vision handling multimodal photo analysis. The core idea is simple: Claude handles valuation research, comparable sales analysis, condition evidence review, county workflow preparation, and customer-ready case assembly so the business can scale with more consistency and less manual overhead.
+Resourceful is an **AI-assisted property tax appeal and property intelligence platform**. Its primary job is not to generate a report; it is to move an owner from an assessment notice to a defensible case, a completed filing workflow, hearing preparation, and a recorded outcome.
 
-This repository contains the customer-facing application, intake flow, pricing logic, dashboard delivery model, and supporting infrastructure for that business.
+GPT-5.6 Sol serves as the high-judgment valuation and case-assembly engine. Terra performs research and Luna handles lower-cost extraction and classification. All material conclusions, submissions, and regulated appraisal products remain subject to appropriate human review.
 
-## Business Vision
+## Product Thesis
 
-The revised product vision treats Resourceful as a **compounding AI operator**, not just a document generator.
+Property tax appeals are the wedge because the pain is recurring, deadline-driven, measurable, and fragmented across thousands of jurisdictions. Resourceful turns that fragmentation into structured jurisdiction data, reusable filing adapters, outcome intelligence, and a guided customer workflow.
 
-| Dimension | Previous framing | New framing |
+The product should answer five questions for every owner:
+
+1. **Should I appeal?** Verify records, eligibility, deadline, evidence strength, and value at stake.
+2. **What is the strongest supportable case?** Reconcile comparable sales, assessment equity, property facts, condition evidence, income/cost indicators, and prior sales.
+3. **Exactly what must I file?** Generate the correct forms, requested value, evidence index, signatures, authorizations, and submission checklist.
+4. **How do I win the process?** Provide reminders, hearing preparation, likely questions, concise answers, and escalation options.
+5. **What happened?** Capture confirmation, hearing, decision, granted value, savings, and failure reason for the customer and the calibration loop.
+
+## Product Lanes
+
+| Lane | Delivery model | Customer outcome |
 |---|---|---|
-| Core promise | Professional property tax appeal reports | Claude runs the property tax workflow end to end |
-| Business model | Primarily report delivery | Multi-lane AI property intelligence business |
-| Customer value | Get a report | Get an action package and next move |
-| Strategic edge | Faster reporting | A system that compounds county knowledge and outcome data |
-| Expansion path | Appeal support | Appeals, acquisition diligence, and seller strategy |
+| **Appeal Screening** | Public-record check plus paid case analysis | Know whether a case is worth pursuing and what evidence is missing |
+| **Appeal Case** | AI-assisted valuation workfile and appeal packet | Receive a reviewable, evidence-led reduction case |
+| **Guided Pro Se Filing** | Packet, deadline control, live filing session, mock hearing | File correctly in the owner's name without hiring counsel |
+| **Managed Filing** | Jurisdiction-specific preparation and human-controlled submission | Reduce procedural burden while preserving proof and authorization |
+| **Attorney Representation** | Vetted Illinois/property-tax counsel partner | Representation where only attorneys may practice or appear |
+| **PTAB Escalation** | Post-decision packet, evidence grid, deadline workflow | Continue a qualifying case after the county decision |
+| **Sale & Purchase Intelligence** | AI valuation, tax exposure, repair/condition, negotiation strategy | Make a better buy, sell, or hold decision |
+| **Licensed Appraisal** | Credentialed appraiser partner reviews/inspects, signs, and assumes responsibility | Obtain a regulated appraisal when the intended use requires one |
+| **Value Enhancement Plan** | Condition evidence plus prioritized improvement strategy | Focus spending on defensible marketability/value improvements |
 
-The business now emphasizes three strategic beliefs.
+## Non-Negotiable Boundaries
 
-First, **property tax reduction is the wedge**, because it is painful, urgent, measurable, and easy for customers to understand.
+- An unsigned AI work product is an **AI-assisted valuation analysis**, not a certified, licensed, lender, or USPAP appraisal.
+- A filing packet marked ready is not filed. Filing is confirmed only by durable proof such as a portal confirmation, accepted email, timestamped receipt, or certified-mail tracking event.
+- Representative authority is jurisdiction- and forum-specific. Resourceful must fail closed when the eligible representative, authorization form, or signature requirement is unknown.
+- Jurisdiction rules belong in versioned data and tested filing adapters, not generic browser automation.
+- Resourceful must use dedicated Supabase and Vercel projects. Wireline infrastructure is out of scope.
 
-Second, the same operating system can support multiple monetization lanes. Comparable analysis, valuation logic, workflow memory, and customer packaging can power tax reduction, acquisition intelligence, and seller strategy from the same core engine.
+## Architecture
 
-Third, the long-term value of the company comes from **compounding operational intelligence**. Every finished case strengthens the workflow library, county-specific playbooks, and the system’s ability to surface the best next action.
-
-## Core Product Model
-
-- **Dashboard-first delivery:** outputs are delivered in the customer experience, not as fragile expiring links.
-- **Payment before valuation:** the commercial model still charges before revealing the completed output.
-- **Nationwide workflow memory:** county-specific logic belongs in `county_rules`, not hardcoded UI copy or route handlers.
-- **Admin-gated release:** the pipeline still supports review and approval before final customer delivery.
-- **Outcome loop:** delivered work should continue feeding learning, calibration, and workflow refinement.
-
-## Revenue Lanes
-
-| Lane | Strategic role | Customer outcome |
-|---|---|---|
-| **Tax Reduction Engine** | Core wedge and most direct savings story | Lower an over-assessment with a Claude-built case |
-| **Acquisition Intelligence** | Expand into pre-transaction diligence | Understand price, tax burden, and appeal risk before buying |
-| **Seller Strategy Intelligence** | Strengthen seller and agent positioning | Give buyers a clearer tax story and pricing rationale |
-| **Autopilot Appeal** | High-touch premium offer | Let Claude coordinate the workflow while humans execute filing and hearings where needed |
-
-## Positioning Principles
-
-When editing or extending the product, keep these principles intact.
-
-| Principle | Guidance |
-|---|---|
-| **AI-first, not AI-washed** | Claude should be presented as actually operating core business workflows, not as a decorative assistant. |
-| **Action over artifacts** | The product should feel like a next-step machine, not just a PDF generator. |
-| **Compoundable systems** | Prefer changes that improve reusable workflows, structured memory, and feedback loops. |
-| **Human judgment where necessary** | Use human review and representation for leverage, risk control, and trust. |
-| **Measured value** | Keep copy close to savings, speed, operational leverage, and execution clarity. |
-
-## Stack
-
-- **Next.js 14** App Router, TypeScript strict mode
-- **Supabase** for Postgres, Auth, Storage, and RLS
-- **Anthropic Claude** for narrative generation and classification
-- **Google Gemini** for multimodal image and document analysis
-- **ATTOM Data API** for property details and comparable data
+- **Next.js 14**, React 18, strict TypeScript
+- **Supabase** for Postgres, Auth, Storage, RLS, and workflow state
+- **OpenAI Responses API**
+  - GPT-5.6 Sol: valuation, narrative, filing, vision, and document analysis
+  - GPT-5.6 Terra: research
+  - GPT-5.6 Luna: extraction and classification
+- **ATTOM** and approved public/licensed sources for property data
 - **Azure Maps** for geocoding and autocomplete
-- **Mapillary** for street-level imagery
-- **Stripe** for payments and subscriptions
+- **Mapillary** for street-level imagery where permitted
+- **Stripe** for payments
 - **Resend** for transactional email
-- **@sparticuz/chromium + puppeteer-core** for PDF generation
-- **Vercel** for deployment and scheduled execution
+- **Vercel** for application hosting and scheduled workflows
 
-Optional enrichment services remain available for specialized workflows.
+Optional enrichment vendors are enabled only after contract, data-rights, accuracy, and unit-economics review.
+
+## Core System Principles
+
+- **Action over artifacts:** Dashboard states, tasks, deadlines, submissions, and outcomes matter more than PDF volume.
+- **Human-controlled legal operations:** Automation prepares and verifies; final submission and representation follow the forum's rules.
+- **Evidence provenance:** Every conclusion identifies its source and confidence.
+- **Outcome calibration:** Granted values and reasons feed jurisdiction playbooks and model evaluation.
+- **County-first launch:** Prove end-to-end quality in a small number of jurisdictions before broadening coverage.
+- **Payment before full valuation:** Public screening remains conservative; the full workfile is a paid product.
 
 ## Important Paths
 
 | Path | Purpose |
 |---|---|
-| `src/app` | App routes and page-level UX |
-| `src/components/landing` | Homepage messaging and positioning |
-| `src/lib/pipeline` | Report and case-generation pipeline |
-| `src/lib/pdf` | PDF assembly logic |
-| `src/lib/templates` | HTML report helpers |
-| `src/lib/services` | External integrations |
+| `src/app` | Routes and customer/admin experiences |
+| `src/components/landing` | Public positioning and conversion UX |
+| `src/lib/pipeline` | Case-generation pipeline |
+| `src/lib/services/openai-appraiser.ts` | GPT-5.6 Sol valuation, vision, document, and filing service |
+| `src/lib/services/filing-service.ts` | Filing preparation and jurisdiction routing |
+| `src/lib/pdf` | Customer work-product assembly |
 | `src/lib/repository` | Typed data access |
 | `supabase/migrations` | Database schema evolution |
+| `docs/product-filing-and-appraisal-roadmap.md` | Product, compliance, and launch roadmap |
 
 ## Local Development
 
-1. Install dependencies.
-2. Create `.env.local` from `.env.example`.
-3. Start local services if required.
-4. Run the app and validate the build.
-
 ```bash
 pnpm install
+cp .env.example .env.local
 pnpm dev
-pnpm lint
-pnpm build
 ```
 
-Helpful scripts include:
+Run the complete quality gate before merge or deployment:
 
-- `scripts/setup-local.sh`
-- `scripts/seed-counties.ts`
-- `scripts/seed-top-counties.ts`
-- `scripts/rerun-report.ts`
-- `scripts/debug-lock.ts`
-
-## Environment
-
-Production requires the standard application, data, and billing keys already documented in `.env.example`, including keys for AI providers, Supabase, ATTOM, Azure Maps, Stripe, Resend, and canonical app configuration.
-
-Optional enrichment keys may be enabled as needed for additional data workflows.
+```bash
+pnpm check
+```
 
 ## Shipping Standard
 
-Before deploying changes, confirm the following.
-
 | Check | Requirement |
 |---|---|
-| Quality | `pnpm lint && pnpm build` pass on the release commit |
-| Database | Required migrations are applied |
-| Payments | Stripe checkout and webhook flow are verified |
-| Delivery | End-to-end customer flow works from intake to output |
-| County logic | Jurisdiction rules are stored in data, not hardcoded |
-| Review | Admin approval path remains functional where required |
-| URLs | Canonical app URL is correct for metadata and email links |
+| Quality | Lint, type-check, tests, and production build pass |
+| Security | Exposed credentials rotated; RLS and signed access verified |
+| Database | Dedicated Resourceful project linked and migrations reconciled |
+| AI | Representative evaluation set passes for the pinned model configuration |
+| Payments | Test and live webhook idempotency verified |
+| Filing | Jurisdiction rules current; no prepared case is mislabeled as submitted |
+| Delivery | Intake → payment → case → review → filing workflow → proof works end to end |
+| Operations | Health checks, Sentry, cron jobs, incident runbook, and rollback are active |
 
-## Operational Note
-
-The most important architectural rule is that **the operating system must stay real**. If future changes make Claude look more central in the marketing copy, the underlying workflow should become more central in the product as well. The brand promise only works if the business genuinely becomes easier to run, easier to scale, and more valuable with each completed case.
-
-## Deployment Runbook
-
-See `docs/production-runbook.md` for deployment and incident-response details.
+See `docs/production-runbook.md` and `docs/deploy-checklist.md` for deployment controls.
