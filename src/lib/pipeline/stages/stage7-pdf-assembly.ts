@@ -47,7 +47,7 @@ export async function runPdfAssembly(
   qaIssues.push(...valuationRelease.warnings, ...valuationRelease.hardFailures);
   hardFails.push(...valuationRelease.hardFailures);
 
-  // appeal_argument_summary and filingGuide are only required for tax_appeal reports
+  // Tax appeals require both a defensible argument and an actionable filing guide.
   const isTaxAppeal = templateData.report.service_type === 'tax_appeal';
   const criticalSections = isTaxAppeal
     ? ['executive_summary', 'appeal_argument_summary']
@@ -57,12 +57,14 @@ export async function runPdfAssembly(
     if (!existingSections.has(section)) {
       const issue = `Missing critical narrative: ${section}`;
       qaIssues.push(issue);
-      if (section === 'executive_summary') hardFails.push(issue);
+      hardFails.push(issue);
     }
   }
 
   if (isTaxAppeal && !templateData.filingGuide) {
-    qaIssues.push('Filing guide not generated or failed to parse');
+    const issue = 'Filing guide not generated or failed to parse';
+    qaIssues.push(issue);
+    hardFails.push(issue);
   }
 
   if (!templateData.property.building_sqft_living_area && !templateData.property.lot_size_sqft) {
