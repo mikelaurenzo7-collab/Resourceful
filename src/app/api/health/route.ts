@@ -1,6 +1,5 @@
 // ─── Health Check Endpoint ────────────────────────────────────────────────────
-// GET /api/health — diagnoses connectivity to all services.
-// Use this to verify Supabase, Stripe, and AI are properly configured.
+// GET /api/health — public liveness plus authenticated dependency diagnostics.
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -14,15 +13,18 @@ interface ServiceStatus {
   latencyMs?: number;
 }
 
+const REQUIRED_STORAGE_BUCKETS = ['reports', 'photos'] as const;
+const NO_STORE_HEADERS = { 'Cache-Control': 'no-store, max-age=0' };
+
 export async function GET(request: NextRequest) {
-  // ── Public: minimal boolean status (no env introspection, no DB calls) ─
-  // Authed requests (CRON_SECRET) get the full service matrix.
+  // Public callers get liveness only. CRON_SECRET-authenticated callers receive
+  // the dependency matrix without exposing configuration details publicly.
   const authFailure = verifyCronAuth(request);
   if (authFailure) {
-    return NextResponse.json({
-      healthy: true,
-      timestamp: new Date().toISOString(),
-    });
+    return NextResponse.json(
+      { healthy: true, timestamp: new Date().toISOString() },
+      { headers: NO_STORE_HEADERS }
+    );
   }
 
   const results: Record<string, ServiceStatus> = {};
@@ -37,64 +39,47 @@ export async function GET(request: NextRequest) {
     try {
       const start = Date.now();
       const { createClient } = await import('@supabase/supabase-js');
-      const supabase = createClient(supabaseUrl, supabaseKey);
+      const supabase = createClient(supabaseUrl, supabaseKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
 
-      // Test DB query
       const { error } = await supabase.from('county_rules').select('county_fips').limit(1);
       const latency = Date.now() - start;
 
-      if (error) {
-        results.supabase = { status: 'error', message: `DB query failed: ${error.message}`, latencyMs: latency };
-      } else {
-        results.supabase = { status: 'ok', message: 'Connected', latencyMs: latency };
-      }
+      results.supabase = error
+        ? { status: 'error', message: `DB query failed: ${error.message}`, latencyMs: latency }
+        : { status: 'ok', message: 'Connected', latencyMs: latency };
 
-      // Test Storage (connectivity and bucket existence)
       const { data: buckets, error: storageError } = await supabase.storage.listBuckets();
       if (storageError) {
         results.supabase_storage = { status: 'error', message: `Storage error: ${storageError.message}` };
       } else {
-        const requiredBuckets = ['reports', 'photos', 'tax-bills'];
-        const existingBuckets = buckets?.map((b) => b.name) ?? [];
-        const missingBuckets = requiredBuckets.filter((b) => !existingBuckets.includes(b));
+        const existingBuckets = new Set((buckets ?? []).map((bucket) => bucket.name));
+        const missingBuckets = REQUIRED_STORAGE_BUCKETS.filter((bucket) => !existingBuckets.has(bucket));
 
-        if (missingBuckets.length > 0) {
-          results.supabase_storage = {
-            status: 'error',
-            message: `Missing required buckets: ${missingBuckets.join(', ')}`,
-          };
-        } else {
-          results.supabase_storage = { status: 'ok', message: 'Storage accessible (all buckets present)' };
-        }
+        results.supabase_storage = missingBuckets.length > 0
+          ? { status: 'error', message: `Missing required buckets: ${missingBuckets.join(', ')}` }
+          : { status: 'ok', message: 'Storage accessible (required buckets present)' };
       }
 
-      // Test Auth (connectivity only, don't leak user count)
       const { error: authError } = await supabase.auth.admin.listUsers({ perPage: 1 });
-      if (authError) {
-        results.supabase_auth = { status: 'error', message: `Auth error: ${authError.message}` };
-      } else {
-        results.supabase_auth = { status: 'ok', message: 'Auth working' };
-      }
+      results.supabase_auth = authError
+        ? { status: 'error', message: `Auth error: ${authError.message}` }
+        : { status: 'ok', message: 'Auth working' };
     } catch (err) {
       results.supabase = { status: 'error', message: `Connection failed: ${err instanceof Error ? err.message : String(err)}` };
     }
   }
 
-  // ── Anthropic AI ──────────────────────────────────────────────────────
-  if (!process.env.ANTHROPIC_API_KEY) {
-    results.anthropic = { status: 'not_configured', message: 'ANTHROPIC_API_KEY missing' };
-  } else {
-    results.anthropic = { status: 'ok', message: 'Key configured' };
-  }
+  // ── AI ────────────────────────────────────────────────────────────────
+  results.anthropic = process.env.ANTHROPIC_API_KEY
+    ? { status: 'ok', message: 'Key configured' }
+    : { status: 'not_configured', message: 'ANTHROPIC_API_KEY missing' };
 
-  // ── Groq AI ───────────────────────────────────────────────────────────
-  if (!process.env.GROQ_API_KEY) {
-    results.groq = { status: 'not_configured', message: 'GROQ_API_KEY missing' };
-  } else {
-    results.groq = { status: 'ok', message: 'Key configured' };
-  }
+  results.groq = process.env.GROQ_API_KEY
+    ? { status: 'ok', message: 'Key configured' }
+    : { status: 'not_configured', message: 'GROQ_API_KEY missing (optional unless selected as FAST provider)' };
 
-  // ── Active FAST AI Route ──────────────────────────────────────────────
   const fastAi = getFastAiConfigSummary();
   const fastKeyPresent = AI_PROVIDERS.FAST === 'groq'
     ? Boolean(process.env.GROQ_API_KEY)
@@ -103,7 +88,7 @@ export async function GET(request: NextRequest) {
     ? { status: 'ok', message: `${fastAi.provider} / ${fastAi.model}` }
     : { status: 'not_configured', message: `FAST provider ${fastAi.provider} is missing key or AI_MODEL_FAST` };
 
-  // ── Stripe ────────────────────────────────────────────────────────────
+  // ── Billing and delivery ─────────────────────────────────────────────
   if (!process.env.STRIPE_SECRET_KEY) {
     results.stripe = { status: 'not_configured', message: 'STRIPE_SECRET_KEY missing' };
   } else {
@@ -111,46 +96,38 @@ export async function GET(request: NextRequest) {
     results.stripe = { status: 'ok', message: `Key configured (${isTest ? 'TEST mode' : 'LIVE mode'})` };
   }
 
-  if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
-    results.stripe_publishable = { status: 'not_configured', message: 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY missing' };
-  } else {
-    results.stripe_publishable = { status: 'ok', message: 'Configured' };
-  }
+  results.stripe_publishable = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+    ? { status: 'ok', message: 'Configured' }
+    : { status: 'not_configured', message: 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY missing' };
 
-  // ── Azure Maps ────────────────────────────────────────────────────────
-  if (!process.env.AZURE_MAPS_SUBSCRIPTION_KEY) {
-    results.azure_maps = { status: 'not_configured', message: 'AZURE_MAPS_SUBSCRIPTION_KEY missing (geocoding will use Census fallback)' };
-  } else {
-    results.azure_maps = { status: 'ok', message: 'Configured' };
-  }
+  results.resend = process.env.RESEND_API_KEY
+    ? { status: 'ok', message: `Configured. From: ${process.env.RESEND_FROM_ADDRESS ?? 'not set'}` }
+    : { status: 'not_configured', message: 'RESEND_API_KEY missing (email delivery disabled)' };
 
-  // ── Mapillary ─────────────────────────────────────────────────────────
-  if (!process.env.NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN) {
-    results.mapillary = { status: 'not_configured', message: 'NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN missing (street imagery disabled)' };
-  } else {
-    results.mapillary = { status: 'ok', message: 'Configured' };
-  }
+  // ── Property-data vendors ────────────────────────────────────────────
+  results.attom = process.env.ATTOM_API_KEY
+    ? { status: 'ok', message: 'Configured' }
+    : { status: 'not_configured', message: 'ATTOM_API_KEY missing — only lower-confidence public-record fallbacks are available' };
 
-  // ── Resend Email ──────────────────────────────────────────────────────
-  if (!process.env.RESEND_API_KEY) {
-    results.resend = { status: 'not_configured', message: 'RESEND_API_KEY missing (email delivery disabled)' };
-  } else {
-    results.resend = { status: 'ok', message: `Configured. From: ${process.env.RESEND_FROM_ADDRESS ?? 'not set'}` };
-  }
+  results.azure_maps = process.env.AZURE_MAPS_SUBSCRIPTION_KEY
+    ? { status: 'ok', message: 'Configured' }
+    : { status: 'not_configured', message: 'AZURE_MAPS_SUBSCRIPTION_KEY missing (geocoding will use Census fallback)' };
 
-  // ── ATTOM (optional) ─────────────────────────────────────────────────
-  if (!process.env.ATTOM_API_KEY) {
-    results.attom = { status: 'not_configured', message: 'Not configured — falling back to public records enrichment' };
-  } else {
-    results.attom = { status: 'ok', message: 'Configured' };
-  }
+  results.mapillary = process.env.NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN
+    ? { status: 'ok', message: 'Configured' }
+    : { status: 'not_configured', message: 'NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN missing (street imagery disabled)' };
 
-  // ── Overall ───────────────────────────────────────────────────────────
-  const allOk = Object.values(results).every(r => r.status === 'ok' || r.status === 'not_configured');
+  const hasDependencyError = Object.values(results).some((result) => result.status === 'error');
 
-  return NextResponse.json({
-    healthy: allOk,
-    timestamp: new Date().toISOString(),
-    services: results,
-  });
+  return NextResponse.json(
+    {
+      healthy: !hasDependencyError,
+      timestamp: new Date().toISOString(),
+      services: results,
+    },
+    {
+      status: hasDependencyError ? 503 : 200,
+      headers: NO_STORE_HEADERS,
+    }
+  );
 }
