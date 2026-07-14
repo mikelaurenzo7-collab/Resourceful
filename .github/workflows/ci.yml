@@ -22,10 +22,12 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
       SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key
-      ANTHROPIC_API_KEY: ci-placeholder-anthropic-key
-      AI_PROVIDER_FAST: anthropic
-      AI_MODEL_PRIMARY: claude-sonnet-4-6
-      AI_MODEL_FAST: claude-haiku-4-5-20251001
+      OPENAI_API_KEY: sk-proj-ci-placeholder-openai-key
+      AI_MODEL_PRIMARY: gpt-5.6-sol
+      AI_MODEL_RESEARCH: gpt-5.6-terra
+      AI_MODEL_FAST: gpt-5.6-luna
+      AI_MODEL_VISION: gpt-5.6-sol
+      AI_MODEL_DOCUMENT: gpt-5.6-sol
       STRIPE_SECRET_KEY: sk_test_ci_placeholder
       STRIPE_WEBHOOK_SECRET: whsec_ci_placeholder
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_ci_placeholder
