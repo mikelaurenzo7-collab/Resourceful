@@ -20,6 +20,11 @@ export type * from './anthropic';
 export { analyzePhoto, generateFilingGuide };
 
 const INDEPENDENT_VALUATION_MARKER = '[INDEPENDENT_VALUATION]';
+const LEGACY_SYNTHETIC_SALE_NOTE =
+  'VALUATION PROVENANCE: An unverified same-day prior-sale signature was removed from the workfile. ' +
+  'No confirmed transaction supports that value. Do not describe the concluded value as a sale, comparable, ' +
+  'direct market observation, appraisal, or verified transaction. Additional market, income, cost, assessment, ' +
+  'or recorded-sale evidence is required before relying on the conclusion.';
 
 const NARRATIVE_SECTIONS = [
   'assignment_and_scope',
@@ -79,6 +84,57 @@ function isIndependentValuation(payload: NarrativePayload): boolean {
   return payload.desiredOutcome?.trim().startsWith(INDEPENDENT_VALUATION_MARKER) ?? false;
 }
 
+function hasSyntheticPriorSaleSignature(payload: NarrativePayload): boolean {
+  const priorSale = payload.priorSaleAnalysis;
+  if (!priorSale || payload.comparableSales.length > 0) return false;
+
+  const saleTimestamp = Date.parse(priorSale.lastSaleDate);
+  const saleDateIsInvalid = !Number.isFinite(saleTimestamp);
+  const saleDateIsFuture = Number.isFinite(saleTimestamp) && saleTimestamp > Date.now() + 30 * 24 * 60 * 60 * 1000;
+  const saleValueIsInvalid = priorSale.lastSalePrice <= 0 || priorSale.extrapolatedValue <= 0;
+  if (saleDateIsInvalid || saleDateIsFuture || saleValueIsInvalid || priorSale.yearsElapsed < 0) return true;
+
+  const sameValue = Math.abs(priorSale.lastSalePrice - priorSale.extrapolatedValue) <= 1;
+  const effectivelyNoElapsedTime = priorSale.yearsElapsed <= 0.1;
+  const datedWithinTwoDays = Math.abs(Date.now() - saleTimestamp) <= 2 * 24 * 60 * 60 * 1000;
+
+  // The retired model-memory fallback wrote its estimate as both the sale price and
+  // extrapolated value, dated it today, and reported effectively zero elapsed time.
+  return sameValue && effectivelyNoElapsedTime && datedWithinTwoDays;
+}
+
+function sanitizeNarrativePayload(payload: NarrativePayload): NarrativePayload {
+  if (!hasSyntheticPriorSaleSignature(payload)) return payload;
+
+  const existingSourceNotes = payload.propertyData.data_source_notes?.trim();
+  const dataSourceNotes = [existingSourceNotes, LEGACY_SYNTHETIC_SALE_NOTE]
+    .filter((note): note is string => Boolean(note))
+    .join('\n');
+
+  const existingAnomalies = payload.overvaluationAnalysis?.dataAnomalies ?? [];
+  const overvaluationAnalysis = payload.overvaluationAnalysis
+    ? {
+        ...payload.overvaluationAnalysis,
+        dataAnomalies: [...existingAnomalies, LEGACY_SYNTHETIC_SALE_NOTE],
+      }
+    : payload.overvaluationAnalysis;
+
+  apiLogger.warn(
+    { reportId: payload.reportId, concludedValue: payload.concludedValue },
+    '[narrative-router] Removed unverified synthetic prior-sale signature from narrative workfile'
+  );
+
+  return {
+    ...payload,
+    propertyData: {
+      ...payload.propertyData,
+      data_source_notes: dataSourceNotes,
+    },
+    priorSaleAnalysis: null,
+    overvaluationAnalysis,
+  };
+}
+
 function independentSystemPrompt(payload: NarrativePayload): string {
   const purpose = payload.desiredOutcome
     ?.trim()
@@ -102,7 +158,8 @@ NON-NEGOTIABLE PROFESSIONAL RULES:
 7. For estate, divorce, insurance, tax-basis, litigation, or agency use, identify where credentialed appraisal or legal review may be required.
 8. User photos are material evidence. Distinguish visible facts from allegations or concealed-condition inferences and identify verification needed.
 9. Do not bias the conclusion toward a desired number. Preserve contrary evidence and uncertainty.
-10. Write polished, client-ready Markdown using the exact structured section names.
+10. Treat propertyData.data_source_notes as binding provenance. Never upgrade an estimate into a recorded sale, comparable, appraisal, or observed market fact.
+11. Write polished, client-ready Markdown using the exact structured section names.
 
 REPORT EXPECTATIONS:
 - executive_summary: purpose, value conclusion or range, effective date status, strongest evidence, uncertainty, and next action.
@@ -172,8 +229,9 @@ async function generateIndependentNarratives(
 export async function generateNarratives(
   payload: NarrativePayload
 ): Promise<ServiceResult<NarrativeResponse>> {
-  if (isIndependentValuation(payload)) {
-    return generateIndependentNarratives(payload);
+  const safePayload = sanitizeNarrativePayload(payload);
+  if (isIndependentValuation(safePayload)) {
+    return generateIndependentNarratives(safePayload);
   }
-  return generateStandardNarratives(payload);
+  return generateStandardNarratives(safePayload);
 }
