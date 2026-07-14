@@ -48,40 +48,43 @@ export function evaluatePdfReleasePolicy(
   input: PdfReleasePolicyInput
 ): PdfReleasePolicyResult {
   const comparableSaleCount = Math.max(0, Math.floor(input.comparableSaleCount));
+  const concludedValue = input.concludedValue;
   const hasComparableSales = comparableSaleCount > 0;
-  const hasConcludedValue = isPositiveFinite(input.concludedValue);
+  const hasConcludedValue = isPositiveFinite(concludedValue);
   const tolerance = normalizeTolerance(input.reconciliationTolerance);
 
   const income = input.incomeApproach;
+  const incomeValue = income?.concludedValue;
   const hasIncomeApproach =
     isPositiveFinite(income?.netOperatingIncome) &&
     isPositiveFinite(income?.concludedCapRate) &&
-    isPositiveFinite(income?.concludedValue);
+    isPositiveFinite(incomeValue);
 
   const cost = input.costApproach;
+  const costValue = cost?.concludedValue;
+  const physicalDepreciationPct = cost?.physicalDepreciationPct;
   const hasCostApproach =
     isPositiveFinite(cost?.replacementCostNew) &&
-    isPositiveFinite(cost?.concludedValue) &&
-    cost?.physicalDepreciationPct != null &&
-    Number.isFinite(cost.physicalDepreciationPct) &&
-    cost.physicalDepreciationPct >= 0 &&
-    cost.physicalDepreciationPct <= 100;
+    isPositiveFinite(costValue) &&
+    physicalDepreciationPct != null &&
+    Number.isFinite(physicalDepreciationPct) &&
+    physicalDepreciationPct >= 0 &&
+    physicalDepreciationPct <= 100;
 
-  const evidenceBackedAlternatives: EvidenceBackedApproach[] = [
-    hasIncomeApproach
-      ? { label: 'income approach' as const, value: income.concludedValue }
-      : null,
-    hasCostApproach
-      ? { label: 'cost approach' as const, value: cost.concludedValue }
-      : null,
-  ].filter((approach): approach is EvidenceBackedApproach => approach != null);
+  const evidenceBackedAlternatives: EvidenceBackedApproach[] = [];
+  if (hasIncomeApproach) {
+    evidenceBackedAlternatives.push({ label: 'income approach', value: incomeValue });
+  }
+  if (hasCostApproach) {
+    evidenceBackedAlternatives.push({ label: 'cost approach', value: costValue });
+  }
 
   const conclusionReconcilesToAlternative =
     hasConcludedValue &&
     evidenceBackedAlternatives.some(({ value }) => {
       const minimum = value * (1 - tolerance);
       const maximum = value * (1 + tolerance);
-      return input.concludedValue! >= minimum && input.concludedValue! <= maximum;
+      return concludedValue >= minimum && concludedValue <= maximum;
     });
 
   const warnings: string[] = [];
