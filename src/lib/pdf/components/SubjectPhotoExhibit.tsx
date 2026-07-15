@@ -5,7 +5,7 @@ import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { theme, colors } from '../styles/theme';
 import { PageFooter, SectionHeader } from './shared';
 
-interface ExhibitPhoto {
+interface ExhibitImage {
   url: string;
   caption: string;
 }
@@ -19,7 +19,15 @@ function chunk<T>(items: T[], size: number): T[][] {
 }
 
 export default function SubjectPhotoExhibit({ data }: { data: ReportTemplateData }) {
-  const photos: ExhibitPhoto[] = data.photos
+  const maps: ExhibitImage[] = [
+    data.maps.regional,
+    data.maps.neighborhood,
+    data.maps.parcel,
+  ]
+    .filter((map): map is NonNullable<typeof map> => Boolean(map?.url))
+    .map((map) => ({ url: map.url, caption: map.caption }));
+
+  const photos: ExhibitImage[] = data.photos
     .filter((photo) => Boolean(photo.storage_path))
     .map((photo, index) => ({
       url: photo.storage_path,
@@ -30,19 +38,39 @@ export default function SubjectPhotoExhibit({ data }: { data: ReportTemplateData
         `Subject photograph ${index + 1}`,
     }));
 
-  if (photos.length === 0) return null;
+  if (maps.length === 0 && photos.length === 0) return null;
 
-  const pages = chunk(photos, 2);
+  const photoPages = chunk(photos, 2);
+  const mapHeight = maps.length === 1 ? 430 : maps.length === 2 ? 245 : 165;
 
   return (
     <Fragment>
-      {pages.map((pagePhotos, pageIndex) => (
+      {maps.length > 0 && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <SectionHeader number="EX-1" title="Subject Maps & Parcel Context" />
+          <Text style={[theme.bodyText, styles.scopeNote]}>
+            These maps orient the subject within its regional, neighborhood, and parcel context. Map
+            boundaries, labels, and imagery should be verified against the identified public or licensed
+            source before they are used for filing, zoning, survey, access, or legal-description purposes.
+          </Text>
+          <View style={styles.mapGrid}>
+            {maps.map((map, index) => (
+              <View key={index} style={styles.mapCard} wrap={false}>
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                <Image src={map.url} style={[styles.mapImage, { height: mapHeight }]} />
+                <Text style={styles.caption}>{map.caption}</Text>
+              </View>
+            ))}
+          </View>
+          <Text style={styles.exhibitCounter}>{maps.length} map exhibits documented</Text>
+        </Page>
+      )}
+
+      {photoPages.map((pagePhotos, pageIndex) => (
         <Page key={pageIndex} size="LETTER" style={theme.page}>
           <PageFooter />
-          <SectionHeader
-            number="EX-1"
-            title={pageIndex === 0 ? 'Subject Maps & Photo Exhibit' : 'Subject Photo Exhibit'}
-          />
+          <SectionHeader number="EX-1" title="Subject Photo Exhibit" />
 
           {pageIndex === 0 && (
             <Text style={[theme.bodyText, styles.scopeNote]}>
@@ -64,7 +92,7 @@ export default function SubjectPhotoExhibit({ data }: { data: ReportTemplateData
           </View>
 
           <Text style={styles.exhibitCounter}>
-            Exhibit page {pageIndex + 1} of {pages.length} - {photos.length} subject images documented
+            Photo exhibit page {pageIndex + 1} of {photoPages.length} - {photos.length} subject images documented
           </Text>
         </Page>
       ))}
@@ -76,6 +104,21 @@ const styles = StyleSheet.create({
   scopeNote: {
     marginBottom: 10,
     color: colors.inkMuted,
+  },
+  mapGrid: {
+    flex: 1,
+    gap: 8,
+  },
+  mapCard: {
+    borderWidth: 0.5,
+    borderColor: colors.border,
+    padding: 5,
+    backgroundColor: colors.background,
+  },
+  mapImage: {
+    width: '100%',
+    objectFit: 'contain',
+    backgroundColor: colors.calloutBg,
   },
   pageGrid: {
     flex: 1,
