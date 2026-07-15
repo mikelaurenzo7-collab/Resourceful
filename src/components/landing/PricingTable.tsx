@@ -5,7 +5,7 @@ const tiers = [
   {
     name: 'Starter Intelligence',
     tier: 'auto' as const,
-    description: 'The essential Claude workflow: AI-built evidence, prioritized insights, and a clean customer-ready package.',
+    description: 'AI-assisted evidence assembly for owners who want a clear, affordable read on whether the case is worth pursuing.',
     features: [
       '5–10 comparable sales with adjustments',
       'Assessment ratio analysis',
@@ -16,9 +16,9 @@ const tiers = [
     cta: 'Get Started',
   },
   {
-    name: 'Operator Mode',
+    name: 'Expert Review',
     tier: 'expert_reviewed' as const,
-    description: 'Everything in Starter Intelligence, plus human review layered on top of the Claude operating system.',
+    description: 'Everything in Starter Intelligence, plus human review layered on top of GPT-5.6 Sol valuation analysis.',
     features: [
       'Everything in Starter Intelligence',
       'Licensed appraiser review',
@@ -32,9 +32,9 @@ const tiers = [
   {
     name: 'Execution Assist',
     tier: 'guided_filing' as const,
-    description: 'Operator Mode plus live execution support so Claude does the heavy lifting and your customer never feels alone.',
+    description: 'Expert Review plus live filing support so owners know exactly what to file, how to present it, and what to expect next.',
     features: [
-      'Everything in Operator Mode',
+      'Everything in Expert Review',
       'Live guided filing session',
       'Evidence preparation walkthrough',
       'Hearing prep coaching',
@@ -44,13 +44,13 @@ const tiers = [
     appealOnly: true,
   },
   {
-    name: 'Autopilot Appeal',
+    name: 'Managed Appeal',
     tier: 'full_representation' as const,
-    description: 'The highest-leverage tier: Claude runs the workflow while the team handles filing and representation.',
+    description: 'The highest-touch tier: Resourceful prepares the case and coordinates filing, hearing, and representation steps where permitted.',
     features: [
       'Everything in Execution Assist',
-      'We file the appeal for you',
-      'Hearing representation included',
+      'Filing coordination support',
+      'Representation path included',
       'Dedicated case manager',
       'Available in select counties',
     ],
@@ -65,13 +65,13 @@ export default function PricingTable() {
     <section className="mx-auto max-w-6xl px-6 py-24" id="pricing">
       <div className="text-center mb-14">
         <span className="text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase">
-          AI-Led Pricing
+          Clear Pricing
         </span>
         <h2 className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
-          Choose How Much Claude Runs
+          Choose the Level of Help You Need
         </h2>
         <p className="mt-4 text-cream/40 max-w-xl mx-auto leading-relaxed">
-          Every tier uses the same operating system. What changes is how much of the workflow Claude and the team take off the customer’s plate.
+          Every tier starts with the same source-grounded evidence engine. What changes is review depth, filing support, and how much execution Resourceful takes off your plate.
         </p>
       </div>
 
@@ -100,14 +100,14 @@ export default function PricingTable() {
               {t.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                   <span className="bg-gradient-to-r from-gold-light via-gold to-gold-dark text-navy-deep text-[10px] font-bold px-3.5 py-1 rounded-full uppercase tracking-wider animate-badge-pulse">
-                    Best Margin Mix
+                    Best Balance
                   </span>
                 </div>
               )}
               {t.premium && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                   <span className="bg-[#d4a843] text-navy-deep text-[10px] font-bold px-3.5 py-1 rounded-full uppercase tracking-wider animate-badge-pulse">
-                    Full Autopilot
+                    Highest Touch
                   </span>
                 </div>
               )}
@@ -146,8 +146,7 @@ export default function PricingTable() {
                     : 'border border-gold/20 text-gold hover:border-gold/40 hover:bg-gold/[0.05] hover:shadow-[0_0_15px_rgba(212,168,71,0.05)]'}
                 `}
               >
-                    Activate
-
+                Start
               </Link>
             </div>
           );
