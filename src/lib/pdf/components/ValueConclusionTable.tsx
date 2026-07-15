@@ -31,13 +31,18 @@ export default function ValueConclusionTable({ data }: { data: ReportTemplateDat
       />
 
       <ValueCallout
-        label={`Final Market Value as of ${formatDate(data.valuationDate)}`}
+        label={`Resourceful Concluded Market Value as of ${formatDate(data.valuationDate)}`}
         value={formatCurrency(data.concludedValue)}
         color={colors.accent}
       />
 
       <Text style={[theme.caption, { marginTop: 4, color: colors.inkMuted }]}>
         {formatCurrencyWords(data.concludedValue)}.
+      </Text>
+      <Text style={[theme.caption, styles.boundary]}>
+        This conclusion is an AI-assisted synthesis of the documented Resourceful workfile and the
+        approaches displayed above. It is not represented as a signed or licensed appraisal unless a
+        separately identified licensed appraiser has reviewed, adopted, certified, and signed the report.
       </Text>
     </View>
   );
@@ -58,5 +63,9 @@ const styles = StyleSheet.create({
     paddingBottom: 3,
     borderBottomWidth: 1,
     borderBottomColor: colors.accent,
+  },
+  boundary: {
+    marginTop: 5,
+    lineHeight: 1.4,
   },
 });
