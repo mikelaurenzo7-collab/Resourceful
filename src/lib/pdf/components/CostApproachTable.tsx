@@ -1,7 +1,6 @@
 // ─── Cost Approach Analysis ──────────────────────────────────────────────────
-// Structured presentation of the cost approach computation:
-// Replacement Cost New → Physical Depreciation → Functional Obsolescence
-// → Depreciated Improvement Value → Land Value → Cost Approach Value
+// Structured presentation of the stored workfile inputs:
+// Replacement Cost New → supported depreciation/obsolescence → land input.
 
 import React from 'react';
 import { View, Text, StyleSheet } from '@react-pdf/renderer';
@@ -11,67 +10,99 @@ import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { formatCurrency, formatPercent, formatSqFt, formatNumber } from '@/lib/templates/helpers';
 import { findNarrativeContent } from '@/lib/report-narratives';
 
+function validPercent(value: number | null | undefined): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100;
+}
+
 export default function CostApproachTable({ data }: { data: ReportTemplateData }) {
   const { property, narratives } = data;
 
-  // Guard: only render if cost approach was computed
-  if (!property.cost_approach_value || property.cost_approach_value <= 0) return null;
-
-  const rcn = property.cost_approach_rcn ?? 0;
-  const physDepr = property.physical_depreciation_pct ?? 0;
-  const funcObs = property.functional_obsolescence_pct ?? 0;
-  const totalDepr = Math.min(physDepr + funcObs, 100);
-  const deprAmount = rcn * (totalDepr / 100);
-  const depreciatedImpr = rcn - deprAmount;
-  const landValue = property.land_value ?? 0;
   const costApproachValue = property.cost_approach_value;
+  const rcn = property.cost_approach_rcn;
+  const physicalDepreciation = property.physical_depreciation_pct;
+
+  // Do not imply a complete cost approach from an isolated positive total.
+  if (
+    costApproachValue == null ||
+    !Number.isFinite(costApproachValue) ||
+    costApproachValue <= 0 ||
+    rcn == null ||
+    !Number.isFinite(rcn) ||
+    rcn <= 0 ||
+    !validPercent(physicalDepreciation)
+  ) {
+    return null;
+  }
+
+  const functionalObsolescence = validPercent(property.functional_obsolescence_pct)
+    ? property.functional_obsolescence_pct
+    : 0;
+  const totalDepreciation = Math.min(
+    physicalDepreciation + functionalObsolescence,
+    100
+  );
+  const depreciationAmount = rcn * (totalDepreciation / 100);
+  const depreciatedImprovementValue = Math.max(0, rcn - depreciationAmount);
+  const landValue =
+    property.land_value != null &&
+    Number.isFinite(property.land_value) &&
+    property.land_value >= 0
+      ? property.land_value
+      : null;
+  const recomputedValue = depreciatedImprovementValue + (landValue ?? 0);
+  const reconciliationDifference = costApproachValue - recomputedValue;
+  const reconciliationDifferencePct = recomputedValue > 0
+    ? Math.abs(reconciliationDifference) / recomputedValue
+    : 0;
 
   const costNarrative = findNarrativeContent(narratives, 'cost_approach_narrative');
-
-  // Details for the computation table
-  const buildingSqft = property.building_sqft_gross ?? property.building_sqft_living_area ?? 0;
-  const costPerSqft = buildingSqft > 0 ? rcn / buildingSqft : 0;
+  const buildingSqft = property.building_sqft_gross ?? property.building_sqft_living_area ?? null;
+  const costPerSqft = buildingSqft != null && buildingSqft > 0
+    ? rcn / buildingSqft
+    : null;
 
   return (
     <View break>
       <SectionHeader number="XI" title="Cost Approach Analysis" />
 
       <Text style={[theme.bodyText, { marginBottom: 8 }]}>
-        The Cost Approach estimates market value by calculating the current cost to construct
-        a replacement building of equivalent utility, less all forms of depreciation, plus the
-        underlying land value.
+        This section presents the cost indication stored in the Resourceful workfile. Building area,
+        replacement cost, quality, depreciation, obsolescence, and land inputs may originate from public
+        records, third-party data, disclosed calculations, or clearly labeled assumptions. They are not
+        represented as independent contractor estimates, engineering measurements, or licensed-appraiser
+        observations unless the report expressly documents that source and review.
       </Text>
 
-      {/* RCN Computation */}
-      <Text style={styles.subheading}>Replacement Cost New (RCN)</Text>
+      <Text style={styles.subheading}>Replacement Cost New Input</Text>
       <View style={styles.computeTable}>
-        <ComputeRow label="Gross Building Area" value={formatSqFt(buildingSqft)} />
-        {costPerSqft > 0 && (
-          <ComputeRow label="Cost per Square Foot" value={`$${formatNumber(costPerSqft, 2)}/SF`} />
+        {buildingSqft != null && buildingSqft > 0 && (
+          <ComputeRow label="Building Area Used" value={formatSqFt(buildingSqft)} />
+        )}
+        {costPerSqft != null && costPerSqft > 0 && (
+          <ComputeRow label="Implied Cost per Square Foot" value={`$${formatNumber(costPerSqft, 2)}/SF`} />
         )}
         {property.quality_grade && (
-          <ComputeRow label="Quality Grade" value={capitalize(property.quality_grade)} />
+          <ComputeRow label="Quality Grade Input" value={capitalize(property.quality_grade)} />
         )}
-        <ComputeRow label="Replacement Cost New" value={formatCurrency(rcn)} bold accent />
+        <ComputeRow label="Replacement Cost New Input" value={formatCurrency(rcn)} bold accent />
       </View>
 
-      {/* Depreciation Schedule */}
-      <Text style={[styles.subheading, { marginTop: 10 }]}>Depreciation Schedule</Text>
+      <Text style={[styles.subheading, { marginTop: 10 }]}>Depreciation & Obsolescence Inputs</Text>
       <View style={styles.computeTable}>
         {property.effective_age != null && (
-          <ComputeRow label="Effective Age" value={`${property.effective_age} years`} />
+          <ComputeRow label="Effective Age Input" value={`${property.effective_age} years`} />
         )}
         {property.remaining_economic_life != null && (
-          <ComputeRow label="Remaining Economic Life" value={`${property.remaining_economic_life} years`} />
+          <ComputeRow label="Remaining Economic Life Input" value={`${property.remaining_economic_life} years`} />
         )}
         <ComputeRow
-          label="Physical Depreciation"
-          value={`${formatPercent(physDepr)}   (${formatCurrency(rcn * physDepr / 100)})`}
+          label="Physical Depreciation Input"
+          value={`${formatPercent(physicalDepreciation)}   (${formatCurrency(rcn * physicalDepreciation / 100)})`}
         />
-        {funcObs > 0 && (
+        {functionalObsolescence > 0 && (
           <ComputeRow
-            label="Functional Obsolescence"
-            value={`${formatPercent(funcObs)}   (${formatCurrency(rcn * funcObs / 100)})`}
+            label="Functional Obsolescence Input"
+            value={`${formatPercent(functionalObsolescence)}   (${formatCurrency(rcn * functionalObsolescence / 100)})`}
           />
         )}
         {property.functional_obsolescence_notes && (
@@ -82,38 +113,53 @@ export default function CostApproachTable({ data }: { data: ReportTemplateData }
           </View>
         )}
         <ComputeRow
-          label="Total Depreciation"
-          value={`${formatPercent(totalDepr)}   (${formatCurrency(deprAmount)})`}
+          label="Combined Depreciation Used"
+          value={`${formatPercent(totalDepreciation)}   (${formatCurrency(depreciationAmount)})`}
           bold
         />
       </View>
 
-      {/* Final Computation */}
-      <Text style={[styles.subheading, { marginTop: 10 }]}>Cost Approach Computation</Text>
+      <Text style={[styles.subheading, { marginTop: 10 }]}>Workfile Computation</Text>
       <View style={styles.computeTable}>
-        <ComputeRow label="Replacement Cost New" value={formatCurrency(rcn)} />
-        <ComputeRow label="Less: Total Depreciation" value={`(${formatCurrency(deprAmount)})`} negative />
-        <ComputeRow label="Depreciated Improvement Value" value={formatCurrency(depreciatedImpr)} bold />
-        <ComputeRow label="Plus: Land Value" value={formatCurrency(landValue)} />
+        <ComputeRow label="Replacement Cost New Input" value={formatCurrency(rcn)} />
+        <ComputeRow label="Less: Combined Depreciation" value={`(${formatCurrency(depreciationAmount)})`} negative />
+        <ComputeRow label="Depreciated Improvement Indication" value={formatCurrency(depreciatedImprovementValue)} bold />
+        <ComputeRow
+          label="Land Value Input"
+          value={landValue != null ? formatCurrency(landValue) : 'Not separately available'}
+        />
         <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Indicated Value by Cost Approach</Text>
+          <Text style={styles.totalLabel}>Stored Cost Approach Indication</Text>
           <Text style={styles.totalValue}>{formatCurrency(costApproachValue)}</Text>
         </View>
       </View>
 
-      {/* AI narrative */}
+      {reconciliationDifferencePct > 0.01 && (
+        <Text style={[theme.bodyText, { marginTop: 6 }]}>
+          The stored cost indication differs from the arithmetic displayed above by{' '}
+          {formatCurrency(Math.abs(reconciliationDifference))}. This may reflect an additional land,
+          depreciation, rounding, or reconciliation input not represented in the structured fields and
+          should be reviewed before relying on the indication.
+        </Text>
+      )}
+
+      {landValue == null && (
+        <Text style={[theme.bodyText, { marginTop: 6 }]}>
+          No separate land value is stored in the structured workfile. The cost indication should not be
+          treated as a complete market-value approach until the land component and its source are verified.
+        </Text>
+      )}
+
       {costNarrative && <NarrativeBlock content={costNarrative} />}
 
       <ValueCallout
-        label="Cost Approach Indication"
+        label="Workfile Cost Approach Indication"
         value={formatCurrency(costApproachValue)}
         color={colors.accent}
       />
     </View>
   );
 }
-
-// ─── Sub-Components ──────────────────────────────────────────────────────────
 
 function ComputeRow({
   label,
@@ -145,11 +191,9 @@ function ComputeRow({
   );
 }
 
-function capitalize(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
 }
-
-// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   subheading: {
