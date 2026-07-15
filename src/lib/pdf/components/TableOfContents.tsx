@@ -49,9 +49,7 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
   const sections: TocEntry[] = [
     { number: '', title: 'Letter of Transmittal' },
     { number: '', title: 'Branded Property Cover' },
-    ...(narrativeSections.has('summary_of_salient_facts')
-      ? [{ number: 'I-A', title: 'Summary of Salient Facts' }]
-      : []),
+    { number: 'I-A', title: 'Summary of Salient Facts & Valuation Findings' },
     { number: 'I-B', title: 'Property Identification Summary' },
     { number: 'I-C', title: 'Executive Summary & Location Evidence' },
     ...(hasPhotoExhibit
