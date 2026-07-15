@@ -10,6 +10,7 @@ function makeData(overrides: Partial<ReportTemplateData> = {}): ReportTemplateDa
       property_address: '123 Main St',
       city: 'Example',
       state: 'IL',
+      state_abbreviation: 'IL',
       county: 'Example County',
       county_fips: '17001',
       service_type: 'pre_purchase',
@@ -52,6 +53,31 @@ function makeData(overrides: Partial<ReportTemplateData> = {}): ReportTemplateDa
   };
 }
 
+function makeTaxAppealData(
+  overrides: Partial<ReportTemplateData> = {}
+): ReportTemplateData {
+  return makeData({
+    report: {
+      ...makeData().report,
+      service_type: 'tax_appeal',
+    },
+    countyRule: {
+      county_fips: '17001',
+      state_abbreviation: 'IL',
+      is_active: true,
+      last_verified_date: '2026-06-01',
+    } as ReportTemplateData['countyRule'],
+    filingGuide: {
+      appeal_board_name: 'Example Board of Review',
+      filing_deadline: '2026-08-01',
+      steps: ['Submit the appeal form and evidence package.'],
+      required_documents: ['Assessment notice', 'Comparable evidence'],
+      tips: [],
+    },
+    ...overrides,
+  });
+}
+
 const preflight: ReportPreflightResult = {
   ok: true,
   issues: [
@@ -63,11 +89,12 @@ const preflight: ReportPreflightResult = {
   ],
 };
 
+const GENERATED_AT = new Date('2026-07-15T12:00:00.000Z');
+
 describe('buildReportArtifactManifest', () => {
   it('records artifact identity, evidence counts, validation, and a stable PDF hash', () => {
     const pdf = Buffer.from('resourceful-pdf-fixture');
-    const generatedAt = new Date('2026-07-15T12:00:00.000Z');
-    const manifest = buildReportArtifactManifest(makeData(), preflight, pdf, generatedAt);
+    const manifest = buildReportArtifactManifest(makeData(), preflight, pdf, GENERATED_AT);
 
     expect(manifest.generatedAt).toBe('2026-07-15T12:00:00.000Z');
     expect(manifest.report.id).toBe('report-1');
@@ -87,35 +114,16 @@ describe('buildReportArtifactManifest', () => {
     expect(manifest.pdf.byteLength).toBe(pdf.byteLength);
     expect(manifest.pdf.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(
-      buildReportArtifactManifest(makeData(), preflight, pdf, generatedAt).pdf.sha256
+      buildReportArtifactManifest(makeData(), preflight, pdf, GENERATED_AT).pdf.sha256
     ).toBe(manifest.pdf.sha256);
   });
 
   it('classifies a current active tax-appeal jurisdiction package as verified', () => {
-    const data = makeData({
-      report: {
-        ...makeData().report,
-        service_type: 'tax_appeal',
-      },
-      countyRule: {
-        county_fips: '17001',
-        is_active: true,
-        last_verified_date: '2026-06-01',
-      } as ReportTemplateData['countyRule'],
-      filingGuide: {
-        appeal_board_name: 'Example Board of Review',
-        filing_deadline: '2026-08-01',
-        steps: [],
-        required_documents: [],
-        tips: [],
-      },
-    });
-
     const manifest = buildReportArtifactManifest(
-      data,
+      makeTaxAppealData(),
       { ok: true, issues: [] },
       Buffer.from('pdf'),
-      new Date('2026-07-15T12:00:00.000Z')
+      GENERATED_AT
     );
 
     expect(manifest.jurisdiction.coverageStatus).toBe('verified');
@@ -123,25 +131,77 @@ describe('buildReportArtifactManifest', () => {
   });
 
   it('classifies an old jurisdiction verification as stale', () => {
-    const data = makeData({
-      report: {
-        ...makeData().report,
-        service_type: 'tax_appeal',
-      },
+    const data = makeTaxAppealData({
       countyRule: {
-        county_fips: '17001',
-        is_active: true,
+        ...makeTaxAppealData().countyRule!,
         last_verified_date: '2025-01-01',
-      } as ReportTemplateData['countyRule'],
+      },
     });
 
     const manifest = buildReportArtifactManifest(
       data,
       { ok: true, issues: [] },
       Buffer.from('pdf'),
-      new Date('2026-07-15T12:00:00.000Z')
+      GENERATED_AT
     );
 
     expect(manifest.jurisdiction.coverageStatus).toBe('stale');
+  });
+
+  it('never labels a FIPS-mismatched jurisdiction package as verified', () => {
+    const data = makeTaxAppealData({
+      countyRule: {
+        ...makeTaxAppealData().countyRule!,
+        county_fips: '17003',
+      },
+    });
+
+    const manifest = buildReportArtifactManifest(
+      data,
+      { ok: true, issues: [] },
+      Buffer.from('pdf'),
+      GENERATED_AT
+    );
+
+    expect(manifest.jurisdiction.coverageStatus).toBe('unsupported');
+  });
+
+  it('classifies incomplete appeal delivery intelligence as partial', () => {
+    const manifest = buildReportArtifactManifest(
+      makeTaxAppealData(),
+      {
+        ok: false,
+        issues: [
+          {
+            code: 'appeal.deadline',
+            severity: 'error',
+            message: 'The filing guide must state the applicable filing deadline.',
+          },
+        ],
+      },
+      Buffer.from('pdf'),
+      GENERATED_AT
+    );
+
+    expect(manifest.jurisdiction.coverageStatus).toBe('partial');
+    expect(manifest.validation.passed).toBe(false);
+  });
+
+  it('does not accept a future jurisdiction verification date', () => {
+    const data = makeTaxAppealData({
+      countyRule: {
+        ...makeTaxAppealData().countyRule!,
+        last_verified_date: '2027-01-01',
+      },
+    });
+
+    const manifest = buildReportArtifactManifest(
+      data,
+      { ok: true, issues: [] },
+      Buffer.from('pdf'),
+      GENERATED_AT
+    );
+
+    expect(manifest.jurisdiction.coverageStatus).toBe('partial');
   });
 });
