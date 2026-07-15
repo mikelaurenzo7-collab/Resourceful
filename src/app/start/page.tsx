@@ -4,11 +4,14 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWizard } from '@/components/intake/WizardLayout';
 import Button from '@/components/ui/Button';
+import {
+  isIndependentValuationPurpose,
+  markIndependentValuationPurpose,
+  stripIndependentValuationMarker,
+} from '@/lib/assignments/routing';
 import type { ServiceType } from '@/types/database';
 
 type WorkflowId = ServiceType | 'independent_valuation';
-
-const INDEPENDENT_VALUATION_MARKER = '[INDEPENDENT_VALUATION]';
 
 const SERVICE_OPTIONS: {
   id: WorkflowId;
@@ -78,7 +81,7 @@ const SERVICE_OPTIONS: {
 ];
 
 function selectedWorkflow(serviceType: ServiceType | null, desiredOutcome: string): WorkflowId | null {
-  if (serviceType === 'pre_listing' && desiredOutcome.startsWith(INDEPENDENT_VALUATION_MARKER)) {
+  if (isIndependentValuationPurpose(desiredOutcome)) {
     return 'independent_valuation';
   }
   return serviceType;
@@ -95,28 +98,23 @@ export default function GoalsPage() {
   const activeWorkflow = selectedWorkflow(state.serviceType, state.desiredOutcome);
 
   const handleSelect = (option: (typeof SERVICE_OPTIONS)[number]) => {
-    const wasIndependent = state.desiredOutcome.startsWith(INDEPENDENT_VALUATION_MARKER);
-    const cleanOutcome = wasIndependent
-      ? state.desiredOutcome.slice(INDEPENDENT_VALUATION_MARKER.length).trim()
-      : state.desiredOutcome;
+    const cleanOutcome = stripIndependentValuationMarker(state.desiredOutcome);
 
     updateState({
       serviceType: option.serviceType,
       desiredOutcome: option.id === 'independent_valuation'
-        ? `${INDEPENDENT_VALUATION_MARKER} ${cleanOutcome}`.trim()
+        ? markIndependentValuationPurpose(cleanOutcome)
         : cleanOutcome,
       reviewTier: option.id === 'tax_appeal' ? state.reviewTier : 'auto',
     });
   };
 
-  const visibleOutcome = state.desiredOutcome.startsWith(INDEPENDENT_VALUATION_MARKER)
-    ? state.desiredOutcome.slice(INDEPENDENT_VALUATION_MARKER.length).trim()
-    : state.desiredOutcome;
+  const visibleOutcome = stripIndependentValuationMarker(state.desiredOutcome);
 
   const updateVisibleOutcome = (value: string) => {
     updateState({
       desiredOutcome: activeWorkflow === 'independent_valuation'
-        ? `${INDEPENDENT_VALUATION_MARKER} ${value}`.trim()
+        ? markIndependentValuationPurpose(value)
         : value,
     });
   };
@@ -245,7 +243,7 @@ export default function GoalsPage() {
           disabled={!activeWorkflow}
           onClick={() => router.push('/start/property')}
         >
-          Continue to property verification
+          Continue to Property
           <svg className="ml-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
           </svg>
