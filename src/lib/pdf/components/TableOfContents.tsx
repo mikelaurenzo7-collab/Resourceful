@@ -25,6 +25,7 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
   const isIncomeProperty = report.property_type === 'commercial' || report.property_type === 'industrial';
   const hasIncome = incomeAnalysis != null && isIncomeProperty;
   const hasCostApproach = property.cost_approach_value != null && property.cost_approach_value > 0;
+  const hasSales = comparableSales.length > 0;
   const hasPhotoExhibit = photos.some((photo) => Boolean(photo.storage_path));
   const hasPhotoDefects = photos.some((photo) => (photo.ai_analysis?.defects?.length ?? 0) > 0);
   const hasCertification = narrativeSections.has('certification_and_limiting_conditions');
@@ -74,8 +75,13 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
     { number: 'VI', title: 'Market Analysis' },
     { number: 'VII-A', title: 'Highest & Best Use — As Vacant', indent: true },
     { number: 'VII-B', title: 'Highest & Best Use — As Improved', indent: true },
-    { number: 'VIII', title: 'Sales Comparison Approach' },
-    { number: 'IX', title: 'Adjustment Reconciliation & Value Conclusion' },
+    ...(hasSales
+      ? [
+          { number: 'VIII-A', title: 'Comparable Sales Summary & Map' },
+          { number: 'VIII-B', title: 'Individual Comparable Sale Profiles' },
+        ]
+      : []),
+    { number: 'IX', title: 'Approach Reconciliation & Value Conclusion' },
   ];
 
   if (property.assessment_ratio != null) {
@@ -156,7 +162,9 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
         </View>
         <View style={styles.metaRow}>
           <Text style={theme.label}>Sales Evidence</Text>
-          <Text style={theme.tableCell}>{comparableSales.length} transactions analyzed</Text>
+          <Text style={theme.tableCell}>
+            {hasSales ? `${comparableSales.length} transactions with individual evidence profiles` : 'No comparable sales included'}
+          </Text>
         </View>
         {hasIncome && (
           <View style={styles.metaRow}>
