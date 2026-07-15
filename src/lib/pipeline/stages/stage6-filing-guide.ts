@@ -1,17 +1,54 @@
-// ─── Stage 6: Action Guide Generation ────────────────────────────────────────
-// Generates service-type-specific guidance:
-//   - tax_appeal: Pro se filing guide (county-specific, step-by-step)
-//   - pre_purchase: Negotiation strategy guide
-//   - pre_listing: Pricing strategy guide
-// Grounded in county_rules data + appeal_argument_summary + values.
+// ─── Stage 6: Assignment Action Guide Generation ─────────────────────────────
+// Generates assignment-specific guidance:
+//   - tax_appeal: county-specific pro se filing guide
+//   - pre_purchase: buyer negotiation and due-diligence guide
+//   - pre_listing: seller pricing and preparation guide
+//   - independent_valuation: purpose, documentation, review, and use guide
+// Grounded in the structured workfile and verified jurisdiction data.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Report, CountyRule, ReportNarrative, PropertyData, IncomeAnalysis } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { generateFilingGuide, type FilingGuidePayload } from '@/lib/services/anthropic';
+import {
+  getActionGuideSectionName,
+  resolveAssignmentKind,
+  type ActionGuideSectionName,
+} from '@/lib/assignments/routing';
 import { AI_MODELS } from '@/config/ai';
 import { calculateDeadline } from '@/lib/utils/deadline-calculator';
 import { pipelineLogger } from '@/lib/logger';
+
+type AssignmentAwareFilingGuidePayload = FilingGuidePayload & {
+  assignmentPurpose: string | null;
+  rawAssessedValue: number | null;
+  assessorImpliedMarketValue: number | null;
+  marketValueGap: number | null;
+};
+
+const ACTION_GUIDE_SECTIONS: ActionGuideSectionName[] = [
+  'pro_se_filing_guide',
+  'negotiation_guide',
+  'pricing_strategy_guide',
+  'valuation_use_guide',
+];
+
+function toAssessorImpliedMarketValue(
+  rawAssessedValue: number,
+  assessmentRatio: number | null | undefined
+): number {
+  if (
+    rawAssessedValue > 0 &&
+    assessmentRatio != null &&
+    Number.isFinite(assessmentRatio) &&
+    assessmentRatio > 0 &&
+    assessmentRatio < 1
+  ) {
+    return Math.round(rawAssessedValue / assessmentRatio);
+  }
+
+  return rawAssessedValue;
+}
 
 // ─── Stage Entry Point ──────────────────────────────────────────────────────
 
@@ -30,6 +67,8 @@ export async function runFilingGuide(
   if (reportError || !report) {
     return { success: false, error: `Failed to fetch report: ${reportError?.message}` };
   }
+
+  const assignmentKind = resolveAssignmentKind(report.service_type, report.desired_outcome);
 
   // ── Fetch county rules ────────────────────────────────────────────────
   let countyRule: CountyRule | null = null;
@@ -51,29 +90,35 @@ export async function runFilingGuide(
     countyRule = data as CountyRule | null;
   }
 
-  // ── Fetch appeal argument summary from narratives ─────────────────────
-  const { data: appealNarrativeData } = await supabase
+  // ── Fetch the assignment summary from narratives ──────────────────────
+  const primaryNarrativeSection = assignmentKind === 'tax_appeal'
+    ? 'appeal_argument_summary'
+    : 'executive_summary';
+  const fallbackNarrativeSection = assignmentKind === 'tax_appeal'
+    ? 'assessment_equity'
+    : 'reconciliation_narrative';
+
+  const { data: primaryNarrativeData } = await supabase
     .from('report_narratives')
     .select('content')
     .eq('report_id', reportId)
-    .eq('section_name', 'appeal_argument_summary')
+    .eq('section_name', primaryNarrativeSection)
     .single();
-  const appealNarrative = appealNarrativeData as Pick<ReportNarrative, 'content'> | null;
+  const primaryNarrative = primaryNarrativeData as Pick<ReportNarrative, 'content'> | null;
 
-  // Also try assessment_equity as fallback
-  let appealContent = appealNarrative?.content ?? '';
-  if (!appealContent) {
-    const { data: equityNarrativeData } = await supabase
+  let assignmentSummary = primaryNarrative?.content ?? '';
+  if (!assignmentSummary) {
+    const { data: fallbackNarrativeData } = await supabase
       .from('report_narratives')
       .select('content')
       .eq('report_id', reportId)
-      .eq('section_name', 'assessment_equity')
+      .eq('section_name', fallbackNarrativeSection)
       .single();
-    const equityNarrative = equityNarrativeData as Pick<ReportNarrative, 'content'> | null;
-    appealContent = equityNarrative?.content ?? '';
+    const fallbackNarrative = fallbackNarrativeData as Pick<ReportNarrative, 'content'> | null;
+    assignmentSummary = fallbackNarrative?.content ?? '';
   }
 
-  // ── Fetch property data for assessed values ───────────────────────────
+  // ── Fetch property data for valuation semantics ───────────────────────
   const { data: pdData } = await supabase
     .from('property_data')
     .select('*')
@@ -81,11 +126,16 @@ export async function runFilingGuide(
     .single();
   const propertyData = pdData as PropertyData | null;
 
-  const assessedValue = propertyData?.assessed_value ?? 0;
+  const rawAssessedValue = propertyData?.assessed_value ?? 0;
+  const assessorImpliedMarketValue = toAssessorImpliedMarketValue(
+    rawAssessedValue,
+    propertyData?.assessment_ratio
+  );
 
-  // ── Fetch concluded value from comparable sales median ─────────────────
-  // (The concluded value was calculated in stage 5 and used in narratives.
-  //  Re-derive it here from comps for consistency.)
+  // ── Fetch concluded value from comparable sales median ────────────────
+  // Stage 5 persists the final conclusion. Re-derive the sales indication here
+  // only as a consistency check and fall back to the persisted conclusion when
+  // the assignment relies on income or cost evidence.
   const { data: compsData } = await supabase
     .from('comparable_sales')
     .select('adjusted_price_per_sqft, sale_price')
@@ -95,8 +145,8 @@ export async function runFilingGuide(
   let concludedValue = 0;
   if (comps.length > 0 && propertyData?.building_sqft_gross) {
     const adjustedPrices = comps
-      .map((c) => c.adjusted_price_per_sqft)
-      .filter((p): p is number => p != null && p > 0)
+      .map((comp) => comp.adjusted_price_per_sqft)
+      .filter((price): price is number => price != null && price > 0)
       .sort((a, b) => a - b);
 
     if (adjustedPrices.length > 0) {
@@ -108,7 +158,7 @@ export async function runFilingGuide(
     }
   }
 
-  // Check income approach
+  // Check income approach for commercial and industrial properties.
   if (report.property_type === 'commercial' || report.property_type === 'industrial') {
     const { data: incomeRaw } = await supabase
       .from('income_analysis')
@@ -124,38 +174,39 @@ export async function runFilingGuide(
     }
   }
 
-  // Fallback: use the concluded_value saved by stage 5 (cost approach or income)
-  if (concludedValue <= 0 && propertyData?.concluded_value && propertyData.concluded_value > 0) {
+  // Prefer the final reconciled Stage 5 conclusion when available.
+  if (propertyData?.concluded_value && propertyData.concluded_value > 0) {
     concludedValue = propertyData.concluded_value;
-    pipelineLogger.info({ concludedValue: concludedValue.toLocaleString() }, '[stage6] No comps — using stage-5 concluded value as fallback: $');
   }
 
   if (concludedValue <= 0) {
-    return { success: false, error: 'No concluded value available for filing guide' };
+    return { success: false, error: 'No concluded value available for assignment action guide' };
   }
 
-  // ── Build appeal deadline string (auto-calculated when possible) ─────
+  // ── Build appeal deadline string when the assignment is an appeal ─────
   const deadlineInfo = calculateDeadline(countyRule);
   let appealDeadline: string | null = null;
   if (deadlineInfo.source === 'exact' || deadlineInfo.source === 'calculated') {
-    // Use the auto-calculated deadline with urgency context
     appealDeadline = deadlineInfo.displayText;
     if (countyRule?.appeal_deadline_rule) {
       appealDeadline += ` — Rule: ${countyRule.appeal_deadline_rule}`;
     }
-    pipelineLogger.info({ displayText: deadlineInfo.displayText, urgencyLevel: deadlineInfo.urgencyLevel }, '[stage6] Auto-calculated deadline: ()');
+    pipelineLogger.info(
+      { displayText: deadlineInfo.displayText, urgencyLevel: deadlineInfo.urgencyLevel },
+      '[stage6] Auto-calculated deadline'
+    );
   } else if (countyRule?.appeal_deadline_rule) {
     appealDeadline = countyRule.appeal_deadline_rule;
   }
   if (countyRule?.tax_year_appeal_window) {
-    appealDeadline = (appealDeadline ? appealDeadline + '. ' : '') + countyRule.tax_year_appeal_window;
+    appealDeadline = (appealDeadline ? `${appealDeadline}. ` : '') + countyRule.tax_year_appeal_window;
   }
 
-  // ── Calculate potential savings ───────────────────────────────────────
-  const potentialSavings = Math.max(0, assessedValue - concludedValue);
+  // This is a market-value gap, not annual tax-dollar savings.
+  const marketValueGap = Math.max(0, assessorImpliedMarketValue - concludedValue);
 
-  // ── Build filing guide payload ────────────────────────────────────────
-  const payload: FilingGuidePayload = {
+  // ── Build action guide payload ────────────────────────────────────────
+  const payload: AssignmentAwareFilingGuidePayload = {
     propertyAddress: [
       report.property_address,
       report.city,
@@ -163,9 +214,16 @@ export async function runFilingGuide(
     ].filter(Boolean).join(', '),
     countyName: countyRule?.county_name ?? report.county ?? '',
     state: countyRule?.state_name ?? report.state ?? '',
-    assessedValue,
+    assignmentPurpose: report.desired_outcome,
+    rawAssessedValue: rawAssessedValue > 0 ? rawAssessedValue : null,
+    assessorImpliedMarketValue: assessorImpliedMarketValue > 0
+      ? assessorImpliedMarketValue
+      : null,
+    marketValueGap,
+    // Backward-compatible aliases consumed by the existing guide contract.
+    assessedValue: assessorImpliedMarketValue,
     concludedValue,
-    potentialSavings,
+    potentialSavings: marketValueGap,
     appealDeadline,
     appealBoardName: countyRule?.appeal_board_name ?? null,
     appealBoardAddress: countyRule?.appeal_board_address ?? null,
@@ -187,8 +245,7 @@ export async function runFilingGuide(
     typicalResolutionWeeksMax: countyRule?.typical_resolution_weeks_max ?? null,
     stateAppealBoardName: countyRule?.state_appeal_board_name ?? null,
     stateAppealBoardUrl: countyRule?.state_appeal_board_url ?? null,
-    appealArgumentSummary: appealContent || null,
-    // Enhanced filing schedule fields
+    appealArgumentSummary: assignmentSummary || null,
     assessmentCycle: countyRule?.assessment_cycle ?? null,
     assessmentNoticesMailed: countyRule?.assessment_notices_mailed ?? null,
     appealWindowDays: countyRule?.appeal_window_days ?? null,
@@ -209,52 +266,40 @@ export async function runFilingGuide(
     furtherAppealBody: countyRule?.further_appeal_body ?? null,
     furtherAppealDeadlineRule: countyRule?.further_appeal_deadline_rule ?? null,
     furtherAppealUrl: countyRule?.further_appeal_url ?? null,
-    // Board intelligence
     boardPersonalityNotes: countyRule?.board_personality_notes ?? null,
     winningArgumentPatterns: countyRule?.winning_argument_patterns ?? null,
     successRatePct: countyRule?.success_rate_pct ?? null,
-    // Review tier — controls how much hand-holding the guide provides
     reviewTier: (report.review_tier ?? 'auto') as FilingGuidePayload['reviewTier'],
     serviceType: (report.service_type ?? 'tax_appeal') as FilingGuidePayload['serviceType'],
   };
 
-  // ── Generate filing guide via AI ──────────────────────────────────────
-  pipelineLogger.info({ report: report.county ?? 'unknown', report2: report.state ?? 'unknown' }, '[stage6] Generating filing guide for ,');
+  // ── Generate assignment guide via GPT-5.6 Sol ─────────────────────────
+  pipelineLogger.info(
+    { reportId, assignmentKind, county: report.county ?? 'unknown', state: report.state ?? 'unknown' },
+    '[stage6] Generating assignment action guide'
+  );
   const guideResult = await generateFilingGuide(payload);
 
   if (guideResult.error || !guideResult.data) {
     return {
       success: false,
-      error: `Filing guide generation failed: ${guideResult.error}`,
+      error: `Assignment guide generation failed: ${guideResult.error}`,
     };
   }
 
   const { guide, prompt_tokens, completion_tokens, generation_duration_ms } = guideResult.data;
+  const sectionName = getActionGuideSectionName(report.service_type, report.desired_outcome);
 
-  // ── Determine section name based on service type ──────────────────────
-  const sectionName = report.service_type === 'pre_purchase'
-    ? 'negotiation_guide'
-    : report.service_type === 'pre_listing'
-      ? 'pricing_strategy_guide'
-      : 'pro_se_filing_guide';
-
-  // ── Delete existing guide narrative ───────────────────────────────────
-  await supabase
-    .from('report_narratives')
-    .delete()
-    .eq('report_id', reportId)
-    .eq('section_name', sectionName);
-
-  // Also clean up legacy section name if switching service types
-  if (sectionName !== 'pro_se_filing_guide') {
+  // Delete the current section before replacement and remove stale guide types
+  // left behind by a changed assignment purpose.
+  for (const candidateSection of ACTION_GUIDE_SECTIONS) {
     await supabase
       .from('report_narratives')
       .delete()
       .eq('report_id', reportId)
-      .eq('section_name', 'pro_se_filing_guide');
+      .eq('section_name', candidateSection);
   }
 
-  // ── Store as report_narratives row ────────────────────────────────────
   const { error: insertError } = await supabase
     .from('report_narratives')
     .insert({
@@ -272,13 +317,13 @@ export async function runFilingGuide(
   if (insertError) {
     return {
       success: false,
-      error: `Failed to insert filing guide narrative: ${insertError.message}`,
+      error: `Failed to insert assignment guide narrative: ${insertError.message}`,
     };
   }
 
   pipelineLogger.info(
-    { reportId, durationMs: generation_duration_ms },
-    '[stage6] Filing guide generated'
+    { reportId, sectionName, durationMs: generation_duration_ms },
+    '[stage6] Assignment action guide generated'
   );
 
   return { success: true };
