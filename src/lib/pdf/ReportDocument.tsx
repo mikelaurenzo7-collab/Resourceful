@@ -5,6 +5,10 @@ import React from 'react';
 import { Document, Page, View, Image } from '@react-pdf/renderer';
 import { theme } from './styles/theme';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
+import {
+  getReportDocumentSubject,
+  resolveAssignmentKind,
+} from '@/lib/assignments/routing';
 import { PageFooter, SectionHeader, NarrativeBlock, PhotoGrid } from './components/shared';
 
 import LetterOfTransmittal from './components/LetterOfTransmittal';
@@ -40,22 +44,33 @@ const NARRATIVE_SECTIONS = [
 ] as const;
 
 export default function ReportDocument({ data }: { data: ReportTemplateData }) {
-  const narrativeMap = new Map(data.narratives.map(n => [n.section_name, n.content]));
+  const narrativeMap = new Map(data.narratives.map((n) => [n.section_name, n.content]));
+  const assignmentKind = resolveAssignmentKind(
+    data.report.service_type,
+    data.report.desired_outcome
+  );
 
   // Photos for summary section
   const summaryPhotos = data.photos
-    .filter(p => p.storage_path)
+    .filter((photo) => photo.storage_path)
     .slice(0, 4)
-    .map(p => ({
-      url: p.storage_path,
-      caption: p.ai_analysis?.professional_caption ?? p.caption ?? p.photo_type ?? 'Photo',
+    .map((photo) => ({
+      url: photo.storage_path,
+      caption:
+        photo.ai_analysis?.professional_caption ??
+        photo.caption ??
+        photo.photo_type ??
+        'Photo',
     }));
 
   return (
     <Document
       title={`Property Report — ${data.report.property_address}`}
       author="Resourceful"
-      subject="Property Tax Assessment Report"
+      subject={getReportDocumentSubject(
+        data.report.service_type,
+        data.report.desired_outcome
+      )}
     >
       {/* Letter of Transmittal — professional cover letter */}
       <LetterOfTransmittal data={data} />
@@ -65,7 +80,6 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
 
       {/* Table of Contents */}
       <TableOfContents data={data} />
-
 
       {/* Assignment & Scope (J2C-style) */}
       {narrativeMap.get('assignment_and_scope') && (
@@ -171,23 +185,23 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
       )}
 
       {/* Condition Documentation (conditional) */}
-      {data.photos.some(p => p.ai_analysis?.defects?.length) && (
+      {data.photos.some((photo) => photo.ai_analysis?.defects?.length) && (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
           <ConditionSection data={data} />
         </Page>
       )}
 
-      {/* Filing Guide (tax_appeal only) */}
-      {data.filingGuide && data.report.service_type === 'tax_appeal' && (
+      {/* Filing Guide (tax appeal only) */}
+      {data.filingGuide && assignmentKind === 'tax_appeal' && (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
           <FilingGuide guide={data.filingGuide} />
         </Page>
       )}
 
-      {/* Pricing Strategy Guide (pre_listing only) */}
-      {data.report.service_type === 'pre_listing' && narrativeMap.get('pricing_strategy_guide') && (
+      {/* Pricing Strategy Guide (seller assignment only) */}
+      {assignmentKind === 'pre_listing' && narrativeMap.get('pricing_strategy_guide') && (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
           <SectionHeader number="Addendum A" title="Pricing Strategy Guide" />
@@ -195,12 +209,21 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         </Page>
       )}
 
-      {/* Negotiation Guide (pre_purchase only) */}
-      {data.report.service_type === 'pre_purchase' && narrativeMap.get('negotiation_guide') && (
+      {/* Negotiation Guide (buyer assignment only) */}
+      {assignmentKind === 'pre_purchase' && narrativeMap.get('negotiation_guide') && (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
           <SectionHeader number="Addendum A" title="Negotiation Strategy Guide" />
           <NarrativeBlock content={narrativeMap.get('negotiation_guide')!} />
+        </Page>
+      )}
+
+      {/* Independent valuation use guide */}
+      {assignmentKind === 'independent_valuation' && narrativeMap.get('valuation_use_guide') && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <SectionHeader number="Addendum A" title="Valuation Use & Next-Step Guide" />
+          <NarrativeBlock content={narrativeMap.get('valuation_use_guide')!} />
         </Page>
       )}
 
