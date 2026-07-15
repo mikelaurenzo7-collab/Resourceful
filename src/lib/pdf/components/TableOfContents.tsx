@@ -9,6 +9,7 @@ import {
   getAssignmentDisplayLabel,
   resolveAssignmentKind,
 } from '@/lib/assignments/routing';
+import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
 
 interface TocEntry {
   number: string;
@@ -22,8 +23,11 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
   const assignmentLabel = getAssignmentDisplayLabel(report.service_type, report.desired_outcome);
   const narrativeSections = new Set(narratives.map((n) => n.section_name));
 
-  const isIncomeProperty = report.property_type === 'commercial' || report.property_type === 'industrial';
-  const hasIncome = incomeAnalysis != null && isIncomeProperty;
+  const hasIncome = incomeAnalysis != null && supportsIncomeApproach({
+    propertyType: report.property_type,
+    propertySubtype: property.property_subtype,
+    propertyClassDescription: property.property_class_description,
+  });
   const hasCostApproach = property.cost_approach_value != null && property.cost_approach_value > 0;
   const hasSales = comparableSales.length > 0;
   const hasPhotoExhibit = photos.some((photo) => Boolean(photo.storage_path));
