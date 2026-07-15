@@ -26,7 +26,7 @@ export default function SubjectPhotoExhibit({ data }: { data: ReportTemplateData
       caption:
         photo.ai_analysis?.professional_caption?.trim() ||
         photo.caption?.trim() ||
-        photo.photo_type?.replaceAll('_', ' ') ||
+        photo.photo_type?.replace(/_/g, ' ') ||
         `Subject photograph ${index + 1}`,
     }));
 
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: colors.border,
     padding: 6,
-    backgroundColor: colors.paper,
+    backgroundColor: colors.background,
   },
   photo: {
     width: '100%',
