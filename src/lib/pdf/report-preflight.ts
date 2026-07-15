@@ -26,7 +26,7 @@ function positiveFinite(value: unknown): value is number {
 /**
  * Deterministic release gate for the customer-facing report artifact.
  *
- * This intentionally validates facts and content contracts, not valuation judgment.
+ * This validates facts and content contracts, not valuation judgment.
  * A report that fails this gate must not be rendered or delivered.
  */
 export function preflightReport(data: ReportTemplateData): ReportPreflightResult {
@@ -44,8 +44,10 @@ export function preflightReport(data: ReportTemplateData): ReportPreflightResult
   if (!positiveFinite(data.concludedValue)) error('valuation.conclusion', 'Concluded value must be a positive finite number.');
 
   const property = data.property;
-  const hasArea = positiveFinite(property.building_area_sqft) || positiveFinite(property.living_area_sqft);
-  if (!hasArea) warning('property.area', 'No verified building or living area is available; area-based metrics must be omitted.');
+  const hasArea =
+    positiveFinite(property.building_sqft_gross) ||
+    positiveFinite(property.building_sqft_living_area);
+  if (!hasArea) warning('property.area', 'No verified gross or living building area is available; area-based metrics must be omitted.');
 
   const hasSales = data.comparableSales.length > 0;
   const hasIncome = data.incomeAnalysis != null;
