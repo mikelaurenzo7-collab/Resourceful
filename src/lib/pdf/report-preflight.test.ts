@@ -98,6 +98,55 @@ describe('preflightReport', () => {
     );
   });
 
+  it('blocks model-authored headings so report components own hierarchy', () => {
+    const data = makeData({
+      narratives: [
+        {
+          section_name: 'market_analysis',
+          content: '## Market Overview\n\nThe market evidence supports the conclusion.',
+        } as ReportTemplateData['narratives'][number],
+      ],
+    });
+    const result = preflightReport(data, FIXED_NOW);
+    expect(result.ok).toBe(false);
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({ code: 'narrative.model_heading', severity: 'error' })
+    );
+  });
+
+  it('blocks model-authored Markdown tables so structured evidence owns tables', () => {
+    const data = makeData({
+      narratives: [
+        {
+          section_name: 'market_analysis',
+          content: '| Metric | Value |\n| --- | ---: |\n| Vacancy | 7.5% |',
+        } as ReportTemplateData['narratives'][number],
+      ],
+    });
+    const result = preflightReport(data, FIXED_NOW);
+    expect(result.ok).toBe(false);
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({ code: 'narrative.model_table', severity: 'error' })
+    );
+  });
+
+  it('permits bounded prose and lists while warning on overlong lists', () => {
+    const items = Array.from({ length: 9 }, (_, index) => `- Evidence point ${index + 1}`).join('\n');
+    const data = makeData({
+      narratives: [
+        {
+          section_name: 'market_analysis',
+          content: `The market analysis remains evidence grounded.\n\n${items}`,
+        } as ReportTemplateData['narratives'][number],
+      ],
+    });
+    const result = preflightReport(data, FIXED_NOW);
+    expect(result.ok).toBe(true);
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({ code: 'narrative.long_list', severity: 'warning' })
+    );
+  });
+
   it('requires both a jurisdiction package and filing guide for tax-appeal delivery', () => {
     const data = makeData({
       report: {
