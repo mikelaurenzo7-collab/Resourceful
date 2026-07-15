@@ -152,12 +152,10 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
 
       <ComparableSaleProfiles data={data} />
 
-      {data.comparableSales.length > 0 && (
-        <Page size="LETTER" style={theme.page}>
-          <PageFooter />
-          <AdjustmentReconciliation data={data} />
-        </Page>
-      )}
+      <Page size="LETTER" style={theme.page}>
+        <PageFooter />
+        <AdjustmentReconciliation data={data} />
+      </Page>
 
       {data.property.assessment_ratio != null && (
         <Page size="LETTER" style={theme.page}>
