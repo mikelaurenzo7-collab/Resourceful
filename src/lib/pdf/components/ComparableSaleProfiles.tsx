@@ -41,9 +41,9 @@ function formatPercent(value: number): string {
 function sourceSummary(comp: ComparableSale): string {
   if (!comp.county_recorder_url) return 'No recorder or source link stored';
   try {
-    return `Recorder/source link documented (${new URL(comp.county_recorder_url).hostname})`;
+    return `Documented: ${new URL(comp.county_recorder_url).hostname}`;
   } catch {
-    return 'Recorder/source link stored but URL format is unverified';
+    return 'Stored source URL is unverified';
   }
 }
 
@@ -76,27 +76,27 @@ export default function ComparableSaleProfiles({ data }: { data: ReportTemplateD
           ['Deed Document', present(comp.deed_document_number)],
           ['Source Status', sourceSummary(comp)],
           ['Sale Condition', present(comp.sale_condition_notes)],
-          ['Distressed Sale Flag', comp.is_distressed_sale ? 'Yes - review required' : 'No stored distress flag'],
+          ['Distress Flag', comp.is_distressed_sale ? 'Yes - review required' : 'No stored distress flag'],
         ];
 
         const physicalRows = [
           ['Building Area', comp.building_sqft ? formatSqFt(comp.building_sqft) : 'Not available'],
           ['Site Area', comp.lot_size_sqft ? formatSqFt(comp.lot_size_sqft) : 'Not available'],
-          ['Land-to-Building Ratio', comp.land_to_building_ratio != null ? comp.land_to_building_ratio.toFixed(2) : 'Not available'],
+          ['Land / Building', comp.land_to_building_ratio != null ? comp.land_to_building_ratio.toFixed(2) : 'Not available'],
           ['Year Built', present(comp.year_built)],
           ['Effective Age', comp.comp_effective_age != null ? `${comp.comp_effective_age} years` : 'Not available'],
           ['Property Class', present(comp.property_class)],
           ['Overhead Doors', present(comp.overhead_door_count)],
           ['Clear Height', comp.clearance_height_ft != null ? `${comp.clearance_height_ft} ft` : 'Not available'],
-          ['Distance to Subject', comp.distance_miles != null ? `${comp.distance_miles.toFixed(2)} miles` : 'Not available'],
-          ['Condition Notes', present(comp.condition_notes)],
+          ['Distance', comp.distance_miles != null ? `${comp.distance_miles.toFixed(2)} miles` : 'Not available'],
+          ['Condition', present(comp.condition_notes)],
         ];
 
         const indicationRows = [
           ['Unadjusted Price / SF', comp.price_per_sqft != null && comp.price_per_sqft > 0 ? `$${comp.price_per_sqft.toFixed(2)}` : 'Not available'],
           ['Net Adjustment', comp.net_adjustment_pct != null ? formatPercent(comp.net_adjustment_pct) : 'Not available'],
           ['Adjusted Price / SF', comp.adjusted_price_per_sqft != null && comp.adjusted_price_per_sqft > 0 ? `$${comp.adjusted_price_per_sqft.toFixed(2)}` : 'Not available'],
-          ['Weak Comparable Flag', comp.is_weak_comparable ? 'Yes - reduced reliance warranted' : 'No stored weakness flag'],
+          ['Weak Comparable Flag', comp.is_weak_comparable ? 'Yes - reduced reliance' : 'No stored weakness flag'],
         ];
 
         return (
@@ -106,9 +106,8 @@ export default function ComparableSaleProfiles({ data }: { data: ReportTemplateD
 
             <Text style={styles.address}>{comp.address}</Text>
             <Text style={[theme.bodyText, styles.intro]}>
-              This page preserves the transaction and physical evidence stored for this comparable. Blank or
-              unavailable fields are not inferred. Recorder links, sale conditions, images, and adjustments
-              require source verification before the sale receives material weight in the final conclusion.
+              Stored transaction, source, physical, adjustment, and indication evidence. Missing fields are
+              not inferred; material reliance requires source verification.
             </Text>
 
             {comp.comparable_photo_url && (
@@ -119,22 +118,28 @@ export default function ComparableSaleProfiles({ data }: { data: ReportTemplateD
               </View>
             )}
 
-            <Text style={styles.subheading}>Transaction Evidence</Text>
-            <DataTable
-              headers={['Field', 'Documented Evidence']}
-              columnWidths={['32%', '68%']}
-              rows={transactionRows}
-            />
+            <View style={styles.topGrid}>
+              <View style={styles.topColumnLeft}>
+                <Text style={styles.subheading}>Transaction Evidence</Text>
+                <DataTable
+                  headers={['Field', 'Documented Evidence']}
+                  columnWidths={['36%', '64%']}
+                  rows={transactionRows}
+                />
+              </View>
 
-            <Text style={styles.subheading}>Physical & Locational Evidence</Text>
-            <DataTable
-              headers={['Field', 'Documented Evidence']}
-              columnWidths={['32%', '68%']}
-              rows={physicalRows}
-            />
+              <View style={styles.topColumn}>
+                <Text style={styles.subheading}>Physical & Locational Evidence</Text>
+                <DataTable
+                  headers={['Field', 'Documented Evidence']}
+                  columnWidths={['38%', '62%']}
+                  rows={physicalRows}
+                />
+              </View>
+            </View>
 
             <View style={styles.bottomGrid}>
-              <View style={styles.bottomColumn}>
+              <View style={styles.bottomColumnLeft}>
                 <Text style={styles.subheading}>Adjustment Inputs</Text>
                 {adjustments.length > 0 ? (
                   <DataTable
@@ -145,8 +150,7 @@ export default function ComparableSaleProfiles({ data }: { data: ReportTemplateD
                   />
                 ) : (
                   <Text style={theme.bodyText}>
-                    No nonzero structured adjustments are stored. This must not be interpreted as confirmation
-                    that no adjustment is warranted.
+                    No nonzero structured adjustments are stored. This is not confirmation that no adjustment is warranted.
                   </Text>
                 )}
               </View>
@@ -155,7 +159,7 @@ export default function ComparableSaleProfiles({ data }: { data: ReportTemplateD
                 <Text style={styles.subheading}>Comparable Indication</Text>
                 <DataTable
                   headers={['Measure', 'Result']}
-                  columnWidths={['65%', '35%']}
+                  columnWidths={['63%', '37%']}
                   numericColumns={[1]}
                   rows={indicationRows}
                 />
@@ -171,25 +175,25 @@ export default function ComparableSaleProfiles({ data }: { data: ReportTemplateD
 const styles = StyleSheet.create({
   address: {
     fontFamily: 'Playfair Display',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 600,
     color: colors.inkPrimary,
-    marginBottom: 5,
+    marginBottom: 3,
   },
   intro: {
-    marginBottom: 8,
+    marginBottom: 5,
     color: colors.inkMuted,
   },
   imageFrame: {
     borderWidth: 0.5,
     borderColor: colors.border,
-    padding: 5,
-    marginBottom: 8,
+    padding: 4,
+    marginBottom: 5,
     backgroundColor: colors.background,
   },
   image: {
     width: '100%',
-    height: 150,
+    height: 118,
     objectFit: 'contain',
     backgroundColor: colors.calloutBg,
   },
@@ -198,24 +202,40 @@ const styles = StyleSheet.create({
     fontSize: 7,
     color: colors.inkMuted,
     textAlign: 'center',
-    marginTop: 3,
+    marginTop: 2,
   },
   subheading: {
     fontFamily: 'Inter',
     fontWeight: 600,
-    fontSize: 9,
+    fontSize: 8.5,
     color: colors.inkPrimary,
     textTransform: 'uppercase',
-    letterSpacing: 0.4,
-    marginTop: 7,
-    marginBottom: 3,
+    letterSpacing: 0.35,
+    marginTop: 5,
+    marginBottom: 2,
     paddingBottom: 2,
     borderBottomWidth: 0.5,
     borderBottomColor: colors.accent,
   },
+  topGrid: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  topColumnLeft: {
+    flex: 1,
+    marginRight: 8,
+  },
+  topColumn: {
+    flex: 1,
+  },
   bottomGrid: {
     flexDirection: 'row',
-    gap: 10,
+    alignItems: 'flex-start',
+    marginTop: 3,
+  },
+  bottomColumnLeft: {
+    flex: 1,
+    marginRight: 8,
   },
   bottomColumn: {
     flex: 1,
