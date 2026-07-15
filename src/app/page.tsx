@@ -16,8 +16,8 @@ import { buildMetadata } from '@/lib/seo/metadata';
 
 
 export const metadata = buildMetadata({
-  title: 'REsourceful | The AI Property Tax Operator',
-  description: 'An AI-led property tax reduction company. Claude runs valuation research, case assembly, filing support, and workflow intelligence so property owners move faster and save more.',
+  title: 'REsourceful | AI Property Tax Appeals',
+  description: 'AI-assisted property tax appeal casework powered by GPT-5.6 Sol valuation analysis, comparable sales, condition evidence, county workflow guidance, and human review.',
 });
 
 export default function HomePage() {
@@ -63,8 +63,8 @@ export default function HomePage() {
               </svg>
             </div>
             <div>
-              <p className="stat-number text-2xl">24/7 Operator</p>
-              <p className="text-[11px] text-cream/40 leading-tight">Claude keeps the pipeline moving without adding headcount</p>
+              <p className="stat-number text-2xl">24/7 Caseflow</p>
+              <p className="text-[11px] text-cream/40 leading-tight">GPT-5.6 Sol handles valuation judgment while the workflow stays moving</p>
             </div>
           </div>
           <div className="hidden md:block h-10 w-px bg-gradient-to-b from-transparent via-gold/20 to-transparent" />
@@ -75,7 +75,7 @@ export default function HomePage() {
               </svg>
             </div>
             <div>
-              <p className="stat-number text-2xl">3 Revenue Lanes</p>
+              <p className="stat-number text-2xl">3 Product Lanes</p>
               <p className="text-[11px] text-cream/40 leading-tight">appeals, acquisition intelligence, and seller strategy on one engine</p>
             </div>
           </div>
@@ -105,13 +105,13 @@ export default function HomePage() {
               The Resourceful System
             </span>
             <h2 className="font-display text-2xl md:text-3xl text-cream mt-3 tracking-tight">
-              An AI-Native Workflow With Human Judgment Where It Matters
+              AI-Native Casework With Human Judgment Where It Matters
             </h2>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { icon: 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3', label: 'AI Research Layer', desc: 'Comparable selection and valuation logic' },
-              { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', label: 'Multi-Lane Monetization', desc: 'One engine serving multiple offers' },
+              { icon: 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3', label: 'GPT-5.6 Sol Appraiser', desc: 'Valuation judgment and case narrative' },
+              { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', label: 'Multi-Lane Offers', desc: 'One engine serving multiple customer jobs' },
               { icon: 'M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z', label: 'Workflow Memory', desc: 'County rules and operational playbooks' },
               { icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', label: 'Human QA Layer', desc: 'Expert review for critical judgment calls' },
             ].map((item, i) => (
@@ -194,7 +194,7 @@ export default function HomePage() {
             </div>
             <h3 className="font-display text-lg text-cream mb-2">Built To Operate Safely</h3>
             <p className="text-sm text-cream/40 leading-relaxed">
-              An AI operator can only run the business if trust is durable. Photos, tax bills, and personal information stay protected with strong security controls and customer-controlled deletion.
+              An AI-assisted valuation workflow only works if trust is durable. Photos, tax bills, and personal information stay protected with strong security controls and customer-controlled deletion.
             </p>
           </div>
           <div className="card-premium rounded-xl p-8 text-center group" data-animate data-delay="300">
@@ -219,13 +219,13 @@ export default function HomePage() {
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[400px] h-[200px] bg-gold/[0.02] rounded-full blur-[80px] pointer-events-none" />
 
           <h2 className="relative font-display text-3xl md:text-5xl text-cream leading-tight tracking-tight text-glow-gold">
-            Ready to Let Claude Run the Case?
+            Ready to Build a Stronger Case?
           </h2>
           <p className="relative mt-5 text-cream/45 max-w-lg mx-auto text-lg leading-relaxed">
-            In a few minutes, you can hand the workflow to an AI-led operating system that researches the property, builds the case, and prepares the next move.
+            In a few minutes, you can start an AI-assisted workflow that researches the property, assembles the evidence, and frames the next filing step.
           </p>
           <p className="relative mt-3 text-sm text-gold/60 font-medium">
-            Upload a tax bill and save 15% while giving Claude better source data to work from.
+            Upload a tax bill and save 15% while giving GPT-5.6 Sol cleaner source data to work from.
           </p>
           <Link
             href="/start"
