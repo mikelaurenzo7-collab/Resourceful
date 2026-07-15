@@ -8,6 +8,9 @@ function makeData(overrides: Partial<ReportTemplateData> = {}): ReportTemplateDa
       property_address: '123 Main St',
       city: 'Example',
       state: 'IL',
+      state_abbreviation: 'IL',
+      county: 'Example County',
+      county_fips: '17001',
       service_type: 'pre_purchase',
     } as ReportTemplateData['report'],
     property: {
@@ -36,16 +39,43 @@ function makeData(overrides: Partial<ReportTemplateData> = {}): ReportTemplateDa
   };
 }
 
+function makeValidTaxAppealData(
+  overrides: Partial<ReportTemplateData> = {}
+): ReportTemplateData {
+  return makeData({
+    report: {
+      ...makeData().report,
+      service_type: 'tax_appeal',
+    },
+    countyRule: {
+      county_fips: '17001',
+      state_abbreviation: 'IL',
+      is_active: true,
+      last_verified_date: '2026-06-01',
+    } as ReportTemplateData['countyRule'],
+    filingGuide: {
+      appeal_board_name: 'Example Board of Review',
+      filing_deadline: '2026-08-01',
+      steps: ['Submit the appeal form and evidence package.'],
+      required_documents: ['Assessment notice', 'Comparable evidence'],
+      tips: [],
+    },
+    ...overrides,
+  });
+}
+
+const FIXED_NOW = new Date('2026-07-15T12:00:00.000Z');
+
 describe('preflightReport', () => {
   it('accepts an evidence-backed report and permits non-blocking warnings', () => {
-    const result = preflightReport(makeData());
+    const result = preflightReport(makeData(), FIXED_NOW);
     expect(result.ok).toBe(true);
     expect(result.issues.some((issue) => issue.code === 'evidence.photos')).toBe(true);
   });
 
   it('blocks a report without any evidence-backed valuation approach', () => {
     const data = makeData({ comparableSales: [], incomeAnalysis: null });
-    const result = preflightReport(data);
+    const result = preflightReport(data, FIXED_NOW);
     expect(result.ok).toBe(false);
     expect(result.issues).toContainEqual(
       expect.objectContaining({ code: 'valuation.evidence', severity: 'error' })
@@ -61,24 +91,81 @@ describe('preflightReport', () => {
         } as ReportTemplateData['narratives'][number],
       ],
     });
-    const result = preflightReport(data);
+    const result = preflightReport(data, FIXED_NOW);
     expect(result.ok).toBe(false);
     expect(result.issues).toContainEqual(
       expect.objectContaining({ code: 'narrative.raw_layout_markup', severity: 'error' })
     );
   });
 
-  it('requires a filing guide for tax-appeal delivery', () => {
+  it('requires both a jurisdiction package and filing guide for tax-appeal delivery', () => {
     const data = makeData({
       report: {
         ...makeData().report,
         service_type: 'tax_appeal',
       },
     });
-    const result = preflightReport(data);
+    const result = preflightReport(data, FIXED_NOW);
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'jurisdiction.rules', severity: 'error' }),
+        expect.objectContaining({ code: 'appeal.filing_guide', severity: 'error' }),
+      ])
+    );
+  });
+
+  it('accepts a current, active, jurisdiction-matched tax-appeal package', () => {
+    const result = preflightReport(makeValidTaxAppealData(), FIXED_NOW);
+    expect(result.ok).toBe(true);
+  });
+
+  it('blocks stale jurisdiction intelligence', () => {
+    const data = makeValidTaxAppealData({
+      countyRule: {
+        ...makeValidTaxAppealData().countyRule!,
+        last_verified_date: '2025-01-01',
+      },
+    });
+    const result = preflightReport(data, FIXED_NOW);
     expect(result.ok).toBe(false);
     expect(result.issues).toContainEqual(
-      expect.objectContaining({ code: 'appeal.filing_guide', severity: 'error' })
+      expect.objectContaining({ code: 'jurisdiction.stale', severity: 'error' })
+    );
+  });
+
+  it('blocks a county-rule FIPS mismatch', () => {
+    const data = makeValidTaxAppealData({
+      countyRule: {
+        ...makeValidTaxAppealData().countyRule!,
+        county_fips: '17003',
+      },
+    });
+    const result = preflightReport(data, FIXED_NOW);
+    expect(result.ok).toBe(false);
+    expect(result.issues).toContainEqual(
+      expect.objectContaining({ code: 'jurisdiction.fips_mismatch', severity: 'error' })
+    );
+  });
+
+  it('blocks an incomplete filing guide', () => {
+    const data = makeValidTaxAppealData({
+      filingGuide: {
+        appeal_board_name: 'Example Board of Review',
+        filing_deadline: '',
+        steps: [],
+        required_documents: [],
+        tips: [],
+      },
+    });
+    const result = preflightReport(data, FIXED_NOW);
+    expect(result.ok).toBe(false);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'appeal.deadline', severity: 'error' }),
+        expect.objectContaining({ code: 'appeal.filing_steps', severity: 'error' }),
+        expect.objectContaining({ code: 'appeal.required_documents', severity: 'error' }),
+      ])
     );
   });
 
@@ -87,7 +174,10 @@ describe('preflightReport', () => {
       section_name: 'market_analysis',
       content: 'Evidence-grounded market analysis.',
     } as ReportTemplateData['narratives'][number];
-    const result = preflightReport(makeData({ narratives: [narrative, narrative] }));
+    const result = preflightReport(
+      makeData({ narratives: [narrative, narrative] }),
+      FIXED_NOW
+    );
     expect(result.ok).toBe(false);
     expect(result.issues).toContainEqual(
       expect.objectContaining({ code: 'narrative.duplicate_section', severity: 'error' })
