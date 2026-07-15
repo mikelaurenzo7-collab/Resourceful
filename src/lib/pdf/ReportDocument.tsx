@@ -76,12 +76,13 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
       <CoverPage data={data} />
       <TableOfContents data={data} />
 
-      {narrativeMap.get('summary_of_salient_facts') && (
-        <Page size="LETTER" style={theme.page}>
-          <PageFooter />
-          <SummaryOfSalientFacts content={narrativeMap.get('summary_of_salient_facts')!} />
-        </Page>
-      )}
+      <Page size="LETTER" style={theme.page}>
+        <PageFooter />
+        <SummaryOfSalientFacts
+          data={data}
+          content={narrativeMap.get('summary_of_salient_facts') ?? ''}
+        />
+      </Page>
 
       <Page size="LETTER" style={theme.page}>
         <PageFooter />
