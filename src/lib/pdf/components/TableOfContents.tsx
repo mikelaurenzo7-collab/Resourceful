@@ -5,6 +5,10 @@ import React from 'react';
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer';
 import { theme, colors } from '../styles/theme';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
+import {
+  getAssignmentDisplayLabel,
+  resolveAssignmentKind,
+} from '@/lib/assignments/routing';
 
 interface TocEntry {
   number: string;
@@ -14,22 +18,26 @@ interface TocEntry {
 
 export default function TableOfContents({ data }: { data: ReportTemplateData }) {
   const { property, comparableSales, incomeAnalysis, report, photos, filingGuide, narratives } = data;
+  const assignmentKind = resolveAssignmentKind(report.service_type, report.desired_outcome);
+  const assignmentLabel = getAssignmentDisplayLabel(report.service_type, report.desired_outcome);
 
   const narrativeSections = new Set(narratives.map((n) => n.section_name));
 
   const hasIncome = incomeAnalysis != null;
   const hasCostApproach = property.cost_approach_value != null && property.cost_approach_value > 0;
-  const hasPhotoDefects = photos.some(p => (p.ai_analysis?.defects?.length ?? 0) > 0);
+  const hasPhotoDefects = photos.some((photo) => (photo.ai_analysis?.defects?.length ?? 0) > 0);
   const hasAddendumA =
-    (report.service_type === 'tax_appeal' && filingGuide != null) ||
-    (report.service_type === 'pre_listing' && narrativeSections.has('pricing_strategy_guide')) ||
-    (report.service_type === 'pre_purchase' && narrativeSections.has('negotiation_guide'));
+    (assignmentKind === 'tax_appeal' && filingGuide != null) ||
+    (assignmentKind === 'pre_listing' && narrativeSections.has('pricing_strategy_guide')) ||
+    (assignmentKind === 'pre_purchase' && narrativeSections.has('negotiation_guide')) ||
+    (assignmentKind === 'independent_valuation' && narrativeSections.has('valuation_use_guide'));
 
-  const addendumATitle =
-    report.service_type === 'pre_listing'
-      ? 'Pricing Strategy Guide'
-      : report.service_type === 'pre_purchase'
-        ? 'Negotiation Strategy Guide'
+  const addendumATitle = assignmentKind === 'pre_listing'
+    ? 'Pricing Strategy Guide'
+    : assignmentKind === 'pre_purchase'
+      ? 'Negotiation Strategy Guide'
+      : assignmentKind === 'independent_valuation'
+        ? 'Valuation Use & Next-Step Guide'
         : 'County Filing Instructions';
 
   // Build section list dynamically
@@ -92,14 +100,14 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
         <View style={theme.sectionDivider} />
       </View>
 
-      {sections.map((entry, i) => {
+      {sections.map((entry, index) => {
         // Spacer row
         if (!entry.title && !entry.number) {
-          return <View key={i} style={{ height: 12 }} />;
+          return <View key={index} style={{ height: 12 }} />;
         }
 
         return (
-          <View key={i} style={[styles.tocRow, entry.indent ? { paddingLeft: 16 } : {}]}>
+          <View key={index} style={[styles.tocRow, entry.indent ? { paddingLeft: 16 } : {}]}>
             <Text style={[styles.tocNumber, entry.number.startsWith('ADD') ? styles.addendumLabel : {}]}>
               {entry.number ? `Section ${entry.number}` : ''}
             </Text>
@@ -111,6 +119,10 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
 
       {/* Report metadata footer */}
       <View style={styles.metaBlock}>
+        <View style={styles.metaRow}>
+          <Text style={theme.label}>Assignment</Text>
+          <Text style={theme.tableCell}>{assignmentLabel}</Text>
+        </View>
         <View style={styles.metaRow}>
           <Text style={theme.label}>Property</Text>
           <Text style={theme.tableCell}>
