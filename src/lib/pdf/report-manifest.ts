@@ -66,24 +66,68 @@ export interface ReportArtifactManifest {
 }
 
 const VERIFIED_RULE_MAX_AGE_DAYS = 180;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+const UNSUPPORTED_JURISDICTION_CODES = new Set([
+  'jurisdiction.fips',
+  'jurisdiction.rules',
+  'jurisdiction.inactive',
+  'jurisdiction.fips_mismatch',
+  'jurisdiction.state_mismatch',
+]);
+
+function hasErrorCode(preflight: ReportPreflightResult, codes: Set<string>): boolean {
+  return preflight.issues.some(
+    (issue) => issue.severity === 'error' && codes.has(issue.code)
+  );
+}
+
+function hasErrorPrefix(preflight: ReportPreflightResult, prefix: string): boolean {
+  return preflight.issues.some(
+    (issue) => issue.severity === 'error' && issue.code.startsWith(prefix)
+  );
+}
 
 function resolveJurisdictionCoverage(
   data: ReportTemplateData,
+  preflight: ReportPreflightResult,
   generatedAt: Date
 ): JurisdictionCoverageStatus {
   if (data.report.service_type !== 'tax_appeal') return 'not_applicable';
 
   const rule = data.countyRule;
   if (!rule || !rule.is_active) return 'unsupported';
+
+  const reportFips = data.report.county_fips?.trim();
+  const ruleFips = rule.county_fips.trim();
+  if (!reportFips || reportFips !== ruleFips) return 'unsupported';
+
+  const reportState = data.report.state_abbreviation?.trim().toUpperCase();
+  const ruleState = rule.state_abbreviation.trim().toUpperCase();
+  if (reportState && reportState !== ruleState) return 'unsupported';
+
+  if (hasErrorCode(preflight, UNSUPPORTED_JURISDICTION_CODES)) return 'unsupported';
+  if (preflight.issues.some((issue) => issue.severity === 'error' && issue.code === 'jurisdiction.stale')) {
+    return 'stale';
+  }
+
+  if (
+    !data.filingGuide ||
+    hasErrorPrefix(preflight, 'jurisdiction.') ||
+    hasErrorPrefix(preflight, 'appeal.')
+  ) {
+    return 'partial';
+  }
+
   if (!rule.last_verified_date) return 'partial';
 
   const verifiedAt = new Date(rule.last_verified_date);
   if (Number.isNaN(verifiedAt.getTime())) return 'partial';
 
-  const ageDays = Math.floor(
-    (generatedAt.getTime() - verifiedAt.getTime()) / (1000 * 60 * 60 * 24)
-  );
+  const ageMs = generatedAt.getTime() - verifiedAt.getTime();
+  if (ageMs < -ONE_DAY_MS) return 'partial';
 
+  const ageDays = Math.floor(ageMs / ONE_DAY_MS);
   return ageDays > VERIFIED_RULE_MAX_AGE_DAYS ? 'stale' : 'verified';
 }
 
@@ -131,7 +175,7 @@ export function buildReportArtifactManifest(
       concludedValue: data.concludedValue,
     },
     jurisdiction: {
-      coverageStatus: resolveJurisdictionCoverage(data, generatedAt),
+      coverageStatus: resolveJurisdictionCoverage(data, preflight, generatedAt),
       countyRuleAttached: data.countyRule != null,
       countyRuleFips: data.countyRule?.county_fips ?? null,
       countyRuleLastVerifiedDate: data.countyRule?.last_verified_date ?? null,
