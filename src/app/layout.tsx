@@ -25,11 +25,11 @@ const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app';
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: "REsourceful | The AI Property Tax Operator",
+    default: "REsourceful | AI Property Tax Appeals",
     template: "%s | REsourceful",
   },
   description:
-    "An AI-led property tax reduction company. Claude runs valuation research, case assembly, filing support, and workflow intelligence so property owners move faster and save more.",
+    "AI-assisted property tax appeals powered by GPT-5.6 Sol valuation analysis, comparable sales, condition evidence, county workflow guidance, and human review.",
   keywords: [
     "ai property tax",
     "property tax appeal",
@@ -44,12 +44,13 @@ export const metadata: Metadata = {
     "assessment workflow",
     "board of review appeal",
     "assessment appeal",
-    "ai cofounder",
+    "AI-assisted valuation analysis",
+    "GPT-5.6 Sol appraiser",
   ],
   openGraph: {
-    title: "REsourceful | The AI Property Tax Operator",
+    title: "REsourceful | AI Property Tax Appeals",
     description:
-      "An AI-led property tax reduction company. Claude runs valuation research, comparable analysis, and filing support for property owners nationwide.",
+      "AI-assisted property tax appeals with GPT-5.6 Sol valuation analysis, comparable evidence, filing guidance, and human review before delivery.",
     type: "website",
     siteName: "REsourceful",
     url: baseUrl,
@@ -59,15 +60,15 @@ export const metadata: Metadata = {
         url: `${baseUrl}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "REsourceful — The AI Property Tax Operator",
+        alt: "REsourceful — AI-assisted property tax appeals",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "REsourceful | The AI Property Tax Operator",
+    title: "REsourceful | AI Property Tax Appeals",
     description:
-      "Claude runs property tax research, case assembly, and filing support so property owners move faster and save more.",
+      "Build a stronger property tax appeal with GPT-5.6 Sol valuation analysis, evidence assembly, county guidance, and human review.",
     images: [`${baseUrl}/og-image.png`],
   },
   icons: {
