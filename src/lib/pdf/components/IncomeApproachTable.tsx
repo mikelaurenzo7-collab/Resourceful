@@ -28,6 +28,7 @@ export default function IncomeApproachTable({ data }: { data: ReportTemplateData
   const isIncomeProperty = report.property_type === 'commercial' || report.property_type === 'industrial';
   if (!isIncomeProperty || !incomeAnalysis) return null;
 
+  const isTaxAppeal = report.service_type === 'tax_appeal';
   const incomeNarrative = findNarrativeContent(narratives, 'income_approach_narrative');
   const incomeEvidence = evaluateIncomeApproachEvidence({
     netOperatingIncome: incomeAnalysis.net_operating_income,
@@ -143,6 +144,21 @@ export default function IncomeApproachTable({ data }: { data: ReportTemplateData
           </View>
         )}
       </View>
+
+      {isTaxAppeal && (
+        <View style={styles.taxTreatmentBox} wrap={false}>
+          <Text style={styles.taxTreatmentTitle}>Real estate tax treatment - appeal release gate</Text>
+          <Text style={styles.taxTreatmentText}>
+            The structured Resourceful workfile does not currently identify a separate real estate tax
+            expense, tax-load factor, or loaded capitalization rate. Before this income indication is used
+            as appeal evidence, the reviewer must document whether real estate taxes are included in the
+            stabilized expenses. If taxes are excluded, a supported tax-load factor and loaded capitalization
+            rate must be shown. If taxes are included, the sourced tax expense must be identified and the
+            selected unloaded market capitalization rate must be applied consistently. Until that treatment
+            is resolved, the indication is analytical support rather than appeal-ready income evidence.
+          </Text>
+        </View>
+      )}
 
       {hasCapRateEvidence && (
         <View style={{ marginTop: 12 }}>
@@ -286,6 +302,28 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: colors.border,
     borderRadius: 2,
+  },
+  taxTreatmentBox: {
+    marginTop: 9,
+    padding: 8,
+    backgroundColor: colors.calloutBg,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.accent,
+  },
+  taxTreatmentTitle: {
+    fontFamily: 'Inter',
+    fontWeight: 600,
+    fontSize: 8,
+    color: colors.inkPrimary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 3,
+  },
+  taxTreatmentText: {
+    fontFamily: 'Inter',
+    fontSize: 7.5,
+    color: colors.inkMuted,
+    lineHeight: 1.4,
   },
   row: {
     flexDirection: 'row',
