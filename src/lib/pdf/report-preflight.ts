@@ -1,4 +1,5 @@
 import type { ReportTemplateData } from '@/lib/templates/report-template';
+import { parseMarkdownBlocks } from './markdown';
 
 export type ReportPreflightSeverity = 'error' | 'warning';
 
@@ -16,6 +17,9 @@ export interface ReportPreflightResult {
 const RAW_LAYOUT_MARKERS = [/```/, /<\/?(?:html|body|table|div|style|script)\b/i];
 const MAX_JURISDICTION_RULE_AGE_DAYS = 180;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const MAX_NARRATIVE_PARAGRAPH_CHARS = 1400;
+const MAX_NARRATIVE_LIST_ITEMS = 8;
+const MAX_NARRATIVE_BLOCKS = 14;
 
 function hasText(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
@@ -143,6 +147,44 @@ export function preflightReport(
         'narrative.raw_layout_markup',
         `Narrative section ${narrative.section_name} contains raw layout markup or a fenced code block.`
       );
+    }
+
+    const blocks = parseMarkdownBlocks(narrative.content);
+    if (blocks.some((block) => block.type === 'heading')) {
+      error(
+        'narrative.model_heading',
+        `Narrative section ${narrative.section_name} contains model-authored headings. Section hierarchy must be owned by report components.`
+      );
+    }
+    if (blocks.some((block) => block.type === 'table')) {
+      error(
+        'narrative.model_table',
+        `Narrative section ${narrative.section_name} contains a model-authored Markdown table. Final tables must be generated from structured evidence.`
+      );
+    }
+    if (blocks.length > MAX_NARRATIVE_BLOCKS) {
+      warning(
+        'narrative.excessive_blocks',
+        `Narrative section ${narrative.section_name} contains ${blocks.length} blocks; consider tightening the section for clearer pagination.`
+      );
+    }
+
+    for (const block of blocks) {
+      if (block.type === 'paragraph' && block.text.length > MAX_NARRATIVE_PARAGRAPH_CHARS) {
+        warning(
+          'narrative.long_paragraph',
+          `Narrative section ${narrative.section_name} contains a paragraph longer than ${MAX_NARRATIVE_PARAGRAPH_CHARS} characters.`
+        );
+      }
+      if (
+        (block.type === 'bullet_list' || block.type === 'numbered_list') &&
+        block.items.length > MAX_NARRATIVE_LIST_ITEMS
+      ) {
+        warning(
+          'narrative.long_list',
+          `Narrative section ${narrative.section_name} contains more than ${MAX_NARRATIVE_LIST_ITEMS} list items.`
+        );
+      }
     }
   }
 
