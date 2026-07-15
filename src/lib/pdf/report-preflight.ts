@@ -1,0 +1,114 @@
+import type { ReportTemplateData } from '@/lib/templates/report-template';
+
+export type ReportPreflightSeverity = 'error' | 'warning';
+
+export interface ReportPreflightIssue {
+  code: string;
+  severity: ReportPreflightSeverity;
+  message: string;
+}
+
+export interface ReportPreflightResult {
+  ok: boolean;
+  issues: ReportPreflightIssue[];
+}
+
+const RAW_LAYOUT_MARKERS = [/```/, /<\/?(?:html|body|table|div|style|script)\b/i];
+
+function hasText(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function positiveFinite(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0;
+}
+
+/**
+ * Deterministic release gate for the customer-facing report artifact.
+ *
+ * This intentionally validates facts and content contracts, not valuation judgment.
+ * A report that fails this gate must not be rendered or delivered.
+ */
+export function preflightReport(data: ReportTemplateData): ReportPreflightResult {
+  const issues: ReportPreflightIssue[] = [];
+  const error = (code: string, message: string) =>
+    issues.push({ code, severity: 'error' as const, message });
+  const warning = (code: string, message: string) =>
+    issues.push({ code, severity: 'warning' as const, message });
+
+  if (!hasText(data.report.property_address)) error('identity.address', 'Property address is required.');
+  if (!hasText(data.report.city)) error('identity.city', 'Property city is required.');
+  if (!hasText(data.report.state)) error('identity.state', 'Property state is required.');
+  if (!hasText(data.valuationDate)) error('assignment.valuation_date', 'Valuation date is required.');
+  if (!hasText(data.reportDate)) error('assignment.report_date', 'Report date is required.');
+  if (!positiveFinite(data.concludedValue)) error('valuation.conclusion', 'Concluded value must be a positive finite number.');
+
+  const property = data.property;
+  const hasArea = positiveFinite(property.building_area_sqft) || positiveFinite(property.living_area_sqft);
+  if (!hasArea) warning('property.area', 'No verified building or living area is available; area-based metrics must be omitted.');
+
+  const hasSales = data.comparableSales.length > 0;
+  const hasIncome = data.incomeAnalysis != null;
+  const hasCost = positiveFinite(property.cost_approach_value);
+  if (!hasSales && !hasIncome && !hasCost) {
+    error('valuation.evidence', 'At least one evidence-backed valuation approach is required.');
+  }
+
+  if (data.report.service_type === 'tax_appeal' && !data.countyRule) {
+    warning('jurisdiction.rules', 'No structured jurisdiction rule record is attached; filing guidance requires verification.');
+  }
+
+  if (data.report.service_type === 'tax_appeal' && !data.filingGuide) {
+    error('appeal.filing_guide', 'Tax-appeal reports require a usable filing guide before delivery.');
+  }
+
+  const sectionNames = new Set<string>();
+  for (const narrative of data.narratives) {
+    if (!hasText(narrative.section_name) || !hasText(narrative.content)) continue;
+    if (sectionNames.has(narrative.section_name)) {
+      error('narrative.duplicate_section', `Duplicate narrative section: ${narrative.section_name}.`);
+    }
+    sectionNames.add(narrative.section_name);
+
+    if (RAW_LAYOUT_MARKERS.some((pattern) => pattern.test(narrative.content))) {
+      error(
+        'narrative.raw_layout_markup',
+        `Narrative section ${narrative.section_name} contains raw layout markup or a fenced code block.`
+      );
+    }
+  }
+
+  const usablePhotos = data.photos.filter((photo) => hasText(photo.storage_path)).length;
+  if (usablePhotos === 0) {
+    warning('evidence.photos', 'No usable subject photographs are available for the visual evidence exhibit.');
+  }
+
+  for (const [index, comparable] of data.comparableSales.entries()) {
+    if (!hasText(comparable.address)) {
+      error('sales.address', `Comparable sale ${index + 1} is missing an address.`);
+    }
+    if (!positiveFinite(comparable.sale_price)) {
+      error('sales.price', `Comparable sale ${index + 1} is missing a positive sale price.`);
+    }
+    if (!hasText(comparable.sale_date)) {
+      warning('sales.date', `Comparable sale ${index + 1} is missing a sale date.`);
+    }
+  }
+
+  return {
+    ok: !issues.some((issue) => issue.severity === 'error'),
+    issues,
+  };
+}
+
+export function assertReportPreflight(data: ReportTemplateData): ReportPreflightResult {
+  const result = preflightReport(data);
+  if (!result.ok) {
+    const details = result.issues
+      .filter((issue) => issue.severity === 'error')
+      .map((issue) => `${issue.code}: ${issue.message}`)
+      .join('; ');
+    throw new Error(`Final report preflight failed: ${details}`);
+  }
+  return result;
+}
