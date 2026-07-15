@@ -7,6 +7,10 @@ import React from 'react';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import ReportDocument from './ReportDocument';
 import { assertReportPreflight, type ReportPreflightResult } from './report-preflight';
+import {
+  buildReportArtifactManifest,
+  type ReportArtifactManifest,
+} from './report-manifest';
 
 // Ensure fonts are registered (side-effect import)
 import './styles/theme';
@@ -14,6 +18,7 @@ import './styles/theme';
 export interface GeneratedReportPDF {
   buffer: Buffer;
   preflight: ReportPreflightResult;
+  manifest: ReportArtifactManifest;
 }
 
 /**
@@ -30,7 +35,7 @@ export async function generateReportPDF(data: ReportTemplateData): Promise<Buffe
 
 /**
  * Validation-aware report generation for pipeline stages that need to persist
- * warnings in the report manifest or review workfile.
+ * warnings and reproducibility metadata in the report manifest or review workfile.
  */
 export async function generateValidatedReportPDF(
   data: ReportTemplateData
@@ -43,15 +48,19 @@ export async function generateValidatedReportPDF(
   const element = React.createElement(ReportDocument, { data });
   const renderPromise = renderToBuffer(element as Parameters<typeof renderToBuffer>[0]);
 
-  const buffer = await Promise.race([
+  const rendered = await Promise.race([
     renderPromise,
     new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error('PDF generation timed out after 120s')), PDF_TIMEOUT_MS)
     ),
   ]);
 
+  const buffer = Buffer.from(rendered);
+  const manifest = buildReportArtifactManifest(data, preflight, buffer);
+
   return {
-    buffer: Buffer.from(buffer),
+    buffer,
     preflight,
+    manifest,
   };
 }
