@@ -15,11 +15,11 @@ interface ServiceDef {
 
 const services: ServiceDef[] = [
   {
-    title: 'Tax Reduction Engine',
+    title: 'Tax Appeal Casework',
     service: 'tax_appeal',
     description:
-      'Claude identifies over-assessment, builds the evidence file, and packages the case for filing. This is the core engine of the business and the fastest path to recurring customer savings.',
-    features: ['Comparable sales engine with adjustments', 'Photo-based condition evidence', 'County-specific workflow plan', 'Customer-ready savings narrative'],
+      'GPT-5.6 Sol analyzes assessment records, comparable sales, and condition evidence, then packages the strongest supportable appeal path for human review.',
+    features: ['Comparable sales engine with adjustments', 'Photo-supported condition evidence', 'County-specific filing plan', 'Clear requested-value narrative'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
@@ -31,7 +31,7 @@ const services: ServiceDef[] = [
     title: 'Acquisition Intelligence',
     service: 'pre_purchase',
     description:
-      'Before a buyer closes, Claude stress-tests value, taxes, and appeal risk. This turns the platform into a decision engine for acquisitions instead of a post-purchase rescue tool.',
+      'Before a buyer closes, Resourceful stress-tests value, taxes, assessment risk, and negotiation leverage so the deal is clearer before money goes hard.',
     features: ['Value vs. assessment comparison', 'Projected annual tax burden', 'Appeal feasibility scoring', 'Neighborhood pricing intelligence'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -43,7 +43,7 @@ const services: ServiceDef[] = [
     title: 'Seller Strategy Intelligence',
     service: 'pre_listing',
     description:
-      'Claude equips sellers and agents with a cleaner pricing story, sharper tax narrative, and stronger buyer confidence before the listing ever goes live.',
+      'Give sellers and agents a cleaner pricing story, tax narrative, and buyer-confidence package before the listing ever goes live.',
     features: ['Independent pricing benchmark', 'Buyer-facing tax projection', 'Listing support narrative', 'Professional delivery package'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -52,12 +52,12 @@ const services: ServiceDef[] = [
     ),
   },
   {
-    title: 'Autopilot Appeal',
+    title: 'Managed Appeal',
     service: 'tax_appeal',
     tier: 'full_representation',
     description:
-      'For owners who want the highest level of leverage, Claude coordinates the full appeal workflow with humans stepping in for filing and hearing execution where required.',
-    features: ['Appeal filed on the customer\'s behalf', 'Representation workflow included', 'High-touch execution support', 'Dedicated case oversight'],
+      'For owners who want the least friction, Resourceful prepares the case and coordinates human-controlled filing, hearing, and representation steps where permitted.',
+    features: ['Filing workflow support', 'Representation path included', 'High-touch execution support', 'Dedicated case oversight'],
     icon: (
       <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -72,13 +72,13 @@ export default function ServiceCards() {
     <section className="mx-auto max-w-6xl px-6 py-24">
       <div className="text-center mb-14">
         <span className="text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase">
-          AI Revenue Engines
+          Product Lanes
         </span>
         <h2 className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
-          Choose What Claude Runs
+          Choose the Job Resourceful Runs
         </h2>
         <p className="mt-4 text-cream/40 max-w-xl mx-auto leading-relaxed">
-          Each lane turns the same underlying system into a different revenue motion, from tax reduction to acquisition diligence to seller strategy.
+          The same evidence engine supports three practical customer jobs: reduce taxes, buy smarter, or list with a sharper valuation story.
         </p>
       </div>
 
@@ -116,7 +116,7 @@ export default function ServiceCards() {
               {svc.premium && (
                 <div className="absolute -top-3 right-6 z-10">
                   <span className="bg-[#d4a843] text-navy-deep text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                    Highest Leverage
+                    Highest Touch
                   </span>
                 </div>
               )}
@@ -147,7 +147,7 @@ export default function ServiceCards() {
                   </p>
                 </div>
                 <span className="text-sm text-gold/70 group-hover:text-gold group-hover:drop-shadow-[0_0_6px_rgba(212,168,71,0.3)] transition-all duration-200 font-medium flex items-center gap-1">
-                  Activate
+                  Start
                   <svg className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
