@@ -1,6 +1,5 @@
+import { getAssignmentDisplayLabel } from '@/lib/assignments/routing';
 import type { ReportStatus } from '@/types/database';
-
-const INDEPENDENT_VALUATION_MARKER = '[INDEPENDENT_VALUATION]';
 
 const EVIDENCE_INSUFFICIENCY_PATTERNS = [
   'no evidence-backed valuation approach available',
@@ -141,18 +140,5 @@ export function getCustomerServiceLabel(
   serviceType: string,
   desiredOutcome?: string | null
 ): string {
-  if (desiredOutcome?.trim().startsWith(INDEPENDENT_VALUATION_MARKER)) {
-    return 'Independent Valuation Analysis';
-  }
-
-  switch (serviceType) {
-    case 'tax_appeal':
-      return 'Property Tax Appeal Analysis';
-    case 'pre_purchase':
-      return 'Pre-Purchase Analysis';
-    case 'pre_listing':
-      return 'Pre-Listing Analysis';
-    default:
-      return 'Property Valuation Analysis';
-  }
+  return getAssignmentDisplayLabel(serviceType, desiredOutcome);
 }
