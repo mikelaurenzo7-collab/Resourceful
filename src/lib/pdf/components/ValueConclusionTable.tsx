@@ -25,7 +25,7 @@ export default function ValueConclusionTable({ data }: { data: ReportTemplateDat
         rows={rows.map((row) => [
           row.approach,
           formatCurrency(row.total),
-          row.perUnit != null ? `$${row.perUnit.toFixed(2)}` : '—',
+          row.valuePerSqFt != null ? `$${row.valuePerSqFt.toFixed(2)}` : '—',
           row.role,
         ])}
       />
