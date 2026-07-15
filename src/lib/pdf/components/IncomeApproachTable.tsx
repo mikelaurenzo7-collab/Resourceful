@@ -13,6 +13,7 @@ import {
   evaluateIncomeApproachEvidence,
   isVerifiableDate,
 } from '@/lib/valuation/income-approach-policy';
+import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
 
 function isFiniteNumber(value: number | null | undefined): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -23,9 +24,13 @@ function isPositiveFinite(value: number | null | undefined): value is number {
 }
 
 export default function IncomeApproachTable({ data }: { data: ReportTemplateData }) {
-  const { incomeAnalysis, comparableRentals, narratives, report } = data;
+  const { incomeAnalysis, comparableRentals, narratives, report, property } = data;
 
-  const isIncomeProperty = report.property_type === 'commercial' || report.property_type === 'industrial';
+  const isIncomeProperty = supportsIncomeApproach({
+    propertyType: report.property_type,
+    propertySubtype: property.property_subtype,
+    propertyClassDescription: property.property_class_description,
+  });
   if (!isIncomeProperty || !incomeAnalysis) return null;
 
   const isTaxAppeal = report.service_type === 'tax_appeal';
