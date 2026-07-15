@@ -21,8 +21,19 @@ function validSaleTimestamp(value: string | null | undefined): number | null {
 }
 
 export default function CompsGrid({ data }: { data: ReportTemplateData }) {
-  const { comparableSales, property } = data;
+  const { comparableSales, property, report } = data;
   if (comparableSales.length === 0) return null;
+
+  const propertyDescriptor = [
+    report.property_type,
+    property.property_subtype,
+    property.property_class_description,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
+  const isMultifamily = ['multifamily', 'multi-family', 'apartment', 'duplex', 'triplex', 'fourplex']
+    .some((term) => propertyDescriptor.includes(term));
 
   const sorted = [...comparableSales].sort(
     (a, b) => (a.distance_miles ?? Number.POSITIVE_INFINITY) - (b.distance_miles ?? Number.POSITIVE_INFINITY)
@@ -47,12 +58,23 @@ export default function CompsGrid({ data }: { data: ReportTemplateData }) {
 
   return (
     <View break>
-      <SectionHeader number="VIII" title="Comparable Sales Analysis" />
+      <SectionHeader number="VIII-A" title="Comparable Sales Summary & Map" />
 
       <Text style={[theme.bodyText, { marginBottom: 8 }]}>
         {selectionSummary}{distanceSummary}. Selection, source verification, comparability, and any calculated
         adjustments remain subject to the evidence and limitations documented in the workfile.
       </Text>
+
+      {isMultifamily && (
+        <View style={styles.basisWarning} wrap={false}>
+          <Text style={styles.basisTitle}>Comparison basis: $/SF fallback</Text>
+          <Text style={styles.basisText}>
+            Multifamily market evidence is often analyzed per dwelling unit. Resourceful does not yet carry
+            verified structured unit counts for both the subject and every comparable, so this grid remains
+            area-normalized. The values below must not be described as per-unit indications.
+          </Text>
+        </View>
+      )}
 
       <DataTable
         headers={['Address', 'Sale Date', 'Sale Price', 'GLA (SF)', 'Lot SF', 'Yr Built', 'Cond.', '$/SF', 'Net Adj', 'Adj $/SF']}
@@ -119,7 +141,7 @@ export default function CompsGrid({ data }: { data: ReportTemplateData }) {
         })()}
       </View>
 
-      <Text style={[theme.caption, { marginTop: 5 }]}> 
+      <Text style={[theme.caption, { marginTop: 5 }]}>
         Blank adjustment fields mean no supported adjustment is stored; they must not be interpreted as a confirmed zero adjustment.
       </Text>
     </View>
@@ -127,6 +149,28 @@ export default function CompsGrid({ data }: { data: ReportTemplateData }) {
 }
 
 const styles = StyleSheet.create({
+  basisWarning: {
+    marginBottom: 8,
+    padding: 7,
+    backgroundColor: colors.calloutBg,
+    borderLeftWidth: 2,
+    borderLeftColor: colors.accent,
+  },
+  basisTitle: {
+    fontFamily: 'Inter',
+    fontWeight: 600,
+    fontSize: 8,
+    color: colors.inkPrimary,
+    marginBottom: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  basisText: {
+    fontFamily: 'Inter',
+    fontSize: 7.5,
+    color: colors.inkMuted,
+    lineHeight: 1.35,
+  },
   statsRow: {
     flexDirection: 'row',
     marginTop: 6,
