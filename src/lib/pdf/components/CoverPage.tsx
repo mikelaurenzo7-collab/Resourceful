@@ -5,22 +5,35 @@ import { Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
 import { theme, colors } from '../styles/theme';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { formatCurrency, formatDate } from '@/lib/templates/helpers';
+import {
+  getReportDocumentSubject,
+  resolveAssignmentKind,
+} from '@/lib/assignments/routing';
+import { getAssessorImpliedMarketValue } from '@/lib/dashboard/value-comparison';
 
 export default function CoverPage({ data }: { data: ReportTemplateData }) {
   const { report, property, concludedValue, photos } = data;
   const address = [report.property_address, report.city, report.state].filter(Boolean).join(', ');
-  const assessedValue = property.assessed_value ?? 0;
-  const overpayment = Math.max(0, assessedValue - concludedValue);
-
-  const serviceLabel =
-    report.service_type === 'tax_appeal' ? 'Property Tax Appeal Report'
-    : report.service_type === 'pre_purchase' ? 'Pre-Purchase Analysis Report'
-    : 'Pre-Listing Analysis Report';
+  const assignmentKind = resolveAssignmentKind(report.service_type, report.desired_outcome);
+  const serviceLabel = getReportDocumentSubject(report.service_type, report.desired_outcome);
+  const assessorReferenceValue = getAssessorImpliedMarketValue(
+    property.assessed_value,
+    property.assessment_ratio
+  );
+  const hasAssessorReference = assessorReferenceValue != null && assessorReferenceValue > 0;
+  const referenceDifference = hasAssessorReference
+    ? assessorReferenceValue - concludedValue
+    : null;
+  const referenceDifferenceLabel = referenceDifference != null && referenceDifference >= 0
+    ? 'Assessor Value Above Conclusion'
+    : 'Conclusion Above Assessor Value';
 
   // Find the best subject photo for cover
   const subjectPhoto = photos.find(
-    p => p.storage_path && (p.photo_type === 'exterior_front' || p.photo_type === 'aerial')
-  ) ?? photos.find(p => p.storage_path);
+    (photo) =>
+      photo.storage_path &&
+      (photo.photo_type === 'exterior_front' || photo.photo_type === 'aerial')
+  ) ?? photos.find((photo) => photo.storage_path);
 
   const clientName = report.client_name ?? report.client_email ?? 'Property Owner';
 
@@ -32,7 +45,7 @@ export default function CoverPage({ data }: { data: ReportTemplateData }) {
       </View>
       <View style={styles.accentRule} />
 
-      {/* Subtitle */}
+      {/* Assignment title */}
       <Text style={[theme.headingLG, { color: colors.inkMuted, marginTop: 12 }]}>
         {serviceLabel}
       </Text>
@@ -57,28 +70,50 @@ export default function CoverPage({ data }: { data: ReportTemplateData }) {
       <Text style={[theme.label, { textAlign: 'center', marginTop: 8 }]}>
         {[
           report.pin ? `Parcel: ${report.pin}` : null,
-          report.county ? `${report.county} County` : null,
+          report.county ?? null,
           report.state,
         ].filter(Boolean).join('  ·  ')}
       </Text>
 
       {/* Value summary block */}
       <View style={styles.valueBlock}>
+        {hasAssessorReference && (
+          <>
+            <View style={styles.valueCol}>
+              <Text style={theme.label}>
+                {assignmentKind === 'tax_appeal'
+                  ? 'Assessor-Implied Market Value'
+                  : 'Assessor Reference Value'}
+              </Text>
+              <Text style={styles.valueNum}>{formatCurrency(assessorReferenceValue)}</Text>
+            </View>
+            <View style={styles.valueDivider} />
+          </>
+        )}
+
         <View style={styles.valueCol}>
-          <Text style={theme.label}>Assessed Value</Text>
-          <Text style={styles.valueNum}>{formatCurrency(assessedValue)}</Text>
+          <Text style={theme.label}>Resourceful Concluded Value</Text>
+          <Text style={[styles.valueNum, { color: colors.accent }]}>
+            {formatCurrency(concludedValue)}
+          </Text>
         </View>
-        <View style={styles.valueDivider} />
-        <View style={styles.valueCol}>
-          <Text style={theme.label}>Concluded Market Value</Text>
-          <Text style={[styles.valueNum, { color: colors.accent }]}>{formatCurrency(concludedValue)}</Text>
-        </View>
-        <View style={styles.valueDivider} />
-        <View style={styles.valueCol}>
-          <Text style={theme.label}>Estimated Overpayment</Text>
-          <Text style={[styles.valueNum, { color: colors.red }]}>{formatCurrency(overpayment)}</Text>
-        </View>
+
+        {referenceDifference != null && (
+          <>
+            <View style={styles.valueDivider} />
+            <View style={styles.valueCol}>
+              <Text style={theme.label}>{referenceDifferenceLabel}</Text>
+              <Text style={[styles.valueNum, { color: colors.inkMuted }]}>
+                {formatCurrency(Math.abs(referenceDifference))}
+              </Text>
+            </View>
+          </>
+        )}
       </View>
+
+      <Text style={[theme.caption, styles.valueBoundary]}>
+        AI-assisted valuation analysis based on the evidence and assumptions documented in this report. Not a signed or certified appraisal unless reviewed and executed by a qualified appraiser.
+      </Text>
 
       {/* Footer info */}
       <View style={styles.coverFooter}>
@@ -124,9 +159,16 @@ const styles = StyleSheet.create({
   valueNum: {
     fontFamily: 'Inter',
     fontWeight: 700,
-    fontSize: 20,
+    fontSize: 18,
     color: colors.inkPrimary,
     marginTop: 4,
+    textAlign: 'center',
+  },
+  valueBoundary: {
+    textAlign: 'center',
+    marginTop: 12,
+    paddingHorizontal: 36,
+    lineHeight: 1.4,
   },
   coverFooter: {
     marginTop: 'auto',
