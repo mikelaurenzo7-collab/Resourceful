@@ -4,7 +4,7 @@ import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { buildFloodEnvironmentalContext, buildValueConclusionRows, hasFloodEnvironmentalContext } from './section-data';
 
 describe('buildValueConclusionRows', () => {
-  it('builds weighted approach rows from existing valuation data', () => {
+  it('builds weighted approach rows with explicitly labeled value-per-square-foot metrics', () => {
     const data = createTemplateData({
       property: {
         building_sqft_gross: 10000,
@@ -22,9 +22,9 @@ describe('buildValueConclusionRows', () => {
     });
 
     expect(buildValueConclusionRows(data)).toEqual([
-      { approach: 'Sales Comparison', total: 1100000, perUnit: 110, role: 'Primary (70%)' },
-      { approach: 'Income Capitalization', total: 980000, perUnit: 98, role: 'Supporting (30%)' },
-      { approach: 'Cost Approach', total: 920000, perUnit: 92, role: 'Supporting check' },
+      { approach: 'Sales Comparison', total: 1100000, valuePerSqFt: 110, role: 'Primary (70%)' },
+      { approach: 'Income Capitalization', total: 980000, valuePerSqFt: 98, role: 'Supporting (30%)' },
+      { approach: 'Cost Approach', total: 920000, valuePerSqFt: 92, role: 'Supporting check' },
     ]);
   });
 });
