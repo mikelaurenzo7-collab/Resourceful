@@ -18,6 +18,7 @@
       }
     ],
     "paths": {
+      "@/config/valuation": ["./src/config/valuation-policy.ts"],
       "@/lib/services/anthropic": ["./src/lib/services/service-router.ts"],
       "@/lib/services/web-comps": ["./src/lib/services/web-comps-router.ts"],
       "@/*": ["./src/*"]
