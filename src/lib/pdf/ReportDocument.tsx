@@ -17,6 +17,7 @@ import TableOfContents from './components/TableOfContents';
 import ExecutiveSummary from './components/ExecutiveSummary';
 import PropertyDetails from './components/PropertyDetails';
 import CompsGrid from './components/CompsGrid';
+import ComparableSaleProfiles from './components/ComparableSaleProfiles';
 import AdjustmentReconciliation from './components/AdjustmentReconciliation';
 import AssessmentRatioAnalysis from './components/AssessmentRatioAnalysis';
 import CostApproachTable from './components/CostApproachTable';
@@ -136,17 +137,27 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         })}
       </Page>
 
-      <Page size="LETTER" style={theme.page}>
-        <PageFooter />
-        <CompsGrid data={data} />
-        {data.maps.neighborhood && (
-          <View style={{ marginVertical: 8 }} wrap={false}>
-            {/* eslint-disable-next-line jsx-a11y/alt-text */}
-            <Image src={data.maps.neighborhood.url} style={{ width: '100%', height: 220 }} />
-          </View>
-        )}
-        <AdjustmentReconciliation data={data} />
-      </Page>
+      {data.comparableSales.length > 0 && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <CompsGrid data={data} />
+          {data.maps.neighborhood && (
+            <View style={{ marginVertical: 8 }} wrap={false}>
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
+              <Image src={data.maps.neighborhood.url} style={{ width: '100%', height: 220 }} />
+            </View>
+          )}
+        </Page>
+      )}
+
+      <ComparableSaleProfiles data={data} />
+
+      {data.comparableSales.length > 0 && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <AdjustmentReconciliation data={data} />
+        </Page>
+      )}
 
       {data.property.assessment_ratio != null && (
         <Page size="LETTER" style={theme.page}>
