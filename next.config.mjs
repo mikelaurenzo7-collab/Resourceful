@@ -9,6 +9,9 @@ const nextConfig = {
   },
   images: {
     remotePatterns: [
+      { protocol: 'https', hostname: 'maps.googleapis.com' },
+      { protocol: 'https', hostname: 'maps.gstatic.com' },
+      { protocol: 'https', hostname: 'streetviewpixels-pa.googleapis.com' },
       { protocol: 'https', hostname: 'atlas.microsoft.com' },
       { protocol: 'https', hostname: 'graph.mapillary.com' },
       { protocol: 'https', hostname: '*.supabase.co' },
@@ -40,10 +43,10 @@ const nextConfig = {
                 : "script-src 'self' 'unsafe-inline' https://js.stripe.com https://va.vercel-scripts.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "img-src 'self' data: blob: https://atlas.microsoft.com https://graph.mapillary.com https://*.supabase.co",
+              "img-src 'self' data: blob: https://maps.googleapis.com https://maps.gstatic.com https://streetviewpixels-pa.googleapis.com https://atlas.microsoft.com https://graph.mapillary.com https://*.supabase.co",
               isDev
-                ? "connect-src 'self' http://127.0.0.1:* http://localhost:* https://*.supabase.co https://api.stripe.com https://atlas.microsoft.com https://graph.mapillary.com https://va.vercel-scripts.com https://vitals.vercel-insights.com https://*.ingest.sentry.io"
-                : "connect-src 'self' https://*.supabase.co https://api.stripe.com https://atlas.microsoft.com https://graph.mapillary.com https://va.vercel-scripts.com https://vitals.vercel-insights.com https://*.ingest.sentry.io",
+                ? "connect-src 'self' http://127.0.0.1:* http://localhost:* https://*.supabase.co https://api.stripe.com https://maps.googleapis.com https://atlas.microsoft.com https://graph.mapillary.com https://va.vercel-scripts.com https://vitals.vercel-insights.com https://*.ingest.sentry.io"
+                : "connect-src 'self' https://*.supabase.co https://api.stripe.com https://maps.googleapis.com https://atlas.microsoft.com https://graph.mapillary.com https://va.vercel-scripts.com https://vitals.vercel-insights.com https://*.ingest.sentry.io",
               "frame-src 'self' https://js.stripe.com",
               "object-src 'none'",
               "base-uri 'self'",
