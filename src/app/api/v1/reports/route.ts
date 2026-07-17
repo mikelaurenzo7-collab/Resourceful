@@ -6,14 +6,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { validateApiKey, trackApiUsage } from '@/lib/services/partner-api-service';
+import { validateCheckoutService } from '@/lib/services/service-eligibility';
 import { createReport } from '@/lib/repository/reports';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
 import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
-
-// ─── Request Schema ─────────────────────────────────────────────────────────
 
 const partnerReportSchema = z.object({
   property_address: z.string().min(1, 'Property address is required'),
@@ -30,23 +29,17 @@ const partnerReportSchema = z.object({
     .default('auto'),
 });
 
-// ─── Extract Bearer Token ───────────────────────────────────────────────────
-
 function extractBearerToken(request: NextRequest): string | null {
   const auth = request.headers.get('authorization');
   if (!auth || !auth.startsWith('Bearer ')) return null;
   return auth.slice(7).trim();
 }
 
-// ─── POST Handler ───────────────────────────────────────────────────────────
-
 export async function POST(request: NextRequest) {
   try {
-    // ── Rate limit: 30 reports per 15 minutes per IP ─────────────────────
     const rateLimited = await applyRateLimit(request, { prefix: 'v1-reports', limit: 30, windowSeconds: 900 });
     if (rateLimited) return rateLimited;
 
-    // ── Authenticate via API key ──────────────────────────────────────────
     const token = extractBearerToken(request);
     if (!token) {
       return NextResponse.json(
@@ -63,7 +56,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Parse and validate request body ───────────────────────────────────
     const body = await request.json();
     const parsed = partnerReportSchema.safeParse(body);
 
@@ -86,12 +78,36 @@ export async function POST(request: NextRequest) {
       review_tier,
     } = parsed.data;
 
-    // ── Create report — skip Stripe (partner pays monthly) ────────────────
+    // Partner billing does not bypass legal or operational service boundaries.
+    const serviceEligibility = validateCheckoutService(service_type, review_tier);
+    if (!serviceEligibility.allowed) {
+      apiLogger.warn(
+        {
+          partnerId: partner.id,
+          code: serviceEligibility.code,
+          serviceType: service_type,
+          reviewTier: review_tier,
+          state,
+          county,
+        },
+        '[partner-api] Service requires a different engagement path'
+      );
+
+      return NextResponse.json(
+        {
+          error: serviceEligibility.message,
+          code: serviceEligibility.code,
+          recommendedTier: serviceEligibility.recommendedTier,
+        },
+        { status: 409 }
+      );
+    }
+
     const report = (await createReport({
       user_id: null,
       client_email,
       client_name: client_name ?? null,
-      status: 'paid', // pre-authorized — partner covers payment
+      status: 'paid',
       service_type,
       property_type,
       property_address,
@@ -109,7 +125,7 @@ export async function POST(request: NextRequest) {
       payment_status: 'partner_api',
       amount_paid_cents: partner.per_report_fee_cents,
       review_tier,
-      photos_skipped: true, // API reports have no photo upload flow
+      photos_skipped: true,
       property_issues: [],
       additional_notes: null,
       desired_outcome: null,
@@ -131,10 +147,8 @@ export async function POST(request: NextRequest) {
       savings_amount_cents: null,
     })) as Report;
 
-    // ── Track usage + tag report with partner ID ──────────────────────────
     await trackApiUsage(partner.id, report.id, partner.per_report_fee_cents);
 
-    // ── Trigger pipeline (non-blocking) ───────────────────────────────────
     runPipeline(report.id).catch(async (err) => {
       const message = err instanceof Error ? err.message : String(err);
       const stack = err instanceof Error ? err.stack : undefined;
@@ -143,7 +157,6 @@ export async function POST(request: NextRequest) {
         '[partner-api] Pipeline failed'
       );
 
-      // Record error to DB so report doesn't stay stuck in 'paid' status
       try {
         await createAdminClient().from('reports').update({
           status: 'failed',
@@ -162,7 +175,6 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // ── Return report ID and status ───────────────────────────────────────
     return NextResponse.json(
       {
         reportId: report.id,
