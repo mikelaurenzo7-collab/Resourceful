@@ -41,13 +41,18 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
               "img-src 'self' data: blob: https://atlas.microsoft.com https://graph.mapillary.com https://*.supabase.co",
+              "media-src 'self' blob:",
+              "worker-src 'self' blob:",
               isDev
                 ? "connect-src 'self' http://127.0.0.1:* http://localhost:* https://*.supabase.co https://api.stripe.com https://atlas.microsoft.com https://graph.mapillary.com https://va.vercel-scripts.com https://vitals.vercel-insights.com https://*.ingest.sentry.io"
                 : "connect-src 'self' https://*.supabase.co https://api.stripe.com https://atlas.microsoft.com https://graph.mapillary.com https://va.vercel-scripts.com https://vitals.vercel-insights.com https://*.ingest.sentry.io",
               "frame-src 'self' https://js.stripe.com",
+              "frame-ancestors 'none'",
+              "manifest-src 'self'",
               "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
+              ...(!isDev ? ['upgrade-insecure-requests'] : []),
             ].join('; '),
           },
         ],

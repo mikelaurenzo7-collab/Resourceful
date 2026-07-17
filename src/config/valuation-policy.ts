@@ -5,7 +5,31 @@
 // review; it may not automatically change comparable values, depreciation, or the
 // concluded value without separately supported market or cost evidence.
 
+import {
+  ECONOMIC_LIFE,
+  resolvePropertySubtype as resolveLegacyPropertySubtype,
+} from './valuation';
+
 export * from './valuation';
+
+export function resolvePropertySubtype(
+  propertyClassOrSubtype: string | null | undefined,
+  propertyType: string
+): string {
+  const normalizedInternalKey = propertyClassOrSubtype
+    ?.trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+
+  if (
+    normalizedInternalKey &&
+    Object.prototype.hasOwnProperty.call(ECONOMIC_LIFE, normalizedInternalKey)
+  ) {
+    return normalizedInternalKey;
+  }
+
+  return resolveLegacyPropertySubtype(propertyClassOrSubtype, propertyType);
+}
 
 export const CONDITION_DEFECT_ADJUSTMENTS = {
   high: 0,

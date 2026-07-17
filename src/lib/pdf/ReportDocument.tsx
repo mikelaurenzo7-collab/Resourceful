@@ -17,6 +17,7 @@ import TableOfContents from './components/TableOfContents';
 import ExecutiveSummary from './components/ExecutiveSummary';
 import PropertyDetails from './components/PropertyDetails';
 import CompsGrid from './components/CompsGrid';
+import ComparableSaleProfiles from './components/ComparableSaleProfiles';
 import AdjustmentReconciliation from './components/AdjustmentReconciliation';
 import AssessmentRatioAnalysis from './components/AssessmentRatioAnalysis';
 import CostApproachTable from './components/CostApproachTable';
@@ -29,8 +30,8 @@ import SummaryOfSalientFacts from './components/SummaryOfSalientFacts';
 import PropertyHistory from './components/PropertyHistory';
 import AssessmentData from './components/AssessmentData';
 import CertificationAndLimitingConditions from './components/CertificationAndLimitingConditions';
+import SubjectPhotoExhibit from './components/SubjectPhotoExhibit';
 
-// Narrative section keys mapped to display titles
 const NARRATIVE_SECTIONS = [
   { key: 'property_description', num: 'II', title: 'Property Description' },
   { key: 'site_description_narrative', num: 'III', title: 'Site Description' },
@@ -50,7 +51,6 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
     data.report.desired_outcome
   );
 
-  // Photos for summary section
   const summaryPhotos = data.photos
     .filter((photo) => photo.storage_path)
     .slice(0, 4)
@@ -72,54 +72,23 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         data.report.desired_outcome
       )}
     >
-      {/* Letter of Transmittal — professional cover letter */}
       <LetterOfTransmittal data={data} />
-
-      {/* Cover page — no footer */}
       <CoverPage data={data} />
-
-      {/* Table of Contents */}
       <TableOfContents data={data} />
 
-      {/* Assignment & Scope (J2C-style) */}
-      {narrativeMap.get('assignment_and_scope') && (
-        <Page size="LETTER" style={theme.page}>
-          <PageFooter />
-          <AssignmentAndScope content={narrativeMap.get('assignment_and_scope')!} />
-        </Page>
-      )}
+      <Page size="LETTER" style={theme.page}>
+        <PageFooter />
+        <SummaryOfSalientFacts
+          data={data}
+          content={narrativeMap.get('summary_of_salient_facts') ?? ''}
+        />
+      </Page>
 
-      {/* Summary of Salient Facts (J2C-style) */}
-      {narrativeMap.get('summary_of_salient_facts') && (
-        <Page size="LETTER" style={theme.page}>
-          <PageFooter />
-          <SummaryOfSalientFacts content={narrativeMap.get('summary_of_salient_facts')!} />
-        </Page>
-      )}
-
-      {/* Property History (J2C-style) */}
-      {narrativeMap.get('property_history') && (
-        <Page size="LETTER" style={theme.page}>
-          <PageFooter />
-          <PropertyHistory content={narrativeMap.get('property_history')!} />
-        </Page>
-      )}
-
-      {/* Assessment Data (J2C-style) */}
-      {narrativeMap.get('assessment_data') && (
-        <Page size="LETTER" style={theme.page}>
-          <PageFooter />
-          <AssessmentData content={narrativeMap.get('assessment_data')!} />
-        </Page>
-      )}
-
-      {/* Property Identification + Executive Summary */}
       <Page size="LETTER" style={theme.page}>
         <PageFooter />
         <PropertyDetails data={data} />
       </Page>
 
-      {/* Executive Summary + Maps + Photos */}
       <Page size="LETTER" style={theme.page}>
         <PageFooter />
         <ExecutiveSummary data={data} />
@@ -132,7 +101,29 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         {summaryPhotos.length > 0 && <PhotoGrid photos={summaryPhotos} />}
       </Page>
 
-      {/* Narrative sections */}
+      <SubjectPhotoExhibit data={data} />
+
+      {narrativeMap.get('assignment_and_scope') && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <AssignmentAndScope content={narrativeMap.get('assignment_and_scope')!} />
+        </Page>
+      )}
+
+      {narrativeMap.get('property_history') && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <PropertyHistory content={narrativeMap.get('property_history')!} />
+        </Page>
+      )}
+
+      {narrativeMap.get('assessment_data') && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <AssessmentData content={narrativeMap.get('assessment_data')!} />
+        </Page>
+      )}
+
       <Page size="LETTER" style={theme.page}>
         <PageFooter />
         {NARRATIVE_SECTIONS.map(({ key, num, title }) => {
@@ -147,20 +138,26 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         })}
       </Page>
 
-      {/* Comparable Sales + Comps Map */}
+      {data.comparableSales.length > 0 && (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <CompsGrid data={data} />
+          {data.maps.neighborhood && (
+            <View style={{ marginVertical: 8 }} wrap={false}>
+              {/* eslint-disable-next-line jsx-a11y/alt-text */}
+              <Image src={data.maps.neighborhood.url} style={{ width: '100%', height: 220 }} />
+            </View>
+          )}
+        </Page>
+      )}
+
+      <ComparableSaleProfiles data={data} />
+
       <Page size="LETTER" style={theme.page}>
         <PageFooter />
-        <CompsGrid data={data} />
-        {data.maps.neighborhood && (
-          <View style={{ marginVertical: 8 }} wrap={false}>
-            {/* eslint-disable-next-line jsx-a11y/alt-text */}
-            <Image src={data.maps.neighborhood.url} style={{ width: '100%', height: 220 }} />
-          </View>
-        )}
         <AdjustmentReconciliation data={data} />
       </Page>
 
-      {/* Assessment Ratio (conditional) */}
       {data.property.assessment_ratio != null && (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
@@ -168,7 +165,6 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         </Page>
       )}
 
-      {/* Cost Approach (conditional) */}
       {data.property.cost_approach_value != null && data.property.cost_approach_value > 0 && (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
@@ -176,7 +172,6 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         </Page>
       )}
 
-      {/* Income Approach (conditional) */}
       {data.incomeAnalysis != null && (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
@@ -184,7 +179,6 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         </Page>
       )}
 
-      {/* Condition Documentation (conditional) */}
       {data.photos.some((photo) => photo.ai_analysis?.defects?.length) && (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
@@ -192,7 +186,6 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         </Page>
       )}
 
-      {/* Filing Guide (tax appeal only) */}
       {data.filingGuide && assignmentKind === 'tax_appeal' && (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
@@ -200,7 +193,6 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         </Page>
       )}
 
-      {/* Pricing Strategy Guide (seller assignment only) */}
       {assignmentKind === 'pre_listing' && narrativeMap.get('pricing_strategy_guide') && (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
@@ -209,7 +201,6 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         </Page>
       )}
 
-      {/* Negotiation Guide (buyer assignment only) */}
       {assignmentKind === 'pre_purchase' && narrativeMap.get('negotiation_guide') && (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
@@ -218,7 +209,6 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         </Page>
       )}
 
-      {/* Independent valuation use guide */}
       {assignmentKind === 'independent_valuation' && narrativeMap.get('valuation_use_guide') && (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
@@ -227,7 +217,6 @@ export default function ReportDocument({ data }: { data: ReportTemplateData }) {
         </Page>
       )}
 
-      {/* Certification & Limiting Conditions (J2C-style) */}
       {narrativeMap.get('certification_and_limiting_conditions') ? (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />

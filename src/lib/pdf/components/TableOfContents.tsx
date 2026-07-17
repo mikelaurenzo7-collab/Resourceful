@@ -1,5 +1,5 @@
 // ─── Table of Contents ───────────────────────────────────────────────────────
-// Dynamic TOC that lists all sections included in the report.
+// Dynamic inventory of the sections and evidence actually included in the report.
 
 import React from 'react';
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer';
@@ -9,6 +9,7 @@ import {
   getAssignmentDisplayLabel,
   resolveAssignmentKind,
 } from '@/lib/assignments/routing';
+import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
 
 interface TocEntry {
   number: string;
@@ -17,15 +18,24 @@ interface TocEntry {
 }
 
 export default function TableOfContents({ data }: { data: ReportTemplateData }) {
-  const { property, comparableSales, incomeAnalysis, report, photos, filingGuide, narratives } = data;
+  const { property, comparableSales, comparableRentals, incomeAnalysis, report, photos, filingGuide, narratives, maps } = data;
   const assignmentKind = resolveAssignmentKind(report.service_type, report.desired_outcome);
   const assignmentLabel = getAssignmentDisplayLabel(report.service_type, report.desired_outcome);
-
   const narrativeSections = new Set(narratives.map((n) => n.section_name));
 
-  const hasIncome = incomeAnalysis != null;
+  const hasIncome = incomeAnalysis != null && supportsIncomeApproach({
+    propertyType: report.property_type,
+    propertySubtype: property.property_subtype,
+    propertyClassDescription: property.property_class_description,
+  });
   const hasCostApproach = property.cost_approach_value != null && property.cost_approach_value > 0;
+  const hasSales = comparableSales.length > 0;
+  const hasPhotoExhibit = photos.some((photo) => Boolean(photo.storage_path));
   const hasPhotoDefects = photos.some((photo) => (photo.ai_analysis?.defects?.length ?? 0) > 0);
+  const hasCertification = narrativeSections.has('certification_and_limiting_conditions');
+  const mapCount = [maps.regional, maps.neighborhood, maps.parcel].filter(Boolean).length;
+  const documentedPhotoCount = photos.filter((photo) => Boolean(photo.storage_path)).length;
+
   const hasAddendumA =
     (assignmentKind === 'tax_appeal' && filingGuide != null) ||
     (assignmentKind === 'pre_listing' && narrativeSections.has('pricing_strategy_guide')) ||
@@ -40,23 +50,24 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
         ? 'Valuation Use & Next-Step Guide'
         : 'County Filing Instructions';
 
-  // Build section list dynamically
   const sections: TocEntry[] = [
     { number: '', title: 'Letter of Transmittal' },
-    { number: '', title: 'Property Identification Summary' },
-    ...(narrativeSections.has('assignment_and_scope')
-      ? [{ number: 'A', title: 'Assignment & Scope' }]
+    { number: '', title: 'Branded Property Cover' },
+    { number: 'I-A', title: 'Summary of Salient Facts & Valuation Findings' },
+    { number: 'I-B', title: 'Property Identification Summary' },
+    { number: 'I-C', title: 'Executive Summary & Location Evidence' },
+    ...(hasPhotoExhibit
+      ? [{ number: 'EX-1', title: 'Subject Maps & Photo Exhibit' }]
       : []),
-    ...(narrativeSections.has('summary_of_salient_facts')
-      ? [{ number: 'B', title: 'Summary of Salient Facts' }]
+    ...(narrativeSections.has('assignment_and_scope')
+      ? [{ number: 'I-D', title: 'Assignment, Intended Use & Scope of Work' }]
       : []),
     ...(narrativeSections.has('property_history')
-      ? [{ number: 'C', title: 'Property History' }]
+      ? [{ number: 'I-E', title: 'Property History' }]
       : []),
     ...(narrativeSections.has('assessment_data')
-      ? [{ number: 'D', title: 'Assessment Data' }]
+      ? [{ number: 'I-F', title: 'Assessment Data' }]
       : []),
-    { number: 'I', title: 'Executive Summary' },
     { number: 'II', title: 'Property Description' },
     { number: 'III', title: 'Site Description' },
     { number: 'IV', title: 'Improvement Description' },
@@ -66,8 +77,13 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
     { number: 'VI', title: 'Market Analysis' },
     { number: 'VII-A', title: 'Highest & Best Use — As Vacant', indent: true },
     { number: 'VII-B', title: 'Highest & Best Use — As Improved', indent: true },
-    { number: 'VIII', title: 'Sales Comparison Approach' },
-    { number: 'IX', title: 'Adjustment Reconciliation & Value Conclusion' },
+    ...(hasSales
+      ? [
+          { number: 'VIII-A', title: 'Comparable Sales Summary & Map' },
+          { number: 'VIII-B', title: 'Individual Comparable Sale Profiles' },
+        ]
+      : []),
+    { number: 'IX', title: 'Approach Reconciliation & Value Conclusion' },
   ];
 
   if (property.assessment_ratio != null) {
@@ -86,24 +102,30 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
     sections.push({ number: 'XIII', title: 'Property Condition Documentation' });
   }
 
-  // Addenda
-  sections.push({ number: '', title: '' }); // spacer
+  sections.push({ number: '', title: '' });
   if (hasAddendumA) {
     sections.push({ number: 'ADD-A', title: addendumATitle });
   }
-  sections.push({ number: 'ADD-B', title: 'Certification & Limiting Conditions' });
+  sections.push({
+    number: 'ADD-B',
+    title: hasCertification
+      ? 'Certification & Limiting Conditions'
+      : 'Limitations & Use Disclosures',
+  });
 
   return (
     <Page size="LETTER" style={theme.page}>
       <View style={styles.header}>
         <Text style={theme.headingXL}>Table of Contents</Text>
         <View style={theme.sectionDivider} />
+        <Text style={styles.intro}>
+          Sections appear only when the corresponding workfile evidence or assignment-specific guidance is available.
+        </Text>
       </View>
 
       {sections.map((entry, index) => {
-        // Spacer row
         if (!entry.title && !entry.number) {
-          return <View key={index} style={{ height: 12 }} />;
+          return <View key={index} style={{ height: 8 }} />;
         }
 
         return (
@@ -117,7 +139,6 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
         );
       })}
 
-      {/* Report metadata footer */}
       <View style={styles.metaBlock}>
         <View style={styles.metaRow}>
           <Text style={theme.label}>Assignment</Text>
@@ -138,12 +159,26 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
         <View style={styles.metaRow}>
           <Text style={theme.label}>Property Type</Text>
           <Text style={theme.tableCell}>
-            {property.property_class_description ?? report.property_type ?? 'Residential'}
+            {property.property_class_description ?? report.property_type ?? 'Not classified'}
           </Text>
         </View>
         <View style={styles.metaRow}>
-          <Text style={theme.label}>Comparable Sales</Text>
-          <Text style={theme.tableCell}>{comparableSales.length} transactions analyzed</Text>
+          <Text style={theme.label}>Sales Evidence</Text>
+          <Text style={theme.tableCell}>
+            {hasSales ? `${comparableSales.length} transactions with individual evidence profiles` : 'No comparable sales included'}
+          </Text>
+        </View>
+        {hasIncome && (
+          <View style={styles.metaRow}>
+            <Text style={theme.label}>Rental Evidence</Text>
+            <Text style={theme.tableCell}>{comparableRentals.length} rental records analyzed</Text>
+          </View>
+        )}
+        <View style={styles.metaRow}>
+          <Text style={theme.label}>Visual Evidence</Text>
+          <Text style={theme.tableCell}>
+            {documentedPhotoCount} subject images; {mapCount} map exhibits
+          </Text>
         </View>
         <View style={styles.metaRow}>
           <Text style={theme.label}>Report ID</Text>
@@ -156,21 +191,27 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
 
 const styles = StyleSheet.create({
   header: {
-    marginBottom: 16,
+    marginBottom: 10,
+  },
+  intro: {
+    fontFamily: 'Inter',
+    fontSize: 8,
+    color: colors.inkMuted,
+    marginTop: 4,
   },
   tocRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 5,
+    paddingVertical: 3.5,
     borderBottomWidth: 0.5,
     borderBottomColor: colors.border,
   },
   tocNumber: {
     fontFamily: 'Inter',
     fontWeight: 500,
-    fontSize: 9,
+    fontSize: 8,
     color: colors.inkMuted,
-    width: 80,
+    width: 78,
   },
   addendumLabel: {
     color: colors.accent,
@@ -181,25 +222,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: colors.border,
     borderStyle: 'dotted',
-    marginHorizontal: 8,
-    height: 8,
+    marginHorizontal: 7,
+    height: 7,
   },
   tocTitle: {
     fontFamily: 'Inter',
     fontWeight: 500,
-    fontSize: 10,
+    fontSize: 8.5,
     color: colors.inkPrimary,
-    maxWidth: 300,
+    maxWidth: 310,
   },
   metaBlock: {
     marginTop: 'auto',
-    paddingTop: 16,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: colors.accent,
   },
   metaRow: {
     flexDirection: 'row',
-    paddingVertical: 3,
+    paddingVertical: 2,
     gap: 12,
   },
 });
