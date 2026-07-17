@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
 import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/seo/JsonLd';
+import { getAppUrl } from '@/lib/utils/app-url';
 import './globals.css';
 
 const geistSans = localFont({
@@ -20,7 +21,7 @@ const playfair = Playfair_Display({
   display: 'swap',
 });
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful-7x38.vercel.app';
+const baseUrl = getAppUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
