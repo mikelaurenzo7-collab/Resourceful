@@ -1,6 +1,6 @@
 // ─── Environment Variable Validation ─────────────────────────────────────────
 // Imported by src/instrumentation.ts so production fails fast on a broken
-// configuration instead of discovering missing vendors during a paid case.
+// configuration instead of discovering missing core services during a paid case.
 
 import { logger } from '@/lib/logger';
 
@@ -15,7 +15,6 @@ const REQUIRED_VARS = [
   'RESEND_API_KEY',
   'NEXT_PUBLIC_APP_URL',
   'CRON_SECRET',
-  'ATTOM_API_KEY',
   'REPORT_ACCESS_TOKEN_SECRET',
 ] as const;
 
@@ -25,6 +24,7 @@ const RECOMMENDED_VARS = [
   'AI_MODEL_RESEARCH',
   'AI_MODEL_VISION',
   'AI_MODEL_DOCUMENT',
+  'ATTOM_API_KEY',
   'AZURE_MAPS_SUBSCRIPTION_KEY',
   'NEXT_PUBLIC_AZURE_MAPS_CLIENT_ID',
   'NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN',
@@ -40,7 +40,13 @@ const MIN_SECRET_LENGTHS: Record<string, number> = {
 };
 
 /**
- * Validate critical environment variables.
+ * Validate the production contract.
+ *
+ * Core identity, payment, delivery, and OpenAI services fail fast because the
+ * application cannot safely fulfill an order without them. Enrichment vendors
+ * such as ATTOM remain recommended: their service functions return bounded
+ * errors and the site must continue to boot so customers and operators can see
+ * an honest degraded state rather than a process-wide outage.
  *
  * Model variables are recommended rather than required because src/config/ai.ts
  * has explicit GPT-5.6 Sol/Terra/Luna defaults. Anthropic, Gemini, and Groq keys
