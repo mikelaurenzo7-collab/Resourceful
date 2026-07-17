@@ -87,8 +87,11 @@ describe('public page fetch security boundaries', () => {
       'file:///etc/passwd',
       'http://localhost/admin',
       'http://api.internal/metadata',
+      'http://127.0.0.1/admin',
+      'http://169.254.169.254/latest/meta-data',
+      'http://[::1]/admin',
       'http://user:password@example.com/private',
-    ])('rejects unsafe URL %s without a network request', async (url) => {
+    ])('rejects unsafe URL %s without a public fetch', async (url) => {
       await expect(fetchPageText(url)).resolves.toBeNull();
     });
   });
