@@ -6,7 +6,7 @@ Resourceful's canonical production URL is:
 
 The repository includes `.github/workflows/deploy-production.yml`. After the required secrets are configured, every push or merge to `main` will:
 
-1. install the locked dependencies with Node.js 20 and pnpm 9;
+1. install the locked dependencies with Node.js 22 and pnpm 9.15.5;
 2. run lint, TypeScript, and unit tests;
 3. pull the production settings for the linked Vercel project;
 4. build the production artifact;
