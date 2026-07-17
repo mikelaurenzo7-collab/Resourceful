@@ -1,10 +1,11 @@
 import type { MetadataRoute } from 'next';
 import { getActiveCounties, getActiveStates } from '@/lib/repository/county-rules';
+import { getAppUrl } from '@/lib/utils/app-url';
 import { buildCountySlug } from '@/lib/utils/county-slug';
 import { buildStateSlug } from '@/lib/utils/state-slug';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app';
+  const baseUrl = getAppUrl();
 
   const staticPages: MetadataRoute.Sitemap = [
     {
@@ -51,7 +52,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Generate state and county SEO pages
   let statePages: MetadataRoute.Sitemap = [];
   let countyPages: MetadataRoute.Sitemap = [];
   try {
@@ -74,7 +74,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
   } catch {
-    // If DB is unavailable, return static pages only
+    // Database-backed location pages are additive; static routes remain valid.
   }
 
   return [...staticPages, ...statePages, ...countyPages];
