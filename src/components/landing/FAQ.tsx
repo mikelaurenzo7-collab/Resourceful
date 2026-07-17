@@ -4,44 +4,49 @@ import { useState } from 'react';
 
 const faqs = [
   {
-    question: 'What is a property tax appeal?',
+    question: 'What does Resourceful help me decide?',
     answer:
-      'A property tax appeal is a formal request to your county\'s Board of Review to lower your property\'s assessed value. If your home is assessed higher than its true market value, you\'re paying more in taxes than you should. An appeal presents evidence — comparable sales, condition documentation, and valuation analysis — to demonstrate the correct value. Successful appeals result in lower assessments and reduced annual tax bills, often saving homeowners hundreds to thousands of dollars per year.',
+      'Resourceful helps you understand whether the available evidence supports challenging an assessment, evaluating a purchase, or preparing a listing. The analysis organizes property records, relevant comparable sales, condition evidence, tax and assessment context, source limitations, and the next supported action.',
   },
   {
-    question: 'Do I have to file the appeal myself?',
+    question: 'What do I receive with a tax-appeal case?',
     answer:
-      'Not necessarily. With our Full Representation package, we file the appeal on your behalf and attend the hearing as your authorized representative — you don\'t have to do anything. With Guided Filing, we walk you through every step on a live call so you feel fully prepared. And even with our standard Professional Report, you get a step-by-step filing guide tailored to your county. Property tax appeals are one of the most accessible processes for self-representation — no legal training required.',
+      'The package may include a property and assessment summary, comparable-sales analysis, adjustment support, condition evidence, an evidence index, the requested-value rationale, jurisdiction-specific filing guidance, and clear limitations. The exact contents depend on the property, available data, jurisdiction, and service level selected.',
   },
   {
-    question: 'What makes your report credible to the Board of Review?',
+    question: 'Does Resourceful file or represent me?',
     answer:
-      'Our reports are built on the same evidence standards professional appraisers use: comparable sales analysis with line-item adjustments, assessment ratio calculations, and condition documentation with photographs. We use the same data sources that assessors rely on — ATTOM (which powers Zillow and Redfin), MLS records, and county public records. The Board of Review evaluates the quality of evidence presented, and a well-documented report with strong comparable sales data is consistently persuasive.',
+      'Not by default. Case Analysis and Expert Review are analysis services, and Guided Filing supports you while you remain responsible for the filing. Filing, representation, or attorney services are offered only when the jurisdiction permits the arrangement, the appropriate professional is available, authorization requirements are satisfied, and a separate written engagement expressly includes that work.',
   },
   {
-    question: 'How long does it take to receive my report?',
+    question: 'Is this a licensed appraisal or legal advice?',
     answer:
-      'Most reports are delivered within 48 hours of completing your submission (address, photos, and payment). Complex commercial or industrial properties may take up to 72 hours. You\'ll receive an email notification when your report is ready, and you can download it directly from your dashboard. We recommend starting the process at least 2-3 weeks before your county\'s appeal deadline.',
+      'No. A standard Resourceful work product is an AI-assisted property analysis, not legal advice, a certified appraisal, a lender appraisal, or a USPAP appraisal. A regulated appraisal or legal service is provided only when a separately engaged, appropriately credentialed professional reviews, signs, and assumes responsibility for that work.',
   },
   {
-    question: 'What if I don\'t win my appeal?',
+    question: 'How is AI used?',
     answer:
-      'There is no penalty for filing an appeal — your taxes will never go up as a result. While every Board of Review is different, properties with documented over-assessment and strong comparable sales evidence succeed the majority of the time. Even partial reductions are common and result in meaningful savings. If the Board doesn\'t adopt your full requested value, you can refile next year with updated data. Our reports include a satisfaction guarantee — see our Terms of Service for details.',
+      'AI assists with extraction, research organization, comparable screening, drafting, and workflow support. It does not create filing authority, guarantee an outcome, replace required professional judgment, or turn an unsigned analysis into a licensed appraisal. Material conclusions and customer-facing work remain subject to the review controls stated for the selected service.',
   },
   {
-    question: 'How accurate is your analysis?',
+    question: 'How long does delivery take?',
     answer:
-      'Our analysis follows IAAO (International Association of Assessing Officers) standards for mass appraisal. We use 5\u201310 comparable sales with line-item adjustments for size, age, condition, and location — the same methodology licensed appraisers use. Comparable sales data comes from ATTOM, which aggregates MLS, county recorder, and public records data nationwide. Our calibration system continuously improves accuracy by comparing our concluded values against actual outcomes.',
+      'The checkout experience shows the delivery target for the selected package. Timing begins after required information, payment, and usable documents are received. Complex, commercial, data-limited, or professionally reviewed assignments may take longer, and Resourceful should surface any material delay rather than silently lowering the scope.',
   },
   {
-    question: 'Can real estate agents use this instead of a CMA?',
+    question: 'Can you guarantee a reduction or tax savings?',
     answer:
-      'Yes. Our Pre-Listing and Pre-Purchase reports go deeper than a traditional CMA: they include assessment ratio analysis, tax appeal feasibility, condition-based adjustments from photos, and a formal adjustment grid. Agents use these to strengthen listings, substantiate pricing, and address buyer concerns about property taxes. For volume orders or white-label options, reach out to our team.',
+      'No. Assessment authorities decide each matter independently, and the same evidence can lead to different results. Resourceful does not guarantee eligibility, acceptance, a lower assessment, tax savings, or a favorable hearing result. Any refund protection applies only under the written conditions shown in the Terms of Service.',
   },
   {
-    question: 'What happens after I file my appeal?',
+    question: 'Can filing an appeal increase my assessment?',
     answer:
-      'Timelines vary by county. Most counties schedule a hearing within 30\u201390 days of filing. Some offer an informal review first (we\'ll tell you if yours does). At the hearing, you or your representative present the evidence from your report. The board issues a decision, usually within 2\u20134 weeks. If you\'re unsatisfied, most states allow a further appeal to a state-level board. Your report includes all of this detail for your specific county.',
+      'That risk depends on the jurisdiction and the facts. Resourceful will not claim that an assessment can never increase. Confirm the applicable review authority, scope of review, deadline, and local rules before filing; seek qualified local advice when the consequences are unclear.',
+  },
+  {
+    question: 'Where does the property data come from?',
+    answer:
+      'Resourceful uses available public records and approved third-party or licensed sources. Data quality and coverage vary by location. Important facts, comparable sales, deadlines, and filing requirements should be source-labeled and independently reviewable rather than presented as certain when the source is missing or stale.',
   },
 ];
 
@@ -49,55 +54,58 @@ export default function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section className="mx-auto max-w-3xl px-6 py-24">
+    <section className="mx-auto max-w-3xl px-6 py-24" aria-labelledby="faq-heading">
       <div className="text-center mb-14">
         <span className="text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase">
-          Common Questions
+          Clear Answers
         </span>
-        <h2 className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
-          Frequently Asked Questions
+        <h2 id="faq-heading" className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
+          Understand the service before you buy
         </h2>
       </div>
 
       <div className="space-y-3">
-        {faqs.map((faq, i) => (
+        {faqs.map((faq, index) => (
           <div
-            key={i}
+            key={faq.question}
             data-animate
-            data-delay={String((i + 1) * 100)}
+            data-delay={String((index + 1) * 75)}
             className={`card-premium rounded-xl overflow-hidden transition-all duration-300 ${
-              openIndex === i ? 'border-l-2 border-l-gold/50 shadow-[0_0_20px_rgba(212,168,71,0.06)]' : 'border-l-2 border-l-transparent hover:border-l-gold/20'
+              openIndex === index
+                ? 'border-l-2 border-l-gold/50 shadow-[0_0_20px_rgba(212,168,71,0.06)]'
+                : 'border-l-2 border-l-transparent hover:border-l-gold/20'
             }`}
           >
             <button
-              onClick={() => setOpenIndex(openIndex === i ? null : i)}
-              aria-expanded={openIndex === i}
-              aria-controls={`faq-answer-${i}`}
-              id={`faq-question-${i}`}
+              type="button"
+              onClick={() => setOpenIndex(openIndex === index ? null : index)}
+              aria-expanded={openIndex === index}
+              aria-controls={`faq-answer-${index}`}
+              id={`faq-question-${index}`}
               className="w-full flex items-center justify-between px-6 py-5 text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-gold/50 rounded-xl"
             >
               <span className="font-medium text-cream pr-4">{faq.question}</span>
               <svg
                 className={`w-5 h-5 text-gold flex-shrink-0 transition-transform duration-[400ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                  openIndex === i ? 'rotate-180' : ''
+                  openIndex === index ? 'rotate-180' : ''
                 }`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
                 aria-hidden="true"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m19 9-7 7-7-7" />
               </svg>
             </button>
 
             <div
-              id={`faq-answer-${i}`}
+              id={`faq-answer-${index}`}
               role="region"
-              aria-labelledby={`faq-question-${i}`}
+              aria-labelledby={`faq-question-${index}`}
               className="accordion-content"
               style={{
-                maxHeight: openIndex === i ? '800px' : '0',
-                opacity: openIndex === i ? 1 : 0,
+                maxHeight: openIndex === index ? '900px' : '0',
+                opacity: openIndex === index ? 1 : 0,
                 transition: 'max-height 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease-out',
               }}
             >
