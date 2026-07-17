@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_APP_URL, getAppUrl } from './app-url';
 
 describe('getAppUrl', () => {
-  it('uses the production fallback when no value is configured', () => {
-    expect(getAppUrl(undefined)).toBe(DEFAULT_APP_URL);
+  it('uses the production fallback when the configured value is empty', () => {
+    expect(getAppUrl('')).toBe(DEFAULT_APP_URL);
   });
 
   it('adds https to a scheme-less application hostname', () => {
