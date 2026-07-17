@@ -39,7 +39,10 @@ export function isPrivateOrReservedIp(address: string): boolean {
 
   if (version === 4) {
     const octets = normalized.split('.').map(Number);
-    if (octets.length !== 4 || octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) {
+    if (
+      octets.length !== 4 ||
+      octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)
+    ) {
       return true;
     }
 
@@ -129,9 +132,18 @@ function isReadableContentType(contentType: string | null): boolean {
   );
 }
 
+async function cancelResponseBody(response: Response): Promise<void> {
+  try {
+    await response.body?.cancel();
+  } catch {
+    // The connection may already be closed; cleanup failure is non-fatal.
+  }
+}
+
 async function readLimitedText(response: Response): Promise<string> {
   const declaredLength = Number(response.headers.get('content-length') ?? 0);
   if (Number.isFinite(declaredLength) && declaredLength > MAX_RESPONSE_BYTES) {
+    await cancelResponseBody(response);
     throw new Error('Response exceeds the maximum allowed size');
   }
 
@@ -180,6 +192,7 @@ async function fetchPublicText(rawUrl: string, timeoutMs: number): Promise<strin
 
       if (response.status >= 300 && response.status < 400) {
         const location = response.headers.get('location');
+        await cancelResponseBody(response);
         if (!location) throw new Error('Redirect response did not include a location');
         if (redirectCount === MAX_REDIRECTS) throw new Error('Too many redirects');
         currentUrl = parsePublicHttpUrl(new URL(location, currentUrl).toString());
@@ -187,10 +200,12 @@ async function fetchPublicText(rawUrl: string, timeoutMs: number): Promise<strin
       }
 
       if (!response.ok) {
+        await cancelResponseBody(response);
         throw new Error(`Public page returned ${response.status}`);
       }
 
       if (!isReadableContentType(response.headers.get('content-type'))) {
+        await cancelResponseBody(response);
         throw new Error('Unsupported response content type');
       }
 
