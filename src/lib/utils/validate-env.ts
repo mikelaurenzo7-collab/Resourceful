@@ -24,11 +24,11 @@ const RECOMMENDED_VARS = [
   'AI_MODEL_RESEARCH',
   'AI_MODEL_VISION',
   'AI_MODEL_DOCUMENT',
+  'GOOGLE_MAPS_API_KEY',
   'ATTOM_API_KEY',
-  'AZURE_MAPS_SUBSCRIPTION_KEY',
-  'NEXT_PUBLIC_AZURE_MAPS_CLIENT_ID',
-  'NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN',
   'SERPER_API_KEY',
+  'AZURE_MAPS_SUBSCRIPTION_KEY',
+  'NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN',
   'RESEND_FROM_ADDRESS',
   'ADMIN_NOTIFICATION_EMAIL',
   'FOUNDER_EMAILS',
@@ -44,9 +44,10 @@ const MIN_SECRET_LENGTHS: Record<string, number> = {
  *
  * Core identity, payment, delivery, and OpenAI services fail fast because the
  * application cannot safely fulfill an order without them. Enrichment vendors
- * such as ATTOM remain recommended: their service functions return bounded
- * errors and the site must continue to boot so customers and operators can see
- * an honest degraded state rather than a process-wide outage.
+ * such as Google Maps, ATTOM, Serper, Azure Maps, and Mapillary remain
+ * recommended: their service functions return bounded errors and the site must
+ * continue to boot so customers and operators see an honest degraded state
+ * rather than a process-wide outage.
  *
  * Model variables are recommended rather than required because src/config/ai.ts
  * has explicit GPT-5.6 Sol/Terra/Luna defaults. Anthropic, Gemini, and Groq keys
