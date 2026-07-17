@@ -1,24 +1,148 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
+
 import { useWizard, PROPERTY_ISSUES } from '@/components/intake/WizardLayout';
+import Button from '@/components/ui/Button';
 import { formatPrice, getPriceCents, TAX_BILL_DISCOUNT } from '@/config/pricing';
 import type { ReviewTier } from '@/types/database';
-import Button from '@/components/ui/Button';
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
+type PurchasableTier = Exclude<ReviewTier, 'full_representation'>;
+
 const SERVICE_LABELS: Record<string, string> = {
-  tax_appeal: 'Tax Appeal Report',
-  pre_purchase: 'Pre-Purchase Analysis',
-  pre_listing: 'Pre-Listing Report',
+  tax_appeal: 'Property Tax Appeal Analysis',
+  pre_purchase: 'Pre-Purchase Property Review',
+  pre_listing: 'Pre-Listing Property Review',
 };
 
-// ─── Checkout Form ──────────────────────────────────────────────────────────
+const TIER_DETAILS: Record<
+  PurchasableTier,
+  {
+    name: string;
+    shortDescription: string;
+    delivery: string;
+    features: string[];
+    badge?: string;
+  }
+> = {
+  auto: {
+    name: 'Case Analysis',
+    shortDescription:
+      'A source-labeled property workfile for customers who are comfortable reviewing the evidence and taking the next step themselves.',
+    delivery: 'Delivery target shown for the completed intake',
+    features: [
+      'Property and assessment review',
+      'Relevant comparable-sales evidence',
+      'Condition documentation from submitted photos',
+      'Sources, calculations, and limitations',
+      'Jurisdiction-specific next-step checklist when verified',
+    ],
+  },
+  expert_reviewed: {
+    name: 'Expert Review',
+    shortDescription:
+      'Case Analysis with additional professional review of the evidence, calculations, conclusions, and customer-ready work product.',
+    delivery: 'Priority delivery after professional review',
+    features: [
+      'Everything in Case Analysis',
+      'Professional evidence and calculation review',
+      'Comparable-selection quality check',
+      'Clearer scope, limitation, and action notes',
+      'Reviewer role disclosed in the delivered work product',
+    ],
+    badge: 'Most popular',
+  },
+  guided_filing: {
+    name: 'Guided Filing',
+    shortDescription:
+      'Expert Review plus a live working session to help you prepare the filing and understand the hearing process.',
+    delivery: 'Review delivery followed by a scheduled working session',
+    features: [
+      'Everything in Expert Review',
+      'Live filing-preparation session',
+      'Evidence and form walkthrough',
+      'Hearing preparation and talking points',
+      'You remain responsible for signing and filing',
+    ],
+    badge: 'Tax appeals only',
+  },
+};
+
+function normalizeTier(tier: ReviewTier, isTaxAppeal: boolean): PurchasableTier {
+  if (tier === 'full_representation') return isTaxAppeal ? 'guided_filing' : 'expert_reviewed';
+  if (tier === 'guided_filing' && !isTaxAppeal) return 'expert_reviewed';
+  return tier;
+}
+
+function CheckIcon({ className = 'text-gold/60' }: { className?: string }) {
+  return (
+    <svg className={`mt-0.5 h-4 w-4 shrink-0 ${className}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m5 13 4 4L19 7" />
+    </svg>
+  );
+}
+
+function TierCard({
+  tier,
+  selected,
+  price,
+  onSelect,
+}: {
+  tier: PurchasableTier;
+  selected: boolean;
+  price: number;
+  onSelect: () => void;
+}) {
+  const details = TIER_DETAILS[tier];
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={`relative rounded-xl p-5 text-left transition-all focus:outline-none focus:ring-2 focus:ring-gold/50 ${
+        selected
+          ? 'card-premium ring-2 ring-gold/50 shadow-lg shadow-gold/5'
+          : 'border border-gold/10 bg-navy-light/50 hover:border-gold/25'
+      }`}
+    >
+      {selected && (
+        <div className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-gold">
+          <svg className="h-3 w-3 text-navy-deep" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="m5 13 4 4L19 7" />
+          </svg>
+        </div>
+      )}
+
+      {details.badge && (
+        <span className="mb-3 inline-block rounded-full bg-gold/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold">
+          {details.badge}
+        </span>
+      )}
+
+      <h3 className="pr-7 font-display text-lg text-cream">{details.name}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-cream/50">{details.shortDescription}</p>
+
+      <ul className="my-4 space-y-1.5 text-xs text-cream/60">
+        {details.features.map((feature) => (
+          <li key={feature} className="flex items-start gap-2">
+            <CheckIcon />
+            <span>{feature}</span>
+          </li>
+        ))}
+      </ul>
+
+      <p className="font-display text-2xl text-gold">{formatPrice(price)}</p>
+      <p className="mt-1 text-[10px] leading-relaxed text-cream/35">{details.delivery}</p>
+    </button>
+  );
+}
 
 function CheckoutForm() {
   const stripe = useStripe();
@@ -28,8 +152,28 @@ function CheckoutForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const isTaxAppeal = state.serviceType === 'tax_appeal';
+  const selectedTier = normalizeTier(state.reviewTier, isTaxAppeal);
+  const tierDetails = TIER_DETAILS[selectedTier];
+  const selectedIssues = PROPERTY_ISSUES.filter((issue) => (state.propertyIssues ?? []).includes(issue.id));
+  const guaranteeEligible =
+    isTaxAppeal &&
+    selectedTier === 'auto' &&
+    !state.photosSkipped &&
+    state.photoCount > 0;
+
+  const priceCents = state.priceCents || (
+    state.serviceType && state.propertyType
+      ? getPriceCents(state.serviceType, state.propertyType, selectedTier, state.hasTaxBill)
+      : 0
+  );
+
+  const fullAddress = state.address
+    ? `${state.address.line1}, ${state.address.city}, ${state.address.state} ${state.address.zip}`
+    : '';
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     if (!stripe || !elements) return;
 
     setSubmitting(true);
@@ -45,244 +189,142 @@ function CheckoutForm() {
       });
 
       if (paymentError) {
-        setError(paymentError.message || 'Payment failed. Please try again.');
+        setError(paymentError.message || 'Payment could not be completed. Please review the details and try again.');
         setSubmitting(false);
         return;
       }
 
-      // Payment succeeded — redirect to photos step (reportId now exists)
       router.push(`/start/photos?reportId=${state.reportId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment failed.');
+      setError(err instanceof Error ? err.message : 'Payment could not be completed.');
       setSubmitting(false);
     }
   };
 
-  const priceCents = state.priceCents || (state.serviceType && state.propertyType
-    ? getPriceCents(state.serviceType, state.propertyType, state.reviewTier, state.hasTaxBill)
-    : 0);
-
-  const fullAddress = state.address
-    ? `${state.address.line1}, ${state.address.city}, ${state.address.state} ${state.address.zip}`
-    : '';
-
-  const selectedIssues = PROPERTY_ISSUES.filter((i) => state.propertyIssues.includes(i.id));
-  const guaranteeEligible = !state.photosSkipped && state.photoCount > 0;
-
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="space-y-6">
-        {/* Order summary */}
-        <div className="card-premium rounded-xl overflow-hidden">
-          <div className="border-b border-gold/10 px-6 py-4 bg-gold/5">
-            <p className="text-xs uppercase tracking-widest text-gold/70">Order Summary</p>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <section className="card-premium overflow-hidden rounded-xl" aria-labelledby="order-summary-heading">
+        <div className="border-b border-gold/10 bg-gold/5 px-6 py-4">
+          <p id="order-summary-heading" className="text-xs uppercase tracking-widest text-gold/70">Order summary</p>
+        </div>
+        <div className="space-y-4 p-6">
+          <div>
+            <p className="text-sm text-cream/40">Property</p>
+            <p className="font-medium text-cream">{fullAddress}</p>
           </div>
-          <div className="p-6 space-y-4">
+
+          <div className="h-px bg-gold/10" />
+
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <p className="text-sm text-cream/40">Property</p>
-              <p className="text-cream font-medium">{fullAddress}</p>
+              <p className="text-sm text-cream/40">Service</p>
+              <p className="font-medium text-cream">{SERVICE_LABELS[state.serviceType ?? ''] || state.serviceType}</p>
             </div>
-            <div className="h-px bg-gold/10" />
-            <div className="flex items-center justify-between">
+            <div className="sm:text-right">
+              <p className="text-sm text-cream/40">Property type</p>
+              <p className="font-medium capitalize text-cream">{state.propertyType}</p>
+            </div>
+          </div>
+
+          <div className="h-px bg-gold/10" />
+
+          <div>
+            <p className="text-sm text-cream/40">Package</p>
+            <p className="font-medium text-cream">{tierDetails.name}</p>
+            <p className="mt-0.5 text-xs text-cream/40">{tierDetails.delivery}</p>
+          </div>
+
+          {selectedIssues.length > 0 && (
+            <>
+              <div className="h-px bg-gold/10" />
               <div>
-                <p className="text-sm text-cream/40">Report Type</p>
-                <p className="text-cream font-medium">
-                  {SERVICE_LABELS[state.serviceType ?? ''] || state.serviceType}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-cream/40">Property Type</p>
-                <p className="text-cream font-medium capitalize">{state.propertyType}</p>
-              </div>
-            </div>
-
-            {/* Review tier */}
-            <div className="h-px bg-gold/10" />
-            <div>
-              <p className="text-sm text-cream/40">Analysis Package</p>
-              <p className="text-cream font-medium">
-                {state.reviewTier === 'full_representation'
-                  ? 'Full Representation (We File For You)'
-                  : state.reviewTier === 'guided_filing'
-                    ? 'Guided Pro Se Filing (Report + Live Coaching)'
-                    : state.reviewTier === 'expert_reviewed'
-                      ? 'Expert-Reviewed (Analysis + Professional Appraiser)'
-                      : 'Professional Analysis'}
-              </p>
-              <p className="text-xs text-cream/30 mt-0.5">
-                {state.reviewTier === 'full_representation'
-                  ? 'We file and attend the hearing on your behalf'
-                  : state.reviewTier === 'guided_filing'
-                    ? 'Report + live session to guide you through filing'
-                    : state.reviewTier === 'expert_reviewed'
-                      ? 'Delivered within 1-2 business days after appraiser review'
-                      : 'Typically delivered within 48 hours'}
-              </p>
-            </div>
-
-            {/* Issues summary */}
-            {selectedIssues.length > 0 && (
-              <>
-                <div className="h-px bg-gold/10" />
-                <div>
-                  <p className="text-sm text-cream/40 mb-2">Documented Issues</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedIssues.map((issue) => (
-                      <span key={issue.id} className="text-xs bg-gold/5 text-cream/60 rounded px-2 py-0.5 border border-gold/10">
-                        {issue.icon} {issue.label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Photos status */}
-            <div className="h-px bg-gold/10" />
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-cream/40">Photos</p>
-                <p className="text-cream font-medium">
-                  {state.photosSkipped
-                    ? 'Skipped (data-only analysis)'
-                    : `${state.photoCount} uploaded`}
-                </p>
-              </div>
-              {/* Photo status indicator */}
-            </div>
-
-            {/* Tax bill discount */}
-            {state.hasTaxBill && (
-              <>
-                <div className="h-px bg-gold/10" />
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-emerald-400">Tax Bill Discount</span>
-                    <span className="text-[10px] bg-emerald-400/10 text-emerald-400 rounded-full px-2 py-0.5 font-medium">
-                      {Math.round(TAX_BILL_DISCOUNT * 100)}% OFF
+                <p className="mb-2 text-sm text-cream/40">Property issues provided</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedIssues.map((issue) => (
+                    <span key={issue.id} className="rounded border border-gold/10 bg-gold/5 px-2 py-0.5 text-xs text-cream/60">
+                      {issue.icon} {issue.label}
                     </span>
-                  </div>
-                  <span className="text-sm text-emerald-400">Applied</span>
+                  ))}
                 </div>
-              </>
-            )}
-
-            <div className="h-px bg-gold/10" />
-            <div className="flex items-center justify-between">
-              <span className="text-cream font-medium">Total</span>
-              <span className="font-display text-2xl text-gold">{formatPrice(priceCents)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Trust signals */}
-        <div className="rounded-xl border border-gold/10 bg-gold/[0.03] p-5 space-y-3">
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-gold/60 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-            <div>
-              <p className="text-sm text-cream/80 font-medium">Comparable sales analysis</p>
-              <p className="text-xs text-cream/40">5-10 recent sales, not automated estimates</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-gold/60 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-            <div>
-              <p className="text-sm text-cream/80 font-medium">IAAO-standard methodology</p>
-              <p className="text-xs text-cream/40">Same standards used by licensed appraisers</p>
-            </div>
-          </div>
-          {guaranteeEligible && (
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-emerald-400/70 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              <div>
-                <p className="text-sm text-emerald-400/80 font-medium">Money-back guarantee</p>
-                <p className="text-xs text-cream/40">Photo-backed appeals: refund if denied in full</p>
               </div>
-            </div>
+            </>
           )}
-          <div className="flex items-start gap-3">
-            <svg className="w-5 h-5 text-gold/60 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
+
+          <div className="h-px bg-gold/10" />
+
+          <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm text-cream/80 font-medium">Expert-reviewed before delivery</p>
-              <p className="text-xs text-cream/40">Every report reviewed for accuracy</p>
+              <p className="text-sm text-cream/40">Supporting documents</p>
+              <p className="font-medium text-cream">
+                {state.photosSkipped ? 'No property photos submitted' : `${state.photoCount} property photo${state.photoCount === 1 ? '' : 's'} submitted`}
+              </p>
             </div>
+            {state.hasTaxBill && (
+              <span className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-400">
+                {Math.round(TAX_BILL_DISCOUNT * 100)}% bill discount
+              </span>
+            )}
+          </div>
+
+          <div className="h-px bg-gold/10" />
+
+          <div className="flex items-center justify-between">
+            <span className="font-medium text-cream">Total</span>
+            <span className="font-display text-2xl text-gold">{formatPrice(priceCents)}</span>
           </div>
         </div>
+      </section>
 
-        {/* Stripe Payment Element */}
-        <div className="card-premium rounded-xl overflow-hidden">
-          <div className="border-b border-gold/10 px-6 py-4 bg-gold/5">
-            <p className="text-xs uppercase tracking-widest text-gold/70">Payment Details</p>
-          </div>
-          <div className="p-6">
-            <PaymentElement options={{ layout: 'tabs' }} />
-          </div>
-        </div>
-
-        {error && (
-          <div role="alert" className="rounded-lg bg-red-900/20 border border-red-500/20 p-4">
-            <p className="text-sm text-red-400">{error}</p>
-            <p className="text-xs text-red-400/60 mt-1">Please check your card details and try again. Your report data is saved.</p>
-          </div>
-        )}
-
-        {/* Security badges */}
-        <div className="flex items-center justify-center gap-6 text-xs text-cream/30 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            256-bit encryption
-          </div>
-          <div className="w-px h-3 bg-cream/10" />
-          <div className="flex items-center gap-1.5">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-            </svg>
-            Secure payment via Stripe
-          </div>
-        </div>
-
-        <Button type="submit" size="lg" fullWidth loading={submitting} disabled={!stripe || !elements}>
-          {submitting ? 'Processing...' : `Pay ${formatPrice(priceCents)} & Generate Report`}
-        </Button>
-
-        <p className="text-center text-xs text-cream/25 leading-relaxed">
-          {state.reviewTier === 'full_representation'
-            ? 'Your report will be generated and expert-reviewed, then our team will file the appeal on your behalf and attend the hearing as your authorized representative.'
-            : state.reviewTier === 'guided_filing'
-              ? 'Your report will be generated and expert-reviewed, then our team will schedule a live session to walk you through the filing process step by step.'
-              : state.reviewTier === 'expert_reviewed'
-                ? 'Your report will be generated by our advanced analysis system, then personally reviewed by a licensed appraiser before delivery within 1-2 business days.'
-                : 'Your report will be generated by our advanced analysis engine and delivered to your dashboard, typically within 48 hours.'}
-          {state.serviceType === 'tax_appeal' && state.reviewTier === 'auto' && ' It includes step-by-step filing instructions for your county.'}
-          {state.serviceType === 'tax_appeal' && guaranteeEligible && (
-            <> Photo-backed tax appeal reports are covered by our <a href="/terms" target="_blank" className="underline hover:text-cream/40">money-back guarantee</a>.</>
+      <section className="rounded-xl border border-gold/10 bg-gold/[0.03] p-5" aria-labelledby="included-heading">
+        <h2 id="included-heading" className="text-sm font-medium text-cream">What this purchase commits Resourceful to deliver</h2>
+        <ul className="mt-3 space-y-2 text-xs leading-relaxed text-cream/55">
+          <li className="flex items-start gap-2"><CheckIcon />Source-labeled evidence and visible limitations</li>
+          <li className="flex items-start gap-2"><CheckIcon />Review level stated for the selected package</li>
+          <li className="flex items-start gap-2"><CheckIcon />No filing or representation unless separately engaged in writing</li>
+          {guaranteeEligible && (
+            <li className="flex items-start gap-2"><CheckIcon className="text-emerald-400/70" />Limited photo-supported refund protection, subject to the Terms</li>
           )}
-        </p>
+        </ul>
+      </section>
 
-        <p className="text-center text-[10px] text-cream/15 leading-relaxed mt-2">
-          By completing this purchase you agree to our{' '}
-          <a href="/terms" target="_blank" className="underline hover:text-cream/30">Terms of Service</a>
-          {' '}and{' '}
-          <a href="/privacy" target="_blank" className="underline hover:text-cream/30">Privacy Policy</a>.
-          Reports are informational analysis tools, not legal advice or formal appraisals.
-          See our <a href="/disclaimer" target="_blank" className="underline hover:text-cream/30">Disclaimer</a>.
-        </p>
+      <section className="card-premium overflow-hidden rounded-xl" aria-labelledby="payment-details-heading">
+        <div className="border-b border-gold/10 bg-gold/5 px-6 py-4">
+          <p id="payment-details-heading" className="text-xs uppercase tracking-widest text-gold/70">Payment details</p>
+        </div>
+        <div className="p-6">
+          <PaymentElement options={{ layout: 'tabs' }} />
+        </div>
+      </section>
+
+      {error && (
+        <div role="alert" className="rounded-lg border border-red-500/20 bg-red-900/20 p-4">
+          <p className="text-sm text-red-400">{error}</p>
+          <p className="mt-1 text-xs text-red-400/60">Your property information remains saved.</p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-cream/35">
+        <span>Secure payment through Stripe</span>
+        <span className="hidden text-cream/15 sm:inline">•</span>
+        <span>Price confirmed before charge</span>
+        <span className="hidden text-cream/15 sm:inline">•</span>
+        <span>No recurring subscription</span>
       </div>
+
+      <Button type="submit" size="lg" fullWidth loading={submitting} disabled={!stripe || !elements}>
+        {submitting ? 'Processing…' : `Pay ${formatPrice(priceCents)} and start analysis`}
+      </Button>
+
+      <p className="text-center text-[11px] leading-relaxed text-cream/35">
+        By purchasing, you agree to the{' '}
+        <a href="/terms" target="_blank" rel="noreferrer" className="underline hover:text-cream/55">Terms of Service</a>,{' '}
+        <a href="/privacy" target="_blank" rel="noreferrer" className="underline hover:text-cream/55">Privacy Policy</a>, and{' '}
+        <a href="/disclaimer" target="_blank" rel="noreferrer" className="underline hover:text-cream/55">Disclaimer</a>.
+        Standard work products are informational analyses, not legal advice or certified appraisals.
+      </p>
     </form>
   );
 }
-
-// ─── Payment Page Wrapper ────────────────────────────────────────────────────
 
 export default function PaymentPage() {
   const router = useRouter();
@@ -297,45 +339,74 @@ export default function PaymentPage() {
   const [referralDiscount, setReferralDiscount] = useState(0);
   const [referralError, setReferralError] = useState('');
 
+  const isTaxAppeal = state.serviceType === 'tax_appeal';
+  const selectedTier = normalizeTier(state.reviewTier, isTaxAppeal);
+
   useEffect(() => {
     setCurrentStep(4);
+
     if (!state.address || !state.serviceType || !state.propertyType) {
       router.push('/start');
+      return;
     }
-    // Pre-fill email from logged-in session
+
+    if (selectedTier !== state.reviewTier) {
+      updateState({
+        reviewTier: selectedTier,
+        priceCents: getPriceCents(state.serviceType, state.propertyType, selectedTier, state.hasTaxBill),
+      });
+    }
+
     import('@/lib/supabase/client').then(({ createClient }) => {
       createClient().auth.getUser().then(({ data: { user } }) => {
         if (user?.email) setEmail(user.email);
       });
     });
-  }, [setCurrentStep, state.address, state.serviceType, state.propertyType, router]);
+  }, [isTaxAppeal, router, selectedTier, setCurrentStep, state.address, state.hasTaxBill, state.propertyType, state.reviewTier, state.serviceType, updateState]);
+
+  const handleTierSelect = (tier: PurchasableTier) => {
+    const priceCents = state.serviceType && state.propertyType
+      ? getPriceCents(state.serviceType, state.propertyType, tier, state.hasTaxBill)
+      : 0;
+
+    updateState({ reviewTier: tier, priceCents });
+    setCreateError('');
+  };
 
   const handleValidateReferral = async () => {
     if (!referralCode.trim()) return;
+
     setReferralStatus('validating');
     setReferralError('');
+
     try {
-      const res = await fetch(`/api/referral/validate?code=${encodeURIComponent(referralCode.trim())}`);
-      const data = await res.json();
+      const response = await fetch(`/api/referral/validate?code=${encodeURIComponent(referralCode.trim())}`);
+      const data = await response.json();
+
       if (data.valid) {
         setReferralStatus('valid');
         setReferralDiscount(data.discountPct);
       } else {
         setReferralStatus('invalid');
-        setReferralError(data.error || 'Invalid referral code');
+        setReferralError(data.error || 'This referral code is not valid.');
       }
     } catch {
       setReferralStatus('invalid');
-      setReferralError('Could not validate code');
+      setReferralError('The referral code could not be checked. Please try again.');
     }
   };
 
   const handleCreateReport = async () => {
-    // Validate email
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setEmailError('Please enter a valid email address');
+      setEmailError('Enter a valid email address.');
       return;
     }
+
+    if (!state.address || !state.serviceType || !state.propertyType) {
+      router.push('/start');
+      return;
+    }
+
     setEmailError('');
     setCreating(true);
     setCreateError('');
@@ -347,13 +418,13 @@ export default function PaymentPage() {
         body: JSON.stringify({
           client_email: email,
           client_name: name || undefined,
-          property_address: state.address!.line1,
-          city: state.address!.city,
-          state: state.address!.state,
-          county: state.address!.county,
+          property_address: state.address.line1,
+          city: state.address.city,
+          state: state.address.state,
+          county: state.address.county,
           property_type: state.propertyType,
           service_type: state.serviceType,
-          review_tier: state.reviewTier,
+          review_tier: selectedTier,
           photos_skipped: state.photosSkipped,
           property_issues: state.propertyIssues,
           additional_notes: state.additionalNotes,
@@ -367,342 +438,174 @@ export default function PaymentPage() {
         }),
       });
 
+      const responseBody = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        // Surface specific field errors from validation
-        if (body.details?.fieldErrors) {
-          const fields = body.details.fieldErrors;
-          const messages = Object.entries(fields)
-            .map(([field, errs]) => `${field}: ${(errs as string[]).join(', ')}`)
-            .join('; ');
-          throw new Error(messages || body.error || `Server error (${response.status})`);
+        if (responseBody.recommendedTier) {
+          const recommendedTier = normalizeTier(responseBody.recommendedTier as ReviewTier, isTaxAppeal);
+          handleTierSelect(recommendedTier);
         }
-        throw new Error(body.error || `Server error (${response.status})`);
+
+        if (responseBody.details?.fieldErrors) {
+          const messages = Object.entries(responseBody.details.fieldErrors)
+            .map(([field, errors]) => `${field}: ${(errors as string[]).join(', ')}`)
+            .join('; ');
+          throw new Error(messages || responseBody.error || `Server error (${response.status})`);
+        }
+
+        throw new Error(responseBody.error || `Server error (${response.status})`);
       }
 
-      const data = await response.json();
-      if (data.founderAccess) {
-        // Founder bypass — pipeline already triggered, go straight to success
-        try { sessionStorage.setItem('intake', JSON.stringify({ email })); } catch {}
+      if (responseBody.founderAccess) {
+        try {
+          sessionStorage.setItem('intake', JSON.stringify({ email }));
+        } catch {}
         sessionStorage.removeItem('wizard');
-        router.push(`/start/success?reportId=${data.reportId}`);
+        router.push(`/start/success?reportId=${responseBody.reportId}`);
         return;
       }
-      updateState({ reportId: data.reportId, clientSecret: data.clientSecret, priceCents: data.priceCents });
-      // Persist email for the success page account creation form
-      try { sessionStorage.setItem('intake', JSON.stringify({ email, reportId: data.reportId })); } catch {}
+
+      updateState({
+        reportId: responseBody.reportId,
+        clientSecret: responseBody.clientSecret,
+        priceCents: responseBody.priceCents,
+      });
+
+      try {
+        sessionStorage.setItem('intake', JSON.stringify({ email, reportId: responseBody.reportId }));
+      } catch {}
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Failed to create report.');
+      setCreateError(err instanceof Error ? err.message : 'The order could not be created.');
     } finally {
       setCreating(false);
     }
   };
 
-  const autoPrice = state.serviceType && state.propertyType
-    ? getPriceCents(state.serviceType, state.propertyType, 'auto', state.hasTaxBill)
-    : 0;
-  const expertPrice = state.serviceType && state.propertyType
-    ? getPriceCents(state.serviceType, state.propertyType, 'expert_reviewed', state.hasTaxBill)
-    : 0;
-  const guidedPrice = state.serviceType && state.propertyType
-    ? getPriceCents(state.serviceType, state.propertyType, 'guided_filing', state.hasTaxBill)
-    : 0;
-  const fullRepPrice = state.serviceType && state.propertyType
-    ? getPriceCents(state.serviceType, state.propertyType, 'full_representation', state.hasTaxBill)
-    : 0;
+  const tierOptions: PurchasableTier[] = isTaxAppeal
+    ? ['auto', 'expert_reviewed', 'guided_filing']
+    : ['auto', 'expert_reviewed'];
 
-  const isTaxAppeal = state.serviceType === 'tax_appeal';
+  const basePrice = state.serviceType && state.propertyType
+    ? getPriceCents(state.serviceType, state.propertyType, selectedTier, state.hasTaxBill)
+    : 0;
+  const displayedPrice = referralStatus === 'valid'
+    ? Math.round(basePrice * (1 - referralDiscount / 100))
+    : basePrice;
 
-  const handleTierSelect = (tier: ReviewTier) => {
-    updateState({
-      reviewTier: tier,
-      priceCents: state.serviceType && state.propertyType
-        ? getPriceCents(state.serviceType, state.propertyType, tier, state.hasTaxBill)
-        : 0,
-    });
-  };
-
-  // Phase 1: Collect email and create report
   if (!state.clientSecret) {
     return (
-      <main className="max-w-2xl mx-auto px-6 py-12">
-        <div className="text-center mb-10 animate-fade-in">
-          <span className="inline-block text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase mb-3">
-            Step 4 — Your Report
+      <main className="mx-auto max-w-3xl px-6 py-12">
+        <header className="mb-10 text-center animate-fade-in">
+          <span className="mb-3 inline-block text-[11px] font-semibold uppercase tracking-[0.2em] text-gold/70">
+            Step 4 — Service and delivery
           </span>
-          <h1 className="font-display text-3xl text-cream mb-3">Choose Your Package</h1>
-          <p className="text-cream/50">
-            Select how you&apos;d like your report prepared and reviewed, then complete checkout.
+          <h1 className="font-display text-3xl text-cream">Choose the level of support</h1>
+          <p className="mx-auto mt-3 max-w-2xl text-cream/50">
+            Select the work Resourceful can deliver as purchased. Filing or representation on your behalf requires a separate eligibility review and written engagement.
           </p>
-        </div>
-
-        {/* Trust bar */}
-        {state.serviceType === 'tax_appeal' && (
-          <div className="mb-8 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-5 py-4 animate-fade-in">
-            <div className="flex items-center gap-3">
-              <svg className="w-5 h-5 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              <div>
-                <p className="text-sm font-medium text-emerald-300">Money-Back Guarantee</p>
-                <p className="text-xs text-cream/40 mt-0.5">Photo-backed tax appeal reports: if your assessed value isn&apos;t reduced, we refund the full report cost. <a href="/disclaimer" target="_blank" className="underline hover:text-cream/50">Details</a></p>
-              </div>
-            </div>
-          </div>
-        )}
+        </header>
 
         <div className="space-y-6 animate-slide-up">
-          {/* Tier Selection */}
-          <div className={`grid grid-cols-1 ${isTaxAppeal ? 'sm:grid-cols-2' : 'sm:grid-cols-2'} gap-4`}>
-            {/* Auto tier */}
-            <button
-              type="button"
-              onClick={() => handleTierSelect('auto')}
-              className={`relative text-left rounded-xl p-5 transition-all ${
-                state.reviewTier === 'auto'
-                  ? 'card-premium ring-2 ring-gold/50 shadow-lg shadow-gold/5'
-                  : 'bg-navy-light/50 border border-gold/10 hover:border-gold/25'
-              }`}
-            >
-              {state.reviewTier === 'auto' && (
-                <div className="absolute top-3 right-3">
-                  <div className="w-5 h-5 rounded-full bg-gold flex items-center justify-center">
-                    <svg className="w-3 h-3 text-navy-deep" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                </div>
-              )}
-              <div className="mb-3">
-                <span className="inline-block rounded-full bg-gold/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold">
-                  Most Popular
-                </span>
-              </div>
-              <h3 className="font-display text-lg text-cream mb-1">Professional Report</h3>
-              <p className="text-sm text-cream/40 mb-3">
-                Same methodology licensed appraisers use: comparable sales with line-item adjustments, assessment ratio analysis, and condition documentation from your photos.
+          {isTaxAppeal && (
+            <aside className="rounded-xl border border-gold/15 bg-gold/[0.04] px-5 py-4">
+              <p className="text-sm font-medium text-cream">Outcome protection is limited and conditional</p>
+              <p className="mt-1 text-xs leading-relaxed text-cream/50">
+                Eligible photo-supported Case Analysis orders may qualify for refund protection when a timely, complete filing is denied in full. Review the{' '}
+                <a href="/terms" target="_blank" rel="noreferrer" className="text-gold underline hover:text-gold-light">Terms</a>{' '}
+                before purchase.
               </p>
-              <ul className="text-xs text-cream/50 space-y-1.5 mb-4">
-                <li className="flex items-start gap-2">
-                  <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  5-10 comparable sales with adjustment grid
-                </li>
-                <li className="flex items-start gap-2">
-                  <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  Photo-based condition analysis and depreciation
-                </li>
-                <li className="flex items-start gap-2">
-                  <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  {isTaxAppeal ? 'County-specific filing guide with deadlines and forms' : 'Delivered to your dashboard within 48 hours'}
-                </li>
-              </ul>
-              <p className="font-display text-2xl text-gold">{formatPrice(autoPrice)}</p>
-              {isTaxAppeal && <p className="text-[10px] text-cream/25 mt-1">You file the appeal yourself</p>}
-            </button>
+            </aside>
+          )}
 
-            {/* Expert tier */}
-            <button
-              type="button"
-              onClick={() => handleTierSelect('expert_reviewed')}
-              className={`relative text-left rounded-xl p-5 transition-all ${
-                state.reviewTier === 'expert_reviewed'
-                  ? 'card-premium ring-2 ring-gold/50 shadow-lg shadow-gold/5'
-                  : 'bg-navy-light/50 border border-gold/10 hover:border-gold/25'
-              }`}
-            >
-              {state.reviewTier === 'expert_reviewed' && (
-                <div className="absolute top-3 right-3">
-                  <div className="w-5 h-5 rounded-full bg-gold flex items-center justify-center">
-                    <svg className="w-3 h-3 text-navy-deep" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                </div>
-              )}
-              <div className="mb-3">
-                <span className="inline-block rounded-full bg-gold/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold">
-                  Premium
-                </span>
-              </div>
-              <h3 className="font-display text-lg text-cream mb-1">Expert-Reviewed</h3>
-              <p className="text-sm text-cream/40 mb-3">
-                Everything in the standard report, plus a hands-on review by a licensed professional appraiser who verifies accuracy and strengthens your case.
+          <section className={`grid grid-cols-1 gap-4 ${tierOptions.length === 3 ? 'lg:grid-cols-3' : 'sm:grid-cols-2'}`} aria-label="Available packages">
+            {tierOptions.map((tier) => (
+              <TierCard
+                key={tier}
+                tier={tier}
+                selected={selectedTier === tier}
+                price={state.serviceType && state.propertyType
+                  ? getPriceCents(state.serviceType, state.propertyType, tier, state.hasTaxBill)
+                  : 0}
+                onSelect={() => handleTierSelect(tier)}
+              />
+            ))}
+          </section>
+
+          {isTaxAppeal && (
+            <aside className="rounded-xl border border-cream/[0.08] bg-navy-light/35 p-5">
+              <p className="text-sm font-medium text-cream">Need someone to file or appear for you?</p>
+              <p className="mt-1 text-xs leading-relaxed text-cream/50">
+                Representation is not sold through instant checkout. Resourceful must first verify the jurisdiction, eligible representative type, professional availability, authorization requirements, and scope. Start with Guided Filing or contact{' '}
+                <a href="mailto:support@resourceful.app" className="text-gold underline hover:text-gold-light">support@resourceful.app</a>{' '}
+                for an eligibility review.
               </p>
-              <ul className="text-xs text-cream/50 space-y-1.5 mb-4">
-                <li className="flex items-start gap-2">
-                  <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  Everything in the Professional Report
-                </li>
-                <li className="flex items-start gap-2">
-                  <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  Personally reviewed by a licensed appraiser
-                </li>
-                <li className="flex items-start gap-2">
-                  <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                  Delivered within 1-2 business days
-                </li>
-              </ul>
-              <p className="font-display text-2xl text-gold">{formatPrice(expertPrice)}</p>
-              {isTaxAppeal && <p className="text-[10px] text-cream/25 mt-1">You file the appeal yourself</p>}
-            </button>
+            </aside>
+          )}
 
-            {/* Guided Filing tier — tax appeal only */}
-            {isTaxAppeal && (
-              <button
-                type="button"
-                onClick={() => handleTierSelect('guided_filing')}
-                className={`relative text-left rounded-xl p-5 transition-all ${
-                  state.reviewTier === 'guided_filing'
-                    ? 'card-premium ring-2 ring-gold/50 shadow-lg shadow-gold/5'
-                    : 'bg-navy-light/50 border border-gold/10 hover:border-gold/25'
-                }`}
-              >
-                {state.reviewTier === 'guided_filing' && (
-                  <div className="absolute top-3 right-3">
-                    <div className="w-5 h-5 rounded-full bg-gold flex items-center justify-center">
-                      <svg className="w-3 h-3 text-navy-deep" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                  </div>
-                )}
-                <div className="mb-3">
-                  <span className="inline-block rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-                    Guided
-                  </span>
-                </div>
-                <h3 className="font-display text-lg text-cream mb-1">Guided Pro Se Filing</h3>
-                <p className="text-sm text-cream/40 mb-3">
-                  Everything in the Expert-Reviewed report, plus a live guided session where we walk you through filling out the appeal form and preparing for your hearing.
-                </p>
-                <ul className="text-xs text-cream/50 space-y-1.5 mb-4">
-                  <li className="flex items-start gap-2">
-                    <svg className="w-3.5 h-3.5 mt-0.5 text-emerald-400/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                    Everything in Expert-Reviewed
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <svg className="w-3.5 h-3.5 mt-0.5 text-emerald-400/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                    Live guided filing session with our team
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <svg className="w-3.5 h-3.5 mt-0.5 text-emerald-400/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                    Hearing prep coaching and talking points
-                  </li>
-                </ul>
-                <p className="font-display text-2xl text-gold">{formatPrice(guidedPrice)}</p>
-                <p className="text-[10px] text-cream/25 mt-1">You file, but we guide you every step</p>
-              </button>
-            )}
-
-            {/* Full Representation (POA) tier — tax appeal only */}
-            {isTaxAppeal && (
-              <button
-                type="button"
-                onClick={() => handleTierSelect('full_representation')}
-                className={`relative text-left rounded-xl p-5 transition-all ${
-                  state.reviewTier === 'full_representation'
-                    ? 'card-premium ring-2 ring-gold/50 shadow-lg shadow-gold/5'
-                    : 'bg-navy-light/50 border border-gold/10 hover:border-gold/25'
-                }`}
-              >
-                {state.reviewTier === 'full_representation' && (
-                  <div className="absolute top-3 right-3">
-                    <div className="w-5 h-5 rounded-full bg-gold flex items-center justify-center">
-                      <svg className="w-3 h-3 text-navy-deep" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                  </div>
-                )}
-                <div className="mb-3">
-                  <span className="inline-block rounded-full bg-gold/30 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-gold">
-                    Full Service
-                  </span>
-                </div>
-                <h3 className="font-display text-lg text-cream mb-1">We File For You</h3>
-                <p className="text-sm text-cream/40 mb-3">
-                  We handle everything: prepare the report, file the appeal on your behalf as your authorized representative, and attend the hearing for you.
-                </p>
-                <ul className="text-xs text-cream/50 space-y-1.5 mb-4">
-                  <li className="flex items-start gap-2">
-                    <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                    Everything in Expert-Reviewed
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                    We file the appeal on your behalf (POA)
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <svg className="w-3.5 h-3.5 mt-0.5 text-gold/60 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                    We attend the hearing as your representative
-                  </li>
-                </ul>
-                <p className="font-display text-2xl text-gold">{formatPrice(fullRepPrice)}</p>
-                <p className="text-[10px] text-cream/25 mt-1">Available where authorized representatives are permitted</p>
-              </button>
-            )}
-          </div>
-
-          {/* Email collection */}
-          <div className="card-premium rounded-xl overflow-hidden">
-            <div className="px-6 py-4 bg-gold/[0.04] border-b border-gold/10">
-              <p className="text-xs uppercase tracking-widest text-gold/70">Delivery Details</p>
+          <section className="card-premium overflow-hidden rounded-xl" aria-labelledby="delivery-details-heading">
+            <div className="border-b border-gold/10 bg-gold/[0.04] px-6 py-4">
+              <p id="delivery-details-heading" className="text-xs uppercase tracking-widest text-gold/70">Delivery details</p>
             </div>
-            <div className="p-6 space-y-4">
-              {/* Referral code */}
+            <div className="space-y-4 p-6">
               <div>
-                <label className="block text-sm text-cream/70 font-medium mb-1.5">
-                  Referral Code <span className="text-cream/30 font-normal">(optional)</span>
+                <label htmlFor="referral-code" className="mb-1.5 block text-sm font-medium text-cream/70">
+                  Referral code <span className="font-normal text-cream/30">(optional)</span>
                 </label>
                 <div className="flex gap-2">
                   <input
+                    id="referral-code"
                     type="text"
                     autoComplete="off"
                     value={referralCode}
-                    onChange={(e) => { setReferralCode(e.target.value.toUpperCase()); setReferralStatus('idle'); setReferralError(''); }}
-                    placeholder="e.g. MIKE2026"
+                    onChange={(event) => {
+                      setReferralCode(event.target.value.toUpperCase());
+                      setReferralStatus('idle');
+                      setReferralError('');
+                    }}
+                    placeholder="Enter code"
                     maxLength={50}
-                    className="flex-1 rounded-lg bg-navy-light border border-gold/15 px-4 py-3 text-cream placeholder-cream/25 focus:outline-none focus:border-gold/40 focus:ring-1 focus:ring-gold/20 uppercase"
+                    className="min-w-0 flex-1 rounded-lg border border-gold/15 bg-navy-light px-4 py-3 uppercase text-cream placeholder:text-cream/25 focus:border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold/20"
                   />
                   <button
                     type="button"
                     onClick={handleValidateReferral}
                     disabled={!referralCode.trim() || referralStatus === 'validating'}
-                    className="rounded-lg bg-gold/10 border border-gold/20 px-4 py-3 text-sm font-medium text-gold hover:bg-gold/15 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="rounded-lg border border-gold/20 bg-gold/10 px-4 py-3 text-sm font-medium text-gold transition-colors hover:bg-gold/15 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {referralStatus === 'validating' ? 'Checking…' : 'Apply'}
                   </button>
                 </div>
                 {referralStatus === 'valid' && (
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    <span className="text-xs text-emerald-400 font-medium">{referralDiscount}% discount applied</span>
-                  </div>
+                  <p className="mt-1.5 text-xs font-medium text-emerald-400">{referralDiscount}% discount will be applied by the server.</p>
                 )}
                 {referralStatus === 'invalid' && referralError && (
-                  <p className="text-xs text-red-400 mt-1.5">{referralError}</p>
+                  <p className="mt-1.5 text-xs text-red-400">{referralError}</p>
                 )}
               </div>
+
               <div className="h-px bg-gold/10" />
+
               <div>
-                <label htmlFor="payment-email" className="block text-sm text-cream/70 font-medium mb-1.5">Email Address *</label>
+                <label htmlFor="payment-email" className="mb-1.5 block text-sm font-medium text-cream/70">Email address *</label>
                 <input
                   id="payment-email"
                   type="email"
                   autoComplete="email"
                   value={email}
-                  onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
-                  placeholder="your@email.com"
-                  className="w-full rounded-lg bg-navy-light border border-gold/15 px-4 py-3 text-cream placeholder-cream/25 focus:outline-none focus:border-gold/40 focus:ring-1 focus:ring-gold/20"
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setEmailError('');
+                  }}
+                  placeholder="you@example.com"
+                  className="w-full rounded-lg border border-gold/15 bg-navy-light px-4 py-3 text-cream placeholder:text-cream/25 focus:border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold/20"
                 />
-                {emailError && <p className="text-xs text-red-400 mt-1.5">{emailError}</p>}
-                <p className="text-xs text-cream/30 mt-1.5">Your completed report will be delivered here — and always accessible from your dashboard.</p>
+                {emailError && <p className="mt-1.5 text-xs text-red-400">{emailError}</p>}
+                <p className="mt-1.5 text-xs text-cream/35">Order updates and the completed work product are sent here.</p>
               </div>
+
               <div>
-                <label htmlFor="payment-name" className="block text-sm text-cream/70 font-medium mb-1.5">
-                  Your Name <span className="text-cream/30 font-normal">(optional)</span>
+                <label htmlFor="payment-name" className="mb-1.5 block text-sm font-medium text-cream/70">
+                  Name <span className="font-normal text-cream/30">(optional)</span>
                 </label>
                 <input
                   id="payment-name"
@@ -710,35 +613,26 @@ export default function PaymentPage() {
                   autoComplete="name"
                   maxLength={100}
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(event) => setName(event.target.value)}
                   placeholder="Jane Smith"
-                  className="w-full rounded-lg bg-navy-light border border-gold/15 px-4 py-3 text-cream placeholder-cream/25 focus:outline-none focus:border-gold/40 focus:ring-1 focus:ring-gold/20"
+                  className="w-full rounded-lg border border-gold/15 bg-navy-light px-4 py-3 text-cream placeholder:text-cream/25 focus:border-gold/40 focus:outline-none focus:ring-1 focus:ring-gold/20"
                 />
               </div>
             </div>
-          </div>
+          </section>
 
           {createError && (
-            <div role="alert" className="rounded-lg bg-red-900/20 border border-red-500/20 p-4 text-sm text-red-400">
+            <div role="alert" className="rounded-lg border border-red-500/20 bg-red-900/20 p-4 text-sm text-red-400">
               {createError}
             </div>
           )}
 
-          <div className="flex gap-4">
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:gap-4">
             <Button variant="secondary" size="lg" onClick={() => router.push('/start/situation')}>
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16l-4-4m0 0l4-4m-4 4h18" />
-              </svg>
               Back
             </Button>
             <Button size="lg" fullWidth loading={creating} onClick={handleCreateReport}>
-              Continue to Payment — {formatPrice((() => {
-                const base = state.serviceType && state.propertyType ? getPriceCents(state.serviceType, state.propertyType, state.reviewTier, state.hasTaxBill) : 0;
-                return referralStatus === 'valid' ? Math.round(base * (1 - referralDiscount / 100)) : base;
-              })())}
-              <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-              </svg>
+              Continue to secure payment — {formatPrice(displayedPrice)}
             </Button>
           </div>
         </div>
@@ -746,14 +640,13 @@ export default function PaymentPage() {
     );
   }
 
-  // Phase 2: Stripe payment
   if (!stripePromise) {
     return (
-      <main className="max-w-2xl mx-auto px-6 py-12">
+      <main className="mx-auto max-w-2xl px-6 py-12">
         <div className="text-center animate-fade-in">
-          <h1 className="font-display text-3xl text-cream mb-3">Payment Unavailable</h1>
-          <p className="text-cream/50">
-            Payment processing is not configured. Please contact support if this issue persists.
+          <h1 className="font-display text-3xl text-cream">Payment is temporarily unavailable</h1>
+          <p className="mt-3 text-cream/50">
+            No charge was attempted. Contact support if the issue continues.
           </p>
         </div>
       </main>
@@ -761,16 +654,16 @@ export default function PaymentPage() {
   }
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-12">
-      <div className="text-center mb-10 animate-fade-in">
-        <span className="inline-block text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase mb-3">
-          Step 4 — Payment
+    <main className="mx-auto max-w-2xl px-6 py-12">
+      <header className="mb-10 text-center animate-fade-in">
+        <span className="mb-3 inline-block text-[11px] font-semibold uppercase tracking-[0.2em] text-gold/70">
+          Step 4 — Secure payment
         </span>
-        <h1 className="font-display text-3xl text-cream mb-3">Complete Your Order</h1>
-        <p className="text-cream/50">
-          Review your order summary and submit payment. Your report begins immediately.
+        <h1 className="font-display text-3xl text-cream">Review and complete the order</h1>
+        <p className="mt-3 text-cream/50">
+          The server has confirmed the package and price. The analysis begins after successful payment.
         </p>
-      </div>
+      </header>
 
       <div className="animate-slide-up">
         <Elements
