@@ -13,12 +13,60 @@ import Link from 'next/link';
 import Wordmark from '@/components/ui/Wordmark';
 import { buildMetadata } from '@/lib/seo/metadata';
 
-
-
 export const metadata = buildMetadata({
-  title: 'REsourceful | The AI Property Tax Operator',
-  description: 'An AI-led property tax reduction company. Claude runs valuation research, case assembly, filing support, and workflow intelligence so property owners move faster and save more.',
+  title: 'Resourceful | Property Tax Appeal Evidence and Filing Support',
+  description:
+    'Review your property assessment, organize comparable sales and condition evidence, and understand the next filing step with an AI-assisted, human-controlled workflow.',
 });
+
+const trustSignals = [
+  {
+    title: 'Evidence first',
+    description: 'Property facts, comparable sales, and condition evidence stay source-labeled and reviewable.',
+  },
+  {
+    title: 'Scope made clear',
+    description: 'Analysis, guided filing, representation, and regulated appraisal work are never presented as the same service.',
+  },
+  {
+    title: 'Unknowns fail closed',
+    description: 'Unverified deadlines, authority, or filing rules are flagged instead of guessed.',
+  },
+];
+
+const operatingStandards = [
+  {
+    title: 'Traceable sources',
+    description: 'Material evidence identifies where it came from and what still needs verification.',
+  },
+  {
+    title: 'Reviewable calculations',
+    description: 'Valuation logic and adjustments remain visible rather than hidden behind a score.',
+  },
+  {
+    title: 'Jurisdiction controls',
+    description: 'Filing guidance is tied to the applicable authority, deadline rule, and required documents.',
+  },
+  {
+    title: 'Recorded outcomes',
+    description: 'The workflow is designed to capture filing proof, decisions, granted values, and reasons.',
+  },
+];
+
+const commitments = [
+  {
+    title: 'No fabricated proof',
+    description: 'Customer stories, savings claims, and professional credentials are published only when verified and authorized.',
+  },
+  {
+    title: 'No hidden service boundary',
+    description: 'Customers can see what is included, what they remain responsible for, and what requires a separate engagement.',
+  },
+  {
+    title: 'No guaranteed outcome language',
+    description: 'Assessment authorities decide each matter independently; Resourceful strengthens the evidence and the process, not the promise.',
+  },
+];
 
 export default function HomePage() {
   return (
@@ -26,8 +74,11 @@ export default function HomePage() {
       <ScrollAnimations />
       <ServiceJsonLd />
       <FAQJsonLd />
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-navy-deep/90 backdrop-blur-xl border-b border-cream/[0.04]">
+
+      <nav
+        className="fixed top-0 left-0 right-0 z-50 bg-navy-deep/90 backdrop-blur-xl border-b border-cream/[0.04]"
+        aria-label="Primary navigation"
+      >
         <div className="mx-auto max-w-6xl px-4 sm:px-6 flex items-center justify-between h-16 md:h-20">
           <Link href="/" className="font-display text-lg sm:text-xl text-cream hover:text-gold-light transition-colors shrink-0">
             <Wordmark />
@@ -37,209 +88,145 @@ export default function HomePage() {
               href="/login"
               className="hidden sm:block text-sm text-cream/70 hover:text-cream transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gold/50 focus:ring-offset-2 focus:ring-offset-navy-deep rounded-md px-3 py-1.5"
             >
-              Sign In
+              Sign in
             </Link>
             <Link
               href="/start"
               className="text-xs sm:text-sm font-medium text-navy-deep bg-gradient-to-r from-gold-light via-gold to-gold-dark px-4 sm:px-5 py-2 sm:py-2.5 rounded-lg hover:shadow-gold hover:brightness-110 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-navy-deep whitespace-nowrap"
             >
-              Start Your Case
+              Review my property
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* Hero */}
       <Hero />
 
-      {/* Social proof bar */}
-      <section className="relative border-y border-cream/[0.04]" data-animate>
+      <section className="relative border-y border-cream/[0.04]" aria-label="Service principles" data-animate>
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gold/[0.02] to-transparent pointer-events-none" />
-        <div className="mx-auto max-w-5xl px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-8 md:gap-6 relative">
-          <div className="flex items-center gap-3.5" data-animate data-delay="100">
-            <div className="w-12 h-12 rounded-xl bg-red-500/[0.1] border border-red-400/10 flex items-center justify-center flex-shrink-0">
-              <svg className="w-5.5 h-5.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
+        <div className="relative mx-auto grid max-w-6xl gap-6 px-6 py-10 md:grid-cols-3 md:gap-8">
+          {trustSignals.map((signal, index) => (
+            <div key={signal.title} className="text-center md:text-left" data-animate data-delay={String((index + 1) * 100)}>
+              <p className="font-display text-lg text-cream">{signal.title}</p>
+              <p className="mt-1 text-sm leading-relaxed text-cream/50">{signal.description}</p>
             </div>
-            <div>
-              <p className="stat-number text-2xl">24/7 Operator</p>
-              <p className="text-[11px] text-cream/40 leading-tight">Claude keeps the pipeline moving without adding headcount</p>
-            </div>
-          </div>
-          <div className="hidden md:block h-10 w-px bg-gradient-to-b from-transparent via-gold/20 to-transparent" />
-          <div className="flex items-center gap-3.5" data-animate data-delay="250">
-            <div className="w-12 h-12 rounded-xl bg-gold/[0.1] border border-gold/15 flex items-center justify-center flex-shrink-0">
-              <svg className="w-5.5 h-5.5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="stat-number text-2xl">3 Revenue Lanes</p>
-              <p className="text-[11px] text-cream/40 leading-tight">appeals, acquisition intelligence, and seller strategy on one engine</p>
-            </div>
-          </div>
-          <div className="hidden md:block h-10 w-px bg-gradient-to-b from-transparent via-gold/20 to-transparent" />
-          <div className="flex items-center gap-3.5" data-animate data-delay="400">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/[0.1] border border-emerald-400/10 flex items-center justify-center flex-shrink-0">
-              <svg className="w-5.5 h-5.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="stat-number text-2xl">Compounding Edge</p>
-              <p className="text-[11px] text-cream/40 leading-tight">every completed case makes the operating system sharper</p>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* Services */}
       <ServiceCards />
 
-      {/* Methodology trust bar */}
-      <section className="relative border-y border-cream/[0.04]" data-animate>
-        <div className="mx-auto max-w-6xl px-6 py-16">
+      <section className="relative border-y border-cream/[0.04]" aria-labelledby="standards-heading" data-animate>
+        <div className="mx-auto max-w-6xl px-6 py-20">
           <div className="text-center mb-12">
             <span className="text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase">
-              The Resourceful System
+              The Resourceful Standard
             </span>
-            <h2 className="font-display text-2xl md:text-3xl text-cream mt-3 tracking-tight">
-              An AI-Native Workflow With Human Judgment Where It Matters
+            <h2 id="standards-heading" className="font-display text-2xl md:text-3xl text-cream mt-3 tracking-tight">
+              A property decision should be explainable
             </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-cream/45">
+              Resourceful is built to show what supports the conclusion, what remains uncertain, and which next action is actually authorized.
+            </p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              { icon: 'M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3', label: 'AI Research Layer', desc: 'Comparable selection and valuation logic' },
-              { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', label: 'Multi-Lane Monetization', desc: 'One engine serving multiple offers' },
-              { icon: 'M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z', label: 'Workflow Memory', desc: 'County rules and operational playbooks' },
-              { icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', label: 'Human QA Layer', desc: 'Expert review for critical judgment calls' },
-            ].map((item, i) => (
-              <div key={i} className="text-center group" data-animate data-delay={String(i * 100)}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {operatingStandards.map((item, index) => (
+              <div key={item.title} className="text-center group" data-animate data-delay={String(index * 100)}>
                 <div className="w-12 h-12 rounded-xl bg-gold/[0.08] border border-gold/[0.12] flex items-center justify-center mx-auto mb-3 transition-all duration-300 group-hover:bg-gold/[0.12] group-hover:border-gold/20">
                   <svg className="w-5 h-5 text-gold/70" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={item.icon} />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="m9 12 2 2 4-4m5.6-4A12 12 0 0 1 12 3a12 12 0 0 1-8.6 3A12 12 0 0 0 3 9c0 5.6 3.8 10.3 9 11.6 5.2-1.3 9-6 9-11.6 0-1-.1-2-.4-3Z" />
                   </svg>
                 </div>
-                <p className="text-sm font-semibold text-cream">{item.label}</p>
-                <p className="text-xs text-cream/55 mt-1">{item.desc}</p>
+                <p className="text-sm font-semibold text-cream">{item.title}</p>
+                <p className="text-xs leading-relaxed text-cream/55 mt-1">{item.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How it works */}
       <HowItWorks />
 
-      {/* Divider */}
       <div className="mx-auto max-w-6xl px-6">
         <div className="divider-glow" />
       </div>
 
-      {/* What you'll receive */}
       <SampleReport />
 
-      {/* Divider */}
       <div className="mx-auto max-w-6xl px-6">
         <div className="divider-glow" />
       </div>
 
-      {/* Property Intelligence */}
       <PropertyIntelligence />
 
-      {/* Divider */}
       <div className="mx-auto max-w-6xl px-6">
         <div className="divider-glow" />
       </div>
 
-      {/* Testimonials */}
       <Testimonials />
 
-      {/* Divider */}
       <div className="mx-auto max-w-6xl px-6">
         <div className="divider-glow" />
       </div>
 
-      {/* Pricing */}
       <PricingTable />
 
-      {/* Divider */}
       <div className="mx-auto max-w-6xl px-6">
         <div className="divider-glow" />
       </div>
 
-      {/* FAQ */}
       <FAQ />
 
-      {/* Trust & guarantee section */}
-      <section className="mx-auto max-w-6xl px-6 py-20" data-animate>
+      <section className="mx-auto max-w-6xl px-6 py-20" aria-labelledby="commitments-heading" data-animate>
+        <div className="mb-12 text-center">
+          <span className="text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase">
+            Customer Commitments
+          </span>
+          <h2 id="commitments-heading" className="font-display text-2xl md:text-3xl text-cream mt-3 tracking-tight">
+            Trust is part of the product
+          </h2>
+        </div>
         <div className="grid md:grid-cols-3 gap-6">
-          <div className="card-premium rounded-xl p-8 text-center group" data-animate data-delay="100">
-            <div className="w-14 h-14 rounded-xl bg-emerald-500/[0.1] border border-emerald-400/10 flex items-center justify-center mx-auto mb-5 transition-all duration-300 group-hover:bg-emerald-500/[0.15] group-hover:border-emerald-400/20 group-hover:shadow-[0_0_20px_rgba(52,211,153,0.1)]">
-              <svg className="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <h3 className="font-display text-lg text-cream mb-2">Aligned With Outcomes</h3>
-            <p className="text-sm text-cream/40 leading-relaxed">
-              The offer is designed around real reductions, not vanity deliverables. When a photo-supported appeal is denied in full, we stand behind the work with a refund.
-            </p>
-          </div>
-          <div className="card-premium rounded-xl p-8 text-center group" data-animate data-delay="200">
-            <div className="w-14 h-14 rounded-xl bg-gold/[0.1] border border-gold/15 flex items-center justify-center mx-auto mb-5 transition-all duration-300 group-hover:bg-gold/[0.15] group-hover:border-gold/25 group-hover:shadow-[0_0_20px_rgba(212,168,71,0.1)]">
-              <svg className="w-6 h-6 text-gold/80" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <h3 className="font-display text-lg text-cream mb-2">Built To Operate Safely</h3>
-            <p className="text-sm text-cream/40 leading-relaxed">
-              An AI operator can only run the business if trust is durable. Photos, tax bills, and personal information stay protected with strong security controls and customer-controlled deletion.
-            </p>
-          </div>
-          <div className="card-premium rounded-xl p-8 text-center group" data-animate data-delay="300">
-            <div className="w-14 h-14 rounded-xl bg-blue-500/[0.1] border border-blue-400/10 flex items-center justify-center mx-auto mb-5 transition-all duration-300 group-hover:bg-blue-500/[0.15] group-hover:border-blue-400/20 group-hover:shadow-[0_0_20px_rgba(96,165,250,0.1)]">
-              <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064" />
-              </svg>
-            </div>
-            <h3 className="font-display text-lg text-cream mb-2">Designed To Compound</h3>
-            <p className="text-sm text-cream/40 leading-relaxed">
-              Every county-specific workflow, winning pattern, and completed case feeds a better system. That is why the business becomes more valuable the longer it runs.
-            </p>
-          </div>
+          {commitments.map((item, index) => (
+            <article key={item.title} className="card-premium rounded-xl p-8 text-center group" data-animate data-delay={String((index + 1) * 100)}>
+              <div className="w-12 h-12 rounded-xl bg-gold/[0.08] border border-gold/15 flex items-center justify-center mx-auto mb-5">
+                <svg className="w-5 h-5 text-gold/80" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M12 15v2m-6 4h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2Zm10-10V7a4 4 0 0 0-8 0v4h8Z" />
+                </svg>
+              </div>
+              <h3 className="font-display text-lg text-cream mb-2">{item.title}</h3>
+              <p className="text-sm text-cream/50 leading-relaxed">{item.description}</p>
+            </article>
+          ))}
         </div>
       </section>
 
-      {/* Final CTA */}
       <section className="mx-auto max-w-6xl px-6 py-24" data-animate>
-        <div className="relative card-elevated rounded-2xl p-12 md:p-16 text-center overflow-hidden">
-          {/* Background glow — multi-layer */}
+        <div className="relative card-elevated rounded-2xl p-10 md:p-16 text-center overflow-hidden">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[300px] bg-gold/[0.04] rounded-full blur-[120px] pointer-events-none" />
           <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[400px] h-[200px] bg-gold/[0.02] rounded-full blur-[80px] pointer-events-none" />
 
           <h2 className="relative font-display text-3xl md:text-5xl text-cream leading-tight tracking-tight text-glow-gold">
-            Ready to Let Claude Run the Case?
+            Start with the assessment, not a sales pitch
           </h2>
-          <p className="relative mt-5 text-cream/45 max-w-lg mx-auto text-lg leading-relaxed">
-            In a few minutes, you can hand the workflow to an AI-led operating system that researches the property, builds the case, and prepares the next move.
-          </p>
-          <p className="relative mt-3 text-sm text-gold/60 font-medium">
-            Upload a tax bill and save 15% while giving Claude better source data to work from.
+          <p className="relative mt-5 text-cream/50 max-w-2xl mx-auto text-base md:text-lg leading-relaxed">
+            Enter the property address, review the available public record, and see what information is still needed before choosing a paid service.
           </p>
           <Link
             href="/start"
-            className="relative mt-10 inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-10 py-4.5 text-base font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.03] hover:brightness-110 btn-glow animate-glow"
+            className="relative mt-10 inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-gold-light via-gold to-gold-dark px-10 py-4 text-base font-semibold text-navy-deep shadow-gold hover:shadow-gold-lg transition-all duration-300 hover:scale-[1.03] hover:brightness-110 btn-glow"
           >
-            Start Your Case
+            Review my property
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="m17 8 4 4m0 0-4 4m4-4H3" />
             </svg>
           </Link>
+          <p className="relative mx-auto mt-5 max-w-2xl text-xs leading-relaxed text-cream/35">
+            Screening does not guarantee appeal eligibility, filing acceptance, a reduced assessment, or tax savings. Rules and deadlines vary by jurisdiction.
+          </p>
         </div>
       </section>
 
-      {/* Footer */}
       <Footer />
     </div>
   );

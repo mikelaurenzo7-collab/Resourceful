@@ -1,96 +1,68 @@
-/**
- * Testimonials — Social proof section using outcome-style quotes.
- * These are structured as realistic customer stories based on the
- * kind of outcomes the platform produces. As real outcomes come in,
- * these can be swapped for verified customer testimonials.
- */
-
-const testimonials = [
+const proofPoints = [
   {
-    quote: "I knew my assessment was too high but didn't know how to prove it. The report laid out comparable sales with adjustments the Board couldn't argue with. Saved $1,400 a year.",
-    name: 'Sarah M.',
-    location: 'Cook County, IL',
-    savings: '$1,400/yr',
-    outcome: 'Won — 18% reduction',
+    title: 'Source-labeled evidence',
+    description:
+      'Property facts, comparable sales, assessment records, and jurisdiction rules are presented with their source and review status so customers can verify what supports the case.',
+    detail: 'No anonymous estimates presented as fact',
   },
   {
-    quote: "Filed the appeal myself using their filing guide. The whole process took 20 minutes. Three weeks later, the county reduced my assessment by $32,000.",
-    name: 'David R.',
-    location: 'Harris County, TX',
-    savings: '$890/yr',
-    outcome: 'Won — $32K reduction',
+    title: 'Jurisdiction readiness gate',
+    description:
+      'A tax-appeal package is only represented as filing-ready when the applicable authority, deadline rule, required documents, and filing steps have been verified for the jurisdiction.',
+    detail: 'Unknown rules fail closed',
   },
   {
-    quote: "As a real estate agent, I use the Pre-Purchase reports to show buyers what their real tax liability will be. It's become part of my standard due diligence package.",
-    name: 'Michelle K.',
-    location: 'Maricopa County, AZ',
-    savings: null,
-    outcome: 'Agent — repeat customer',
+    title: 'Human-controlled conclusions',
+    description:
+      'AI assists with research, organization, and drafting. Material valuation conclusions, filing decisions, and regulated professional work remain subject to the appropriate human review.',
+    detail: 'Automation supports judgment; it does not replace it',
   },
   {
-    quote: "My photos showed foundation cracks the assessor never documented. The condition analysis alone justified a $45,000 reduction. Wish I'd done this years ago.",
-    name: 'James T.',
-    location: 'Wayne County, MI',
-    savings: '$2,100/yr',
-    outcome: 'Won — condition adjustment',
+    title: 'Outcome accountability',
+    description:
+      'Each completed case is designed to capture filing proof, hearing status, the final decision, granted value, savings, and the reason for the result instead of stopping at report delivery.',
+    detail: 'The workflow ends with a recorded outcome',
   },
 ];
 
 export default function Testimonials() {
   return (
-    <section className="mx-auto max-w-6xl px-6 py-24">
+    <section className="mx-auto max-w-6xl px-6 py-24" aria-labelledby="proof-heading">
       <div className="text-center mb-14">
         <span className="text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase">
-          Real Results
+          Proof Before Promotion
         </span>
-        <h2 className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
-          Homeowners Fighting Back
+        <h2 id="proof-heading" className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
+          Trust the evidence trail, not a marketing claim
         </h2>
-        <p className="mt-4 text-cream/40 max-w-lg mx-auto leading-relaxed">
-          The same evidence, the same methodology — used by property owners across the country.
+        <p className="mt-4 text-cream/45 max-w-2xl mx-auto leading-relaxed">
+          Resourceful does not publish invented testimonials or imply guaranteed savings. Confidence should come from traceable evidence, clear service boundaries, and a reviewable process.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        {testimonials.map((t, i) => (
-          <div
-            key={i}
+        {proofPoints.map((item, index) => (
+          <article
+            key={item.title}
             data-animate
-            data-delay={String((i + 1) * 100)}
-            className="card-premium rounded-xl p-7 flex flex-col"
+            data-delay={String((index + 1) * 100)}
+            className="card-premium rounded-xl p-7"
           >
-            {/* Stars */}
-            <div className="flex gap-0.5 mb-4">
-              {[...Array(5)].map((_, j) => (
-                <svg key={j} className="w-4 h-4 text-gold drop-shadow-[0_0_3px_rgba(212,168,71,0.4)]" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gold/15 bg-gold/[0.07] text-gold/80">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="m9 12 2 2 4-4m5.6-4A12 12 0 0 1 12 3a12 12 0 0 1-8.6 3A12 12 0 0 0 3 9c0 5.6 3.8 10.3 9 11.6 5.2-1.3 9-6 9-11.6 0-1-.1-2-.4-3Z" />
                 </svg>
-              ))}
-            </div>
-
-            {/* Quote */}
-            <blockquote className="text-[13px] text-cream/75 leading-relaxed flex-grow">
-              &ldquo;{t.quote}&rdquo;
-            </blockquote>
-
-            {/* Attribution */}
-            <div className="mt-5 pt-4 flex items-center justify-between" style={{ borderTop: '1px solid rgba(212, 168, 71, 0.08)' }}>
+              </div>
               <div>
-                <p className="text-sm font-medium text-cream">{t.name}</p>
-                <p className="text-[11px] text-cream/50">{t.location}</p>
-              </div>
-              <div className="text-right">
-                {t.savings ? (
-                  <p className="text-sm font-display text-emerald-400 drop-shadow-[0_0_6px_rgba(52,211,153,0.3)]">{t.savings}</p>
-                ) : (
-                  <p className="text-[11px] text-cream/50">{t.outcome}</p>
-                )}
-                {t.savings && (
-                  <p className="text-[10px] text-cream/50">{t.outcome}</p>
-                )}
+                <h3 className="font-display text-lg text-cream">{item.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-cream/60">{item.description}</p>
+                <p className="mt-4 border-t border-gold/10 pt-3 text-xs font-medium text-gold/70">
+                  {item.detail}
+                </p>
               </div>
             </div>
-          </div>
+          </article>
         ))}
       </div>
     </section>
