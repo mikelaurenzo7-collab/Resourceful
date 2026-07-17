@@ -14,6 +14,7 @@ import { runPipeline } from '@/lib/pipeline/orchestrator';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { validateReferralCode, applyReferralCode } from '@/lib/services/referral-service';
+import { validateCheckoutService } from '@/lib/services/service-eligibility';
 import type { Report } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
 
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
     const pin = d.pin || null;
     const property_type = d.property_type;
     const service_type = d.service_type;
-    const review_tier = d.review_tier;
+    const review_tier = d.review_tier ?? 'auto';
     const photos_skipped = d.photos_skipped;
     const property_issues = d.property_issues;
     const additional_notes = d.additional_notes || null;
@@ -64,6 +65,32 @@ export async function POST(request: NextRequest) {
     const tax_bill_tax_year = d.tax_bill_tax_year || null;
     const tax_bill_pin = d.tax_bill_pin || null;
     const referral_code = d.referral_code || null;
+
+    // ── Service eligibility gate ──────────────────────────────────────────
+    // Reject unsupported combinations before creating a report or collecting
+    // payment. Never silently downgrade a customer's chosen service.
+    const serviceEligibility = validateCheckoutService(service_type, review_tier);
+    if (!serviceEligibility.allowed) {
+      apiLogger.warn(
+        {
+          code: serviceEligibility.code,
+          serviceType: service_type,
+          reviewTier: review_tier,
+          state,
+          county,
+        },
+        '[api/reports] Checkout service requires a different engagement path'
+      );
+
+      return NextResponse.json(
+        {
+          error: serviceEligibility.message,
+          code: serviceEligibility.code,
+          recommendedTier: serviceEligibility.recommendedTier,
+        },
+        { status: 409 }
+      );
+    }
 
     // ── Per-email concurrency check (prevent abuse) ─────────────────────
     // Max 3 reports in 'intake' or 'processing' state per email
@@ -126,7 +153,7 @@ export async function POST(request: NextRequest) {
       stripe_payment_intent_id: null,
       payment_status: founderAccess ? 'founder_access' : null,
       amount_paid_cents: priceCents,
-      review_tier: review_tier ?? 'auto',
+      review_tier,
       photos_skipped: photos_skipped ?? false,
       property_issues: property_issues ?? [],
       additional_notes: additional_notes ?? null,
@@ -189,6 +216,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         service_type,
         property_type,
+        review_tier,
       },
     });
 
