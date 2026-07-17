@@ -110,18 +110,26 @@ export async function GET(request: NextRequest) {
     ? { status: 'ok', message: `Configured. From: ${process.env.RESEND_FROM_ADDRESS ?? 'not set'}` }
     : { status: 'not_configured', message: 'RESEND_API_KEY missing (email delivery disabled)' };
 
-  // ── Property-data vendors ────────────────────────────────────────────
+  // ── Property and location data ───────────────────────────────────────
+  results.google_maps = process.env.GOOGLE_MAPS_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    ? { status: 'ok', message: 'Primary geocoding, address search, static maps, and Street View configured' }
+    : { status: 'not_configured', message: 'Google Maps key missing — Census and transitional map fallbacks will be used' };
+
   results.attom = process.env.ATTOM_API_KEY
-    ? { status: 'ok', message: 'Configured' }
+    ? { status: 'ok', message: 'Structured property enrichment configured' }
     : { status: 'not_configured', message: 'ATTOM_API_KEY missing — only lower-confidence public-record fallbacks are available' };
 
-  results.azure_maps = process.env.AZURE_MAPS_SUBSCRIPTION_KEY
-    ? { status: 'ok', message: 'Configured' }
-    : { status: 'not_configured', message: 'AZURE_MAPS_SUBSCRIPTION_KEY missing (geocoding will use Census fallback)' };
+  results.serper = process.env.SERPER_API_KEY
+    ? { status: 'ok', message: 'Current-source web retrieval configured' }
+    : { status: 'not_configured', message: 'SERPER_API_KEY missing — current-source research is disabled' };
 
-  results.mapillary = process.env.NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN
-    ? { status: 'ok', message: 'Configured' }
-    : { status: 'not_configured', message: 'NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN missing (street imagery disabled)' };
+  results.azure_maps_fallback = process.env.AZURE_MAPS_SUBSCRIPTION_KEY
+    ? { status: 'ok', message: 'Transitional map fallback configured' }
+    : { status: 'not_configured', message: 'Azure Maps fallback not configured' };
+
+  results.mapillary_fallback = process.env.NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN
+    ? { status: 'ok', message: 'Fallback street imagery configured' }
+    : { status: 'not_configured', message: 'Mapillary fallback not configured' };
 
   const hasDependencyError = Object.values(results).some((result) => result.status === 'error');
 
