@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { isBlockedHostname, isPrivateOrReservedIp } from './page-fetch';
+import {
+  fetchPageText,
+  isBlockedHostname,
+  isPrivateOrReservedIp,
+} from './page-fetch';
 
 describe('public page fetch security boundaries', () => {
   describe('isBlockedHostname', () => {
@@ -74,6 +78,18 @@ describe('public page fetch security boundaries', () => {
 
     it('treats malformed addresses as unsafe', () => {
       expect(isPrivateOrReservedIp('not-an-ip')).toBe(true);
+    });
+  });
+
+  describe('fetchPageText input validation', () => {
+    it.each([
+      'javascript:alert(1)',
+      'file:///etc/passwd',
+      'http://localhost/admin',
+      'http://api.internal/metadata',
+      'http://user:password@example.com/private',
+    ])('rejects unsafe URL %s without a network request', async (url) => {
+      await expect(fetchPageText(url)).resolves.toBeNull();
     });
   });
 });
