@@ -1,20 +1,31 @@
-// ─── Azure Maps + Mapillary Services ─────────────────────────────────────────
-// Geocoding, static maps, street-level imagery, and address autocomplete.
-// Replaces the former Google Maps service layer.
+// ─── Resourceful Location Services ───────────────────────────────────────────
+// Historical filename retained for stable imports. Google Maps is the primary
+// location provider; Azure Maps and Mapillary remain bounded fallbacks while
+// the US Census geocoder supplies county FIPS data and keyless resilience.
+
+import { apiLogger } from '@/lib/logger';
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
+const GOOGLE_KEY =
+  process.env.GOOGLE_MAPS_API_KEY ??
+  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ??
+  '';
 const AZURE_KEY = process.env.AZURE_MAPS_SUBSCRIPTION_KEY ?? '';
 const MAPILLARY_TOKEN = process.env.NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN ?? '';
+
+const GOOGLE_GEOCODE_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
+const GOOGLE_STATIC_MAP_URL = 'https://maps.googleapis.com/maps/api/staticmap';
+const GOOGLE_STREET_VIEW_URL = 'https://maps.googleapis.com/maps/api/streetview';
+const GOOGLE_STREET_VIEW_METADATA_URL = 'https://maps.googleapis.com/maps/api/streetview/metadata';
 
 const AZURE_GEOCODE_URL = 'https://atlas.microsoft.com/search/address/json';
 const AZURE_STATIC_MAP_URL = 'https://atlas.microsoft.com/map/static/png';
 const AZURE_FUZZY_SEARCH_URL = 'https://atlas.microsoft.com/search/fuzzy/json';
 const MAPILLARY_SEARCH_URL = 'https://graph.mapillary.com/images';
+const CENSUS_GEOCODE_URL = 'https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress';
 
-import { apiLogger } from '@/lib/logger';
-
-// ─── Response Types ──────────────────────────────────────────────────────────
+// ─── Public contracts ────────────────────────────────────────────────────────
 
 export interface GeocodeResult {
   formattedAddress: string;
@@ -48,6 +59,7 @@ export interface StreetViewParams {
   height: number;
 }
 
+/** @deprecated Address lookup is server-proxied; no provider key is sent to clients. */
 export interface AddressAutocompleteConfig {
   subscriptionKey: string;
   clientId: string;
@@ -75,104 +87,272 @@ export interface ServiceResult<T> {
   error: string | null;
 }
 
-// ─── US Census Bureau Geocoder (Free Fallback) ──────────────────────────────
-// No API key required. Covers all US addresses. Used when Azure Maps is
-// unavailable or not configured.
+// ─── Provider response shapes ────────────────────────────────────────────────
 
-const CENSUS_GEOCODE_URL = 'https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress';
+interface GoogleAddressComponent {
+  long_name: string;
+  short_name: string;
+  types: string[];
+}
 
-async function geocodeWithCensus(
-  address: string
-): Promise<ServiceResult<GeocodeResult>> {
+interface GoogleGeocodeItem {
+  formatted_address: string;
+  place_id: string;
+  address_components: GoogleAddressComponent[];
+  geometry: {
+    location: {
+      lat: number;
+      lng: number;
+    };
+  };
+}
+
+interface GoogleGeocodeResponse {
+  status: string;
+  error_message?: string;
+  results?: GoogleGeocodeItem[];
+}
+
+interface GoogleStreetViewMetadataResponse {
+  status: string;
+  date?: string;
+  location?: { lat: number; lng: number };
+  pano_id?: string;
+}
+
+// ─── Shared helpers ──────────────────────────────────────────────────────────
+
+async function fetchJson<T>(url: string, timeoutMs: number): Promise<ServiceResult<T>> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15_000);
-  try {
-    const url = new URL(CENSUS_GEOCODE_URL);
-    url.searchParams.set('address', address);
-    url.searchParams.set('benchmark', 'Public_AR_Current');
-    url.searchParams.set('vintage', 'Current_Current');
-    url.searchParams.set('format', 'json');
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-    const response = await fetch(url.toString(), { signal: controller.signal });
-    clearTimeout(timeout);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { Accept: 'application/json' },
+    });
 
     if (!response.ok) {
-      return { data: null, error: `Census geocoder returned ${response.status}` };
+      return {
+        data: null,
+        error: `Location provider returned ${response.status}: ${response.statusText}`,
+      };
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const json = (await response.json()) as any;
-    const matches = json?.result?.addressMatches;
-
-    if (!matches || matches.length === 0) {
-      return { data: null, error: 'Census geocoder returned no matches' };
-    }
-
-    const match = matches[0];
-    const coords = match.coordinates ?? {};
-    const geo = match.geographies ?? {};
-    const counties = geo['Counties'] ?? [];
-    const countyGeo = counties[0];
-    const stateCode = countyGeo?.STATE ?? null;
-    const countyCode = countyGeo?.COUNTY ?? null;
-    const countyFips = stateCode && countyCode ? `${stateCode}${countyCode}` : null;
-    const countyName = countyGeo?.BASENAME ?? countyGeo?.NAME ?? null;
-
-    const addressComponents = match.addressComponents ?? {};
-
-    apiLogger.info({ address }, '[geocode] Census fallback succeeded for');
-
+    return { data: (await response.json()) as T, error: null };
+  } catch (error) {
     return {
-      data: {
-        formattedAddress: match.matchedAddress ?? address,
-        latitude: coords.y ?? 0,
-        longitude: coords.x ?? 0,
-        placeId: '',
-        county: countyName,
-        countyFips,
-        streetNumber: addressComponents.fromAddress ?? null,
-        route: addressComponents.streetName ?? null,
-        city: addressComponents.city ?? null,
-        state: addressComponents.state ?? null,
-        zip: addressComponents.zip ?? null,
-      },
-      error: null,
+      data: null,
+      error: error instanceof Error ? error.message : String(error),
     };
-  } catch (err) {
+  } finally {
     clearTimeout(timeout);
-    const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error({ message }, '[geocode] Census fallback error');
-    return { data: null, error: `Census geocoding failed: ${message}` };
   }
 }
 
-// ─── Public API ──────────────────────────────────────────────────────────────
-
-/**
- * Geocode a street address. Uses Azure Maps as primary, falls back to
- * US Census Bureau geocoder if Azure is unavailable or not configured.
- * The Census geocoder is free, requires no API key, and returns FIPS codes.
- */
-export async function geocodeAddress(
-  address: string
-): Promise<ServiceResult<GeocodeResult>> {
-  if (AZURE_KEY) {
-    const azureResult = await geocodeWithAzure(address);
-    if (azureResult.data) return azureResult;
-    apiLogger.warn({ error: azureResult.error }, '[geocode] Azure Maps failed, falling back to Census');
-  } else {
-    apiLogger.info('[geocode] Azure Maps subscription key not configured, using Census geocoder');
-  }
-
-  return geocodeWithCensus(address);
+function component(
+  components: GoogleAddressComponent[],
+  type: string,
+  format: 'long' | 'short' = 'long'
+): string | null {
+  const match = components.find((entry) => entry.types.includes(type));
+  if (!match) return null;
+  return format === 'short' ? match.short_name : match.long_name;
 }
 
-/**
- * Geocode using Azure Maps Search API.
- */
-async function geocodeWithAzure(
-  address: string
-): Promise<ServiceResult<GeocodeResult>> {
+function normalizeGoogleResult(item: GoogleGeocodeItem): GeocodeResult {
+  const components = item.address_components ?? [];
+  const city =
+    component(components, 'locality') ??
+    component(components, 'postal_town') ??
+    component(components, 'sublocality') ??
+    component(components, 'administrative_area_level_3');
+  const county = component(components, 'administrative_area_level_2')
+    ?.replace(/\s*(County|Parish|Borough|Census Area|Municipality)$/i, '')
+    .trim() ?? null;
+
+  return {
+    formattedAddress: item.formatted_address,
+    latitude: item.geometry.location.lat,
+    longitude: item.geometry.location.lng,
+    placeId: item.place_id,
+    county,
+    countyFips: null,
+    streetNumber: component(components, 'street_number'),
+    route: component(components, 'route'),
+    city,
+    state: component(components, 'administrative_area_level_1', 'short'),
+    zip: component(components, 'postal_code'),
+  };
+}
+
+function mergeCensusGeography(primary: GeocodeResult, census: GeocodeResult | null): GeocodeResult {
+  if (!census) return primary;
+
+  return {
+    ...primary,
+    county: census.county ?? primary.county,
+    countyFips: census.countyFips ?? primary.countyFips,
+    city: primary.city ?? census.city,
+    state: primary.state ?? census.state,
+    zip: primary.zip ?? census.zip,
+  };
+}
+
+function normalizeMapColor(color?: string): string {
+  if (!color) return '0xd4a853';
+  if (color === 'red') return 'red';
+  if (color === 'blue') return 'blue';
+  if (/^(?:0x|#)?[0-9a-f]{6}$/i.test(color)) {
+    return `0x${color.replace(/^(?:0x|#)/i, '')}`;
+  }
+  return '0xd4a853';
+}
+
+function getBoundingBox(lng: number, lat: number, delta: number): string {
+  return `${lng - delta},${lat - delta},${lng + delta},${lat + delta}`;
+}
+
+// ─── Google Maps ─────────────────────────────────────────────────────────────
+
+async function geocodeWithGoogle(address: string): Promise<ServiceResult<GeocodeResult>> {
+  if (!GOOGLE_KEY) return { data: null, error: 'Google Maps API key not configured' };
+
+  const url = new URL(GOOGLE_GEOCODE_URL);
+  url.searchParams.set('address', address);
+  url.searchParams.set('components', 'country:US');
+  url.searchParams.set('key', GOOGLE_KEY);
+
+  const response = await fetchJson<GoogleGeocodeResponse>(url.toString(), 10_000);
+  if (!response.data) return { data: null, error: response.error };
+
+  if (response.data.status !== 'OK' || !response.data.results?.length) {
+    return {
+      data: null,
+      error: response.data.error_message || `Google geocoding returned ${response.data.status}`,
+    };
+  }
+
+  return { data: normalizeGoogleResult(response.data.results[0]), error: null };
+}
+
+async function searchAddressesWithGoogle(
+  query: string,
+  limit: number
+): Promise<AutocompleteSuggestion[]> {
+  if (!GOOGLE_KEY) return [];
+
+  const url = new URL(GOOGLE_GEOCODE_URL);
+  url.searchParams.set('address', query);
+  url.searchParams.set('components', 'country:US');
+  url.searchParams.set('key', GOOGLE_KEY);
+
+  const response = await fetchJson<GoogleGeocodeResponse>(url.toString(), 5_000);
+  if (!response.data || response.data.status !== 'OK') {
+    if (response.error || response.data?.error_message) {
+      apiLogger.warn(
+        { error: response.error ?? response.data?.error_message, status: response.data?.status },
+        '[maps] Google address search failed'
+      );
+    }
+    return [];
+  }
+
+  return (response.data.results ?? []).slice(0, limit).map((item) => {
+    const normalized = normalizeGoogleResult(item);
+    return {
+      formattedAddress: normalized.formattedAddress,
+      streetNumber: normalized.streetNumber,
+      route: normalized.route,
+      city: normalized.city,
+      state: normalized.state,
+      zip: normalized.zip,
+      county: normalized.county,
+      latitude: normalized.latitude,
+      longitude: normalized.longitude,
+    };
+  });
+}
+
+async function getGoogleStreetViewUrl(params: StreetViewParams): Promise<string | null> {
+  if (!GOOGLE_KEY) return null;
+
+  const metadataUrl = new URL(GOOGLE_STREET_VIEW_METADATA_URL);
+  metadataUrl.searchParams.set('location', `${params.lat},${params.lng}`);
+  metadataUrl.searchParams.set('radius', '100');
+  metadataUrl.searchParams.set('source', 'outdoor');
+  metadataUrl.searchParams.set('key', GOOGLE_KEY);
+
+  const metadata = await fetchJson<GoogleStreetViewMetadataResponse>(
+    metadataUrl.toString(),
+    6_000
+  );
+  if (!metadata.data || metadata.data.status !== 'OK') return null;
+
+  const url = new URL(GOOGLE_STREET_VIEW_URL);
+  url.searchParams.set(
+    'size',
+    `${Math.min(Math.max(params.width, 1), 640)}x${Math.min(Math.max(params.height, 1), 640)}`
+  );
+  url.searchParams.set('location', `${params.lat},${params.lng}`);
+  url.searchParams.set('fov', '90');
+  url.searchParams.set('pitch', String(params.pitch ?? 0));
+  if (params.heading != null) url.searchParams.set('heading', String(params.heading));
+  url.searchParams.set('source', 'outdoor');
+  url.searchParams.set('key', GOOGLE_KEY);
+  return url.toString();
+}
+
+// ─── Census fallback and FIPS enrichment ─────────────────────────────────────
+
+async function geocodeWithCensus(address: string): Promise<ServiceResult<GeocodeResult>> {
+  const url = new URL(CENSUS_GEOCODE_URL);
+  url.searchParams.set('address', address);
+  url.searchParams.set('benchmark', 'Public_AR_Current');
+  url.searchParams.set('vintage', 'Current_Current');
+  url.searchParams.set('format', 'json');
+
+  const response = await fetchJson<unknown>(url.toString(), 15_000);
+  if (!response.data) return { data: null, error: response.error };
+
+  // Census responses are deeply nested and not published as a stable TypeScript
+  // contract. Narrow only the fields Resourceful consumes.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const matches = (response.data as any)?.result?.addressMatches;
+  if (!Array.isArray(matches) || matches.length === 0) {
+    return { data: null, error: 'Census geocoder returned no matches' };
+  }
+
+  const match = matches[0];
+  const coordinates = match.coordinates ?? {};
+  const countyGeography = match.geographies?.Counties?.[0];
+  const stateCode = countyGeography?.STATE ?? null;
+  const countyCode = countyGeography?.COUNTY ?? null;
+  const addressComponents = match.addressComponents ?? {};
+
+  return {
+    data: {
+      formattedAddress: match.matchedAddress ?? address,
+      latitude: Number(coordinates.y) || 0,
+      longitude: Number(coordinates.x) || 0,
+      placeId: '',
+      county: countyGeography?.BASENAME ?? countyGeography?.NAME ?? null,
+      countyFips: stateCode && countyCode ? `${stateCode}${countyCode}` : null,
+      streetNumber: addressComponents.fromAddress ?? null,
+      route: addressComponents.streetName ?? null,
+      city: addressComponents.city ?? null,
+      state: addressComponents.state ?? null,
+      zip: addressComponents.zip ?? null,
+    },
+    error: null,
+  };
+}
+
+// ─── Azure fallback ──────────────────────────────────────────────────────────
+
+async function geocodeWithAzure(address: string): Promise<ServiceResult<GeocodeResult>> {
+  if (!AZURE_KEY) return { data: null, error: 'Azure Maps key not configured' };
+
   const url = new URL(AZURE_GEOCODE_URL);
   url.searchParams.set('api-version', '1.0');
   url.searchParams.set('subscription-key', AZURE_KEY);
@@ -180,170 +360,42 @@ async function geocodeWithAzure(
   url.searchParams.set('countrySet', 'US');
   url.searchParams.set('limit', '1');
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10_000);
-    const response = await fetch(url.toString(), { signal: controller.signal });
-    clearTimeout(timeout);
+  const response = await fetchJson<unknown>(url.toString(), 10_000);
+  if (!response.data) return { data: null, error: response.error };
 
-    if (!response.ok) {
-      return {
-        data: null,
-        error: `Azure Maps Geocoding returned ${response.status}: ${response.statusText}`,
-      };
-    }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const item = (response.data as any)?.results?.[0];
+  if (!item) return { data: null, error: 'Azure Maps geocoding returned no results' };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const json = (await response.json()) as any;
-    const results = json.results;
-
-    if (!results?.length) {
-      return {
-        data: null,
-        error: 'Azure Maps geocoding returned no results',
-      };
-    }
-
-    const result = results[0];
-    const pos = result.position ?? {};
-    const addr = result.address ?? {};
-
-    return {
-      data: {
-        formattedAddress: addr.freeformAddress ?? address,
-        latitude: pos.lat ?? 0,
-        longitude: pos.lon ?? 0,
-        placeId: result.id ?? '',
-        county: addr.countrySecondarySubdivision
-          ? addr.countrySecondarySubdivision.replace(/\s*(County|Parish|Borough)$/i, '').trim()
-          : null,
-        countyFips: null, // Azure Maps does not return FIPS; Census fallback does
-        streetNumber: addr.streetNumber ?? null,
-        route: addr.streetName ?? null,
-        city: addr.municipality ?? null,
-        state: addr.countrySubdivision ?? null,
-        zip: addr.postalCode ?? null,
-      },
-      error: null,
-    };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error({ message }, '[azure-maps] geocode error');
-    return { data: null, error: `Geocoding request failed: ${message}` };
-  }
+  const addressData = item.address ?? {};
+  const position = item.position ?? {};
+  return {
+    data: {
+      formattedAddress: addressData.freeformAddress ?? address,
+      latitude: Number(position.lat) || 0,
+      longitude: Number(position.lon) || 0,
+      placeId: item.id ?? '',
+      county: addressData.countrySecondarySubdivision
+        ? String(addressData.countrySecondarySubdivision)
+            .replace(/\s*(County|Parish|Borough)$/i, '')
+            .trim()
+        : null,
+      countyFips: null,
+      streetNumber: addressData.streetNumber ?? null,
+      route: addressData.streetName ?? null,
+      city: addressData.municipality ?? null,
+      state: addressData.countrySubdivision ?? null,
+      zip: addressData.postalCode ?? null,
+    },
+    error: null,
+  };
 }
 
-/**
- * Build an Azure Maps Static Image URL.
- * Uses the Render V2 API with pin markers.
- */
-export function getStaticMapUrl(params: StaticMapParams): string {
-  if (!AZURE_KEY) return '';
-
-  const url = new URL(AZURE_STATIC_MAP_URL);
-  url.searchParams.set('api-version', '2024-04-01');
-  url.searchParams.set('subscription-key', AZURE_KEY);
-  url.searchParams.set('zoom', String(params.zoom));
-  url.searchParams.set('center', `${params.lng},${params.lat}`);
-  url.searchParams.set('width', String(Math.min(params.width, 8192)));
-  url.searchParams.set('height', String(Math.min(params.height, 8192)));
-  url.searchParams.set('layer', 'basic');
-  url.searchParams.set('style', 'main');
-
-  if (params.markers?.length) {
-    // Azure Maps pin format: pin-round-{color}||{label}|{lng} {lat}
-    for (const m of params.markers) {
-      const color = m.color === 'red' ? 'red' : m.color === 'blue' ? 'blue' : 'darkblue';
-      const label = m.label ?? '';
-      url.searchParams.append('pins', `default|co${color}|la${label}||${m.lng} ${m.lat}`);
-    }
-  }
-
-  return url.toString();
-}
-
-/**
- * Get a Mapillary street-level image URL for a location.
- * Returns null if no imagery is available (coverage is less complete than Google).
- * This makes an API call to search for nearby images.
- */
-export async function getMapillaryImageUrl(
-  lat: number,
-  lng: number,
-  _width: number = 640,
-  _height: number = 480
-): Promise<string | null> {
-  if (!MAPILLARY_TOKEN) {
-    apiLogger.info('[mapillary] Access token not configured');
-    return null;
-  }
-
-  try {
-    const url = new URL(MAPILLARY_SEARCH_URL);
-    url.searchParams.set('access_token', MAPILLARY_TOKEN);
-    url.searchParams.set('fields', 'id,thumb_1024_url,thumb_2048_url');
-    url.searchParams.set('bbox', getBoundingBox(lng, lat, 0.001)); // ~100m radius
-    url.searchParams.set('limit', '1');
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8_000);
-    const response = await fetch(url.toString(), { signal: controller.signal });
-    clearTimeout(timeout);
-
-    if (!response.ok) {
-      apiLogger.warn({ status: response.status }, '[mapillary] API returned');
-      return null;
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const json = (await response.json()) as any;
-    const images = json?.data;
-
-    if (!images?.length) {
-      // Widen search to ~500m radius
-      url.searchParams.set('bbox', getBoundingBox(lng, lat, 0.005));
-      const retryResponse = await fetch(url.toString(), { signal: controller.signal });
-      if (!retryResponse.ok) return null;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const retryJson = (await retryResponse.json()) as any;
-      if (!retryJson?.data?.length) return null;
-      return retryJson.data[0].thumb_2048_url ?? retryJson.data[0].thumb_1024_url ?? null;
-    }
-
-    return images[0].thumb_2048_url ?? images[0].thumb_1024_url ?? null;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    apiLogger.warn({ message }, '[mapillary] image search error');
-    return null;
-  }
-}
-
-/**
- * Build a Mapillary street-level image URL for a given address.
- * First geocodes the address, then searches Mapillary.
- * Returns null if no imagery is found.
- */
-export async function getStreetImageForAddress(
-  address: string
-): Promise<string | null> {
-  const geocodeResult = await geocodeAddress(address);
-  if (!geocodeResult.data) return null;
-  return getMapillaryImageUrl(geocodeResult.data.latitude, geocodeResult.data.longitude);
-}
-
-/**
- * Fetch address autocomplete suggestions using Azure Maps Fuzzy Search.
- * Called from client-side API route to provide type-ahead suggestions.
- */
-export async function searchAddresses(
+async function searchAddressesWithAzure(
   query: string,
-  limit: number = 5
+  limit: number
 ): Promise<AutocompleteSuggestion[]> {
-  if (!AZURE_KEY) {
-    apiLogger.warn('[azure-maps] AZURE_MAPS_SUBSCRIPTION_KEY is not set — autocomplete disabled');
-    return [];
-  }
-  if (!query.trim()) return [];
+  if (!AZURE_KEY) return [];
 
   const url = new URL(AZURE_FUZZY_SEARCH_URL);
   url.searchParams.set('api-version', '1.0');
@@ -354,64 +406,185 @@ export async function searchAddresses(
   url.searchParams.set('limit', String(limit));
   url.searchParams.set('idxSet', 'PAD,Addr');
 
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5_000);
-    const response = await fetch(url.toString(), { signal: controller.signal });
-    clearTimeout(timeout);
+  const response = await fetchJson<unknown>(url.toString(), 5_000);
+  if (!response.data) return [];
 
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      apiLogger.error({ status: response.status, body: body.slice(0, 300) }, '[azure-maps] Fuzzy search failed ()');
-      return [];
-    }
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const results = Array.isArray((response.data as any)?.results)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const json = (await response.json()) as any;
-    const results = json.results ?? [];
+    ? (response.data as any).results
+    : [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return results.map((r: any) => {
-      const addr = r.address ?? {};
-      const pos = r.position ?? {};
-      return {
-        formattedAddress: addr.freeformAddress ?? '',
-        streetNumber: addr.streetNumber ?? null,
-        route: addr.streetName ?? null,
-        city: addr.municipality ?? null,
-        state: addr.countrySubdivision ?? null,
-        zip: addr.postalCode ?? null,
-        county: addr.countrySecondarySubdivision
-          ? addr.countrySecondarySubdivision.replace(/\s*(County|Parish|Borough)$/i, '').trim()
-          : null,
-        latitude: pos.lat ?? 0,
-        longitude: pos.lon ?? 0,
-      };
-    });
-  } catch {
-    return [];
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return results.slice(0, limit).map((item: any) => {
+    const addressData = item.address ?? {};
+    const position = item.position ?? {};
+    return {
+      formattedAddress: addressData.freeformAddress ?? '',
+      streetNumber: addressData.streetNumber ?? null,
+      route: addressData.streetName ?? null,
+      city: addressData.municipality ?? null,
+      state: addressData.countrySubdivision ?? null,
+      zip: addressData.postalCode ?? null,
+      county: addressData.countrySecondarySubdivision
+        ? String(addressData.countrySecondarySubdivision)
+            .replace(/\s*(County|Parish|Borough)$/i, '')
+            .trim()
+        : null,
+      latitude: Number(position.lat) || 0,
+      longitude: Number(position.lon) || 0,
+    };
+  });
 }
 
+// ─── Public API ──────────────────────────────────────────────────────────────
+
 /**
- * Return the configuration object for client-side address autocomplete.
- * Uses Azure Maps Fuzzy Search via a server-side API route.
+ * Resolve and normalize a US address. Google is primary, Census enriches FIPS,
+ * Azure is a transitional fallback, and Census can operate by itself.
  */
+export async function geocodeAddress(address: string): Promise<ServiceResult<GeocodeResult>> {
+  const censusPromise = geocodeWithCensus(address);
+
+  if (GOOGLE_KEY) {
+    const [google, census] = await Promise.all([
+      geocodeWithGoogle(address),
+      censusPromise,
+    ]);
+    if (google.data) return { data: mergeCensusGeography(google.data, census.data), error: null };
+    apiLogger.warn({ error: google.error }, '[maps] Google geocoding failed; trying fallback');
+    if (census.data) return census;
+  }
+
+  if (AZURE_KEY) {
+    const [azure, census] = await Promise.all([
+      geocodeWithAzure(address),
+      GOOGLE_KEY ? geocodeWithCensus(address) : censusPromise,
+    ]);
+    if (azure.data) return { data: mergeCensusGeography(azure.data, census.data), error: null };
+    apiLogger.warn({ error: azure.error }, '[maps] Azure geocoding failed; using Census fallback');
+    if (census.data) return census;
+  }
+
+  return GOOGLE_KEY || AZURE_KEY ? geocodeWithCensus(address) : censusPromise;
+}
+
+/** Build a static property map URL, preferring Google Maps. */
+export function getStaticMapUrl(params: StaticMapParams): string {
+  if (GOOGLE_KEY) {
+    const url = new URL(GOOGLE_STATIC_MAP_URL);
+    url.searchParams.set('center', `${params.lat},${params.lng}`);
+    url.searchParams.set('zoom', String(params.zoom));
+    url.searchParams.set(
+      'size',
+      `${Math.min(Math.max(params.width, 1), 640)}x${Math.min(Math.max(params.height, 1), 640)}`
+    );
+    url.searchParams.set('scale', '2');
+    url.searchParams.set('maptype', 'roadmap');
+    url.searchParams.set('key', GOOGLE_KEY);
+
+    for (const marker of params.markers ?? []) {
+      const label = marker.label?.trim().slice(0, 1).toUpperCase();
+      const parts = [`color:${normalizeMapColor(marker.color)}`];
+      if (label && /^[A-Z0-9]$/.test(label)) parts.push(`label:${label}`);
+      parts.push(`${marker.lat},${marker.lng}`);
+      url.searchParams.append('markers', parts.join('|'));
+    }
+
+    return url.toString();
+  }
+
+  if (!AZURE_KEY) return '';
+  const url = new URL(AZURE_STATIC_MAP_URL);
+  url.searchParams.set('api-version', '2024-04-01');
+  url.searchParams.set('subscription-key', AZURE_KEY);
+  url.searchParams.set('zoom', String(params.zoom));
+  url.searchParams.set('center', `${params.lng},${params.lat}`);
+  url.searchParams.set('width', String(Math.min(params.width, 8192)));
+  url.searchParams.set('height', String(Math.min(params.height, 8192)));
+  url.searchParams.set('layer', 'basic');
+  url.searchParams.set('style', 'main');
+
+  for (const marker of params.markers ?? []) {
+    const color = marker.color === 'red' ? 'red' : marker.color === 'blue' ? 'blue' : 'darkblue';
+    url.searchParams.append(
+      'pins',
+      `default|co${color}|la${marker.label ?? ''}||${marker.lng} ${marker.lat}`
+    );
+  }
+
+  return url.toString();
+}
+
+/** Search Mapillary for nearby imagery when Google Street View is unavailable. */
+export async function getMapillaryImageUrl(
+  lat: number,
+  lng: number,
+  _width: number = 640,
+  _height: number = 480
+): Promise<string | null> {
+  if (!MAPILLARY_TOKEN) return null;
+
+  for (const delta of [0.001, 0.005]) {
+    const url = new URL(MAPILLARY_SEARCH_URL);
+    url.searchParams.set('access_token', MAPILLARY_TOKEN);
+    url.searchParams.set('fields', 'id,thumb_1024_url,thumb_2048_url');
+    url.searchParams.set('bbox', getBoundingBox(lng, lat, delta));
+    url.searchParams.set('limit', '1');
+
+    const response = await fetchJson<unknown>(url.toString(), 8_000);
+    if (!response.data) continue;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const image = (response.data as any)?.data?.[0];
+    if (image) return image.thumb_2048_url ?? image.thumb_1024_url ?? null;
+  }
+
+  return null;
+}
+
+/** Resolve the best available street-level image for an address. */
+export async function getStreetImageForAddress(address: string): Promise<string | null> {
+  const geocode = await geocodeAddress(address);
+  if (!geocode.data) return null;
+
+  const googleStreetView = await getGoogleStreetViewUrl({
+    lat: geocode.data.latitude,
+    lng: geocode.data.longitude,
+    width: 640,
+    height: 480,
+  });
+  if (googleStreetView) return googleStreetView;
+
+  return getMapillaryImageUrl(geocode.data.latitude, geocode.data.longitude, 640, 480);
+}
+
+/** Server-side address suggestions, preferring Google Maps. */
+export async function searchAddresses(
+  query: string,
+  limit: number = 5
+): Promise<AutocompleteSuggestion[]> {
+  const normalizedQuery = query.trim();
+  if (!normalizedQuery) return [];
+
+  const google = await searchAddressesWithGoogle(normalizedQuery, limit);
+  if (google.length > 0) return google;
+
+  const azure = await searchAddressesWithAzure(normalizedQuery, limit);
+  if (azure.length > 0) return azure;
+
+  return [];
+}
+
+/** @deprecated Address search is server-side and exposes no provider credentials. */
 export function getAddressAutocompleteConfig(): AddressAutocompleteConfig {
   return {
-    subscriptionKey: AZURE_KEY,
-    clientId: process.env.NEXT_PUBLIC_AZURE_MAPS_CLIENT_ID ?? '',
+    subscriptionKey: '',
+    clientId: '',
     options: {
       countrySet: ['US'],
       typeahead: true,
       limit: 5,
     },
   };
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-/** Build a bounding box string for Mapillary: west,south,east,north */
-function getBoundingBox(lng: number, lat: number, delta: number): string {
-  return `${lng - delta},${lat - delta},${lng + delta},${lat + delta}`;
 }
