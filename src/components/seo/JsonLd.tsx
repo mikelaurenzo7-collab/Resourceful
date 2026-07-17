@@ -1,4 +1,6 @@
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful-7x38.vercel.app';
+import { getAppUrl } from '@/lib/utils/app-url';
+
+const baseUrl = getAppUrl();
 
 export function OrganizationJsonLd() {
   const schema = {
