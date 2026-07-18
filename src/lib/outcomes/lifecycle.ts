@@ -91,6 +91,13 @@ export function validateOutcomeFilingContext(input: {
 }): LifecycleValidationResult {
   if (input.outcome === 'didnt_file') return { valid: true };
 
+  if (input.outcome === 'pending' && input.filingStatus === 'closed') {
+    return {
+      valid: false,
+      error: 'A closed appeal case cannot be returned to a pending decision state.',
+    };
+  }
+
   if (!isFiledOrLater(input.filingStatus) || !input.filedAt || !isFilingMethod(input.filingMethod)) {
     return {
       valid: false,
