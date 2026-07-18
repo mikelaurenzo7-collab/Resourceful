@@ -8,6 +8,7 @@ import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-
 import { useWizard, PROPERTY_ISSUES } from '@/components/intake/WizardLayout';
 import Button from '@/components/ui/Button';
 import { formatPrice, getPriceCents, TAX_BILL_DISCOUNT } from '@/config/pricing';
+import { isIndependentValuationPurpose } from '@/lib/assignments/routing';
 import type { ReviewTier } from '@/types/database';
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
@@ -20,6 +21,14 @@ const SERVICE_LABELS: Record<string, string> = {
   pre_purchase: 'Pre-Purchase Property Review',
   pre_listing: 'Pre-Listing Property Review',
 };
+
+function getServiceLabel(serviceType: string | null, desiredOutcome: string): string {
+  if (isIndependentValuationPurpose(desiredOutcome)) {
+    return 'Independent Value Workfile';
+  }
+
+  return SERVICE_LABELS[serviceType ?? ''] || serviceType || 'Property Analysis';
+}
 
 const TIER_DETAILS: Record<
   PurchasableTier,
@@ -155,6 +164,7 @@ function CheckoutForm() {
   const isTaxAppeal = state.serviceType === 'tax_appeal';
   const selectedTier = normalizeTier(state.reviewTier, isTaxAppeal);
   const tierDetails = TIER_DETAILS[selectedTier];
+  const serviceLabel = getServiceLabel(state.serviceType, state.desiredOutcome);
   const selectedIssues = PROPERTY_ISSUES.filter((issue) => (state.propertyIssues ?? []).includes(issue.id));
   const guaranteeEligible =
     isTaxAppeal &&
@@ -218,7 +228,7 @@ function CheckoutForm() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <p className="text-sm text-cream/40">Service</p>
-              <p className="font-medium text-cream">{SERVICE_LABELS[state.serviceType ?? ''] || state.serviceType}</p>
+              <p className="font-medium text-cream">{serviceLabel}</p>
             </div>
             <div className="sm:text-right">
               <p className="text-sm text-cream/40">Property type</p>
