@@ -9,6 +9,7 @@ import {
   getAssignmentDisplayLabel,
   resolveAssignmentKind,
 } from '@/lib/assignments/routing';
+import { hasReleaseReadyIncomeApproach } from '../section-data';
 
 interface TocEntry {
   number: string;
@@ -17,13 +18,12 @@ interface TocEntry {
 }
 
 export default function TableOfContents({ data }: { data: ReportTemplateData }) {
-  const { property, comparableSales, incomeAnalysis, report, photos, filingGuide, narratives } = data;
+  const { property, comparableSales, report, photos, filingGuide, narratives } = data;
   const assignmentKind = resolveAssignmentKind(report.service_type, report.desired_outcome);
   const assignmentLabel = getAssignmentDisplayLabel(report.service_type, report.desired_outcome);
 
   const narrativeSections = new Set(narratives.map((n) => n.section_name));
-
-  const hasIncome = incomeAnalysis != null;
+  const hasIncome = hasReleaseReadyIncomeApproach(data);
   const hasCostApproach = property.cost_approach_value != null && property.cost_approach_value > 0;
   const hasPhotoDefects = photos.some((photo) => (photo.ai_analysis?.defects?.length ?? 0) > 0);
   const hasAddendumA =
@@ -40,7 +40,6 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
         ? 'Valuation Use & Next-Step Guide'
         : 'County Filing Instructions';
 
-  // Build section list dynamically
   const sections: TocEntry[] = [
     { number: '', title: 'Letter of Transmittal' },
     { number: '', title: 'Property Identification Summary' },
@@ -70,24 +69,24 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
     { number: 'IX', title: 'Adjustment Reconciliation & Value Conclusion' },
   ];
 
+  let nextSectionNumber = 10;
   if (property.assessment_ratio != null) {
-    sections.push({ number: 'X', title: 'Assessment Ratio Analysis' });
+    sections.push({ number: toRoman(nextSectionNumber++), title: 'Assessment Ratio Analysis' });
   }
 
   if (hasCostApproach) {
-    sections.push({ number: 'XI', title: 'Cost Approach Analysis' });
+    sections.push({ number: toRoman(nextSectionNumber++), title: 'Cost Approach Analysis' });
   }
 
   if (hasIncome) {
-    sections.push({ number: 'XII', title: 'Income Capitalization Approach' });
+    sections.push({ number: toRoman(nextSectionNumber++), title: 'Income Capitalization Approach' });
   }
 
   if (hasPhotoDefects) {
-    sections.push({ number: 'XIII', title: 'Property Condition Documentation' });
+    sections.push({ number: toRoman(nextSectionNumber++), title: 'Property Condition Documentation' });
   }
 
-  // Addenda
-  sections.push({ number: '', title: '' }); // spacer
+  sections.push({ number: '', title: '' });
   if (hasAddendumA) {
     sections.push({ number: 'ADD-A', title: addendumATitle });
   }
@@ -101,7 +100,6 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
       </View>
 
       {sections.map((entry, index) => {
-        // Spacer row
         if (!entry.title && !entry.number) {
           return <View key={index} style={{ height: 12 }} />;
         }
@@ -117,7 +115,6 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
         );
       })}
 
-      {/* Report metadata footer */}
       <View style={styles.metaBlock}>
         <View style={styles.metaRow}>
           <Text style={theme.label}>Assignment</Text>
@@ -152,6 +149,22 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
       </View>
     </Page>
   );
+}
+
+function toRoman(value: number): string {
+  const numerals: Array<[number, string]> = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'],
+    [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
+  ];
+  let remaining = value;
+  let result = '';
+  for (const [amount, numeral] of numerals) {
+    while (remaining >= amount) {
+      result += numeral;
+      remaining -= amount;
+    }
+  }
+  return result;
 }
 
 const styles = StyleSheet.create({
