@@ -118,9 +118,34 @@ function firstAddressLine(formattedAddress: string, fallback: string): string {
   return line1?.trim() || fallback.trim();
 }
 
-function currentFilingDeadline(rule: CountyRule): string {
-  if (hasText(rule.next_appeal_deadline)) return rule.next_appeal_deadline;
-  return rule.appeal_deadline_rule.trim();
+function currentFilingDeadline(rule: CountyRule, now: Date): string {
+  if (hasText(rule.next_appeal_deadline)) {
+    const exactDeadline = new Date(`${rule.next_appeal_deadline}T23:59:59`);
+    if (!Number.isNaN(exactDeadline.getTime()) && exactDeadline.getTime() >= now.getTime()) {
+      return rule.next_appeal_deadline;
+    }
+  }
+
+  return hasText(rule.appeal_deadline_rule)
+    ? rule.appeal_deadline_rule.trim()
+    : '';
+}
+
+function hasVerifiedFilingChannel(rule: CountyRule): boolean {
+  const online = rule.accepts_online_filing && hasText(rule.portal_url);
+  const email = rule.accepts_email_filing && hasText(rule.filing_email);
+  const mail = rule.requires_mail_filing && hasText(rule.appeal_board_address);
+  const publishedForm = hasText(rule.form_download_url);
+  const authorityAddress = hasText(rule.appeal_board_address);
+
+  return online || email || mail || publishedForm || authorityAddress;
+}
+
+function hasVerifiedEvidenceRequirements(rule: CountyRule): boolean {
+  return (
+    (Array.isArray(rule.required_documents) && rule.required_documents.length > 0) ||
+    (Array.isArray(rule.evidence_requirements) && rule.evidence_requirements.length > 0)
+  );
 }
 
 export function evaluateTaxAppealJurisdiction(
@@ -203,20 +228,16 @@ export function evaluateTaxAppealJurisdiction(
   }
 
   const filingAuthority = rule.appeal_board_name?.trim() ?? '';
-  const filingDeadline =
-    hasText(rule.next_appeal_deadline) || hasText(rule.appeal_deadline_rule)
-      ? currentFilingDeadline(rule)
-      : '';
-  const hasFilingSteps = Array.isArray(rule.filing_steps) && rule.filing_steps.length > 0;
-  const hasRequiredDocuments =
-    Array.isArray(rule.required_documents) && rule.required_documents.length > 0;
+  const filingDeadline = currentFilingDeadline(rule, now);
+  const hasFilingChannel = hasVerifiedFilingChannel(rule);
+  const hasEvidenceRequirements = hasVerifiedEvidenceRequirements(rule);
 
-  if (!filingAuthority || !filingDeadline || !hasFilingSteps || !hasRequiredDocuments) {
+  if (!filingAuthority || !filingDeadline || !hasFilingChannel || !hasEvidenceRequirements) {
     return {
       allowed: false,
       code: 'JURISDICTION_RULES_INCOMPLETE',
       message:
-        'Resourceful has not completed the filing authority, deadline, steps, and required-document checklist for this county. No payment was collected.',
+        'Resourceful has not completed the filing authority, current deadline, filing channel, and evidence-requirement record for this county. No payment was collected.',
       retryable: true,
     };
   }
