@@ -2,7 +2,7 @@ import type { CountyRule, PropertyType, ServiceType } from '@/types/database';
 
 const RATIO_TOLERANCE = 0.005;
 const SPECIAL_CLASSIFICATION_PATTERN =
-  /non[- ]?profit|incentive|preferential|special|exempt|class\s*\d|classification|mixed[- ]?use/i;
+  /non[- ]?profit|incentive|preferential|special(?:\s+classification)?|exempt|class\s*\d+[a-z-]*|mixed[- ]?use/i;
 
 export interface AssessmentContextPolicyInput {
   serviceType: ServiceType;
