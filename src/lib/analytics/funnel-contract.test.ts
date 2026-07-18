@@ -5,6 +5,7 @@ import {
   buildSafeFunnelProperties,
   createFunnelFingerprint,
   getFunnelStep,
+  getFunnelStepNumber,
   getIssueCountBucket,
   getPhotoEvidenceBucket,
   getPriceBand,
@@ -12,7 +13,7 @@ import {
 
 const baseInput = {
   pathname: '/start/payment',
-  currentStep: 4,
+  currentStep: 1,
   serviceType: 'tax_appeal' as const,
   propertyType: 'residential' as const,
   reviewTier: 'expert_reviewed' as const,
@@ -25,10 +26,14 @@ const baseInput = {
 };
 
 describe('funnel analytics contract', () => {
-  it('maps only canonical intake routes', () => {
+  it('maps canonical routes and derives step number from the route', () => {
     expect(getFunnelStep('/start')).toBe('goals');
     expect(getFunnelStep('/start/success')).toBe('success');
     expect(getFunnelStep('/report/private-id')).toBe('unknown');
+
+    expect(getFunnelStepNumber('/start/property', 1)).toBe(2);
+    expect(getFunnelStepNumber('/start/payment', 1)).toBe(4);
+    expect(getFunnelStepNumber('/unknown', 9)).toBe(5);
   });
 
   it('buckets evidence, issue counts, and prices without exposing raw values', () => {
