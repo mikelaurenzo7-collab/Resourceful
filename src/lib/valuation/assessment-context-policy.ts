@@ -4,6 +4,8 @@ const RATIO_TOLERANCE = 0.005;
 const SPECIAL_CLASSIFICATION_PATTERN =
   /non[- ]?profit|incentive|preferential|special(?:\s+classification)?|exempt|class\s*\d+[a-z-]*|mixed[- ]?use/i;
 
+type ValuationYearOffset = -1 | 0 | null;
+
 export interface AssessmentContextPolicyInput {
   serviceType: ServiceType;
   countyFips: string | null | undefined;
@@ -66,8 +68,30 @@ function hasSpecialClassificationExplanation(input: AssessmentContextPolicyInput
   return SPECIAL_CLASSIFICATION_PATTERN.test(explanation);
 }
 
+function normalizedValuationConvention(rule: CountyRule | null | undefined): string {
+  return rule?.valuation_date_convention?.trim().toLowerCase() ?? '';
+}
+
+function valuationYearOffset(rule: CountyRule | null | undefined): ValuationYearOffset {
+  const convention = normalizedValuationConvention(rule);
+  if (!convention) return null;
+
+  if (/\b(prior|preceding|previous)\b[^.]{0,40}\byear\b|\byear\b[^.]{0,40}\b(prior|preceding|previous)\b/.test(convention)) {
+    return -1;
+  }
+
+  if (
+    /\b(assessment|tax|same|current)\s+year\b/.test(convention) ||
+    /january\s*1(?:st)?(?:\s+of)?\s+(?:each|every)\s+year/.test(convention)
+  ) {
+    return 0;
+  }
+
+  return null;
+}
+
 function valuationConventionRequiresJanuaryFirst(rule: CountyRule | null | undefined): boolean {
-  const convention = rule?.valuation_date_convention?.trim().toLowerCase();
+  const convention = normalizedValuationConvention(rule);
   if (!convention) return false;
   return /january\s*1|jan\.?\s*1|first day of january/.test(convention);
 }
@@ -104,11 +128,26 @@ export function evaluateAssessmentContext(
     hardFailures.push('Valuation date is missing or invalid');
   }
   const valuationYear = valuationDate?.getUTCFullYear() ?? null;
+  const convention = normalizedValuationConvention(input.countyRule);
+  const yearOffset = valuationYearOffset(input.countyRule);
 
-  if (taxYear != null && valuationYear != null && valuationYear !== taxYear) {
-    hardFailures.push(
-      `Valuation year ${valuationYear} does not match assessment year in appeal ${taxYear}`
-    );
+  if (taxYear != null && valuationYear != null) {
+    if (yearOffset != null) {
+      const expectedValuationYear = taxYear + yearOffset;
+      if (valuationYear !== expectedValuationYear) {
+        hardFailures.push(
+          `Valuation year ${valuationYear} conflicts with the verified jurisdiction convention for assessment year ${taxYear}; expected ${expectedValuationYear}`
+        );
+      }
+    } else if (valuationYear !== taxYear) {
+      hardFailures.push(
+        `Valuation year ${valuationYear} differs from assessment year ${taxYear}, and the verified jurisdiction rule does not document a cross-year convention`
+      );
+    } else if (!convention && !isCookCounty) {
+      warnings.push(
+        'Jurisdiction rule does not document a valuation-date convention; the same-year effective date requires manual confirmation'
+      );
+    }
   }
 
   const appliedRatio = isPositiveRatio(input.assessmentRatio) ? input.assessmentRatio : null;
@@ -150,7 +189,7 @@ export function evaluateAssessmentContext(
   }
 
   if (isCookCounty) {
-    if (!input.countyRule?.valuation_date_convention?.trim()) {
+    if (!convention) {
       hardFailures.push('Cook County rule is missing its valuation-date convention');
     }
     if (!input.countyRule?.fair_cash_value_synonym) {
