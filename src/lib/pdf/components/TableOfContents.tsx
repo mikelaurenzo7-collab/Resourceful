@@ -1,5 +1,5 @@
 // ─── Table of Contents ───────────────────────────────────────────────────────
-// Derived from the actual case profile and evidence inventory.
+// Displays the exact ordered section plan consumed by the report renderer.
 
 import React from 'react';
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer';
@@ -7,23 +7,11 @@ import { theme, colors } from '../styles/theme';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { getAssignmentDisplayLabel } from '@/lib/assignments/routing';
 import { formatDate } from '@/lib/templates/helpers';
-import { buildReportProfile } from '../report-profile';
+import {
+  buildReportRenderPlan,
+  type ReportRenderPlan,
+} from '../report-render-plan';
 import { PageFooter } from './shared';
-
-interface TocEntry {
-  number: string;
-  title: string;
-  detail?: string;
-}
-
-const SPECIAL_NARRATIVE_KEYS = new Set([
-  'summary_of_salient_facts',
-  'executive_summary',
-  'assignment_and_scope',
-  'reconciliation_narrative',
-  'hearing_script',
-  'certification_and_limiting_conditions',
-]);
 
 function labelFor(number: string): string {
   if (!number) return '';
@@ -38,97 +26,20 @@ function titleCase(value: string): string {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
-export default function TableOfContents({ data }: { data: ReportTemplateData }) {
-  const { property, comparableSales, report, photos, filingGuide } = data;
-  const profile = buildReportProfile(data);
+export default function TableOfContents({
+  data,
+  plan,
+}: {
+  data: ReportTemplateData;
+  plan?: ReportRenderPlan;
+}) {
+  const { property, comparableSales, report } = data;
+  const renderPlan = plan ?? buildReportRenderPlan(data);
+  const { profile, sections } = renderPlan;
   const assignmentLabel = getAssignmentDisplayLabel(report.service_type, report.desired_outcome);
-  const hasMaps = Boolean(data.maps.regional?.url || data.maps.neighborhood?.url || data.maps.parcel?.url);
-  const photoCount = photos.filter((photo) => Boolean(photo.storage_path)).length;
-  const hasPhotoDefects = photos.some((photo) => (photo.ai_analysis?.defects?.length ?? 0) > 0);
-  const hasAddendumA =
-    (profile.assignmentKind === 'tax_appeal' && filingGuide != null) ||
-    (profile.assignmentKind === 'pre_listing' && data.narratives.some((n) => n.section_name === 'pricing_strategy_guide')) ||
-    (profile.assignmentKind === 'pre_purchase' && data.narratives.some((n) => n.section_name === 'negotiation_guide')) ||
-    (profile.assignmentKind === 'independent_valuation' && data.narratives.some((n) => n.section_name === 'valuation_use_guide'));
-  const addendumATitle = profile.assignmentKind === 'pre_listing'
-    ? 'Pricing Strategy Guide'
-    : profile.assignmentKind === 'pre_purchase'
-      ? 'Negotiation Strategy Guide'
-      : profile.assignmentKind === 'independent_valuation'
-        ? 'Valuation Use & Next-Step Guide'
-        : 'Verified County Filing Instructions';
-
-  const sections: TocEntry[] = [
-    { number: '', title: 'Letter of Transmittal' },
-  ];
-
-  const hasNarrative = (key: string) => data.narratives.some(
-    (narrative) => narrative.section_name === key && Boolean(narrative.content?.trim())
-  );
-
-  if (hasNarrative('summary_of_salient_facts')) {
-    sections.push({ number: 'I-A', title: 'Summary of Salient Facts' });
-  }
-  sections.push({ number: 'I-A1', title: 'Property Identification & Valuation Facts' });
-  if (hasNarrative('executive_summary')) {
-    sections.push({ number: 'I-B', title: 'Executive Valuation Summary' });
-  }
-  if (hasMaps) {
-    sections.push({ number: 'EX-1', title: 'Subject Maps & Parcel Context' });
-  }
-  if (photoCount > 0) {
-    sections.push({
-      number: 'EX-2',
-      title: 'Subject Photo Exhibit',
-      detail: `${photoCount} images`,
-    });
-  }
-  if (hasNarrative('assignment_and_scope')) {
-    sections.push({ number: 'II', title: 'Assignment & Scope of Work' });
-  }
-
-  for (const section of profile.narrativeSections) {
-    if (SPECIAL_NARRATIVE_KEYS.has(section.key)) continue;
-    sections.push({
-      number: section.number,
-      title: section.title,
-      detail: section.required ? 'Required for this profile' : undefined,
-    });
-  }
-
-  if (hasPhotoDefects) {
-    sections.push({ number: 'III-G', title: 'Detailed Condition Evidence Table' });
-  }
-  if (comparableSales.length > 0) {
-    sections.push({
-      number: 'VII-B1',
-      title: 'Comparable Sales Grid',
-      detail: `${comparableSales.length} transactions`,
-    });
-    sections.push({
-      number: 'VII-C1',
-      title: 'Comparable Sale Evidence Profiles',
-      detail: `${comparableSales.length} profiles`,
-    });
-  }
-  if (profile.hasIncomeApproach) {
-    sections.push({ number: 'VII-D1', title: 'Income Capitalization Calculation' });
-  }
-  if (profile.hasCostApproach) {
-    sections.push({ number: 'VII-E1', title: 'Cost Approach Calculation' });
-  }
-  if (profile.isTaxAppeal && property.assessment_ratio != null) {
-    sections.push({ number: 'VIII-A1', title: 'Assessment Level Context' });
-  }
-  sections.push({ number: 'VIII-B', title: 'Reconciliation & Final Value Conclusion' });
-
-  if (hasAddendumA) {
-    sections.push({ number: 'ADD-A', title: addendumATitle });
-  }
-  if (hasNarrative('hearing_script')) {
-    sections.push({ number: 'ADD-B', title: 'Hearing / Reviewer Preparation Guide' });
-  }
-  sections.push({ number: 'ADD-C', title: 'Certification Boundary & Limiting Conditions' });
+  const photoCount = data.photos.filter((photo) => Boolean(photo.storage_path)).length;
+  const mapCount = [data.maps.regional, data.maps.neighborhood, data.maps.parcel]
+    .filter((map) => Boolean(map?.url)).length;
 
   const supportedApproaches = [
     profile.hasSalesApproach ? 'Sales Comparison' : null,
@@ -144,8 +55,8 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
         <View style={theme.sectionDivider} />
       </View>
 
-      {sections.map((entry, index) => (
-        <View key={`${entry.number}-${entry.title}-${index}`} style={styles.tocRow} wrap={false}>
+      {sections.map((entry) => (
+        <View key={entry.id} style={styles.tocRow} wrap={false}>
           <Text style={[styles.tocNumber, entry.number.startsWith('ADD-') ? styles.addendumLabel : {}]}>
             {labelFor(entry.number)}
           </Text>
@@ -192,13 +103,15 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
         <View style={styles.metaRow}>
           <Text style={theme.label}>Supported Approaches</Text>
           <Text style={theme.tableCell}>
-            {supportedApproaches.length > 0 ? supportedApproaches.join(', ') : 'Alternative evidence path documented in report'}
+            {supportedApproaches.length > 0
+              ? supportedApproaches.join(', ')
+              : 'Alternative evidence path documented in report'}
           </Text>
         </View>
         <View style={styles.metaRow}>
           <Text style={theme.label}>Evidence Counts</Text>
           <Text style={theme.tableCell}>
-            {comparableSales.length} sales · {data.comparableRentals.length} rentals · {photoCount} photos · {hasMaps ? 'maps included' : 'no maps'}
+            {comparableSales.length} sales · {data.comparableRentals.length} rentals · {photoCount} photos · {mapCount} maps
           </Text>
         </View>
         <View style={styles.metaRow}>
