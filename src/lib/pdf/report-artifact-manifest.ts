@@ -4,7 +4,6 @@ import { AI_MODELS } from '@/config/ai';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import type { ServiceType } from '@/types/database';
 import { buildReportProfile } from './report-profile';
-import { getReportCostAssessment } from './section-data';
 import { evaluateAssessmentContext } from '@/lib/valuation/assessment-context-policy';
 import { evaluateCaseStrategy, type CaseStrategyFlag } from '@/lib/valuation/case-strategy-policy';
 import {
@@ -164,7 +163,7 @@ export function createReportArtifactManifest(input: {
   const classificationSource = getClassificationSourceEvidence(data);
   const effectiveDateEvidence = getValuationEffectiveDateEvidence(data);
   const jurisdictionPlugin = getJurisdictionPlugin(data.countyRule);
-  const costAssessment = getReportCostAssessment(data);
+  const costAssessment = valuationRelease.costAssessment;
   const assessmentContext = evaluateAssessmentContext({
     serviceType: releaseServiceType,
     countyFips: data.report.county_fips,
@@ -239,7 +238,7 @@ export function createReportArtifactManifest(input: {
       distressedComparableSales,
       filingGuideIncluded: data.filingGuide != null,
       incomeApproachReleaseReady: valuationRelease.incomeAssessment?.isReleaseReady === true,
-      costApproachReleaseReady: costAssessment.isReleaseReady,
+      costApproachReleaseReady: costAssessment?.isReleaseReady === true,
     },
     valuation: {
       concludedValue: data.concludedValue,
@@ -250,7 +249,7 @@ export function createReportArtifactManifest(input: {
       warnings: [
         ...valuationRelease.warnings,
         ...assessmentContext.warnings,
-        ...costAssessment.warnings,
+        ...(costAssessment?.warnings ?? []),
         ...caseStrategy.warnings,
         ...nationwideIntegrity.warnings,
       ],
