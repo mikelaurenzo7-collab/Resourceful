@@ -35,7 +35,11 @@ function baseData(overrides: Record<string, unknown> = {}): ReportTemplateData {
       property_class_description: 'Residential',
       overall_condition: 'average',
       condition_notes: null,
+      cost_approach_rcn: null,
       cost_approach_value: null,
+      physical_depreciation_pct: null,
+      functional_obsolescence_pct: null,
+      land_value: null,
       zoning_designation: 'R-1',
       zoning_description: null,
       tax_year_in_appeal: 2025,
@@ -79,7 +83,10 @@ function baseData(overrides: Record<string, unknown> = {}): ReportTemplateData {
     comparableRentals: [],
     incomeAnalysis: null,
     photos: [{ storage_path: 'reports/subject.jpg', ai_analysis: null }],
-    countyRule: null,
+    countyRule: {
+      jurisdiction_plugin_key: 'cook_county_classification',
+      jurisdiction_plugin_version: 1,
+    },
     maps: {},
     filingGuide: null,
     concludedValue: 500000,
@@ -100,6 +107,11 @@ describe('buildReportProfile', () => {
     expect(profile.requiredNarratives).toContain('appeal_argument_summary');
     expect(profile.requiredNarratives).toContain('assessment_equity');
     expect(profile.requiredNarratives).toContain('hbu_as_vacant');
+  });
+
+  it('does not activate Cook County behavior from county text or FIPS alone', () => {
+    const profile = buildReportProfile(baseData({ countyRule: null }));
+    expect(profile.isCookCounty).toBe(false);
   });
 
   it('treats multifamily residential property as a complex income-property assignment', () => {
@@ -132,6 +144,28 @@ describe('buildReportProfile', () => {
     expect(profile.hasConditionEvidence).toBe(true);
     expect(profile.requiredNarratives).toContain('condition_assessment');
   });
+
+  it('activates the cost approach only when its inputs reconcile', () => {
+    const incomplete = buildReportProfile(baseData({
+      property: {
+        ...baseData().property,
+        cost_approach_value: 470_000,
+      },
+    }));
+    expect(incomplete.hasCostApproach).toBe(false);
+
+    const complete = buildReportProfile(baseData({
+      property: {
+        ...baseData().property,
+        cost_approach_rcn: 500_000,
+        cost_approach_value: 470_000,
+        physical_depreciation_pct: 10,
+        functional_obsolescence_pct: 0,
+        land_value: 20_000,
+      },
+    }));
+    expect(complete.hasCostApproach).toBe(true);
+  });
 });
 
 describe('evaluateReportProfileCompleteness', () => {
@@ -146,15 +180,36 @@ describe('evaluateReportProfileCompleteness', () => {
     expect(result.hardFailures.some((failure) => failure.includes('assessment_equity'))).toBe(true);
   });
 
-  it('requires source-backed comparable evidence for reviewed reports', () => {
+  it('requires every reviewed comparable to have transaction provenance', () => {
     const data = baseData({
       comparableSales: [
-        { id: 'comp-1', county_recorder_url: null, deed_document_number: null, is_distressed_sale: false },
+        {
+          id: 'comp-1',
+          county_recorder_url: 'https://recorder.example/1',
+          deed_document_number: 'DOC-1',
+          is_distressed_sale: false,
+        },
+        { id: 'comp-2', county_recorder_url: null, deed_document_number: null, is_distressed_sale: false },
       ],
     });
 
     const result = evaluateReportProfileCompleteness(data);
-    expect(result.hardFailures).toContain('Reviewed report has no source-backed comparable transaction');
+    expect(result.hardFailures).toContain(
+      '1 reviewed comparable sale(s) lack a recorder link or deed document number'
+    );
+  });
+
+  it('fails when partial cost inputs cannot support a reproducible method', () => {
+    const data = baseData({
+      property: {
+        ...baseData().property,
+        cost_approach_value: 470_000,
+      },
+    });
+
+    const result = evaluateReportProfileCompleteness(data);
+    expect(result.hardFailures.some((failure) => failure.includes('replacement-cost-new'))).toBe(true);
+    expect(result.hardFailures.some((failure) => failure.includes('land-value'))).toBe(true);
   });
 
   it('warns when distressed sales are retained', () => {
