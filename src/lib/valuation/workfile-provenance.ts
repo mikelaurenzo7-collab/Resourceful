@@ -1,5 +1,9 @@
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import type { CountyRule, PropertyData, Report } from '@/types/database';
+import {
+  dateOnly,
+  type ValuationEffectiveDateSource,
+} from './valuation-date-policy';
 
 export const EVIDENCE_SOURCE_TYPES = [
   'owner_statement',
@@ -13,8 +17,17 @@ export const EVIDENCE_SOURCE_TYPES = [
 
 export type EvidenceSourceType = typeof EVIDENCE_SOURCE_TYPES[number];
 
+const VALUATION_EFFECTIVE_DATE_SOURCES = [
+  'intake_current_date',
+  'jurisdiction_convention',
+  'user_supplied',
+  'admin_override',
+] as const satisfies readonly ValuationEffectiveDateSource[];
+
 interface ReportWorkfileFields {
   is_retrospective_assignment?: boolean | null;
+  valuation_effective_date?: string | null;
+  valuation_effective_date_source?: string | null;
 }
 
 interface PropertyWorkfileFields {
@@ -30,6 +43,12 @@ interface PropertyWorkfileFields {
 interface CountyRulePluginFields {
   jurisdiction_plugin_key?: string | null;
   jurisdiction_plugin_version?: number | null;
+}
+
+export interface ValuationEffectiveDateEvidence {
+  date: string | null;
+  source: ValuationEffectiveDateSource | null;
+  isVerified: boolean;
 }
 
 export interface UnitCountEvidence {
@@ -54,6 +73,10 @@ function hasText(value: string | null | undefined): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
+function asReportWorkfile(data: ReportTemplateData): Report & ReportWorkfileFields {
+  return data.report as Report & ReportWorkfileFields;
+}
+
 function asPropertyWorkfile(data: ReportTemplateData): PropertyData & PropertyWorkfileFields {
   return data.property as PropertyData & PropertyWorkfileFields;
 }
@@ -69,8 +92,25 @@ export function isHttpUrl(value: string | null | undefined): boolean {
 }
 
 export function isRetrospectiveAssignment(data: ReportTemplateData): boolean {
-  const report = data.report as Report & ReportWorkfileFields;
-  return report.is_retrospective_assignment === true;
+  return asReportWorkfile(data).is_retrospective_assignment === true;
+}
+
+export function getValuationEffectiveDateEvidence(
+  data: ReportTemplateData
+): ValuationEffectiveDateEvidence {
+  const report = asReportWorkfile(data);
+  const date = dateOnly(report.valuation_effective_date);
+  const source = VALUATION_EFFECTIVE_DATE_SOURCES.includes(
+    report.valuation_effective_date_source as ValuationEffectiveDateSource
+  )
+    ? report.valuation_effective_date_source as ValuationEffectiveDateSource
+    : null;
+
+  return {
+    date,
+    source,
+    isVerified: date != null && source != null,
+  };
 }
 
 export function getUnitCountEvidence(data: ReportTemplateData): UnitCountEvidence {
