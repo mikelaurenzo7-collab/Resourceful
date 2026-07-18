@@ -1,5 +1,8 @@
 import type { ReportTemplateData } from '@/lib/templates/report-template';
-import { evaluateIncomeApproachEvidence } from '@/lib/valuation/income-approach-policy';
+import {
+  evaluateIncomeApproachEvidence,
+  type IncomeApproachEvidenceAssessment,
+} from '@/lib/valuation/income-approach-policy';
 import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
 
 export interface ValueConclusionRowData {
@@ -12,6 +15,31 @@ export interface ValueConclusionRowData {
 export interface FloodEnvironmentalContext {
   facts: Array<{ label: string; value: string }>;
   observations: string[];
+}
+
+export function getReportIncomeAssessment(
+  data: ReportTemplateData
+): IncomeApproachEvidenceAssessment | null {
+  if (!data.incomeAnalysis) return null;
+
+  const propertySupportsIncomeApproach = supportsIncomeApproach({
+    propertyType: data.report.property_type,
+    propertySubtype: data.property.property_subtype,
+    propertyClassDescription: data.property.property_class_description,
+  });
+  if (!propertySupportsIncomeApproach) return null;
+
+  return evaluateIncomeApproachEvidence({
+    netOperatingIncome: data.incomeAnalysis.net_operating_income,
+    concludedCapRate: data.incomeAnalysis.concluded_cap_rate,
+    concludedValue: data.incomeAnalysis.concluded_value_income_approach,
+    comparableRentalCount: data.comparableRentals.length,
+    investorSurveyReference: data.incomeAnalysis.investor_survey_reference,
+  });
+}
+
+export function hasReleaseReadyIncomeApproach(data: ReportTemplateData): boolean {
+  return getReportIncomeAssessment(data)?.isReleaseReady === true;
 }
 
 export function buildValueConclusionRows(data: ReportTemplateData): ValueConclusionRowData[] {
@@ -28,21 +56,7 @@ export function buildValueConclusionRows(data: ReportTemplateData): ValueConclus
     });
   }
 
-  const propertySupportsIncomeApproach = supportsIncomeApproach({
-    propertyType: data.report.property_type,
-    propertySubtype: data.property.property_subtype,
-    propertyClassDescription: data.property.property_class_description,
-  });
-  const incomeAssessment = data.incomeAnalysis && propertySupportsIncomeApproach
-    ? evaluateIncomeApproachEvidence({
-        netOperatingIncome: data.incomeAnalysis.net_operating_income,
-        concludedCapRate: data.incomeAnalysis.concluded_cap_rate,
-        concludedValue: data.incomeAnalysis.concluded_value_income_approach,
-        comparableRentalCount: data.comparableRentals.length,
-        investorSurveyReference: data.incomeAnalysis.investor_survey_reference,
-      })
-    : null;
-
+  const incomeAssessment = getReportIncomeAssessment(data);
   if (incomeAssessment?.isReleaseReady && incomeAssessment.storedValue != null) {
     rows.push({
       approach: 'Income Capitalization',
