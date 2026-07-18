@@ -1,30 +1,112 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ReportTemplateData } from '@/lib/templates/report-template';
-import { buildFloodEnvironmentalContext, buildValueConclusionRows, hasFloodEnvironmentalContext } from './section-data';
+import {
+  buildFloodEnvironmentalContext,
+  buildValueConclusionRows,
+  getReportIncomeAssessment,
+  hasFloodEnvironmentalContext,
+  hasReleaseReadyIncomeApproach,
+} from './section-data';
 
 describe('buildValueConclusionRows', () => {
-  it('builds weighted approach rows from existing valuation data', () => {
+  it('builds weighted approach rows with explicit value-per-square-foot metrics', () => {
     const data = createTemplateData({
+      report: { property_type: 'commercial' },
       property: {
-        building_sqft_gross: 10000,
+        building_sqft_gross: 10_000,
         valuation_method: 'sales_income_blend',
-        cost_approach_value: 920000,
+        cost_approach_value: 920_000,
       },
       comparableSales: [
-        { sale_price: 950000, adjusted_price_per_sqft: 100 },
-        { sale_price: 1025000, adjusted_price_per_sqft: 110 },
-        { sale_price: 1100000, adjusted_price_per_sqft: 120 },
+        { sale_price: 950_000, adjusted_price_per_sqft: 100 },
+        { sale_price: 1_025_000, adjusted_price_per_sqft: 110 },
+        { sale_price: 1_100_000, adjusted_price_per_sqft: 120 },
       ],
+      comparableRentals: [{ address: '100 Rental Ave' }],
       incomeAnalysis: {
-        concluded_value_income_approach: 980000,
+        net_operating_income: 78_400,
+        concluded_cap_rate: 0.08,
+        concluded_value_income_approach: 980_000,
+        investor_survey_reference: 'Market participant survey',
       },
     });
 
     expect(buildValueConclusionRows(data)).toEqual([
-      { approach: 'Sales Comparison', total: 1100000, perUnit: 110, role: 'Primary (70%)' },
-      { approach: 'Income Capitalization', total: 980000, perUnit: 98, role: 'Supporting (30%)' },
-      { approach: 'Cost Approach', total: 920000, perUnit: 92, role: 'Supporting check' },
+      { approach: 'Sales Comparison', total: 1_100_000, valuePerSqFt: 110, role: 'Primary (70%)' },
+      { approach: 'Income Capitalization', total: 980_000, valuePerSqFt: 98, role: 'Supporting (30%)' },
+      { approach: 'Cost Approach', total: 920_000, valuePerSqFt: 92, role: 'Supporting check' },
+    ]);
+    expect(hasReleaseReadyIncomeApproach(data)).toBe(true);
+  });
+
+  it('omits income conclusions for an ordinary residential property', () => {
+    const data = createTemplateData({
+      report: { property_type: 'residential' },
+      property: {
+        building_sqft_gross: 2_000,
+        property_class_description: 'Single-family residence with home office',
+      },
+      comparableSales: [{ sale_price: 500_000, adjusted_price_per_sqft: 250 }],
+      comparableRentals: [{ address: '100 Rental Ave' }],
+      incomeAnalysis: {
+        net_operating_income: 30_000,
+        concluded_cap_rate: 0.06,
+        concluded_value_income_approach: 500_000,
+        investor_survey_reference: 'Market participant survey',
+      },
+    });
+
+    expect(buildValueConclusionRows(data).map((row) => row.approach)).toEqual([
+      'Sales Comparison',
+    ]);
+    expect(getReportIncomeAssessment(data)).toBeNull();
+    expect(hasReleaseReadyIncomeApproach(data)).toBe(false);
+  });
+
+  it('omits incomplete or unreconciled income conclusions', () => {
+    const data = createTemplateData({
+      report: { property_type: 'commercial' },
+      property: { building_sqft_gross: 10_000 },
+      comparableRentals: [],
+      incomeAnalysis: {
+        net_operating_income: 100_000,
+        concluded_cap_rate: 8,
+        concluded_value_income_approach: 1_250_000,
+        investor_survey_reference: null,
+      },
+    });
+
+    const assessment = getReportIncomeAssessment(data);
+    expect(assessment?.isReleaseReady).toBe(false);
+    expect(buildValueConclusionRows(data)).toEqual([]);
+    expect(hasReleaseReadyIncomeApproach(data)).toBe(false);
+  });
+
+  it('supports residential multifamily income evidence', () => {
+    const data = createTemplateData({
+      report: { property_type: 'residential' },
+      property: {
+        building_sqft_gross: 8_000,
+        property_subtype: 'multifamily',
+      },
+      comparableRentals: [{ address: '100 Rental Ave' }, { address: '200 Rental Ave' }],
+      incomeAnalysis: {
+        net_operating_income: 120_000,
+        concluded_cap_rate: 0.075,
+        concluded_value_income_approach: 1_600_000,
+        investor_survey_reference: 'Regional apartment investor survey',
+      },
+    });
+
+    expect(hasReleaseReadyIncomeApproach(data)).toBe(true);
+    expect(buildValueConclusionRows(data)).toEqual([
+      {
+        approach: 'Income Capitalization',
+        total: 1_600_000,
+        valuePerSqFt: 200,
+        role: 'Supporting',
+      },
     ]);
   });
 });
@@ -71,15 +153,25 @@ describe('buildFloodEnvironmentalContext', () => {
   });
 });
 
-function createTemplateData(overrides: Record<string, unknown>): ReportTemplateData {
-  return {
+function createTemplateData(overrides: {
+  report?: Record<string, unknown>;
+  property?: Record<string, unknown>;
+  photos?: unknown[];
+  comparableSales?: unknown[];
+  comparableRentals?: unknown[];
+  incomeAnalysis?: Record<string, unknown> | null;
+}): ReportTemplateData {
+  const base = {
     report: {
       property_address: '123 Main St',
+      property_type: 'residential',
       service_type: 'tax_appeal',
     },
     property: {
       building_sqft_gross: 0,
       building_sqft_living_area: null,
+      property_subtype: null,
+      property_class_description: null,
       valuation_method: 'sales_comparison',
       cost_approach_value: null,
       flood_zone_designation: null,
@@ -98,6 +190,12 @@ function createTemplateData(overrides: Record<string, unknown>): ReportTemplateD
     concludedValue: 0,
     valuationDate: '2026-04-10',
     reportDate: '2026-04-10',
+  };
+
+  return {
+    ...base,
     ...overrides,
+    report: { ...base.report, ...(overrides.report ?? {}) },
+    property: { ...base.property, ...(overrides.property ?? {}) },
   } as unknown as ReportTemplateData;
 }
