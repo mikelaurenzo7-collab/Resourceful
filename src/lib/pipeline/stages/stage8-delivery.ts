@@ -1,41 +1,99 @@
 // ─── Stage 8: Client Delivery (Admin-Triggered) ─────────────────────────────
 // Dashboard-first delivery model:
-// - Report is ALWAYS accessible from the user's dashboard and /report/[id] page
-// - PDF downloads generate fresh signed URLs on-demand (no expiry concerns)
-// - Email is an optional NOTIFICATION (not the delivery mechanism)
-// - User can opt out of email via email_delivery_preference flag
-//
-// This approach eliminates 7-day expiring links, creates dashboard stickiness,
-// and enables outcome collection for the calibration feedback loop.
+// - Report is always accessible from the user's dashboard and /report/[id] page
+// - PDF downloads generate fresh signed URLs on-demand
+// - Email is an optional notification, not the delivery mechanism
+// - Delivery requires a verified immutable PDF/manifest pair
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database, Report, PropertyData } from '@/types/database';
 import type { StageResult } from '../orchestrator';
-import { sendReportReadyNotification } from '@/lib/services/resend-email';
+import {
+  manifestPathForPdf,
+  releaseKeyForPdfPath,
+  verifyReportArtifact,
+} from '@/lib/pdf/report-artifact-verification';
+import { sendVerifiedReportReadyNotification } from '@/lib/services/customer-notification-email';
 import { subscribeToReminders } from '@/lib/services/reminder-service';
+import { calculateAssessmentGap } from '@/lib/valuation/assessment-gap';
 import { pipelineLogger } from '@/lib/logger';
 
-// ─── Public API ─────────────────────────────────────────────────────────────
+const DELIVERABLE_STATUSES: Report['status'][] = ['approved', 'delivering'];
+
+type StoredArtifactVerification =
+  | { success: true; releaseKey: string }
+  | { success: false; error: string };
+
+async function verifyStoredReportArtifact(
+  report: Report,
+  supabase: SupabaseClient<Database>
+): Promise<StoredArtifactVerification> {
+  const pdfPath = report.report_pdf_storage_path;
+  if (!pdfPath) {
+    return { success: false, error: 'No PDF storage path found on report. Run PDF assembly first.' };
+  }
+
+  let manifestPath: string;
+  let releaseKey: string;
+  try {
+    manifestPath = manifestPathForPdf(pdfPath);
+    releaseKey = releaseKeyForPdfPath(pdfPath);
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  const [pdfDownload, manifestDownload] = await Promise.all([
+    supabase.storage.from('reports').download(pdfPath),
+    supabase.storage.from('reports').download(manifestPath),
+  ]);
+
+  if (pdfDownload.error || !pdfDownload.data) {
+    return {
+      success: false,
+      error: `Approved PDF artifact is unavailable: ${pdfDownload.error?.message ?? 'missing object'}`,
+    };
+  }
+  if (manifestDownload.error || !manifestDownload.data) {
+    return {
+      success: false,
+      error: `Approved PDF manifest is unavailable: ${manifestDownload.error?.message ?? 'missing object'}`,
+    };
+  }
+
+  const pdfBuffer = Buffer.from(await pdfDownload.data.arrayBuffer());
+  const manifestJson = await manifestDownload.data.text();
+  const verification = verifyReportArtifact({
+    reportId: report.id,
+    serviceType: report.service_type,
+    propertyType: report.property_type,
+    reviewTier: report.review_tier,
+    pdfPath,
+    pdfBuffer,
+    manifestJson,
+  });
+
+  if (!verification.verified) {
+    return {
+      success: false,
+      error: `Approved report artifact verification failed (${verification.code}): ${verification.message}`,
+    };
+  }
+
+  return { success: true, releaseKey };
+}
 
 /**
- * Deliver the approved report to the client. This is admin-triggered,
- * not part of the automated pipeline stages 1-7.
- *
- * With dashboard-first delivery:
- * 1. Always marks report as 'delivered' (accessible on dashboard)
- * 2. Sends email notification only if user opted in (default: yes)
- * 3. Subscribes user to annual assessment reminders
- *
- * @param reportId - UUID of the report to deliver
- * @param adminUserId - UUID of the admin approving/sending
- * @param supabase - Admin Supabase client
+ * Deliver an approved report to the client. The approval route atomically claims
+ * pending_approval reports as delivering before calling this function.
  */
 export async function runDelivery(
   reportId: string,
   adminUserId: string,
   supabase: SupabaseClient<Database>
 ): Promise<StageResult> {
-  // ── Fetch report ──────────────────────────────────────────────────────
   const { data: reportData, error: reportError } = await supabase
     .from('reports')
     .select('*')
@@ -44,35 +102,25 @@ export async function runDelivery(
   const report = reportData as Report | null;
 
   if (reportError || !report) {
-    return { success: false, error: `Failed to fetch report: ${reportError?.message}` };
+    return { success: false, error: `Failed to fetch report: ${reportError?.message ?? 'not found'}` };
   }
 
-  const deliverableStatuses = ['processing', 'pending_approval', 'approved', 'delivering'];
-  if (!deliverableStatuses.includes(report.status)) {
+  if (!DELIVERABLE_STATUSES.includes(report.status)) {
     return {
       success: false,
-      error: `Report status is '${report.status}' — must be processing, pending_approval, approved, or delivering to deliver`,
+      error: `Report status is '${report.status}' — must be approved or delivering to deliver`,
     };
   }
 
-  if (!report.report_pdf_storage_path) {
-    return { success: false, error: 'No PDF storage path found on report. Run PDF assembly first.' };
-  }
+  const artifactVerification = await verifyStoredReportArtifact(report, supabase);
+  if (!artifactVerification.success) return artifactVerification;
 
-  // ── Get client email from report (no auth account required) ──────────
-  const clientEmail = report.client_email;
-  if (!clientEmail) {
+  if (!report.client_email) {
     return { success: false, error: 'No client email found on report' };
   }
 
-  // ── Record approval and update status BEFORE sending email ────────────
-  // Dashboard-first: the report is now accessible regardless of email success.
-  // This prevents duplicate emails: if the email sends but status update fails,
-  // the report stays 'pending_approval' and admin sends again. By updating
-  // status first, we guarantee idempotent delivery.
   const now = new Date().toISOString();
-
-  const { error: statusUpdateError } = await supabase
+  const { data: deliveredReport, error: statusUpdateError } = await supabase
     .from('reports')
     .update({
       status: 'delivered',
@@ -80,38 +128,44 @@ export async function runDelivery(
       approved_at: now,
       approved_by: adminUserId,
     })
-    .eq('id', reportId);
+    .eq('id', reportId)
+    .in('status', DELIVERABLE_STATUSES)
+    .select('id')
+    .single();
 
-  if (statusUpdateError) {
-    return { success: false, error: `Failed to update report status: ${statusUpdateError.message}` };
+  if (statusUpdateError || !deliveredReport) {
+    return {
+      success: false,
+      error: `Failed to atomically mark report delivered: ${statusUpdateError?.message ?? 'status changed concurrently'}`,
+    };
   }
 
-  // NOTE: Approval event is recorded by the caller (approve route), not here.
-  // This prevents duplicate approval_events when delivery is triggered via
-  // the admin approve API.
-
-  // ── Subscribe to annual assessment reminders (non-blocking) ──────────
-  try {
-    await subscribeToReminders(reportId);
-  } catch (err) {
-    pipelineLogger.warn({ err: err }, 'Failed to subscribe to reminders');
+  if (report.service_type === 'tax_appeal') {
+    try {
+      await subscribeToReminders(reportId);
+    } catch (error) {
+      pipelineLogger.warn(
+        { reportId, error: error instanceof Error ? error.message : String(error) },
+        '[stage8] Failed to subscribe tax-appeal report to reminders'
+      );
+    }
   }
 
-  // ── Send email notification (if user opted in) ────────────────────────
-  // Dashboard-first: the report is already accessible on dashboard.
-  // Email is a convenience notification, not the delivery mechanism.
   if (report.email_delivery_preference !== false) {
-    // Fetch property data for email context
-    const { data: pdData } = await supabase
+    const { data: propertyDataRaw } = await supabase
       .from('property_data')
-      .select('assessed_value, concluded_value')
+      .select('assessed_value, concluded_value, assessment_ratio')
       .eq('report_id', reportId)
       .single();
-    const propertyData = pdData as Pick<PropertyData, 'assessed_value' | 'concluded_value'> | null;
-
-    const assessedValue = propertyData?.assessed_value ?? 0;
-    const concludedValue = propertyData?.concluded_value ?? 0;
-    const potentialSavings = Math.max(0, assessedValue - concludedValue);
+    const propertyData = propertyDataRaw as Pick<
+      PropertyData,
+      'assessed_value' | 'concluded_value' | 'assessment_ratio'
+    > | null;
+    const assessmentGap = calculateAssessmentGap({
+      currentAssessedValue: propertyData?.assessed_value,
+      concludedMarketValue: propertyData?.concluded_value,
+      assessmentRatio: propertyData?.assessment_ratio,
+    });
 
     const propertyAddress = [
       report.property_address,
@@ -119,51 +173,64 @@ export async function runDelivery(
       report.state,
     ].filter(Boolean).join(', ');
 
-    // Fetch county name for email context
     let countyName: string | null = report.county ?? null;
     if (report.county_fips) {
-      const { data: cr } = await supabase
+      const { data: countyRules } = await supabase
         .from('county_rules')
         .select('county_name')
         .eq('county_fips', report.county_fips)
         .limit(1);
-      if (cr?.[0]) {
-        countyName = (cr[0] as { county_name: string }).county_name ?? countyName;
+      if (countyRules?.[0]) {
+        countyName = (countyRules[0] as { county_name: string }).county_name ?? countyName;
       }
     }
 
-    pipelineLogger.info({ clientEmail }, '[stage8] Sending report-ready notification to');
-    const emailResult = await sendReportReadyNotification({
-      to: clientEmail,
+    const emailResult = await sendVerifiedReportReadyNotification({
+      to: report.client_email,
       reportId,
+      artifactReleaseKey: artifactVerification.releaseKey,
+      serviceType: report.service_type,
       propertyAddress,
-      concludedValue,
-      assessedValue,
-      potentialSavings,
+      concludedMarketValue: propertyData?.concluded_value ?? null,
+      currentAssessedValue: assessmentGap?.currentAssessedValue ?? null,
+      indicatedAssessedValue: assessmentGap?.indicatedAssessedValue ?? null,
+      assessmentGap: assessmentGap?.assessmentGap ?? null,
       countyName,
     });
 
     if (emailResult.error) {
-      // Dashboard-first: report is already delivered and accessible.
-      // Email failure is non-fatal — log it but don't roll back.
-      // The notification-retry cron will pick this up (notification_sent_at stays null).
       pipelineLogger.error(
-        { reportId, err: emailResult.error },
-        '[stage8] Notification email failed (report still delivered via dashboard)'
+        { reportId, error: emailResult.error },
+        '[stage8] Notification email failed; dashboard delivery remains available'
       );
     } else {
-      // Stamp successful notification — prevents retry cron from re-sending
-      await supabase
+      const { error: notificationStampError } = await supabase
         .from('reports')
         .update({ notification_sent_at: new Date().toISOString() } as Record<string, unknown>)
-        .eq('id', reportId);
-      pipelineLogger.info(
-        { reportId, clientEmail, emailId: emailResult.data?.id },
-        '[stage8] Report delivered with notification'
-      );
+        .eq('id', reportId)
+        .eq('status', 'delivered');
+
+      if (notificationStampError) {
+        pipelineLogger.error(
+          { reportId, error: notificationStampError.message },
+          '[stage8] Notification sent but success stamp failed'
+        );
+      } else {
+        pipelineLogger.info(
+          {
+            reportId,
+            artifactReleaseKey: artifactVerification.releaseKey,
+            emailId: emailResult.data?.id,
+          },
+          '[stage8] Report delivered with notification'
+        );
+      }
     }
   } else {
-    pipelineLogger.info({ reportId }, '[stage8] Report delivered (email notification opted out by user)');
+    pipelineLogger.info(
+      { reportId },
+      '[stage8] Report delivered; email notification was declined by the customer'
+    );
   }
 
   return { success: true };
