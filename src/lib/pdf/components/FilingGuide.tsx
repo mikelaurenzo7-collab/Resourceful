@@ -70,7 +70,7 @@ export default function FilingGuide({ guide }: { guide: FilingGuideData }) {
             </Text>
           ))}
           <Text style={[theme.caption, { marginLeft: 8, marginTop: 4 }]}>
-            Include the Resourceful report only when it is relevant and the authority's filing rules permit or request supporting valuation evidence.
+            Include the Resourceful report only when it is relevant and the authority’s filing rules permit or request supporting valuation evidence.
           </Text>
         </View>
       )}
