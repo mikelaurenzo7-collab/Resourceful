@@ -71,6 +71,8 @@ function createData(): ReportTemplateData {
     property: {
       property_subtype: 'Single Family Residence',
       property_class_description: 'Residential',
+      property_class_source_authority: 'Cook County Assessor',
+      property_class_source_url: 'https://assessor.example.gov/parcel/123',
       overall_condition: 'average',
       condition_notes: null,
       zoning_conformance: 'Legal conforming',
@@ -81,7 +83,11 @@ function createData(): ReportTemplateData {
       assessment_ratio: 0.1,
       assessment_methodology: 'Cook County residential classification',
       tax_year_in_appeal: 2026,
+      cost_approach_rcn: null,
       cost_approach_value: null,
+      physical_depreciation_pct: null,
+      functional_obsolescence_pct: null,
+      land_value: null,
     },
     comparableSales: [
       {
@@ -127,6 +133,8 @@ function createData(): ReportTemplateData {
       level_of_assessment_commercial: 0.25,
       valuation_date_convention: 'January 1 of the assessment year',
       fair_cash_value_synonym: true,
+      jurisdiction_plugin_key: 'cook_county_classification',
+      jurisdiction_plugin_version: 1,
     },
     filingGuide: {
       appeal_board_name: 'Cook County Board of Review',
@@ -167,7 +175,7 @@ describe('report artifact manifest', () => {
     });
     const serialized = serializeReportArtifactManifest(manifest).toString('utf8');
 
-    expect(manifest.schemaVersion).toBe('1.2.0');
+    expect(manifest.schemaVersion).toBe('1.3.0');
     expect(manifest.rendererVersion).toBe('react-pdf-2');
     expect(manifest.artifact.bytes).toBe(pdf.byteLength);
     expect(manifest.artifact.sha256).toBe(hashPdfBuffer(pdf));
@@ -184,19 +192,22 @@ describe('report artifact manifest', () => {
       sourceBackedComparableSales: 1,
       distressedComparableSales: 1,
       filingGuideIncluded: true,
-      costApproachIncluded: false,
+      costApproachReleaseReady: false,
     });
     expect(manifest.jurisdiction).toMatchObject({
       reportCountyFips: '17031',
       ruleCountyFips: '17031',
       reportState: 'IL',
       ruleState: 'IL',
+      pluginKey: 'cook_county_classification',
+      pluginVersion: 1,
       releaseReady: true,
       releaseCode: 'JURISDICTION_RELEASE_READY',
       assessmentYear: 2026,
       valuationDate: '2026-01-01',
       appliedAssessmentRatio: 0.1,
       expectedAssessmentRatio: 0.1,
+      classificationSourceVerified: true,
       requiresYearSpecificEqualizationSource: true,
     });
     expect(manifest.strategy.flags).toContain('tax_appeal');
@@ -205,6 +216,28 @@ describe('report artifact manifest', () => {
     expect(serialized).not.toContain('123 Private Street');
     expect(serialized).not.toContain('Prepare evidence');
     expect(serialized).not.toContain('Market value and assessment equity argument');
+    expect(serialized).not.toContain('https://assessor.example.gov/parcel/123');
+  });
+
+  it('records cost readiness only when all reproducible inputs reconcile', () => {
+    const data = createData();
+    data.property.cost_approach_rcn = 500_000;
+    data.property.cost_approach_value = 470_000;
+    data.property.physical_depreciation_pct = 10;
+    data.property.functional_obsolescence_pct = 0;
+    data.property.land_value = 20_000;
+    data.narratives.push(narrative('cost_approach_narrative'));
+
+    const manifest = createReportArtifactManifest({
+      data,
+      pdfBuffer: Buffer.from('%PDF-1.7 cost evidence bytes'),
+      generatedAt: '2026-07-18T15:04:05.678Z',
+      valuationRelease,
+      jurisdictionRelease,
+    });
+
+    expect(manifest.report.profileId).toBe('resourceful-v2:tax_appeal:complex:sales-cost');
+    expect(manifest.evidence.costApproachReleaseReady).toBe(true);
   });
 
   it('does not record tax-appeal assessment context for an independent valuation override', () => {
