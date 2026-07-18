@@ -96,6 +96,8 @@ export async function runPdfAssembly(
       replacementCostNew: templateData.property.cost_approach_rcn,
       concludedValue: templateData.property.cost_approach_value,
       physicalDepreciationPct: templateData.property.physical_depreciation_pct,
+      functionalObsolescencePct: templateData.property.functional_obsolescence_pct,
+      landValue: templateData.property.land_value,
     },
   });
 
@@ -155,6 +157,7 @@ export async function runPdfAssembly(
         jurisdictionRelease,
         assessmentContext,
         incomeAssessment: valuationRelease.incomeAssessment,
+        costAssessment: valuationRelease.costAssessment,
         evidenceBackedAlternatives: valuationRelease.evidenceBackedAlternatives,
         concludedValue: templateData.concludedValue,
         conclusionReconcilesToAlternative: valuationRelease.conclusionReconcilesToAlternative,
