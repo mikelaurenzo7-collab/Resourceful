@@ -3,7 +3,7 @@
 // the authoritative React-PDF document, and publishes an immutable artifact pair.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '@/types/database';
+import type { Database, ServiceType } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { generateReportPDF } from '@/lib/pdf';
 import { fetchReportTemplateData } from '@/lib/pdf/fetch-report-data';
@@ -18,6 +18,18 @@ import { evaluatePdfReleasePolicy } from '@/lib/valuation/pdf-release-policy';
 import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
 import { evaluateTaxAppealRelease } from '@/lib/valuation/tax-appeal-release-policy';
 import { pipelineLogger } from '@/lib/logger';
+
+function effectiveServiceType(
+  assignmentKind: 'tax_appeal' | 'pre_purchase' | 'pre_listing' | 'independent_valuation'
+): ServiceType {
+  if (assignmentKind === 'tax_appeal') return 'tax_appeal';
+  if (assignmentKind === 'pre_listing') return 'pre_listing';
+  return 'pre_purchase';
+}
+
+function uniqueMessages(messages: string[]): string[] {
+  return [...new Set(messages)];
+}
 
 async function rollbackArtifacts(
   supabase: SupabaseClient<Database>,
@@ -54,6 +66,11 @@ export async function runPdfAssembly(
 
   const qaIssues: string[] = [];
   const hardFails: string[] = [];
+  const profileAssessment = evaluateReportProfileCompleteness(templateData);
+  const releaseServiceType = effectiveServiceType(profileAssessment.profile.assignmentKind);
+  qaIssues.push(...profileAssessment.warnings, ...profileAssessment.hardFailures);
+  hardFails.push(...profileAssessment.hardFailures);
+
   const propertySupportsIncomeApproach = supportsIncomeApproach({
     propertyType: templateData.report.property_type,
     propertySubtype: templateData.property.property_subtype,
@@ -84,7 +101,7 @@ export async function runPdfAssembly(
   hardFails.push(...valuationRelease.hardFailures);
 
   const jurisdictionRelease = evaluateTaxAppealRelease({
-    serviceType: templateData.report.service_type,
+    serviceType: releaseServiceType,
     reportCountyFips: templateData.report.county_fips,
     reportState: templateData.report.state_abbreviation ?? templateData.report.state,
     countyRule: templateData.countyRule,
@@ -96,12 +113,8 @@ export async function runPdfAssembly(
     hardFails.push(jurisdictionRelease.message);
   }
 
-  const profileAssessment = evaluateReportProfileCompleteness(templateData);
-  qaIssues.push(...profileAssessment.warnings, ...profileAssessment.hardFailures);
-  hardFails.push(...profileAssessment.hardFailures);
-
   const assessmentContext = evaluateAssessmentContext({
-    serviceType: templateData.report.service_type,
+    serviceType: releaseServiceType,
     countyFips: templateData.report.county_fips,
     propertyType: templateData.report.property_type,
     taxYearInAppeal: templateData.property.tax_year_in_appeal,
@@ -122,14 +135,19 @@ export async function runPdfAssembly(
     qaIssues.push('No square footage data (building or lot)');
   }
 
-  if (qaIssues.length > 0) {
+  const uniqueQaIssues = uniqueMessages(qaIssues);
+  const uniqueHardFails = uniqueMessages(hardFails);
+
+  if (uniqueQaIssues.length > 0) {
     pipelineLogger.warn(
       {
         reportId,
         reportProfile: profileAssessment.profile.id,
+        assignmentKind: profileAssessment.profile.assignmentKind,
+        releaseServiceType,
         caseStrategyFlags: caseStrategy.flags,
         recentSubjectSaleDate: caseStrategy.recentSubjectSaleDate,
-        qaIssues,
+        qaIssues: uniqueQaIssues,
         jurisdictionRelease,
         assessmentContext,
         incomeAssessment: valuationRelease.incomeAssessment,
@@ -141,14 +159,15 @@ export async function runPdfAssembly(
     );
   }
 
-  if (hardFails.length > 0) {
-    return { success: false, error: `QA pre-flight failed: ${hardFails.join('; ')}` };
+  if (uniqueHardFails.length > 0) {
+    return { success: false, error: `QA pre-flight failed: ${uniqueHardFails.join('; ')}` };
   }
 
   pipelineLogger.info(
     {
       reportId,
       reportProfile: profileAssessment.profile.id,
+      assignmentKind: profileAssessment.profile.assignmentKind,
       caseStrategyFlags: caseStrategy.flags,
     },
     '[stage7] Rendering case-specific PDF report ...'
@@ -230,6 +249,7 @@ export async function runPdfAssembly(
     {
       reportId,
       reportProfile: profileAssessment.profile.id,
+      assignmentKind: profileAssessment.profile.assignmentKind,
       caseStrategyFlags: caseStrategy.flags,
       sizeKB: (pdfBuffer.length / 1024).toFixed(0),
       pdfSha256: manifest.artifact.sha256,
