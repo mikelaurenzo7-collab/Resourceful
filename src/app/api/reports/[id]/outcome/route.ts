@@ -3,12 +3,6 @@
 //
 // Auth: either authenticated user who owns the report, OR a valid
 // outcome_followup_token (for unauthenticated submission via email link).
-//
-// After recording the outcome:
-// 1. Updates report fields (including the legacy actual_savings_cents field,
-//    which stores assessed-value reduction rather than annual tax savings)
-// 2. Creates a calibration entry (predicted vs actual)
-// 3. Recalculates county-level stats
 
 import crypto from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
@@ -21,20 +15,29 @@ import {
   validateOutcomeSubmission,
   validateWinningAssessmentReduction,
 } from '@/lib/outcomes/validation';
+import {
+  filingStatusForOutcome,
+  isAdjudicatedAppealOutcome,
+  isFinalAppealOutcome,
+  validateOutcomeFilingContext,
+  validateOutcomeTransition,
+} from '@/lib/outcomes/lifecycle';
 import type { Report, PropertyData } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
 
-/** Timing-safe token comparison to prevent enumeration via response-time analysis. */
 function tokensMatch(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+}
+
+function normalizeEmail(value: string | null | undefined): string {
+  return value?.trim().toLowerCase() ?? '';
 }
 
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // Rate limit: 10 outcome submissions per 15 minutes per IP
   const rateLimitResponse = await applyRateLimit(req, {
     prefix: 'outcome-submit',
     limit: 10,
@@ -78,8 +81,6 @@ export async function POST(
   const token = typeof body.token === 'string' ? body.token : null;
 
   const adminSupabase = createAdminClient();
-
-  // Fetch report
   const { data: reportData, error: reportError } = await adminSupabase
     .from('reports')
     .select('*, property_data(*)')
@@ -92,27 +93,11 @@ export async function POST(
 
   const report = reportData as Report & { property_data: PropertyData[] };
 
-  // Verify report is delivered
-  if (report.status !== 'delivered') {
-    return NextResponse.json(
-      { error: 'Can only record outcomes for delivered reports' },
-      { status: 400 }
-    );
-  }
-
-  // Already recorded
-  if (report.outcome_reported_at) {
-    return NextResponse.json(
-      { error: 'Outcome already recorded for this report' },
-      { status: 409 }
-    );
-  }
-
-  // ── Auth: token-based or session-based ──────────────────────────────────
+  // Authenticate before returning case-specific lifecycle information.
   let authorized = false;
+  let authorizationChannel: 'email_followup' | 'dashboard' = 'dashboard';
 
   if (token && report.outcome_followup_token && tokensMatch(token, report.outcome_followup_token)) {
-    // Token-based auth: verify token hasn't expired (30 days after followup email)
     const TOKEN_EXPIRY_DAYS = 30;
     if (report.outcome_followup_sent_at) {
       const sentAt = new Date(report.outcome_followup_sent_at).getTime();
@@ -125,20 +110,55 @@ export async function POST(
       }
     }
     authorized = true;
+    authorizationChannel = 'email_followup';
   } else {
-    // Check if authenticated user owns this report
     const userSupabase = await createClient();
     const { data: { user } } = await userSupabase.auth.getUser();
     if (user) {
       const isOwner = report.user_id
         ? report.user_id === user.id
-        : report.client_email === user.email;
+        : normalizeEmail(report.client_email) === normalizeEmail(user.email);
       if (isOwner) authorized = true;
     }
   }
 
   if (!authorized) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  if (report.status !== 'delivered') {
+    return NextResponse.json(
+      { error: 'Can only record outcomes for delivered reports' },
+      { status: 400 }
+    );
+  }
+
+  if (report.service_type !== 'tax_appeal') {
+    return NextResponse.json(
+      { error: 'Appeal outcomes are available only for tax appeal assignments.' },
+      { status: 400 }
+    );
+  }
+
+  const transitionValidation = validateOutcomeTransition(report.appeal_outcome, outcome);
+  if (!transitionValidation.valid) {
+    return NextResponse.json(
+      { error: transitionValidation.error ?? 'Invalid appeal outcome transition.' },
+      { status: 409 }
+    );
+  }
+
+  const filingContextValidation = validateOutcomeFilingContext({
+    outcome,
+    filingStatus: report.filing_status,
+    filedAt: report.filed_at,
+    filingMethod: report.filing_method,
+  });
+  if (!filingContextValidation.valid) {
+    return NextResponse.json(
+      { error: filingContextValidation.error ?? 'Filing details are incomplete.' },
+      { status: 409 }
+    );
   }
 
   const propertyData = report.property_data?.[0] ?? null;
@@ -163,22 +183,29 @@ export async function POST(
     );
   }
 
-  // ── Update report ─────────────────────────────────────────────────────
+  const now = new Date().toISOString();
+  const finalOutcome = isFinalAppealOutcome(outcome);
+  const nextFilingStatus = filingStatusForOutcome(outcome, report.filing_status);
+
   const { error: updateError } = await adminSupabase
     .from('reports')
     .update({
       appeal_outcome: outcome,
-      // Legacy column name retained for compatibility. The stored value is the
-      // assessment-base reduction in cents, not annual tax-dollar savings.
       actual_savings_cents: assessmentReductionCents,
       outcome_notes: notes,
-      outcome_reported_at: new Date().toISOString(),
-      outcome_followup_token: null, // Invalidate token after use
+      // `outcome_reported_at` is reserved for a final decision. Pending is a
+      // lifecycle state, not a completed result, and may later be updated.
+      outcome_reported_at: finalOutcome ? now : null,
+      outcome_followup_token: finalOutcome ? null : report.outcome_followup_token,
+      filing_status: nextFilingStatus,
       appeal_outcome_details: {
         new_assessed_value: newAssessedValue,
         metric: 'assessment_value_reduction',
+        status: finalOutcome ? 'final' : 'pending',
+        reported_at: now,
         reported_by: 'client',
-        reported_via: token ? 'email_followup' : 'dashboard',
+        reported_via: authorizationChannel,
+        previous_outcome: report.appeal_outcome,
       },
     })
     .eq('id', reportId);
@@ -188,23 +215,24 @@ export async function POST(
     return NextResponse.json({ error: 'Failed to record outcome' }, { status: 500 });
   }
 
-  // ── Create calibration entry (non-blocking) ───────────────────────────
-  try {
-    await createCalibrationEntry(reportId, adminSupabase);
-  } catch (err) {
-    apiLogger.error({ err, reportId }, 'Calibration entry failed');
-    // Don't fail the outcome recording if calibration fails
+  // Only adjudicated final decisions should train valuation calibration.
+  if (isAdjudicatedAppealOutcome(outcome)) {
+    try {
+      await createCalibrationEntry(reportId, adminSupabase);
+    } catch (err) {
+      apiLogger.error({ err, reportId }, 'Calibration entry failed');
+    }
   }
 
-  // ── Recalculate county stats (non-blocking) ───────────────────────────
-  if (report.county_fips) {
+  // County success rates use adjudicated wins and losses only. Pending,
+  // withdrawn, and unfiled cases are operational outcomes, not decisions on merit.
+  if (report.county_fips && isAdjudicatedAppealOutcome(outcome)) {
     try {
-      // Count wins and total for this county.
-      // Join property_data to get assessed_value for percentage calculations.
       const { data: countyOutcomes } = await adminSupabase
         .from('reports')
         .select('appeal_outcome, actual_savings_cents, property_data(assessed_value)')
         .eq('county_fips', report.county_fips)
+        .in('appeal_outcome', ['won', 'lost'])
         .not('outcome_reported_at', 'is', null);
 
       type OutcomeRow = {
@@ -218,8 +246,6 @@ export async function POST(
         const wins = outcomes.filter((row) => row.appeal_outcome === 'won');
         const winRate = wins.length / outcomes.length;
 
-        // Legacy avg_savings_pct stores the mean percentage reduction in assessed
-        // value across winning appeals, not a tax-bill savings percentage.
         let averageAssessmentReductionPct: number | null = null;
         if (wins.length > 0) {
           const reductionPcts = wins
@@ -249,7 +275,7 @@ export async function POST(
           .update({
             success_rate_pct: Math.round(winRate * 100),
             avg_savings_pct: averageAssessmentReductionPct,
-            success_rate_source: 'client_reported_outcomes',
+            success_rate_source: 'client_reported_adjudicated_outcomes',
           })
           .eq('county_fips', report.county_fips);
       }
@@ -263,16 +289,17 @@ export async function POST(
     : null;
 
   apiLogger.info(
-    { outcome, reportId, assessmentReduction },
-    '[outcome] Recorded appeal outcome'
+    { outcome, finalOutcome, reportId, assessmentReduction, nextFilingStatus },
+    '[outcome] Recorded appeal lifecycle update'
   );
 
   return NextResponse.json({
     success: true,
     outcome,
+    final: finalOutcome,
+    filing_status: nextFilingStatus,
     assessment_reduction: assessmentReduction,
     assessment_reduction_metric: 'assessed_value',
-    // Deprecated compatibility alias. This is not annual tax savings.
     savings: assessmentReduction,
   });
 }
