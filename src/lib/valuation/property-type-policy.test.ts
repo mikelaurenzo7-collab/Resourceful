@@ -1,21 +1,27 @@
 import { describe, expect, it } from 'vitest';
 
-import { isMultifamilyProperty, supportsIncomeApproach } from './property-type-policy';
+import {
+  isMultifamilyProperty,
+  supportsIncomeApproach,
+  type PropertyTypeDescriptor,
+} from './property-type-policy';
+
+const INCOME_SUPPORT_CASES: Array<[PropertyTypeDescriptor, boolean]> = [
+  [{ propertyType: 'commercial' }, true],
+  [{ propertyType: 'industrial' }, true],
+  [{ propertyType: 'residential', propertySubtype: 'multifamily' }, true],
+  [{ propertyType: 'residential', propertySubtype: 'duplex' }, true],
+  [{ propertyType: 'residential', propertyClassDescription: 'Six-unit apartment building' }, true],
+  [{ propertyType: 'residential', propertySubtype: 'single_family' }, false],
+  [{ propertyType: 'residential', propertyClassDescription: 'Single-family residence with home office' }, false],
+  [{ propertyType: null, propertyClassDescription: 'Suburban office building' }, true],
+  [{ propertyType: null, propertySubtype: 'mixed-use retail and apartments' }, true],
+  [{ propertyType: 'agricultural' }, false],
+  [{ propertyType: null, propertySubtype: null, propertyClassDescription: null }, false],
+];
 
 describe('supportsIncomeApproach', () => {
-  it.each([
-    [{ propertyType: 'commercial' }, true],
-    [{ propertyType: 'industrial' }, true],
-    [{ propertyType: 'residential', propertySubtype: 'multifamily' }, true],
-    [{ propertyType: 'residential', propertySubtype: 'duplex' }, true],
-    [{ propertyType: 'residential', propertyClassDescription: 'Six-unit apartment building' }, true],
-    [{ propertyType: 'residential', propertySubtype: 'single_family' }, false],
-    [{ propertyType: 'residential', propertyClassDescription: 'Single-family residence with home office' }, false],
-    [{ propertyType: null, propertyClassDescription: 'Suburban office building' }, true],
-    [{ propertyType: null, propertySubtype: 'mixed-use retail and apartments' }, true],
-    [{ propertyType: 'agricultural' }, false],
-    [{ propertyType: null, propertySubtype: null, propertyClassDescription: null }, false],
-  ])('returns %s for %o', (descriptor, expected) => {
+  it.each(INCOME_SUPPORT_CASES)('classifies %o as income-support=%s', (descriptor, expected) => {
     expect(supportsIncomeApproach(descriptor)).toBe(expected);
   });
 
