@@ -17,6 +17,7 @@ import { evaluateCaseStrategy } from '@/lib/valuation/case-strategy-policy';
 import { evaluatePdfReleasePolicy } from '@/lib/valuation/pdf-release-policy';
 import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
 import { evaluateTaxAppealRelease } from '@/lib/valuation/tax-appeal-release-policy';
+import { getClassificationSourceEvidence } from '@/lib/valuation/workfile-provenance';
 import { pipelineLogger } from '@/lib/logger';
 
 function effectiveServiceType(
@@ -68,6 +69,7 @@ export async function runPdfAssembly(
   const hardFails: string[] = [];
   const profileAssessment = evaluateReportProfileCompleteness(templateData);
   const releaseServiceType = effectiveServiceType(profileAssessment.profile.assignmentKind);
+  const classificationSource = getClassificationSourceEvidence(templateData);
   qaIssues.push(...profileAssessment.warnings, ...profileAssessment.hardFailures);
   hardFails.push(...profileAssessment.hardFailures);
 
@@ -122,6 +124,8 @@ export async function runPdfAssembly(
     assessmentRatio: templateData.property.assessment_ratio,
     assessmentMethodology: templateData.property.assessment_methodology,
     propertyClassDescription: templateData.property.property_class_description,
+    classificationSourceAuthority: classificationSource.authority,
+    classificationSourceUrl: classificationSource.url,
     countyRule: templateData.countyRule,
   });
   qaIssues.push(...assessmentContext.warnings, ...assessmentContext.hardFailures);
