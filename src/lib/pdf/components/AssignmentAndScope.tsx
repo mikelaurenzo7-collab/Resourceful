@@ -5,8 +5,8 @@ import { NarrativeBlock, SectionHeader } from './shared';
 
 export default function AssignmentAndScope({ content }: { content: string }) {
   return (
-    <View break>
-      <SectionHeader number="A" title="Assignment & Scope" />
+    <View>
+      <SectionHeader number="II" title="Assignment & Scope of Work" />
       <NarrativeBlock content={content} />
     </View>
   );
