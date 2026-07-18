@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "check:migrations": "node --test scripts/check-migration-lineage.test.mjs && node scripts/check-migration-lineage.mjs",
+    "check": "pnpm check:migrations && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.79.0",
