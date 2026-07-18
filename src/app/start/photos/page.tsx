@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useWizard, PROPERTY_ISSUES } from '@/components/intake/WizardLayout';
-import Button from '@/components/ui/Button';
+
 import PhotoUploader from '@/components/intake/PhotoUploader';
+import { PROPERTY_ISSUES, useWizard } from '@/components/intake/WizardLayout';
+import Button from '@/components/ui/Button';
+import { trackFunnelEventOnce } from '@/lib/analytics/funnel-client';
+import { buildSafeFunnelProperties } from '@/lib/analytics/funnel-contract';
 import type { PhotoType } from '@/types/database';
 
 export default function PhotosPage() {
@@ -28,17 +31,17 @@ export default function PhotosPage() {
       // Fetch Mapillary image via server-side API to keep token safe
       const addr = `${state.address.line1}, ${state.address.city}, ${state.address.state} ${state.address.zip}`;
       fetch(`/api/address-search?q=${encodeURIComponent(addr)}`)
-        .then(res => res.json())
-        .then(data => {
-          const s = data.suggestions?.[0];
-          if (s?.latitude && s?.longitude) {
+        .then((res) => res.json())
+        .then((data) => {
+          const suggestion = data.suggestions?.[0];
+          if (suggestion?.latitude && suggestion?.longitude) {
             const token = process.env.NEXT_PUBLIC_MAPILLARY_ACCESS_TOKEN;
             if (token) {
-              const bbox = `${s.longitude - 0.001},${s.latitude - 0.001},${s.longitude + 0.001},${s.latitude + 0.001}`;
+              const bbox = `${suggestion.longitude - 0.001},${suggestion.latitude - 0.001},${suggestion.longitude + 0.001},${suggestion.latitude + 0.001}`;
               fetch(`https://graph.mapillary.com/images?access_token=${token}&fields=thumb_2048_url&bbox=${bbox}&limit=1`)
-                .then(r => r.json())
-                .then(j => {
-                  const url = j?.data?.[0]?.thumb_2048_url;
+                .then((response) => response.json())
+                .then((result) => {
+                  const url = result?.data?.[0]?.thumb_2048_url;
                   if (url) setStreetViewUrl(url);
                 })
                 .catch(() => {});
@@ -49,16 +52,40 @@ export default function PhotosPage() {
     }
   }, [state.address, streetViewLoaded]);
 
-  // Get photo tips based on selected issues
-  const selectedIssues = PROPERTY_ISSUES.filter((i) => state.propertyIssues.includes(i.id));
+  const selectedIssues = PROPERTY_ISSUES.filter((issue) => state.propertyIssues.includes(issue.id));
 
-  const handleSkip = () => {
-    updateState({ photosSkipped: true, photoCount: 0 });
+  const completePhotoStep = (photoCount: number) => {
+    const photosSkipped = photoCount <= 0;
+    const properties = buildSafeFunnelProperties({
+      pathname: '/start/photos',
+      currentStep: 5,
+      serviceType: state.serviceType,
+      propertyType: state.propertyType,
+      reviewTier: state.reviewTier,
+      hasTaxBill: state.hasTaxBill,
+      photoCount,
+      photosSkipped,
+      propertyIssueCount: state.propertyIssues.length,
+      priceCents: state.priceCents,
+      hasContext: state.desiredOutcome.trim().length > 0,
+    });
+
+    trackFunnelEventOnce(
+      photosSkipped ? 'Resourceful Photo Evidence Skipped' : 'Resourceful Photo Evidence Added',
+      photosSkipped ? 'skipped' : 'added',
+      properties,
+    );
+
+    updateState({ photosSkipped, photoCount });
     sessionStorage.removeItem('wizard');
     router.push(`/start/success?reportId=${state.reportId}`);
   };
 
-  const handleFileUpload = async (file: File, photoType: PhotoType, caption: string): Promise<boolean> => {
+  const handleFileUpload = async (
+    file: File,
+    photoType: PhotoType,
+    caption: string,
+  ): Promise<boolean> => {
     if (!state.reportId) return false;
     setUploading(true);
     setUploadError('');
@@ -70,19 +97,19 @@ export default function PhotosPage() {
       formData.append('sort_order', String(state.photoCount));
       if (caption) formData.append('caption', caption);
 
-      const res = await fetch(`/api/reports/${state.reportId}/photos`, {
+      const response = await fetch(`/api/reports/${state.reportId}/photos`, {
         method: 'POST',
         body: formData,
       });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
         throw new Error(body.error || 'Upload failed');
       }
 
       return true;
-    } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Photo upload failed.');
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Photo upload failed.');
       return false;
     } finally {
       setUploading(false);
@@ -107,7 +134,6 @@ export default function PhotosPage() {
         </p>
       </div>
 
-      {/* Auto-captured exterior */}
       {streetViewUrl && (
         <div className="mb-8 animate-slide-up">
           <div className="rounded-xl overflow-hidden border border-gold/15">
@@ -131,7 +157,6 @@ export default function PhotosPage() {
         </div>
       )}
 
-      {/* Photo education section */}
       {selectedIssues.length > 0 && !showUploader && (
         <div className="space-y-4 mb-8 animate-slide-up">
           <h2 className="text-sm font-medium text-cream/70 flex items-center gap-2">
@@ -153,7 +178,6 @@ export default function PhotosPage() {
             </div>
           ))}
 
-          {/* General photo tips */}
           <div className="rounded-xl border border-gold/15 bg-navy-light/50 p-5">
             <h3 className="text-sm font-medium text-cream mb-3">How to Take Photos That Win Appeals</h3>
             <ul className="space-y-2">
@@ -166,8 +190,8 @@ export default function PhotosPage() {
                 'Photograph utility rooms, water heaters, furnaces, and electrical panels — age and condition of systems matters',
                 'Describe each photo when you upload — tell us what we\'re looking at and why it matters',
                 'There\'s no limit — the more you upload, the more evidence we have to work with',
-              ].map((tip, i) => (
-                <li key={i} className="flex items-start gap-2 text-xs text-cream/50">
+              ].map((tip, index) => (
+                <li key={index} className="flex items-start gap-2 text-xs text-cream/50">
                   <span className="text-gold/50 mt-0.5">&#x2022;</span>
                   {tip}
                 </li>
@@ -177,7 +201,6 @@ export default function PhotosPage() {
         </div>
       )}
 
-      {/* No issues selected — general guidance */}
       {selectedIssues.length === 0 && !showUploader && (
         <div className="mb-8 animate-slide-up">
           <div className="card-premium rounded-xl p-6 text-center">
@@ -192,7 +215,6 @@ export default function PhotosPage() {
         </div>
       )}
 
-      {/* Upload section */}
       {showUploader && state.propertyType && (
         <div className="animate-slide-up">
           {uploadError && (
@@ -208,7 +230,6 @@ export default function PhotosPage() {
         </div>
       )}
 
-      {/* Action buttons */}
       <div className="space-y-4 mt-8">
         {!showUploader ? (
           <>
@@ -228,13 +249,12 @@ export default function PhotosPage() {
             </Button>
 
             <button
-              onClick={handleSkip}
+              onClick={() => completePhotoStep(0)}
               className="w-full text-center py-3 text-sm text-cream/40 hover:text-cream/60 transition-colors focus:outline-none focus:ring-2 focus:ring-gold/50 rounded-lg"
             >
               Continue without photos (your report will use market data only)
             </button>
 
-            {/* Why photos strengthen your report */}
             <div className="rounded-xl border border-gold/15 bg-navy-light/50 p-4 text-left space-y-3">
               <div className="flex items-start gap-3">
                 <svg className="w-5 h-5 text-gold/70 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -267,10 +287,7 @@ export default function PhotosPage() {
               size="lg"
               fullWidth
               disabled={uploading}
-              onClick={() => {
-                sessionStorage.removeItem('wizard');
-                router.push(`/start/success?reportId=${state.reportId}`);
-              }}
+              onClick={() => completePhotoStep(state.photoCount)}
             >
               {state.photoCount > 0
                 ? `Continue with ${state.photoCount} photo${state.photoCount !== 1 ? 's' : ''}`
@@ -283,7 +300,6 @@ export default function PhotosPage() {
         )}
       </div>
 
-      {/* Back to situation (when uploader is not showing) */}
       {!showUploader && (
         <div className="mt-4">
           <Button variant="ghost" size="sm" onClick={() => router.push('/start/payment')}>
