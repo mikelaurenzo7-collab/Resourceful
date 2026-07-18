@@ -11,12 +11,19 @@ import { formatCurrency, formatDate, formatPercent } from '@/lib/templates/helpe
 import { getAssessorImpliedMarketValue } from '@/lib/dashboard/value-comparison';
 import { resolveAssignmentKind } from '@/lib/assignments/routing';
 import { evaluateAssessmentContext } from '@/lib/valuation/assessment-context-policy';
+import { getClassificationSourceEvidence } from '@/lib/valuation/workfile-provenance';
 
 export default function AssessmentRatioAnalysis({ data }: { data: ReportTemplateData }) {
   const { report, property, countyRule, concludedValue } = data;
   const assignmentKind = resolveAssignmentKind(report.service_type, report.desired_outcome);
+  const releaseServiceType = assignmentKind === 'tax_appeal'
+    ? 'tax_appeal'
+    : assignmentKind === 'pre_listing'
+      ? 'pre_listing'
+      : 'pre_purchase';
+  const classificationSource = getClassificationSourceEvidence(data);
   const assessmentContext = evaluateAssessmentContext({
-    serviceType: report.service_type,
+    serviceType: releaseServiceType,
     countyFips: report.county_fips,
     propertyType: report.property_type,
     taxYearInAppeal: property.tax_year_in_appeal,
@@ -24,6 +31,8 @@ export default function AssessmentRatioAnalysis({ data }: { data: ReportTemplate
     assessmentRatio: property.assessment_ratio,
     assessmentMethodology: property.assessment_methodology,
     propertyClassDescription: property.property_class_description,
+    classificationSourceAuthority: classificationSource.authority,
+    classificationSourceUrl: classificationSource.url,
     countyRule,
   });
   const appliedAssessmentLevel = assessmentContext.appliedAssessmentRatio;
@@ -49,6 +58,13 @@ export default function AssessmentRatioAnalysis({ data }: { data: ReportTemplate
   if (property.property_class_description) {
     rows.push(['Property Classification', property.property_class_description, 'Classification used to select the jurisdiction reference level']);
   }
+  if (classificationSource.isVerified) {
+    rows.push([
+      'Classification Source',
+      classificationSource.authority ?? 'Official authority',
+      'Official HTTP(S) source URL is retained in the workfile',
+    ]);
+  }
   if (property.assessment_methodology) {
     rows.push(['Assessment Methodology', property.assessment_methodology, 'Stored workfile methodology or classification explanation']);
   }
@@ -66,7 +82,7 @@ export default function AssessmentRatioAnalysis({ data }: { data: ReportTemplate
     rows.push([
       'Jurisdiction Reference Level',
       formatPercent(jurisdictionLevel),
-      levelMismatch ? 'Differs from the workfile level; the documented classification exception controls only after verification' : 'Reference from the verified jurisdiction rule record',
+      levelMismatch ? 'Differs from the workfile level; a sourced classification exception controls only after verification' : 'Reference from the verified jurisdiction rule record',
     ]);
   }
   if (assessorImpliedMarketValue != null && assessorImpliedMarketValue > 0) {
@@ -98,7 +114,7 @@ export default function AssessmentRatioAnalysis({ data }: { data: ReportTemplate
       />
 
       <Text style={[theme.bodyText, { marginTop: 8 }]}>
-        A statutory assessment level converts a jurisdiction's raw assessed value to a market-value reference.
+        A statutory assessment level converts a jurisdiction’s raw assessed value to a market-value reference.
         It is not an assessment-to-sales ratio study, tax rate, equalization multiplier, or tax-dollar savings estimate.
         The assessment year, valuation date, classification, governing rule, and source must remain aligned.
       </Text>
