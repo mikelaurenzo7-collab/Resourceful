@@ -65,6 +65,33 @@ function isManifest(value: unknown): value is ReportArtifactManifest {
   );
 }
 
+function schemaParts(schemaVersion: string): { major: number; minor: number } | null {
+  const [majorText, minorText] = schemaVersion.split('.');
+  const major = Number(majorText);
+  const minor = Number(minorText);
+  if (!Number.isInteger(major) || !Number.isInteger(minor) || major < 0 || minor < 0) {
+    return null;
+  }
+  return { major, minor };
+}
+
+function hasSchema13Provenance(manifest: ReportArtifactManifest): boolean {
+  const jurisdiction = manifest.jurisdiction as Partial<ReportArtifactManifest['jurisdiction']>;
+  const evidence = manifest.evidence as Partial<ReportArtifactManifest['evidence']> | undefined;
+  const pluginKeyValid =
+    jurisdiction.pluginKey === null || typeof jurisdiction.pluginKey === 'string';
+  const pluginVersionValid =
+    jurisdiction.pluginVersion === null || typeof jurisdiction.pluginVersion === 'number';
+
+  return Boolean(
+    evidence &&
+    typeof evidence.costApproachReleaseReady === 'boolean' &&
+    typeof jurisdiction.classificationSourceVerified === 'boolean' &&
+    pluginKeyValid &&
+    pluginVersionValid
+  );
+}
+
 export function verifyReportArtifact(input: {
   reportId: string;
   serviceType: string;
@@ -109,12 +136,22 @@ export function verifyReportArtifact(input: {
   }
 
   const manifest = parsed;
-  if (manifest.schemaVersion.split('.')[0] !== '1') {
+  const schema = schemaParts(manifest.schemaVersion);
+  if (!schema || schema.major !== 1) {
     return {
       verified: false,
       code: 'MANIFEST_SCHEMA_UNSUPPORTED',
       message: `Unsupported report manifest schema version '${manifest.schemaVersion}'.`,
       manifest,
+    };
+  }
+
+  if (schema.minor >= 3 && !hasSchema13Provenance(manifest)) {
+    return {
+      verified: false,
+      code: 'MANIFEST_JSON_INVALID',
+      message: 'The report manifest is missing required schema 1.3 provenance fields.',
+      manifest: null,
     };
   }
 
