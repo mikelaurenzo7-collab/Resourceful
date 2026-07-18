@@ -13,6 +13,7 @@ import {
 } from '@/lib/pdf/report-artifact-manifest';
 import { evaluateReportProfileCompleteness } from '@/lib/pdf/report-profile';
 import { evaluateAssessmentContext } from '@/lib/valuation/assessment-context-policy';
+import { evaluateCaseStrategy } from '@/lib/valuation/case-strategy-policy';
 import { evaluatePdfReleasePolicy } from '@/lib/valuation/pdf-release-policy';
 import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
 import { evaluateTaxAppealRelease } from '@/lib/valuation/tax-appeal-release-policy';
@@ -113,6 +114,10 @@ export async function runPdfAssembly(
   qaIssues.push(...assessmentContext.warnings, ...assessmentContext.hardFailures);
   hardFails.push(...assessmentContext.hardFailures);
 
+  const caseStrategy = evaluateCaseStrategy(templateData);
+  qaIssues.push(...caseStrategy.warnings, ...caseStrategy.hardFailures);
+  hardFails.push(...caseStrategy.hardFailures);
+
   if (!templateData.property.building_sqft_living_area && !templateData.property.lot_size_sqft) {
     qaIssues.push('No square footage data (building or lot)');
   }
@@ -122,6 +127,8 @@ export async function runPdfAssembly(
       {
         reportId,
         reportProfile: profileAssessment.profile.id,
+        caseStrategyFlags: caseStrategy.flags,
+        recentSubjectSaleDate: caseStrategy.recentSubjectSaleDate,
         qaIssues,
         jurisdictionRelease,
         assessmentContext,
@@ -139,7 +146,11 @@ export async function runPdfAssembly(
   }
 
   pipelineLogger.info(
-    { reportId, reportProfile: profileAssessment.profile.id },
+    {
+      reportId,
+      reportProfile: profileAssessment.profile.id,
+      caseStrategyFlags: caseStrategy.flags,
+    },
     '[stage7] Rendering case-specific PDF report ...'
   );
 
@@ -219,6 +230,7 @@ export async function runPdfAssembly(
     {
       reportId,
       reportProfile: profileAssessment.profile.id,
+      caseStrategyFlags: caseStrategy.flags,
       sizeKB: (pdfBuffer.length / 1024).toFixed(0),
       pdfSha256: manifest.artifact.sha256,
       jurisdictionReleaseCode: jurisdictionRelease.code,
