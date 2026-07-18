@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   documentTitle: {
-    fontFamily: 'Playfair Display',
+    fontFamily: 'Source Serif 4',
     fontWeight: 600,
     fontSize: 25,
     lineHeight: 1.2,
@@ -165,7 +165,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.calloutBg,
   },
   address: {
-    fontFamily: 'Playfair Display',
+    fontFamily: 'Source Serif 4',
     fontWeight: 600,
     fontSize: 19,
     color: colors.inkPrimary,
