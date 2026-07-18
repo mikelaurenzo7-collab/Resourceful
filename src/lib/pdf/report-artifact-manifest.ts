@@ -7,6 +7,10 @@ import { buildReportProfile } from './report-profile';
 import { getReportCostAssessment } from './section-data';
 import { evaluateAssessmentContext } from '@/lib/valuation/assessment-context-policy';
 import { evaluateCaseStrategy, type CaseStrategyFlag } from '@/lib/valuation/case-strategy-policy';
+import {
+  evaluateNationwideReportIntegrity,
+  type NationwideReportIntegrityCode,
+} from '@/lib/valuation/nationwide-report-integrity-policy';
 import type { PdfReleasePolicyResult } from '@/lib/valuation/pdf-release-policy';
 import type { TaxAppealReleaseResult } from '@/lib/valuation/tax-appeal-release-policy';
 import {
@@ -16,7 +20,7 @@ import {
   isRetrospectiveAssignment,
 } from '@/lib/valuation/workfile-provenance';
 
-export const REPORT_MANIFEST_SCHEMA_VERSION = '1.4.0';
+export const REPORT_MANIFEST_SCHEMA_VERSION = '1.5.0';
 export const REPORT_RENDERER_VERSION = 'react-pdf-2';
 
 export interface ReportArtifactPaths {
@@ -60,6 +64,11 @@ export interface ReportArtifactManifest {
     isRetrospectiveAssignment: boolean;
     recentSubjectSaleDate: string | null;
     warnings: string[];
+  };
+  integrity: {
+    releaseReady: boolean;
+    warningCodes: NationwideReportIntegrityCode[];
+    hardFailureCodes: NationwideReportIntegrityCode[];
   };
   evidence: {
     comparableSales: number;
@@ -170,6 +179,7 @@ export function createReportArtifactManifest(input: {
     countyRule: data.countyRule,
   });
   const caseStrategy = evaluateCaseStrategy(data);
+  const nationwideIntegrity = evaluateNationwideReportIntegrity(data);
   const sourceBackedComparableSales = data.comparableSales.filter(
     (sale) => Boolean(sale.county_recorder_url?.trim() || sale.deed_document_number?.trim())
   ).length;
@@ -215,6 +225,11 @@ export function createReportArtifactManifest(input: {
       recentSubjectSaleDate: caseStrategy.recentSubjectSaleDate,
       warnings: [...caseStrategy.warnings],
     },
+    integrity: {
+      releaseReady: nationwideIntegrity.hardFailures.length === 0,
+      warningCodes: [...nationwideIntegrity.warningCodes],
+      hardFailureCodes: [...nationwideIntegrity.hardFailureCodes],
+    },
     evidence: {
       comparableSales: data.comparableSales.length,
       comparableRentals: data.comparableRentals.length,
@@ -237,6 +252,7 @@ export function createReportArtifactManifest(input: {
         ...assessmentContext.warnings,
         ...costAssessment.warnings,
         ...caseStrategy.warnings,
+        ...nationwideIntegrity.warnings,
       ],
     },
     models: {
