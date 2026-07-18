@@ -61,7 +61,7 @@ function mapCount(data: ReportTemplateData): number {
 }
 
 function photoCount(data: ReportTemplateData): number {
-  return data.photos.filter((photo) => Boolean(photo.storage_path)).length;
+  return data.photos.filter((photo) => Boolean(photo.storage_path?.trim())).length;
 }
 
 export function buildReportRenderPlan(data: ReportTemplateData): ReportRenderPlan {
@@ -133,7 +133,11 @@ export function buildReportRenderPlan(data: ReportTemplateData): ReportRenderPla
   pushNarrative('improvement_description_narrative');
   pushNarrative('condition_assessment');
 
-  if (data.photos.some((photo) => (photo.ai_analysis?.defects?.length ?? 0) > 0)) {
+  if (
+    data.photos.some(
+      (photo) => Boolean(photo.storage_path?.trim()) && (photo.ai_analysis?.defects?.length ?? 0) > 0
+    )
+  ) {
     push({
       id: 'condition-table',
       kind: 'condition_table',
@@ -239,7 +243,7 @@ export function buildReportRenderPlan(data: ReportTemplateData): ReportRenderPla
     }
   }
 
-  pushNarrative('hearing_script');
+  if (profile.isTaxAppeal) pushNarrative('hearing_script');
 
   if (narratives.has('certification_and_limiting_conditions')) {
     push({
