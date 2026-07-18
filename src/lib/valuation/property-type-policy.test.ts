@@ -11,8 +11,11 @@ const INCOME_SUPPORT_CASES: Array<[PropertyTypeDescriptor, boolean]> = [
   [{ propertyType: 'industrial' }, true],
   [{ propertyType: 'residential', propertySubtype: 'multifamily' }, true],
   [{ propertyType: 'residential', propertySubtype: 'duplex' }, true],
+  [{ propertyType: 'residential', propertySubtype: '8-unit residential building' }, true],
   [{ propertyType: 'residential', propertyClassDescription: 'Six-unit apartment building' }, true],
+  [{ propertyType: 'residential', propertyClassDescription: '12 unit residential property' }, true],
   [{ propertyType: 'residential', propertySubtype: 'single_family' }, false],
+  [{ propertyType: 'residential', propertySubtype: '1-unit detached residence' }, false],
   [{ propertyType: 'residential', propertyClassDescription: 'Single-family residence with home office' }, false],
   [{ propertyType: null, propertyClassDescription: 'Suburban office building' }, true],
   [{ propertyType: null, propertySubtype: 'mixed-use retail and apartments' }, true],
@@ -40,10 +43,13 @@ describe('isMultifamilyProperty', () => {
     expect(isMultifamilyProperty({ propertyType: 'residential', propertySubtype: 'triplex' })).toBe(true);
     expect(isMultifamilyProperty({ propertyClassDescription: 'Chicago three-flat' })).toBe(true);
     expect(isMultifamilyProperty({ propertySubtype: 'multi_family' })).toBe(true);
+    expect(isMultifamilyProperty({ propertySubtype: '8-unit residential building' })).toBe(true);
+    expect(isMultifamilyProperty({ propertyClassDescription: '12 unit residential property' })).toBe(true);
   });
 
-  it('does not classify generic residential property as multifamily', () => {
+  it('does not classify generic or single-unit residential property as multifamily', () => {
     expect(isMultifamilyProperty({ propertyType: 'residential', propertySubtype: 'single_family' })).toBe(false);
+    expect(isMultifamilyProperty({ propertySubtype: '1-unit detached residence' })).toBe(false);
     expect(isMultifamilyProperty({ propertyClassDescription: 'Apartment-style kitchen in a detached house' })).toBe(false);
   });
 });
