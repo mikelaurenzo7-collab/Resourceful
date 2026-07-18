@@ -3,15 +3,23 @@
 // evidence to proceed to PDF assembly. This module intentionally contains no
 // database, PDF-rendering, or model dependencies so it can be regression tested.
 
+import {
+  evaluateIncomeApproachEvidence,
+  type IncomeApproachEvidenceAssessment,
+} from './income-approach-policy';
+
 export const DEFAULT_RECONCILIATION_TOLERANCE = 0.35;
 
 export interface PdfReleasePolicyInput {
   comparableSaleCount: number;
   concludedValue: number | null | undefined;
   incomeApproach?: {
+    supportedForProperty: boolean;
     netOperatingIncome: number | null | undefined;
     concludedCapRate: number | null | undefined;
     concludedValue: number | null | undefined;
+    comparableRentalCount?: number;
+    investorSurveyReference?: string | null;
   } | null;
   costApproach?: {
     replacementCostNew: number | null | undefined;
@@ -29,6 +37,7 @@ export interface EvidenceBackedApproach {
 export interface PdfReleasePolicyResult {
   hasComparableSales: boolean;
   hasConcludedValue: boolean;
+  incomeAssessment: IncomeApproachEvidenceAssessment | null;
   evidenceBackedAlternatives: EvidenceBackedApproach[];
   conclusionReconcilesToAlternative: boolean;
   warnings: string[];
@@ -54,11 +63,15 @@ export function evaluatePdfReleasePolicy(
   const tolerance = normalizeTolerance(input.reconciliationTolerance);
 
   const income = input.incomeApproach;
-  const incomeValue = income?.concludedValue;
-  const hasIncomeApproach =
-    isPositiveFinite(income?.netOperatingIncome) &&
-    isPositiveFinite(income?.concludedCapRate) &&
-    isPositiveFinite(incomeValue);
+  const incomeAssessment = income?.supportedForProperty
+    ? evaluateIncomeApproachEvidence({
+        netOperatingIncome: income.netOperatingIncome,
+        concludedCapRate: income.concludedCapRate,
+        concludedValue: income.concludedValue,
+        comparableRentalCount: income.comparableRentalCount,
+        investorSurveyReference: income.investorSurveyReference,
+      })
+    : null;
 
   const cost = input.costApproach;
   const costValue = cost?.concludedValue;
@@ -72,8 +85,11 @@ export function evaluatePdfReleasePolicy(
     physicalDepreciationPct <= 100;
 
   const evidenceBackedAlternatives: EvidenceBackedApproach[] = [];
-  if (hasIncomeApproach) {
-    evidenceBackedAlternatives.push({ label: 'income approach', value: incomeValue });
+  if (incomeAssessment?.isReleaseReady && incomeAssessment.storedValue != null) {
+    evidenceBackedAlternatives.push({
+      label: 'income approach',
+      value: incomeAssessment.storedValue,
+    });
   }
   if (hasCostApproach) {
     evidenceBackedAlternatives.push({ label: 'cost approach', value: costValue });
@@ -92,6 +108,12 @@ export function evaluatePdfReleasePolicy(
 
   if (!hasConcludedValue) {
     hardFailures.push('Concluded value is missing or zero');
+  }
+
+  if (income && !income.supportedForProperty) {
+    warnings.push('Income approach data is attached to a property not classified as income-producing and will be omitted');
+  } else if (incomeAssessment && !incomeAssessment.isReleaseReady) {
+    warnings.push(...incomeAssessment.warnings.map((warning) => `Income approach: ${warning}`));
   }
 
   if (!hasComparableSales) {
@@ -113,6 +135,7 @@ export function evaluatePdfReleasePolicy(
   return {
     hasComparableSales,
     hasConcludedValue,
+    incomeAssessment,
     evidenceBackedAlternatives,
     conclusionReconcilesToAlternative,
     warnings,

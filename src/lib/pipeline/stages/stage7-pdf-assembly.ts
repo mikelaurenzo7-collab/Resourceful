@@ -1,6 +1,6 @@
 // ─── Stage 7: PDF Assembly ───────────────────────────────────────────────────
-// Fetches all report data, renders to PDF via @react-pdf/renderer, uploads to
-// Supabase Storage, and sets status to pending_approval.
+// Fetches all report data, validates release evidence, renders to PDF via
+// @react-pdf/renderer, uploads to Supabase Storage, and sets status to pending_approval.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
@@ -8,33 +8,38 @@ import type { StageResult } from '../orchestrator';
 import { generateReportPDF } from '@/lib/pdf';
 import { fetchReportTemplateData } from '@/lib/pdf/fetch-report-data';
 import { evaluatePdfReleasePolicy } from '@/lib/valuation/pdf-release-policy';
+import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
 import { pipelineLogger } from '@/lib/logger';
-
-// ─── Stage Entry Point ──────────────────────────────────────────────────────
 
 export async function runPdfAssembly(
   reportId: string,
   supabase: SupabaseClient<Database>
 ): Promise<StageResult> {
-  // ── Fetch all report data ────────────────────────────────────────────
   const templateData = await fetchReportTemplateData(reportId, supabase);
 
   if (!templateData) {
     return { success: false, error: 'Failed to fetch report data for PDF assembly' };
   }
 
-  // ── QA Pre-flight Checks ──────────────────────────────────────────────
   const qaIssues: string[] = [];
   const hardFails: string[] = [];
+  const propertySupportsIncomeApproach = supportsIncomeApproach({
+    propertyType: templateData.report.property_type,
+    propertySubtype: templateData.property.property_subtype,
+    propertyClassDescription: templateData.property.property_class_description,
+  });
 
   const valuationRelease = evaluatePdfReleasePolicy({
     comparableSaleCount: templateData.comparableSales?.length ?? 0,
     concludedValue: templateData.concludedValue,
     incomeApproach: templateData.incomeAnalysis
       ? {
+          supportedForProperty: propertySupportsIncomeApproach,
           netOperatingIncome: templateData.incomeAnalysis.net_operating_income,
           concludedCapRate: templateData.incomeAnalysis.concluded_cap_rate,
           concludedValue: templateData.incomeAnalysis.concluded_value_income_approach,
+          comparableRentalCount: templateData.comparableRentals?.length ?? 0,
+          investorSurveyReference: templateData.incomeAnalysis.investor_survey_reference,
         }
       : null,
     costApproach: {
@@ -76,6 +81,7 @@ export async function runPdfAssembly(
       {
         reportId,
         qaIssues,
+        incomeAssessment: valuationRelease.incomeAssessment,
         evidenceBackedAlternatives: valuationRelease.evidenceBackedAlternatives,
         concludedValue: templateData.concludedValue,
         conclusionReconcilesToAlternative: valuationRelease.conclusionReconcilesToAlternative,
@@ -88,7 +94,6 @@ export async function runPdfAssembly(
     return { success: false, error: `QA pre-flight failed: ${hardFails.join('; ')}` };
   }
 
-  // ── Generate PDF ─────────────────────────────────────────────────────
   pipelineLogger.info({ reportId }, '[stage7] Rendering PDF for report ...');
 
   let pdfBuffer: Buffer;
@@ -99,7 +104,6 @@ export async function runPdfAssembly(
     return { success: false, error: `PDF generation failed: ${message}` };
   }
 
-  // ── Upload to Supabase Storage ────────────────────────────────────────
   const shortId = reportId.split('-')[0];
   const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
   const storagePath = `${reportId}/report_${shortId}_${dateStr}.pdf`;
@@ -119,7 +123,6 @@ export async function runPdfAssembly(
     };
   }
 
-  // ── Update report ─────────────────────────────────────────────────────
   const { error: reportUpdateError } = await supabase
     .from('reports')
     .update({
@@ -130,9 +133,6 @@ export async function runPdfAssembly(
   if (reportUpdateError) {
     return { success: false, error: `Failed to update report after PDF upload: ${reportUpdateError.message}` };
   }
-
-  // Admin notification is sent by the orchestrator after all stages complete.
-  // Removed from stage7 to prevent duplicate emails.
 
   pipelineLogger.info(
     { reportId, sizeKB: (pdfBuffer.length / 1024).toFixed(0) },

@@ -1,15 +1,45 @@
 import type { ReportTemplateData } from '@/lib/templates/report-template';
+import {
+  evaluateIncomeApproachEvidence,
+  type IncomeApproachEvidenceAssessment,
+} from '@/lib/valuation/income-approach-policy';
+import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
 
 export interface ValueConclusionRowData {
   approach: string;
   total: number;
-  perUnit: number | null;
+  valuePerSqFt: number | null;
   role: string;
 }
 
 export interface FloodEnvironmentalContext {
   facts: Array<{ label: string; value: string }>;
   observations: string[];
+}
+
+export function getReportIncomeAssessment(
+  data: ReportTemplateData
+): IncomeApproachEvidenceAssessment | null {
+  if (!data.incomeAnalysis) return null;
+
+  const propertySupportsIncomeApproach = supportsIncomeApproach({
+    propertyType: data.report.property_type,
+    propertySubtype: data.property.property_subtype,
+    propertyClassDescription: data.property.property_class_description,
+  });
+  if (!propertySupportsIncomeApproach) return null;
+
+  return evaluateIncomeApproachEvidence({
+    netOperatingIncome: data.incomeAnalysis.net_operating_income,
+    concludedCapRate: data.incomeAnalysis.concluded_cap_rate,
+    concludedValue: data.incomeAnalysis.concluded_value_income_approach,
+    comparableRentalCount: data.comparableRentals.length,
+    investorSurveyReference: data.incomeAnalysis.investor_survey_reference,
+  });
+}
+
+export function hasReleaseReadyIncomeApproach(data: ReportTemplateData): boolean {
+  return getReportIncomeAssessment(data)?.isReleaseReady === true;
 }
 
 export function buildValueConclusionRows(data: ReportTemplateData): ValueConclusionRowData[] {
@@ -21,16 +51,17 @@ export function buildValueConclusionRows(data: ReportTemplateData): ValueConclus
     rows.push({
       approach: 'Sales Comparison',
       total: roundToNearestThousand(salesIndication),
-      perUnit: computePerUnitValue(salesIndication, subjectArea),
+      valuePerSqFt: computeValuePerSqFt(salesIndication, subjectArea),
       role: getApproachRole(data, 'sales'),
     });
   }
 
-  if (data.incomeAnalysis?.concluded_value_income_approach != null) {
+  const incomeAssessment = getReportIncomeAssessment(data);
+  if (incomeAssessment?.isReleaseReady && incomeAssessment.storedValue != null) {
     rows.push({
       approach: 'Income Capitalization',
-      total: roundToNearestThousand(data.incomeAnalysis.concluded_value_income_approach),
-      perUnit: computePerUnitValue(data.incomeAnalysis.concluded_value_income_approach, subjectArea),
+      total: roundToNearestThousand(incomeAssessment.storedValue),
+      valuePerSqFt: computeValuePerSqFt(incomeAssessment.storedValue, subjectArea),
       role: getApproachRole(data, 'income'),
     });
   }
@@ -39,7 +70,7 @@ export function buildValueConclusionRows(data: ReportTemplateData): ValueConclus
     rows.push({
       approach: 'Cost Approach',
       total: roundToNearestThousand(data.property.cost_approach_value),
-      perUnit: computePerUnitValue(data.property.cost_approach_value, subjectArea),
+      valuePerSqFt: computeValuePerSqFt(data.property.cost_approach_value, subjectArea),
       role: getApproachRole(data, 'cost'),
     });
   }
@@ -118,7 +149,7 @@ function computeSalesComparisonIndication(data: ReportTemplateData): number | nu
   return salePrices.length > 0 ? computeMedian(salePrices) : null;
 }
 
-function computePerUnitValue(total: number, subjectArea: number | null): number | null {
+function computeValuePerSqFt(total: number, subjectArea: number | null): number | null {
   if (subjectArea == null || subjectArea <= 0) {
     return null;
   }

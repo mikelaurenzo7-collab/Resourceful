@@ -9,6 +9,7 @@ import {
   getAssignmentDisplayLabel,
   resolveAssignmentKind,
 } from '@/lib/assignments/routing';
+import { hasReleaseReadyIncomeApproach } from '../section-data';
 
 interface TocEntry {
   number: string;
@@ -17,13 +18,12 @@ interface TocEntry {
 }
 
 export default function TableOfContents({ data }: { data: ReportTemplateData }) {
-  const { property, comparableSales, incomeAnalysis, report, photos, filingGuide, narratives } = data;
+  const { property, comparableSales, report, photos, filingGuide, narratives } = data;
   const assignmentKind = resolveAssignmentKind(report.service_type, report.desired_outcome);
   const assignmentLabel = getAssignmentDisplayLabel(report.service_type, report.desired_outcome);
 
   const narrativeSections = new Set(narratives.map((n) => n.section_name));
-
-  const hasIncome = incomeAnalysis != null;
+  const hasIncome = hasReleaseReadyIncomeApproach(data);
   const hasCostApproach = property.cost_approach_value != null && property.cost_approach_value > 0;
   const hasPhotoDefects = photos.some((photo) => (photo.ai_analysis?.defects?.length ?? 0) > 0);
   const hasAddendumA =
@@ -40,7 +40,6 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
         ? 'Valuation Use & Next-Step Guide'
         : 'County Filing Instructions';
 
-  // Build section list dynamically
   const sections: TocEntry[] = [
     { number: '', title: 'Letter of Transmittal' },
     { number: '', title: 'Property Identification Summary' },
@@ -86,8 +85,7 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
     sections.push({ number: 'XIII', title: 'Property Condition Documentation' });
   }
 
-  // Addenda
-  sections.push({ number: '', title: '' }); // spacer
+  sections.push({ number: '', title: '' });
   if (hasAddendumA) {
     sections.push({ number: 'ADD-A', title: addendumATitle });
   }
@@ -101,7 +99,6 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
       </View>
 
       {sections.map((entry, index) => {
-        // Spacer row
         if (!entry.title && !entry.number) {
           return <View key={index} style={{ height: 12 }} />;
         }
@@ -117,7 +114,6 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
         );
       })}
 
-      {/* Report metadata footer */}
       <View style={styles.metaBlock}>
         <View style={styles.metaRow}>
           <Text style={theme.label}>Assignment</Text>
