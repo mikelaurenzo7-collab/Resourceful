@@ -1,6 +1,9 @@
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { resolveAssignmentKind } from '@/lib/assignments/routing';
-import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
+import {
+  isMultifamilyProperty,
+  supportsIncomeApproach,
+} from '@/lib/valuation/property-type-policy';
 import { hasReleaseReadyIncomeApproach } from './section-data';
 
 export const REPORT_NARRATIVE_SECTION_SPECS = [
@@ -65,18 +68,6 @@ export interface ReportProfileAssessment {
 
 function hasText(value: string | null | undefined): boolean {
   return Boolean(value?.trim());
-}
-
-function hasMultifamilyDescriptor(data: ReportTemplateData): boolean {
-  const descriptor = [
-    data.property.property_subtype,
-    data.property.property_class_description,
-  ]
-    .filter((value): value is string => Boolean(value))
-    .join(' ')
-    .toLowerCase();
-
-  return /multifamily|multi-family|apartment|duplex|triplex|fourplex|2-unit|3-unit|4-unit/.test(descriptor);
 }
 
 function detectConditionEvidence(data: ReportTemplateData): boolean {
@@ -158,12 +149,13 @@ export function buildReportProfile(data: ReportTemplateData): ReportProfile {
   );
   const isTaxAppeal = assignmentKind === 'tax_appeal';
   const isCookCounty = data.report.county_fips === '17031' || /cook/i.test(data.report.county ?? '');
-  const isIncomeProperty = supportsIncomeApproach({
+  const propertyDescriptor = {
     propertyType: data.report.property_type,
     propertySubtype: data.property.property_subtype,
     propertyClassDescription: data.property.property_class_description,
-  });
-  const multifamily = hasMultifamilyDescriptor(data);
+  };
+  const isIncomeProperty = supportsIncomeApproach(propertyDescriptor);
+  const multifamily = isMultifamilyProperty(propertyDescriptor);
   const isComplexProperty =
     data.report.property_type !== 'residential' ||
     isIncomeProperty ||
