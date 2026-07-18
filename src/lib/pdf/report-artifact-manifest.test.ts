@@ -60,6 +60,10 @@ function createData(): ReportTemplateData {
       property_address: '123 Private Street',
       service_type: 'tax_appeal',
       desired_outcome: null,
+      is_retrospective_assignment: false,
+      valuation_effective_date: '2026-01-01',
+      valuation_effective_date_source: 'jurisdiction_convention',
+      created_at: '2026-01-15T00:00:00.000Z',
       property_type: 'residential',
       review_tier: 'expert_reviewed',
       county_fips: '17031',
@@ -176,7 +180,7 @@ describe('report artifact manifest', () => {
     });
     const serialized = serializeReportArtifactManifest(manifest).toString('utf8');
 
-    expect(manifest.schemaVersion).toBe('1.3.0');
+    expect(manifest.schemaVersion).toBe('1.4.0');
     expect(manifest.rendererVersion).toBe('react-pdf-2');
     expect(manifest.artifact.bytes).toBe(pdf.byteLength);
     expect(manifest.artifact.sha256).toBe(hashPdfBuffer(pdf));
@@ -206,12 +210,16 @@ describe('report artifact manifest', () => {
       releaseCode: 'JURISDICTION_RELEASE_READY',
       assessmentYear: 2026,
       valuationDate: '2026-01-01',
+      valuationDateSource: 'jurisdiction_convention',
       appliedAssessmentRatio: 0.1,
       expectedAssessmentRatio: 0.1,
       classificationSourceVerified: true,
       requiresYearSpecificEqualizationSource: true,
     });
-    expect(manifest.strategy.flags).toContain('tax_appeal');
+    expect(manifest.strategy).toMatchObject({
+      flags: expect.arrayContaining(['tax_appeal']),
+      isRetrospectiveAssignment: false,
+    });
     expect(serialized).not.toContain('private@example.com');
     expect(serialized).not.toContain('Private Customer');
     expect(serialized).not.toContain('123 Private Street');
@@ -244,6 +252,10 @@ describe('report artifact manifest', () => {
   it('does not record tax-appeal assessment context for an independent valuation override', () => {
     const data = createData();
     data.report.desired_outcome = '[INDEPENDENT_VALUATION] Estate planning decision support';
+    const independentReport = data.report as typeof data.report & {
+      valuation_effective_date_source: string;
+    };
+    independentReport.valuation_effective_date_source = 'intake_current_date';
     data.filingGuide = null;
 
     const manifest = createReportArtifactManifest({
@@ -258,6 +270,7 @@ describe('report artifact manifest', () => {
     expect(manifest.strategy.flags).not.toContain('tax_appeal');
     expect(manifest.jurisdiction).toMatchObject({
       releaseCode: 'JURISDICTION_RELEASE_NOT_REQUIRED',
+      valuationDateSource: 'intake_current_date',
       appliedAssessmentRatio: null,
       expectedAssessmentRatio: null,
       requiresYearSpecificEqualizationSource: false,
