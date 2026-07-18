@@ -6,6 +6,7 @@
 import {
   evaluateCostApproachEvidence,
   type CostApproachEvidenceAssessment,
+  type CostApproachEvidenceInput,
 } from './cost-approach-policy';
 import {
   evaluateIncomeApproachEvidence,
@@ -25,13 +26,7 @@ export interface PdfReleasePolicyInput {
     comparableRentalCount?: number;
     investorSurveyReference?: string | null;
   } | null;
-  costApproach?: {
-    replacementCostNew: number | null | undefined;
-    concludedValue: number | null | undefined;
-    physicalDepreciationPct: number | null | undefined;
-    functionalObsolescencePct: number | null | undefined;
-    landValue: number | null | undefined;
-  } | null;
+  costApproach?: CostApproachEvidenceInput | null;
   reconciliationTolerance?: number;
 }
 
