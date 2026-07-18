@@ -28,13 +28,19 @@ describe('authoritative final-report renderer', () => {
     expect(violations).toEqual([]);
   });
 
-  it('routes Stage 7 through the governed React-PDF module', () => {
+  it('routes Stage 7 through the governed React-PDF module and nationwide preflight', () => {
     const stage7 = readFileSync(
       join(process.cwd(), 'src', 'lib', 'pipeline', 'stages', 'stage7-pdf-assembly.ts'),
       'utf8'
     );
 
     expect(stage7).toContain("import { generateReportPDF } from '@/lib/pdf'");
+    expect(stage7).toContain("import { evaluateNationwideReportIntegrity } from '@/lib/valuation/nationwide-report-integrity-policy'");
+    expect(stage7).toContain('const nationwideIntegrity = evaluateNationwideReportIntegrity(templateData)');
+    expect(stage7).toContain('hardFails.push(...nationwideIntegrity.hardFailures)');
+    expect(stage7.indexOf('evaluateNationwideReportIntegrity(templateData)')).toBeLessThan(
+      stage7.indexOf('generateReportPDF(templateData)')
+    );
     expect(stage7).not.toContain('generateReportHtml');
     expect(stage7).not.toContain('puppeteer');
   });
