@@ -2,6 +2,13 @@
 
 Resourceful uses Vercel Web Analytics custom events to measure the intake funnel without sending property or customer identity data.
 
+## Operational prerequisites
+
+- Enable Web Analytics for the pinned Resourceful Vercel project, `resourceful-7x38`.
+- Confirm the active Vercel plan supports custom events.
+- Deploy the application after activation and verify that a controlled test session produces the expected event names before using the dashboard for decisions.
+- If Web Analytics or custom-event support is unavailable, the instrumentation remains fail-open and the customer flow continues normally, but the custom-event dashboard will not populate.
+
 ## Non-negotiable privacy boundary
 
 Custom event payloads may contain only the allowlisted categorical fields defined in `src/lib/analytics/funnel-contract.ts`:
