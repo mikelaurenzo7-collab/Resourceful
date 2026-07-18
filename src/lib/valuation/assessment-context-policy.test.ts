@@ -124,6 +124,51 @@ describe('evaluateAssessmentContext', () => {
     expect(result.warnings.join(' ')).toContain('year-specific');
   });
 
+  it('accepts an explicit prior-year valuation convention without imposing a same-year rule', () => {
+    const result = evaluateAssessmentContext({
+      serviceType: 'tax_appeal',
+      countyFips: '99998',
+      propertyType: 'residential',
+      taxYearInAppeal: 2025,
+      valuationDate: '2024-01-01',
+      assessmentRatio: 0.1,
+      assessmentMethodology: 'Residential assessment',
+      propertyClassDescription: 'Single-family residence',
+      countyRule: countyRule({
+        county_fips: '99998',
+        county_name: 'Prior Year County',
+        state_abbreviation: 'PY',
+        state_name: 'Prior Year State',
+        valuation_date_convention: 'January 1 of the preceding year',
+      }),
+    });
+
+    expect(result.hardFailures).toEqual([]);
+    expect(result.valuationYear).toBe(2024);
+  });
+
+  it('blocks an unexplained cross-year effective date', () => {
+    const result = evaluateAssessmentContext({
+      serviceType: 'tax_appeal',
+      countyFips: '99997',
+      propertyType: 'residential',
+      taxYearInAppeal: 2025,
+      valuationDate: '2024-01-01',
+      assessmentRatio: 0.1,
+      assessmentMethodology: 'Residential assessment',
+      propertyClassDescription: 'Single-family residence',
+      countyRule: countyRule({
+        county_fips: '99997',
+        county_name: 'Unspecified Convention County',
+        state_abbreviation: 'UC',
+        state_name: 'Unspecified Convention State',
+        valuation_date_convention: null,
+      }),
+    });
+
+    expect(result.hardFailures.some((failure) => failure.includes('does not document a cross-year convention'))).toBe(true);
+  });
+
   it('prefers an explicit industrial level when it differs from the commercial level', () => {
     const result = evaluateAssessmentContext({
       serviceType: 'tax_appeal',
@@ -172,7 +217,7 @@ describe('evaluateAssessmentContext', () => {
       taxYearInAppeal: 2025,
       valuationDate: '2025-01-01',
       assessmentRatio: 0.2,
-      assessmentMethodology: 'Standard commercial assessment',
+      assessmentMethodology: 'Standard commercial classification',
       propertyClassDescription: 'Office',
       countyRule: countyRule(),
     });
