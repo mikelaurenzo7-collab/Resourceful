@@ -12,7 +12,7 @@ import {
   manifestPathForPdf,
   verifyReportArtifact,
 } from '@/lib/pdf/report-artifact-verification';
-import { sendReportReadyNotification } from '@/lib/services/resend-email';
+import { sendVerifiedReportReadyNotification } from '@/lib/services/customer-notification-email';
 import { subscribeToReminders } from '@/lib/services/reminder-service';
 import { calculateAssessmentGap } from '@/lib/valuation/assessment-gap';
 import { pipelineLogger } from '@/lib/logger';
@@ -178,7 +178,7 @@ export async function runDelivery(
       }
     }
 
-    const emailResult = await sendReportReadyNotification({
+    const emailResult = await sendVerifiedReportReadyNotification({
       to: report.client_email,
       reportId,
       serviceType: report.service_type,
