@@ -1,12 +1,12 @@
 // ─── Partner API: Create Report ──────────────────────────────────────────────
 // POST /api/v1/reports — programmatic report creation for API partners.
-// Same pipeline as the intake wizard, but authenticated via API key and
-// billed monthly (no Stripe PaymentIntent per report).
+// Partner billing does not bypass service or jurisdiction release boundaries.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { validateApiKey, trackApiUsage } from '@/lib/services/partner-api-service';
 import { validateCheckoutService } from '@/lib/services/service-eligibility';
+import { screenServiceJurisdiction } from '@/lib/services/jurisdiction-eligibility';
 import { createReport } from '@/lib/repository/reports';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runPipeline } from '@/lib/pipeline/orchestrator';
@@ -35,9 +35,20 @@ function extractBearerToken(request: NextRequest): string | null {
   return auth.slice(7).trim();
 }
 
+function jurisdictionFailureStatus(code: string): number {
+  if (code === 'ADDRESS_VERIFICATION_FAILED' || code === 'COUNTY_FIPS_UNRESOLVED') {
+    return 503;
+  }
+  return 409;
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const rateLimited = await applyRateLimit(request, { prefix: 'v1-reports', limit: 30, windowSeconds: 900 });
+    const rateLimited = await applyRateLimit(request, {
+      prefix: 'v1-reports',
+      limit: 30,
+      windowSeconds: 900,
+    });
     if (rateLimited) return rateLimited;
 
     const token = extractBearerToken(request);
@@ -78,7 +89,6 @@ export async function POST(request: NextRequest) {
       review_tier,
     } = parsed.data;
 
-    // Partner billing does not bypass legal or operational service boundaries.
     const serviceEligibility = validateCheckoutService(service_type, review_tier);
     if (!serviceEligibility.allowed) {
       apiLogger.warn(
@@ -103,6 +113,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const jurisdictionEligibility = await screenServiceJurisdiction({
+      serviceType: service_type,
+      propertyAddress: property_address,
+      city,
+      state,
+      county,
+    });
+
+    if (!jurisdictionEligibility.allowed) {
+      apiLogger.warn(
+        {
+          partnerId: partner.id,
+          code: jurisdictionEligibility.code,
+          state,
+          county,
+          retryable: jurisdictionEligibility.retryable,
+        },
+        '[partner-api] Jurisdiction failed report release gate'
+      );
+
+      return NextResponse.json(
+        {
+          error: jurisdictionEligibility.message,
+          code: jurisdictionEligibility.code,
+          retryable: jurisdictionEligibility.retryable,
+          jurisdiction: jurisdictionEligibility.jurisdiction,
+        },
+        { status: jurisdictionFailureStatus(jurisdictionEligibility.code) }
+      );
+    }
+
+    const resolved = jurisdictionEligibility.jurisdiction;
     const report = (await createReport({
       user_id: null,
       client_email,
@@ -110,15 +152,15 @@ export async function POST(request: NextRequest) {
       status: 'paid',
       service_type,
       property_type,
-      property_address,
-      city,
-      state,
-      state_abbreviation: state,
-      county,
-      county_fips: null,
+      property_address: resolved?.line1 ?? property_address,
+      city: resolved?.city || city,
+      state: resolved?.state || state,
+      state_abbreviation: resolved?.state || state,
+      county: resolved?.county || county,
+      county_fips: resolved?.countyFips ?? null,
       pin: null,
-      latitude: null,
-      longitude: null,
+      latitude: resolved?.latitude ?? null,
+      longitude: resolved?.longitude ?? null,
       report_pdf_storage_path: null,
       admin_notes: `Partner API report — ${partner.firm_name}`,
       stripe_payment_intent_id: null,
@@ -170,7 +212,7 @@ export async function POST(request: NextRequest) {
       } catch (dbErr) {
         apiLogger.error(
           { reportId: report.id, dbErr: String(dbErr), pipelineError: message },
-          '[partner-api] CRITICAL: Pipeline failed AND error recording failed'
+          '[partner-api] CRITICAL: Pipeline and error recording failed'
         );
       }
     });
@@ -179,13 +221,14 @@ export async function POST(request: NextRequest) {
       {
         reportId: report.id,
         status: 'processing',
+        jurisdiction: resolved,
         message: 'Report created and pipeline started.',
       },
       { status: 201 }
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error({ err: message }, 'Unhandled error');
+    apiLogger.error({ err: message }, 'Unhandled partner report error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
