@@ -1,17 +1,15 @@
 // ─── Report Document (Root) ──────────────────────────────────────────────────
-// Composes one branded report system from a case-specific section profile.
+// Composes one branded report system from the shared, case-specific render plan.
 
 import React from 'react';
 import { Document, Page } from '@react-pdf/renderer';
 import { theme } from './styles/theme';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
-import { resolveAssignmentKind } from '@/lib/assignments/routing';
-import { hasReleaseReadyIncomeApproach } from './section-data';
 import {
-  buildReportProfile,
-  REPORT_NARRATIVE_SECTION_SPECS,
-  type ReportNarrativeSectionKey,
-} from './report-profile';
+  buildReportRenderPlan,
+  type ReportRenderPlan,
+  type ReportRenderSection,
+} from './report-render-plan';
 import { PageFooter, SectionHeader, NarrativeBlock } from './components/shared';
 
 import LetterOfTransmittal from './components/LetterOfTransmittal';
@@ -33,21 +31,21 @@ import AssignmentAndScope from './components/AssignmentAndScope';
 import SummaryOfSalientFacts from './components/SummaryOfSalientFacts';
 import CertificationAndLimitingConditions from './components/CertificationAndLimitingConditions';
 
-const SECTION_SPEC_BY_KEY = new Map(
-  REPORT_NARRATIVE_SECTION_SPECS.map((section) => [section.key, section])
-);
+function narrativeContent(
+  section: ReportRenderSection,
+  plan: ReportRenderPlan
+): string | null {
+  if (!section.narrativeKey) return null;
+  return plan.narratives.get(section.narrativeKey) ?? null;
+}
 
 function NarrativeSectionPage({
-  sectionKey,
+  section,
   content,
 }: {
-  sectionKey: ReportNarrativeSectionKey;
-  content: string | undefined;
+  section: ReportRenderSection;
+  content: string;
 }) {
-  if (!content) return null;
-  const section = SECTION_SPEC_BY_KEY.get(sectionKey);
-  if (!section) return null;
-
   return (
     <Page size="LETTER" style={theme.page}>
       <PageFooter />
@@ -57,173 +55,139 @@ function NarrativeSectionPage({
   );
 }
 
-export default function ReportDocument({ data }: { data: ReportTemplateData }) {
-  const narrativeMap = new Map(data.narratives.map((n) => [n.section_name, n.content]));
-  const assignmentKind = resolveAssignmentKind(
-    data.report.service_type,
-    data.report.desired_outcome
-  );
-  const profile = buildReportProfile(data);
-  const hasIncomeApproach = hasReleaseReadyIncomeApproach(data);
-  const hasCostApproach =
-    data.property.cost_approach_value != null && data.property.cost_approach_value > 0;
-  const hasConditionDefects = data.photos.some(
-    (photo) => (photo.ai_analysis?.defects?.length ?? 0) > 0
-  );
+function renderSection(
+  section: ReportRenderSection,
+  data: ReportTemplateData,
+  plan: ReportRenderPlan
+): React.ReactNode {
+  const content = narrativeContent(section, plan);
 
-  const narrativePage = (sectionKey: ReportNarrativeSectionKey) => (
-    <NarrativeSectionPage
-      sectionKey={sectionKey}
-      content={narrativeMap.get(sectionKey)}
-    />
-  );
-
-  return (
-    <Document
-      title={`${profile.documentTitle} — ${data.report.property_address}`}
-      author="Resourceful"
-      subject={profile.documentTitle}
-      keywords={`property valuation, ${profile.assignmentKind}, ${data.report.property_type}, ${profile.id}`}
-    >
-      <CoverPage data={data} />
-      <LetterOfTransmittal data={data} />
-      <TableOfContents data={data} />
-
-      {narrativeMap.get('summary_of_salient_facts') && (
+  switch (section.kind) {
+    case 'letter':
+      return <LetterOfTransmittal data={data} />;
+    case 'summary':
+      return content ? (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
-          <SummaryOfSalientFacts content={narrativeMap.get('summary_of_salient_facts')!} />
+          <SummaryOfSalientFacts content={content} />
         </Page>
-      )}
-
-      <Page size="LETTER" style={theme.page}>
-        <PageFooter />
-        <PropertyDetails data={data} />
-      </Page>
-
-      <Page size="LETTER" style={theme.page}>
-        <PageFooter />
-        <ExecutiveSummary data={data} />
-      </Page>
-
-      <SubjectPhotoExhibit data={data} />
-
-      {narrativeMap.get('assignment_and_scope') && (
+      ) : null;
+    case 'property_facts':
+      return (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
-          <AssignmentAndScope content={narrativeMap.get('assignment_and_scope')!} />
+          <PropertyDetails data={data} />
         </Page>
-      )}
-
-      {narrativePage('property_history')}
-      {narrativePage('assessment_data')}
-      {narrativePage('property_description')}
-      {narrativePage('site_description_narrative')}
-      {narrativePage('improvement_description_narrative')}
-      {narrativePage('condition_assessment')}
-
-      {hasConditionDefects && (
+      );
+    case 'executive_summary':
+      return (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <ExecutiveSummary data={data} />
+        </Page>
+      );
+    case 'maps':
+      return <SubjectPhotoExhibit data={data} mode="maps" />;
+    case 'photos':
+      return <SubjectPhotoExhibit data={data} mode="photos" />;
+    case 'assignment_scope':
+      return content ? (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <AssignmentAndScope content={content} />
+        </Page>
+      ) : null;
+    case 'narrative':
+    case 'assignment_guide':
+      return content ? <NarrativeSectionPage section={section} content={content} /> : null;
+    case 'condition_table':
+      return (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
           <ConditionSection data={data} />
         </Page>
-      )}
-
-      {narrativePage('area_analysis_county')}
-      {narrativePage('area_analysis_city')}
-      {narrativePage('area_analysis_neighborhood')}
-      {narrativePage('market_analysis')}
-      {narrativePage('hbu_as_vacant')}
-      {narrativePage('hbu_as_improved')}
-
-      {profile.isTaxAppeal && narrativePage('appeal_argument_summary')}
-      {narrativePage('sales_comparison_narrative')}
-
-      {data.comparableSales.length > 0 && (
+      );
+    case 'comparable_grid':
+      return (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
           <CompsGrid data={data} />
         </Page>
-      )}
-
-      <ComparableSaleProfiles data={data} />
-      {narrativePage('adjustment_grid_narrative')}
-
-      {hasIncomeApproach && narrativePage('income_approach_narrative')}
-      {hasIncomeApproach && (
+      );
+    case 'comparable_profiles':
+      return <ComparableSaleProfiles data={data} />;
+    case 'income_calculation':
+      return (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
           <IncomeApproachTable data={data} />
         </Page>
-      )}
-
-      {hasCostApproach && narrativePage('cost_approach_narrative')}
-      {hasCostApproach && (
+      );
+    case 'cost_calculation':
+      return (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
           <CostApproachTable data={data} />
         </Page>
-      )}
-
-      {profile.isTaxAppeal && narrativePage('assessment_equity')}
-      {profile.isTaxAppeal && data.property.assessment_ratio != null && (
+      );
+    case 'assessment_context':
+      return (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
           <AssessmentRatioAnalysis data={data} />
         </Page>
-      )}
-
-      <Page size="LETTER" style={theme.page}>
-        <PageFooter />
-        <AdjustmentReconciliation data={data} />
-      </Page>
-
-      {data.filingGuide && assignmentKind === 'tax_appeal' && (
+      );
+    case 'reconciliation':
+      return (
+        <Page size="LETTER" style={theme.page}>
+          <PageFooter />
+          <AdjustmentReconciliation data={data} />
+        </Page>
+      );
+    case 'filing_guide':
+      return data.filingGuide ? (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
           <FilingGuide guide={data.filingGuide} />
         </Page>
-      )}
-
-      {assignmentKind === 'pre_listing' && narrativeMap.get('pricing_strategy_guide') && (
+      ) : null;
+    case 'certification':
+      return content ? (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
-          <SectionHeader number="ADD-A" title="Pricing Strategy Guide" />
-          <NarrativeBlock content={narrativeMap.get('pricing_strategy_guide')!} />
+          <CertificationAndLimitingConditions content={content} />
         </Page>
-      )}
-
-      {assignmentKind === 'pre_purchase' && narrativeMap.get('negotiation_guide') && (
-        <Page size="LETTER" style={theme.page}>
-          <PageFooter />
-          <SectionHeader number="ADD-A" title="Negotiation Strategy Guide" />
-          <NarrativeBlock content={narrativeMap.get('negotiation_guide')!} />
-        </Page>
-      )}
-
-      {assignmentKind === 'independent_valuation' && narrativeMap.get('valuation_use_guide') && (
-        <Page size="LETTER" style={theme.page}>
-          <PageFooter />
-          <SectionHeader number="ADD-A" title="Valuation Use & Next-Step Guide" />
-          <NarrativeBlock content={narrativeMap.get('valuation_use_guide')!} />
-        </Page>
-      )}
-
-      {narrativePage('hearing_script')}
-
-      {narrativeMap.get('certification_and_limiting_conditions') ? (
-        <Page size="LETTER" style={theme.page}>
-          <PageFooter />
-          <CertificationAndLimitingConditions
-            content={narrativeMap.get('certification_and_limiting_conditions')!}
-          />
-        </Page>
-      ) : (
+      ) : null;
+    case 'disclaimer':
+      return (
         <Page size="LETTER" style={theme.page}>
           <PageFooter />
           <Disclaimer data={data} />
         </Page>
-      )}
+      );
+  }
+}
+
+export default function ReportDocument({ data }: { data: ReportTemplateData }) {
+  const plan = buildReportRenderPlan(data);
+  const letter = plan.sections.find((section) => section.kind === 'letter');
+  const bodySections = plan.sections.filter((section) => section.kind !== 'letter');
+
+  return (
+    <Document
+      title={`${plan.profile.documentTitle} — ${data.report.property_address}`}
+      author="Resourceful"
+      subject={plan.profile.documentTitle}
+      keywords={`property valuation, ${plan.profile.assignmentKind}, ${data.report.property_type}, ${plan.profile.id}`}
+    >
+      <CoverPage data={data} />
+      {letter && renderSection(letter, data, plan)}
+      <TableOfContents data={data} plan={plan} />
+      {bodySections.map((section) => (
+        <React.Fragment key={section.id}>
+          {renderSection(section, data, plan)}
+        </React.Fragment>
+      ))}
     </Document>
   );
 }
