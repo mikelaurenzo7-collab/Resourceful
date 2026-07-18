@@ -1,6 +1,5 @@
-import { Metadata } from 'next';
-
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app';
+import type { Metadata } from 'next';
+import { getAppUrl } from '@/lib/utils/app-url';
 
 interface BuildMetadataParams {
   title: string;
@@ -15,6 +14,7 @@ export function buildMetadata({
   path = '',
   noIndex = false,
 }: BuildMetadataParams): Metadata {
+  const baseUrl = getAppUrl();
   const url = `${baseUrl}${path}`;
 
   return {
@@ -27,7 +27,7 @@ export function buildMetadata({
       title,
       description,
       url,
-      siteName: 'REsourceful',
+      siteName: 'Resourceful',
       type: 'website',
       images: [
         {

@@ -1,70 +1,67 @@
-/**
- * SampleReport — Shows visitors what they'll receive.
- * Visual preview of report sections without actual data.
- * Reduces purchase anxiety by answering "what am I paying for?"
- */
-
 const reportSections = [
   {
-    title: 'Executive Summary',
-    description: 'Your concluded market value, the over-assessment amount, and projected annual tax savings — all on page one.',
-    icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
+    title: 'Decision Summary',
+    description:
+      'The property question, available assessment facts, supported value range or conclusion when appropriate, material limitations, and recommended next action.',
+    icon: 'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2',
   },
   {
-    title: 'Comparable Sales Grid',
-    description: '5–10 recent arm\'s-length sales with line-item adjustments for size, age, condition, and location. The same grid format appraisers use.',
+    title: 'Comparable Evidence Grid',
+    description:
+      'Relevant sales, source details, similarity factors, visible adjustments, and exclusion reasons. The number of usable comparables depends on the market and data available.',
     icon: 'M3 10h18M3 14h18M3 18h18M3 6h18',
   },
   {
-    title: 'Condition Analysis',
-    description: 'AI-powered analysis of your property photos documenting deferred maintenance, functional obsolescence, and external factors.',
-    icon: 'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z',
+    title: 'Property and Condition Evidence',
+    description:
+      'Recorded property characteristics, submitted photographs, visible observations, supporting notes, and clear separation between observed condition and unsupported valuation effects.',
+    icon: 'M3 9a2 2 0 0 1 2-2h.9a2 2 0 0 0 1.7-.9l.8-1.2A2 2 0 0 1 10.1 4h3.8a2 2 0 0 1 1.7.9l.8 1.2a2 2 0 0 0 1.7.9h.9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9Z',
   },
   {
-    title: 'Assessment Ratio Analysis',
-    description: 'How your assessment compares to your county\'s target ratio and whether it falls outside IAAO acceptable variance.',
-    icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
+    title: 'Assessment Analysis',
+    description:
+      'The recorded assessment, assessment year, available ratio context, arithmetic used, and any data gaps that prevent a reliable comparison.',
+    icon: 'M9 19v-6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2Zm0 0V9a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v10m-6 0a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2m0 0V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2Z',
   },
   {
-    title: 'Filing Instructions',
-    description: 'Step-by-step instructions specific to your county: deadlines, forms, portal links, what to say at the hearing, and what to bring.',
-    icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z',
+    title: 'Evidence Index and Sources',
+    description:
+      'A reviewable list of documents, records, links, retrieval dates, and source limitations supporting the work product.',
+    icon: 'M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
   },
   {
-    title: 'Market Research',
-    description: 'Local market trends, median sale prices, and neighborhood analysis that supports your valuation argument.',
-    icon: 'M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z',
+    title: 'Next-Step Guide',
+    description:
+      'For supported jurisdictions: the responsible authority, deadline rule, required materials, filing path, verification notes, and customer responsibilities.',
+    icon: 'm21 21-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z',
   },
 ];
 
 export default function SampleReport() {
   return (
-    <section className="mx-auto max-w-6xl px-6 py-24">
+    <section className="mx-auto max-w-6xl px-6 py-24" aria-labelledby="deliverables-heading">
       <div className="text-center mb-14">
         <span className="text-[11px] font-semibold tracking-[0.2em] text-gold/70 uppercase">
-          What You&apos;ll Receive
+          What You Receive
         </span>
-        <h2 className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
-          A 16–22 Page Professional Report
+        <h2 id="deliverables-heading" className="font-display text-3xl md:text-4xl text-cream mt-3 tracking-tight">
+          A reviewable workfile—not a black-box score
         </h2>
-        <p className="mt-4 text-cream/40 max-w-xl mx-auto leading-relaxed">
-          The same evidence format and methodology licensed appraisers present to Boards of Review. Delivered as a downloadable PDF.
+        <p className="mt-4 text-cream/45 max-w-2xl mx-auto leading-relaxed">
+          The exact length and sections vary with the property, service, jurisdiction, and available evidence. Every delivered section should earn its place by helping explain the conclusion or the next action.
         </p>
       </div>
 
-      {/* Report "pages" preview */}
       <div className="relative">
-        {/* Decorative report frame */}
         <div className="card-elevated rounded-2xl p-8 md:p-10 overflow-hidden relative">
-          {/* Subtle document texture */}
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-gold/30 via-gold/50 to-gold/30" />
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {reportSections.map((section, i) => (
-              <div
+            {reportSections.map((section, index) => (
+              <article
                 key={section.title}
                 data-animate
-                data-delay={String((i + 1) * 80)}
+                data-delay={String((index + 1) * 80)}
                 className="group"
               >
                 <div className="flex items-start gap-3.5">
@@ -75,18 +72,16 @@ export default function SampleReport() {
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-cream/90 mb-1">{section.title}</h3>
-                    <p className="text-[12px] text-cream/35 leading-relaxed">{section.description}</p>
+                    <p className="text-xs text-cream/45 leading-relaxed">{section.description}</p>
                   </div>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
 
-          {/* Bottom accent */}
-          <div className="mt-8 pt-6 text-center" style={{ borderTop: '1px solid rgba(212, 168, 71, 0.08)' }}>
-            <p className="text-xs text-cream/50">
-              Includes cover page, table of contents, methodology disclosure, and legal disclaimers.
-              All reports are quality-reviewed before delivery.
+          <div className="mt-8 pt-6 text-center border-t border-gold/10">
+            <p className="text-xs leading-relaxed text-cream/50">
+              Standard analyses are informational work products, not legal advice or certified appraisals. Professional review, filing support, or regulated services are included only when the selected package and written scope expressly say so.
             </p>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
 import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/seo/JsonLd';
+import { getAppUrl } from '@/lib/utils/app-url';
 import './globals.css';
 
 const geistSans = localFont({
@@ -20,54 +21,50 @@ const playfair = Playfair_Display({
   display: 'swap',
 });
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://resourceful.app';
+const baseUrl = getAppUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: "REsourceful | The AI Property Tax Operator",
-    template: "%s | REsourceful",
+    default: 'Resourceful | Property Tax Appeal Evidence and Filing Support',
+    template: '%s | Resourceful',
   },
   description:
-    "An AI-led property tax reduction company. Claude runs valuation research, case assembly, filing support, and workflow intelligence so property owners move faster and save more.",
+    'Review a property assessment, organize comparable sales and condition evidence, and understand the next supported filing step with an AI-assisted, human-controlled workflow.',
   keywords: [
-    "ai property tax",
-    "property tax appeal",
-    "tax reduction operator",
-    "property valuation",
-    "tax reduction",
-    "property intelligence",
-    "property tax protest",
-    "reduce property taxes",
-    "property tax savings",
-    "comparable sales analysis",
-    "assessment workflow",
-    "board of review appeal",
-    "assessment appeal",
-    "ai cofounder",
+    'property tax appeal',
+    'property assessment review',
+    'property tax protest',
+    'comparable sales analysis',
+    'condition evidence',
+    'property tax filing support',
+    'assessment appeal evidence',
+    'property valuation analysis',
+    'pre-purchase property review',
+    'pre-listing property review',
   ],
   openGraph: {
-    title: "REsourceful | The AI Property Tax Operator",
+    title: 'Resourceful | Property Tax Appeal Evidence and Filing Support',
     description:
-      "An AI-led property tax reduction company. Claude runs valuation research, comparable analysis, and filing support for property owners nationwide.",
-    type: "website",
-    siteName: "REsourceful",
+      'Turn property records, comparable sales, condition evidence, and jurisdiction rules into a reviewable analysis and a clear next step.',
+    type: 'website',
+    siteName: 'Resourceful',
     url: baseUrl,
-    locale: "en_US",
+    locale: 'en_US',
     images: [
       {
         url: `${baseUrl}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "REsourceful — The AI Property Tax Operator",
+        alt: 'Resourceful property assessment evidence and filing support',
       },
     ],
   },
   twitter: {
-    card: "summary_large_image",
-    title: "REsourceful | The AI Property Tax Operator",
+    card: 'summary_large_image',
+    title: 'Resourceful | Property Tax Appeal Evidence and Filing Support',
     description:
-      "Claude runs property tax research, case assembly, and filing support so property owners move faster and save more.",
+      'Review your assessment, inspect the evidence, and understand the next supported action.',
     images: [`${baseUrl}/og-image.png`],
   },
   icons: {
@@ -80,9 +77,9 @@ export const metadata: Metadata = {
     googleBot: {
       index: true,
       follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
     },
   },
 };
