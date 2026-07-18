@@ -1,8 +1,9 @@
 // ─── Notification Retry Service ──────────────────────────────────────────────
 // Retries delivery notification emails that failed during Stage 8.
 
-import { createAdminClient } from '@/lib/supabase/admin';
+import { releaseKeyForPdfPath } from '@/lib/pdf/report-artifact-verification';
 import { sendVerifiedReportReadyNotification } from '@/lib/services/customer-notification-email';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { calculateAssessmentGap } from '@/lib/valuation/assessment-gap';
 import type { Report, PropertyData } from '@/types/database';
 import { emailLogger } from '@/lib/logger';
@@ -19,6 +20,7 @@ type RetryReport = Pick<
   | 'state'
   | 'county'
   | 'county_fips'
+  | 'report_pdf_storage_path'
 >;
 
 export async function retryFailedNotifications(): Promise<{ sent: number; errors: number }> {
@@ -28,7 +30,9 @@ export async function retryFailedNotifications(): Promise<{ sent: number; errors
 
   const { data: reports, error } = await supabase
     .from('reports')
-    .select('id, client_email, service_type, property_address, city, state, county, county_fips')
+    .select(
+      'id, client_email, service_type, property_address, city, state, county, county_fips, report_pdf_storage_path'
+    )
     .eq('status', 'delivered')
     .eq('email_delivery_preference', true)
     .is('notification_sent_at' as string, null)
@@ -55,6 +59,24 @@ export async function retryFailedNotifications(): Promise<{ sent: number; errors
   for (const rawReport of reports) {
     const report = rawReport as RetryReport;
     if (!report.client_email) continue;
+
+    let artifactReleaseKey: string;
+    try {
+      if (!report.report_pdf_storage_path) {
+        throw new Error('Delivered report has no immutable PDF storage path');
+      }
+      artifactReleaseKey = releaseKeyForPdfPath(report.report_pdf_storage_path);
+    } catch (artifactError) {
+      emailLogger.error(
+        {
+          reportId: report.id,
+          error: artifactError instanceof Error ? artifactError.message : String(artifactError),
+        },
+        '[notification-retry] Cannot identify the delivered artifact release'
+      );
+      errors++;
+      continue;
+    }
 
     try {
       const { data: propertyDataRaw, error: propertyError } = await supabase
@@ -100,6 +122,7 @@ export async function retryFailedNotifications(): Promise<{ sent: number; errors
       const result = await sendVerifiedReportReadyNotification({
         to: report.client_email,
         reportId: report.id,
+        artifactReleaseKey,
         serviceType: report.service_type,
         propertyAddress,
         concludedMarketValue: propertyData?.concluded_value ?? null,
@@ -111,7 +134,7 @@ export async function retryFailedNotifications(): Promise<{ sent: number; errors
 
       if (result.error) {
         emailLogger.error(
-          { reportId: report.id, error: result.error },
+          { reportId: report.id, artifactReleaseKey, error: result.error },
           '[notification-retry] Notification retry failed'
         );
         errors++;
@@ -127,7 +150,7 @@ export async function retryFailedNotifications(): Promise<{ sent: number; errors
 
       if (stampError) {
         emailLogger.error(
-          { reportId: report.id, error: stampError.message },
+          { reportId: report.id, artifactReleaseKey, error: stampError.message },
           '[notification-retry] Email sent but success stamp failed'
         );
         errors++;
@@ -137,7 +160,7 @@ export async function retryFailedNotifications(): Promise<{ sent: number; errors
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       emailLogger.error(
-        { reportId: report.id, message },
+        { reportId: report.id, artifactReleaseKey, message },
         '[notification-retry] Unexpected retry error'
       );
       errors++;
