@@ -7,7 +7,6 @@ import { track } from '@vercel/analytics';
 import { useWizard } from '@/components/intake/WizardLayout';
 import {
   buildSafeFunnelProperties,
-  createFunnelFingerprint,
   type FunnelEventName,
   type SafeFunnelProperties,
 } from '@/lib/analytics/funnel-contract';
@@ -29,9 +28,10 @@ function resolveServiceType(
 function safelyTrackOnce(
   tracked: Set<string>,
   eventName: FunnelEventName,
+  milestoneIdentity: string,
   properties: SafeFunnelProperties,
 ) {
-  const fingerprint = createFunnelFingerprint(eventName, properties);
+  const fingerprint = `${eventName}:${milestoneIdentity}`;
   const storageKey = `${TRACKED_SESSION_PREFIX}${fingerprint}`;
 
   if (tracked.has(fingerprint)) return;
@@ -87,43 +87,86 @@ export default function FunnelAnalytics() {
   );
 
   useEffect(() => {
-    safelyTrackOnce(trackedRef.current, 'Resourceful Intake Step Viewed', properties);
-  }, [properties]);
+    safelyTrackOnce(
+      trackedRef.current,
+      'Resourceful Intake Step Viewed',
+      pathname,
+      {
+        step: properties.step,
+        step_number: properties.step_number,
+      },
+    );
+  }, [pathname, properties.step, properties.step_number]);
 
   useEffect(() => {
     if (!serviceType) return;
-    safelyTrackOnce(trackedRef.current, 'Resourceful Service Selected', properties);
+    safelyTrackOnce(
+      trackedRef.current,
+      'Resourceful Service Selected',
+      serviceType,
+      properties,
+    );
   }, [properties, serviceType]);
 
   useEffect(() => {
-    if (!state.address || !state.propertyType) return;
-    safelyTrackOnce(trackedRef.current, 'Resourceful Property Details Completed', properties);
-  }, [properties, state.address, state.propertyType]);
+    if (currentStep < 3 || !state.address || !state.propertyType) return;
+    safelyTrackOnce(
+      trackedRef.current,
+      'Resourceful Property Details Completed',
+      `${serviceType ?? 'unknown'}:${state.propertyType}`,
+      properties,
+    );
+  }, [currentStep, properties, serviceType, state.address, state.propertyType]);
 
   useEffect(() => {
     if (currentStep < 4 || !state.propertyType) return;
-    safelyTrackOnce(trackedRef.current, 'Resourceful Situation Completed', properties);
-  }, [currentStep, properties, state.propertyType]);
+    safelyTrackOnce(
+      trackedRef.current,
+      'Resourceful Situation Completed',
+      `${serviceType ?? 'unknown'}:${state.propertyType}`,
+      properties,
+    );
+  }, [currentStep, properties, serviceType, state.propertyType]);
 
   useEffect(() => {
     if (!state.reportId || !state.clientSecret) return;
-    safelyTrackOnce(trackedRef.current, 'Resourceful Checkout Initialized', properties);
-  }, [properties, state.clientSecret, state.reportId]);
+    safelyTrackOnce(
+      trackedRef.current,
+      'Resourceful Checkout Initialized',
+      `${serviceType ?? 'unknown'}:${state.propertyType ?? 'unknown'}:${state.reviewTier}`,
+      properties,
+    );
+  }, [properties, serviceType, state.clientSecret, state.propertyType, state.reportId, state.reviewTier]);
 
   useEffect(() => {
     if (state.photoCount <= 0) return;
-    safelyTrackOnce(trackedRef.current, 'Resourceful Photo Evidence Added', properties);
+    safelyTrackOnce(
+      trackedRef.current,
+      'Resourceful Photo Evidence Added',
+      'added',
+      properties,
+    );
   }, [properties, state.photoCount]);
 
   useEffect(() => {
     if (!state.photosSkipped) return;
-    safelyTrackOnce(trackedRef.current, 'Resourceful Photo Evidence Skipped', properties);
+    safelyTrackOnce(
+      trackedRef.current,
+      'Resourceful Photo Evidence Skipped',
+      'skipped',
+      properties,
+    );
   }, [properties, state.photosSkipped]);
 
   useEffect(() => {
     if (pathname !== '/start/success') return;
-    safelyTrackOnce(trackedRef.current, 'Resourceful Intake Success Viewed', properties);
-  }, [pathname, properties]);
+    safelyTrackOnce(
+      trackedRef.current,
+      'Resourceful Intake Success Viewed',
+      serviceType ?? 'unknown',
+      properties,
+    );
+  }, [pathname, properties, serviceType]);
 
   return null;
 }
