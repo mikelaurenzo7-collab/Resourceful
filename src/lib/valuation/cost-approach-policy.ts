@@ -41,6 +41,18 @@ function percent(value: number | null | undefined): number | null {
     : null;
 }
 
+export function hasAnyCostApproachEvidence(
+  input: CostApproachEvidenceInput
+): boolean {
+  return [
+    input.replacementCostNew,
+    input.concludedValue,
+    input.physicalDepreciationPct,
+    input.functionalObsolescencePct,
+    input.landValue,
+  ].some((value) => value != null);
+}
+
 export function evaluateCostApproachEvidence(
   input: CostApproachEvidenceInput
 ): CostApproachEvidenceAssessment {
@@ -49,7 +61,8 @@ export function evaluateCostApproachEvidence(
   const replacementCostNew = positive(input.replacementCostNew);
   const concludedValue = positive(input.concludedValue);
   const physicalDepreciationPct = percent(input.physicalDepreciationPct);
-  const functionalObsolescencePct = percent(input.functionalObsolescencePct) ?? 0;
+  const functionalObsolescenceValue = percent(input.functionalObsolescencePct);
+  const functionalObsolescencePct = functionalObsolescenceValue ?? 0;
   const landValue = nonNegative(input.landValue);
 
   if (replacementCostNew == null) {
@@ -61,17 +74,19 @@ export function evaluateCostApproachEvidence(
   if (physicalDepreciationPct == null) {
     hardFailures.push('Cost approach requires physical depreciation between 0% and 100%');
   }
-  if (input.functionalObsolescencePct != null && percent(input.functionalObsolescencePct) == null) {
-    hardFailures.push('Functional obsolescence must be between 0% and 100% when supplied');
+  if (functionalObsolescenceValue == null) {
+    hardFailures.push(
+      'Cost approach requires an explicit functional-obsolescence percentage between 0% and 100%, including a stored zero when none is supported'
+    );
   }
   if (landValue == null) {
     hardFailures.push('Cost approach requires a verified non-negative land-value input');
   }
 
   const totalDepreciationPct =
-    physicalDepreciationPct == null
+    physicalDepreciationPct == null || functionalObsolescenceValue == null
       ? null
-      : Math.min(physicalDepreciationPct + functionalObsolescencePct, 100);
+      : Math.min(physicalDepreciationPct + functionalObsolescenceValue, 100);
   const recomputedValue =
     replacementCostNew != null && totalDepreciationPct != null && landValue != null
       ? Math.max(0, replacementCostNew * (1 - totalDepreciationPct / 100)) + landValue
