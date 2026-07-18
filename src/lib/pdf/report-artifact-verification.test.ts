@@ -6,6 +6,7 @@ import type { TaxAppealReleaseResult } from '@/lib/valuation/tax-appeal-release-
 import {
   createReportArtifactManifest,
   serializeReportArtifactManifest,
+  type ReportArtifactManifest,
 } from './report-artifact-manifest';
 import {
   manifestPathForPdf,
@@ -67,8 +68,12 @@ function createManifestJson(): string {
   ).toString('utf8');
 }
 
+function parseManifest(manifestJson = createManifestJson()): ReportArtifactManifest {
+  return JSON.parse(manifestJson) as ReportArtifactManifest;
+}
+
 function verify(manifestJson = createManifestJson(), pdfBuffer = pdf) {
-  const parsed = JSON.parse(manifestJson) as { artifact: { pdfPath: string } };
+  const parsed = parseManifest(manifestJson);
   return verifyReportArtifact({
     reportId: 'report-123',
     serviceType: 'tax_appeal',
@@ -95,15 +100,22 @@ describe('verifyReportArtifact', () => {
     expect(() => manifestPathForPdf('report/releases/release.txt')).toThrow('.pdf storage path');
   });
 
-  it('rejects corrupted PDF bytes', () => {
+  it('rejects corrupted PDF bytes by length and hash', () => {
     expect(verify(createManifestJson(), Buffer.from('%PDF-corrupted'))).toMatchObject({
       verified: false,
       code: 'ARTIFACT_BYTE_LENGTH_MISMATCH',
     });
+
+    const equalLengthCorruption = Buffer.from(pdf);
+    equalLengthCorruption[equalLengthCorruption.length - 1] ^= 1;
+    expect(verify(createManifestJson(), equalLengthCorruption)).toMatchObject({
+      verified: false,
+      code: 'ARTIFACT_HASH_MISMATCH',
+    });
   });
 
   it('rejects report-contract, path, and jurisdiction contradictions', () => {
-    const manifest = JSON.parse(createManifestJson()) as Record<string, any>;
+    const manifest = parseManifest();
 
     const wrongReport = structuredClone(manifest);
     wrongReport.report.id = 'report-other';
@@ -134,7 +146,7 @@ describe('verifyReportArtifact', () => {
     });
     expect(invalidJson.code).toBe('MANIFEST_JSON_INVALID');
 
-    const manifest = JSON.parse(createManifestJson()) as Record<string, any>;
+    const manifest = parseManifest();
     manifest.schemaVersion = '2.0.0';
     expect(verify(JSON.stringify(manifest))).toMatchObject({ code: 'MANIFEST_SCHEMA_UNSUPPORTED' });
   });
