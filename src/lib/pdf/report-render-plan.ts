@@ -160,6 +160,11 @@ export function buildReportRenderPlan(data: ReportTemplateData): ReportRenderPla
       title: 'Comparable Sales Grid',
       detail: `${data.comparableSales.length} transaction${data.comparableSales.length === 1 ? '' : 's'}`,
     });
+  }
+
+  pushNarrative('adjustment_grid_narrative');
+
+  if (data.comparableSales.length > 0) {
     push({
       id: 'comparable-profiles',
       kind: 'comparable_profiles',
@@ -168,8 +173,6 @@ export function buildReportRenderPlan(data: ReportTemplateData): ReportRenderPla
       detail: `${data.comparableSales.length} profile${data.comparableSales.length === 1 ? '' : 's'}`,
     });
   }
-
-  pushNarrative('adjustment_grid_narrative');
 
   if (profile.hasIncomeApproach) {
     pushNarrative('income_approach_narrative');
