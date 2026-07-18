@@ -14,6 +14,7 @@ export type NationwideReportIntegrityCode =
   | 'APPRAISAL_IDENTITY_UNAUTHORIZED'
   | 'APPRAISER_CREDENTIAL_REVIEW_REQUIRED'
   | 'ESTATE_ASSIGNMENT_INCOMPLETE'
+  | 'ESTATE_PACKAGE_RETENTION_REQUIRED'
   | 'TECHNOLOGY_REVIEW_REQUIRED';
 
 export interface NationwideReportIntegrityFinding {
@@ -259,12 +260,12 @@ function evaluateAssignmentConditionTaxonomy(
   }
 }
 
-function objectText(value: unknown): string {
-  try {
-    return value == null ? '' : JSON.stringify(value);
-  } catch {
-    return '';
-  }
+function hasStructuredEvidence(value: unknown): boolean {
+  if (value == null) return false;
+  if (typeof value === 'string') return value.trim().length > 0;
+  if (Array.isArray(value)) return value.length > 0;
+  if (typeof value === 'object') return Object.keys(value as Record<string, unknown>).length > 0;
+  return true;
 }
 
 function evaluateFloodEvidence(
@@ -277,10 +278,9 @@ function evaluateFloodEvidence(
     narrativeText(data, 'property_description'),
     narrativeText(data, 'condition_assessment'),
   ].join(' ');
-  const rawFloodText = objectText(data.property.fema_raw_response);
   const hasOfficialEvidence =
     hasText(data.property.flood_map_panel_number) ||
-    hasText(rawFloodText);
+    hasStructuredEvidence(data.property.fema_raw_response);
   const hasAnyFloodEvidence =
     hasOfficialEvidence ||
     hasText(data.property.flood_zone_designation) ||
@@ -355,7 +355,7 @@ function evaluateEstateAssignment(
   } else {
     pushFinding(
       warnings,
-      'ESTATE_ASSIGNMENT_INCOMPLETE',
+      'ESTATE_PACKAGE_RETENTION_REQUIRED',
       'Estate valuation detected: preserve the complete signed report, source exhibits, and supporting appraisal package required by the intended tax filing'
     );
   }
