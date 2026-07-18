@@ -69,21 +69,20 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
     { number: 'IX', title: 'Adjustment Reconciliation & Value Conclusion' },
   ];
 
-  let nextSectionNumber = 10;
   if (property.assessment_ratio != null) {
-    sections.push({ number: toRoman(nextSectionNumber++), title: 'Assessment Ratio Analysis' });
+    sections.push({ number: 'X', title: 'Assessment Ratio Analysis' });
   }
 
   if (hasCostApproach) {
-    sections.push({ number: toRoman(nextSectionNumber++), title: 'Cost Approach Analysis' });
+    sections.push({ number: 'XI', title: 'Cost Approach Analysis' });
   }
 
   if (hasIncome) {
-    sections.push({ number: toRoman(nextSectionNumber++), title: 'Income Capitalization Approach' });
+    sections.push({ number: 'XII', title: 'Income Capitalization Approach' });
   }
 
   if (hasPhotoDefects) {
-    sections.push({ number: toRoman(nextSectionNumber++), title: 'Property Condition Documentation' });
+    sections.push({ number: 'XIII', title: 'Property Condition Documentation' });
   }
 
   sections.push({ number: '', title: '' });
@@ -149,22 +148,6 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
       </View>
     </Page>
   );
-}
-
-function toRoman(value: number): string {
-  const numerals: Array<[number, string]> = [
-    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'],
-    [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I'],
-  ];
-  let remaining = value;
-  let result = '';
-  for (const [amount, numeral] of numerals) {
-    while (remaining >= amount) {
-      result += numeral;
-      remaining -= amount;
-    }
-  }
-  return result;
 }
 
 const styles = StyleSheet.create({
