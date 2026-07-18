@@ -27,6 +27,13 @@ const jurisdictionRelease: TaxAppealReleaseResult = {
   jurisdictionEvaluation: null,
 };
 
+const jurisdictionNotRequired: TaxAppealReleaseResult = {
+  allowed: true,
+  code: 'JURISDICTION_RELEASE_NOT_REQUIRED',
+  message: 'A filing-jurisdiction release check is not required for this assignment.',
+  jurisdictionEvaluation: null,
+};
+
 function narrative(section_name: string, content = `${section_name} content`) {
   return {
     id: section_name,
@@ -51,6 +58,7 @@ function createData(): ReportTemplateData {
       client_name: 'Private Customer',
       property_address: '123 Private Street',
       service_type: 'tax_appeal',
+      desired_outcome: null,
       property_type: 'residential',
       review_tier: 'expert_reviewed',
       county_fips: '17031',
@@ -197,6 +205,29 @@ describe('report artifact manifest', () => {
     expect(serialized).not.toContain('123 Private Street');
     expect(serialized).not.toContain('Prepare evidence');
     expect(serialized).not.toContain('Market value and assessment equity argument');
+  });
+
+  it('does not record tax-appeal assessment context for an independent valuation override', () => {
+    const data = createData();
+    data.report.desired_outcome = '[INDEPENDENT_VALUATION] Estate planning decision support';
+    data.filingGuide = null;
+
+    const manifest = createReportArtifactManifest({
+      data,
+      pdfBuffer: Buffer.from('%PDF-1.7 independent valuation bytes'),
+      generatedAt: '2026-07-18T15:04:05.678Z',
+      valuationRelease,
+      jurisdictionRelease: jurisdictionNotRequired,
+    });
+
+    expect(manifest.report.profileId).toBe('resourceful-v2:independent_valuation:complex:sales');
+    expect(manifest.strategy.flags).not.toContain('tax_appeal');
+    expect(manifest.jurisdiction).toMatchObject({
+      releaseCode: 'JURISDICTION_RELEASE_NOT_REQUIRED',
+      appliedAssessmentRatio: null,
+      expectedAssessmentRatio: null,
+      requiresYearSpecificEqualizationSource: false,
+    });
   });
 
   it('rejects malformed artifact identity inputs', () => {
