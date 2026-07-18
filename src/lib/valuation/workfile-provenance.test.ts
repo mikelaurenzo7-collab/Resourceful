@@ -5,6 +5,7 @@ import {
   getJurisdictionPlugin,
   getRegulatorySourceEvidence,
   getUnitCountEvidence,
+  getValuationEffectiveDateEvidence,
   isCookCountyJurisdiction,
   isHttpUrl,
   isRetrospectiveAssignment,
@@ -15,6 +16,8 @@ function data(overrides: Record<string, unknown> = {}): ReportTemplateData {
     report: {
       service_type: 'pre_purchase',
       is_retrospective_assignment: false,
+      valuation_effective_date: null,
+      valuation_effective_date_source: null,
     },
     property: {},
     countyRule: null,
@@ -23,6 +26,30 @@ function data(overrides: Record<string, unknown> = {}): ReportTemplateData {
 }
 
 describe('workfile provenance', () => {
+  it('requires effective date and source as one verified pair', () => {
+    const verified = data({
+      report: {
+        service_type: 'pre_purchase',
+        valuation_effective_date: '2026-07-18',
+        valuation_effective_date_source: 'intake_current_date',
+      },
+    });
+    expect(getValuationEffectiveDateEvidence(verified)).toEqual({
+      date: '2026-07-18',
+      source: 'intake_current_date',
+      isVerified: true,
+    });
+
+    const missingSource = data({
+      report: {
+        service_type: 'pre_purchase',
+        valuation_effective_date: '2026-07-18',
+        valuation_effective_date_source: null,
+      },
+    });
+    expect(getValuationEffectiveDateEvidence(missingSource).isVerified).toBe(false);
+  });
+
   it('requires structured unit count, attributed source type, and reference', () => {
     const verified = data({
       property: {
