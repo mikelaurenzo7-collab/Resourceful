@@ -4,6 +4,7 @@ import {
   deriveCurrentAssignmentEffectiveDate,
   deriveTaxAppealEffectiveDate,
   evaluateValuationEffectiveDate,
+  isCanonicalDateOnly,
 } from './valuation-date-policy';
 
 describe('valuation effective date policy', () => {
@@ -60,6 +61,16 @@ describe('valuation effective date policy', () => {
       source: 'intake_current_date',
     });
     expect(dateOnly('not-a-date')).toBeNull();
+  });
+
+  it('rejects impossible or non-canonical date-only values', () => {
+    expect(dateOnly('2026-02-30')).toBeNull();
+    expect(dateOnly('2025-02-29')).toBeNull();
+    expect(dateOnly('2024-02-29')).toBe('2024-02-29');
+    expect(dateOnly('2026-13-01')).toBeNull();
+    expect(isCanonicalDateOnly('2026-07-18')).toBe(true);
+    expect(isCanonicalDateOnly('2026-7-18')).toBe(false);
+    expect(isCanonicalDateOnly('2026-02-30')).toBe(false);
   });
 
   it('rejects a retrospective assignment that inherits the intake date', () => {
