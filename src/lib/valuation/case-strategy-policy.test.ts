@@ -23,6 +23,7 @@ function baseData(overrides: Record<string, unknown> = {}): ReportTemplateData {
     report: {
       id: 'report-1',
       service_type: 'tax_appeal',
+      desired_outcome: null,
       property_type: 'residential',
       property_issues: [],
       additional_notes: null,
@@ -66,6 +67,24 @@ function baseData(overrides: Record<string, unknown> = {}): ReportTemplateData {
 }
 
 describe('evaluateCaseStrategy', () => {
+  it('respects an independent-valuation purpose even when the stored service type is tax appeal', () => {
+    const data = baseData({
+      report: {
+        ...baseData().report,
+        desired_outcome: '[INDEPENDENT_VALUATION] Estate planning decision support',
+      },
+      narratives: baseData().narratives.map((section) =>
+        section.section_name === 'appeal_argument_summary'
+          ? narrative('appeal_argument_summary', 'Purpose and use summary for estate planning')
+          : section
+      ),
+    });
+
+    const result = evaluateCaseStrategy(data);
+    expect(result.flags).not.toContain('tax_appeal');
+    expect(result.warnings.some((warning) => warning.includes('Appeal argument'))).toBe(false);
+  });
+
   it('requires condition analysis for a vacant distressed commercial property', () => {
     const data = baseData({
       report: {
@@ -157,6 +176,22 @@ describe('evaluateCaseStrategy', () => {
     const result = evaluateCaseStrategy(data);
     expect(result.flags).toContain('multifamily_unit_economics');
     expect(result.warnings.some((warning) => warning.includes('source-labeled unit count'))).toBe(true);
+  });
+
+  it('recognizes a hyphenated multifamily unit count as documented evidence', () => {
+    const data = baseData({
+      property: {
+        ...baseData().property,
+        property_subtype: '3-unit multifamily building',
+        property_class_description: 'Apartment property',
+        data_collection_notes: 'Assessor record identifies a 3-unit property.',
+      },
+      comparableSales: [{ property_class: 'Three-unit multifamily' }],
+    });
+
+    const result = evaluateCaseStrategy(data);
+    expect(result.flags).toContain('multifamily_unit_economics');
+    expect(result.warnings.some((warning) => warning.includes('source-labeled unit count'))).toBe(false);
   });
 
   it('requires positive building area for an industrial or flex assignment', () => {
