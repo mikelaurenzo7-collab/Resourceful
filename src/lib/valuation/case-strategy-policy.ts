@@ -4,6 +4,11 @@ import {
   isMultifamilyProperty,
   supportsIncomeApproach,
 } from './property-type-policy';
+import {
+  getRegulatorySourceEvidence,
+  getUnitCountEvidence,
+  isRetrospectiveAssignment,
+} from './workfile-provenance';
 
 export type CaseStrategyFlag =
   | 'tax_appeal'
@@ -25,7 +30,6 @@ export interface CaseStrategyAssessment {
 const DISTRESS_PATTERN = /\b(vacant|unoccupied|disrepair|poor condition|deferred maintenance|renovation|rehabilitation|uninhabitable|boarded|fire damage|water damage|demolition)\b/i;
 const REGULATORY_PATTERN = /\b(code violation|building violation|zoning violation|illegal unit|nonconforming|non-conforming|condemnation|municipal violation)\b/i;
 const INDUSTRIAL_PATTERN = /\b(industrial|warehouse|flex|manufacturing|distribution|factory|logistics)\b/i;
-const UNIT_COUNT_PATTERN = /\b(?:number of units|unit count|two[- ]units?|three[- ]units?|four[- ]units?|[2-9]\d*[- ]units?|\([2-9]\d*\)\s*units?)\b/i;
 const SALE_DATE_KEYS = ['sale_date', 'transfer_date', 'recording_date', 'document_date', 'date'] as const;
 const SUBJECT_EVIDENCE_NARRATIVES = new Set([
   'summary_of_salient_facts',
@@ -97,10 +101,6 @@ function hasNarrative(data: ReportTemplateData, sectionName: string): boolean {
   );
 }
 
-function daysBetween(later: Date, earlier: Date): number {
-  return Math.floor((later.getTime() - earlier.getTime()) / 86_400_000);
-}
-
 export function evaluateCaseStrategy(data: ReportTemplateData): CaseStrategyAssessment {
   const flags = new Set<CaseStrategyFlag>();
   const warnings: string[] = [];
@@ -133,13 +133,9 @@ export function evaluateCaseStrategy(data: ReportTemplateData): CaseStrategyAsse
     data.property.deed_history,
     data.valuationDate
   );
-  const valuationDate = parseDate(data.valuationDate);
-  const reportDate = parseDate(data.reportDate);
-  const isRetrospective =
-    valuationDate != null &&
-    reportDate != null &&
-    reportDate > valuationDate &&
-    daysBetween(reportDate, valuationDate) > 30;
+  const isRetrospective = isRetrospectiveAssignment(data);
+  const unitCountEvidence = getUnitCountEvidence(data);
+  const regulatorySource = getRegulatorySourceEvidence(data);
 
   if (isTaxAppeal) flags.add('tax_appeal');
   if (isDistressedOrVacant) flags.add('distressed_or_vacant');
@@ -175,17 +171,9 @@ export function evaluateCaseStrategy(data: ReportTemplateData): CaseStrategyAsse
   }
 
   if (isMultifamily) {
-    const sourceText = [
-      data.property.data_collection_notes,
-      data.narratives.find((narrative) => narrative.section_name === 'summary_of_salient_facts')?.content,
-      data.narratives.find((narrative) => narrative.section_name === 'property_description')?.content,
-    ]
-      .filter((value): value is string => hasText(value))
-      .join(' ');
-
-    if (!UNIT_COUNT_PATTERN.test(sourceText)) {
-      warnings.push(
-        'Multifamily assignment lacks a source-labeled unit count in structured notes or required narratives; do not render price-per-unit metrics as verified evidence'
+    if (!unitCountEvidence.isVerified) {
+      hardFailures.push(
+        'Multifamily analysis requires a structured unit count with an attributed source type and workfile reference'
       );
     }
     if (!data.comparableSales.some((sale) => hasText(sale.property_class))) {
@@ -220,8 +208,13 @@ export function evaluateCaseStrategy(data: ReportTemplateData): CaseStrategyAsse
   }
 
   if (hasRegulatoryIssue) {
+    if (!regulatorySource.isVerified) {
+      hardFailures.push(
+        'Regulatory or code claims require an official authority and HTTP(S) source URL in the workfile'
+      );
+    }
     warnings.push(
-      'Regulatory issue detected: identify the official source and distinguish zoning legality, code compliance, cure status, marketability, and value impact'
+      'Regulatory issue detected: distinguish zoning legality, code compliance, cure status, marketability, and value impact using the verified official source'
     );
   }
 
