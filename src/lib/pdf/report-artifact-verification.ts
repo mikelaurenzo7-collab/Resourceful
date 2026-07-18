@@ -13,7 +13,8 @@ export type ReportArtifactVerificationCode =
   | 'ARTIFACT_PATH_MISMATCH'
   | 'ARTIFACT_BYTE_LENGTH_MISMATCH'
   | 'ARTIFACT_HASH_MISMATCH'
-  | 'JURISDICTION_RELEASE_NOT_READY';
+  | 'JURISDICTION_RELEASE_NOT_READY'
+  | 'REPORT_INTEGRITY_NOT_READY';
 
 export type ReportArtifactVerificationResult =
   | {
@@ -112,6 +113,19 @@ function hasSchema14Provenance(manifest: ReportArtifactManifest): boolean {
   );
 }
 
+function hasSchema15Integrity(manifest: ReportArtifactManifest): boolean {
+  const integrity = manifest.integrity as Partial<ReportArtifactManifest['integrity']> | undefined;
+
+  return Boolean(
+    integrity &&
+    typeof integrity.releaseReady === 'boolean' &&
+    Array.isArray(integrity.warningCodes) &&
+    integrity.warningCodes.every((code) => typeof code === 'string') &&
+    Array.isArray(integrity.hardFailureCodes) &&
+    integrity.hardFailureCodes.every((code) => typeof code === 'string')
+  );
+}
+
 export function verifyReportArtifact(input: {
   reportId: string;
   serviceType: string;
@@ -184,6 +198,15 @@ export function verifyReportArtifact(input: {
     };
   }
 
+  if (schema.minor >= 5 && !hasSchema15Integrity(manifest)) {
+    return {
+      verified: false,
+      code: 'MANIFEST_JSON_INVALID',
+      message: 'The report manifest is missing required schema 1.5 nationwide-integrity fields.',
+      manifest: null,
+    };
+  }
+
   if (manifest.report.id !== input.reportId) {
     return {
       verified: false,
@@ -241,6 +264,15 @@ export function verifyReportArtifact(input: {
       verified: false,
       code: 'JURISDICTION_RELEASE_NOT_READY',
       message: 'The report manifest does not record a release-ready jurisdiction decision.',
+      manifest,
+    };
+  }
+
+  if (schema.minor >= 5 && manifest.integrity.releaseReady !== true) {
+    return {
+      verified: false,
+      code: 'REPORT_INTEGRITY_NOT_READY',
+      message: 'The report manifest records unresolved nationwide-integrity hard failures.',
       manifest,
     };
   }
