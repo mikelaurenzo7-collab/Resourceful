@@ -1,13 +1,19 @@
 // ─── Cost Approach Analysis ──────────────────────────────────────────────────
 // Structured presentation of release-ready workfile inputs:
-// Replacement Cost New → supported depreciation/obsolescence → verified land.
+// Replacement Cost New → supported depreciation/obsolescence → sourced land.
 
 import React from 'react';
 import { View, Text, StyleSheet } from '@react-pdf/renderer';
 import { theme, colors } from '../styles/theme';
 import { SectionHeader, ValueCallout } from './shared';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
-import { formatCurrency, formatPercent, formatSqFt, formatNumber } from '@/lib/templates/helpers';
+import {
+  formatCurrency,
+  formatDateShort,
+  formatPercent,
+  formatSqFt,
+  formatNumber,
+} from '@/lib/templates/helpers';
 import { getReportCostAssessment } from '../section-data';
 
 export default function CostApproachTable({ data }: { data: ReportTemplateData }) {
@@ -21,6 +27,14 @@ export default function CostApproachTable({ data }: { data: ReportTemplateData }
     totalDepreciationPct: totalDepreciation,
     landValue,
     recomputedValue,
+    replacementCostSourceAuthority,
+    depreciationSourceAuthority,
+    landValueSourceAuthority,
+    sourceReferences,
+    methodology,
+    costEffectiveDate,
+    verifiedBy,
+    verifiedAt,
   } = assessment;
 
   if (
@@ -30,7 +44,15 @@ export default function CostApproachTable({ data }: { data: ReportTemplateData }
     physicalDepreciation == null ||
     totalDepreciation == null ||
     landValue == null ||
-    recomputedValue == null
+    recomputedValue == null ||
+    replacementCostSourceAuthority == null ||
+    depreciationSourceAuthority == null ||
+    landValueSourceAuthority == null ||
+    sourceReferences == null ||
+    methodology == null ||
+    costEffectiveDate == null ||
+    verifiedBy == null ||
+    verifiedAt == null
   ) {
     return null;
   }
@@ -41,18 +63,35 @@ export default function CostApproachTable({ data }: { data: ReportTemplateData }
   const costPerSqft = buildingSqft != null && buildingSqft > 0
     ? rcn / buildingSqft
     : null;
+  const referenceCount = Object.keys(sourceReferences).length;
 
   return (
     <View>
       <SectionHeader number="VII-E1" title="Cost Approach Calculation" />
 
       <Text style={[theme.bodyText, { marginBottom: 8 }]}>
-        This exhibit presents the release-ready cost indication stored in the Resourceful workfile.
-        Replacement cost, depreciation, obsolescence, and land inputs must reconcile arithmetically
-        before this method may support the final conclusion.
+        This exhibit presents the independently verified cost indication retained in the Resourceful
+        workfile. Replacement cost, depreciation, obsolescence, land value, source provenance, and
+        effective date must be complete and must reconcile arithmetically before this method may
+        support the final conclusion.
       </Text>
 
-      <Text style={styles.subheading}>Replacement Cost New Input</Text>
+      <Text style={styles.subheading}>Cost Evidence Provenance</Text>
+      <View style={styles.computeTable}>
+        <ComputeRow label="Replacement-Cost Source" value={replacementCostSourceAuthority} />
+        <ComputeRow label="Depreciation / Obsolescence Source" value={depreciationSourceAuthority} />
+        <ComputeRow label="Land-Value Source" value={landValueSourceAuthority} />
+        <ComputeRow label="Cost Evidence Effective Date" value={formatDateShort(costEffectiveDate)} />
+        <ComputeRow label="Methodology" value={methodology} />
+        <ComputeRow
+          label="Structured Source References"
+          value={`${referenceCount} workfile reference${referenceCount === 1 ? '' : 's'} retained`}
+        />
+        <ComputeRow label="Verified By" value={verifiedBy} />
+        <ComputeRow label="Verification Timestamp" value={formatDateShort(verifiedAt)} />
+      </View>
+
+      <Text style={[styles.subheading, { marginTop: 10 }]}>Replacement Cost New Input</Text>
       <View style={styles.computeTable}>
         {buildingSqft != null && buildingSqft > 0 && (
           <ComputeRow label="Building Area Used" value={formatSqFt(buildingSqft)} />
@@ -103,7 +142,7 @@ export default function CostApproachTable({ data }: { data: ReportTemplateData }
         <ComputeRow label="Replacement Cost New Input" value={formatCurrency(rcn)} />
         <ComputeRow label="Less: Combined Depreciation" value={`(${formatCurrency(depreciationAmount)})`} negative />
         <ComputeRow label="Depreciated Improvement Indication" value={formatCurrency(depreciatedImprovementValue)} bold />
-        <ComputeRow label="Verified Land Value Input" value={formatCurrency(landValue)} />
+        <ComputeRow label="Sourced Land Value Input" value={formatCurrency(landValue)} />
         <ComputeRow label="Recomputed Cost Indication" value={formatCurrency(recomputedValue)} bold />
         <View style={styles.totalRow} wrap={false}>
           <Text style={styles.totalLabel}>Stored Cost Approach Indication</Text>
@@ -112,7 +151,7 @@ export default function CostApproachTable({ data }: { data: ReportTemplateData }
       </View>
 
       <ValueCallout
-        label="Release-Ready Cost Approach Indication"
+        label="Verified Cost Approach Indication"
         value={formatCurrency(costApproachValue)}
         color={colors.accent}
       />
@@ -181,15 +220,17 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   rowLabel: {
+    width: '34%',
     fontFamily: 'Inter',
     fontWeight: 400,
-    fontSize: 9,
+    fontSize: 8,
     color: colors.inkBody,
   },
   rowValue: {
+    width: '64%',
     fontFamily: 'Inter',
     fontWeight: 500,
-    fontSize: 9,
+    fontSize: 8,
     color: colors.inkPrimary,
     textAlign: 'right',
   },
