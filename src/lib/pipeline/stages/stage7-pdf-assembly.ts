@@ -13,6 +13,7 @@ import {
 } from '@/lib/pdf/report-artifact-manifest';
 import { evaluatePdfReleasePolicy } from '@/lib/valuation/pdf-release-policy';
 import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
+import { evaluateTaxAppealRelease } from '@/lib/valuation/tax-appeal-release-policy';
 import { pipelineLogger } from '@/lib/logger';
 
 async function rollbackArtifacts(
@@ -79,7 +80,19 @@ export async function runPdfAssembly(
   qaIssues.push(...valuationRelease.warnings, ...valuationRelease.hardFailures);
   hardFails.push(...valuationRelease.hardFailures);
 
-  // Tax appeals require both a defensible argument and an actionable filing guide.
+  const jurisdictionRelease = evaluateTaxAppealRelease({
+    serviceType: templateData.report.service_type,
+    reportCountyFips: templateData.report.county_fips,
+    reportState: templateData.report.state_abbreviation ?? templateData.report.state,
+    countyRule: templateData.countyRule,
+    filingGuide: templateData.filingGuide,
+  });
+
+  if (!jurisdictionRelease.allowed) {
+    qaIssues.push(jurisdictionRelease.message);
+    hardFails.push(jurisdictionRelease.message);
+  }
+
   const isTaxAppeal = templateData.report.service_type === 'tax_appeal';
   const criticalSections = isTaxAppeal
     ? ['executive_summary', 'appeal_argument_summary']
@@ -93,12 +106,6 @@ export async function runPdfAssembly(
     }
   }
 
-  if (isTaxAppeal && !templateData.filingGuide) {
-    const issue = 'Filing guide not generated or failed to parse';
-    qaIssues.push(issue);
-    hardFails.push(issue);
-  }
-
   if (!templateData.property.building_sqft_living_area && !templateData.property.lot_size_sqft) {
     qaIssues.push('No square footage data (building or lot)');
   }
@@ -108,6 +115,7 @@ export async function runPdfAssembly(
       {
         reportId,
         qaIssues,
+        jurisdictionRelease,
         incomeAssessment: valuationRelease.incomeAssessment,
         evidenceBackedAlternatives: valuationRelease.evidenceBackedAlternatives,
         concludedValue: templateData.concludedValue,
@@ -137,6 +145,7 @@ export async function runPdfAssembly(
     pdfBuffer,
     generatedAt,
     valuationRelease,
+    jurisdictionRelease,
   });
   const manifestBuffer = serializeReportArtifactManifest(manifest);
   const { pdfPath, manifestPath } = manifest.artifact;
@@ -198,6 +207,7 @@ export async function runPdfAssembly(
       reportId,
       sizeKB: (pdfBuffer.length / 1024).toFixed(0),
       pdfSha256: manifest.artifact.sha256,
+      jurisdictionReleaseCode: jurisdictionRelease.code,
       pdfPath,
       manifestPath,
     },
