@@ -17,6 +17,7 @@ import {
   type ReasoningEffort,
 } from '@/config/ai';
 import { apiLogger } from '@/lib/logger';
+import { resolveAssignmentKind, type AssignmentKind } from '@/lib/assignments/routing';
 import { withRetry, isRetryableError } from '@/lib/utils/retry';
 import type {
   FilingGuidePayload,
@@ -132,16 +133,42 @@ export interface ExtractedTaxBill {
   confidence: number;
 }
 
+function serviceInstruction(assignmentKind: AssignmentKind): string {
+  switch (assignmentKind) {
+    case 'pre_purchase':
+      return 'Prepare a buyer-side valuation and negotiation analysis. Identify downside risk, supported value, due-diligence items, tax exposure, repair verification needs, and a defensible walk-away framework.';
+    case 'pre_listing':
+      return 'Prepare a seller-side valuation and market-positioning analysis. Identify credible value-enhancement actions, pricing risk, documentation priorities, and launch-positioning considerations without inflating the conclusion.';
+    case 'independent_valuation':
+      return 'Prepare a purpose-neutral independent property valuation analysis from the supplied workfile. Explain the supported value, evidence limits, intended-use boundary, and review needs. Do not include tax-appeal advocacy, filing instructions, hearing strategy, buyer negotiation language, or seller marketing language unless those facts are explicitly part of the stated assignment.';
+    case 'tax_appeal':
+      return 'Prepare a property-tax appeal valuation analysis. Build the strongest factually supportable reduction case and usable owner-facing appeal work product without inventing jurisdiction rules, representative authority, or hearing facts.';
+  }
+}
+
+function disallowedSectionInstruction(assignmentKind: AssignmentKind): string {
+  if (assignmentKind === 'tax_appeal') {
+    return 'Tax-appeal sections may include assessment_equity, appeal_argument_summary, and hearing_script only when the workfile supports them.';
+  }
+
+  return 'Do not generate assessment_equity, appeal_argument_summary, hearing_script, or pro-se filing language for non-tax-appeal assignments. If those sections appear in stale input context, ignore them.';
+}
+
+function jurisdictionLabel(payload: NarrativePayload): string {
+  const jurisdiction = [payload.countyRules.countyName, payload.countyRules.state]
+    .filter(Boolean)
+    .join(', ')
+    .trim();
+  return jurisdiction || 'Unverified jurisdiction';
+}
+
 function buildNarrativeSystemPrompt(payload: NarrativePayload): string {
-  const serviceInstruction = payload.serviceType === 'pre_purchase'
-    ? 'Prepare a buyer-side valuation and negotiation analysis. Identify downside risk and a defensible walk-away value.'
-    : payload.serviceType === 'pre_listing'
-      ? 'Prepare a seller-side valuation and market-positioning analysis. Identify credible value-enhancement actions without inflating the conclusion.'
-      : 'Prepare a property-tax appeal valuation analysis. Build the strongest factually supportable reduction case and a usable pro se hearing package.';
+  const assignmentKind = resolveAssignmentKind(payload.serviceType, payload.desiredOutcome);
 
   return `You are Resourceful's senior AI property valuation analyst operating on GPT-5.6 Sol.
 
-${serviceInstruction}
+CANONICAL ASSIGNMENT KIND: ${assignmentKind}
+${serviceInstruction(assignmentKind)}
 
 NON-NEGOTIABLE PROFESSIONAL RULES:
 1. Use only facts and calculations present in the supplied workfile. Never invent a sale, deadline, credential, inspection, source, market statistic, board tendency, or property condition.
@@ -154,19 +181,21 @@ NON-NEGOTIABLE PROFESSIONAL RULES:
 8. The conclusion must follow the evidence; advocacy never permits directional bias, unsupported deductions, or suppression of contrary evidence.
 9. Write polished, client-ready Markdown. Tables are encouraged where they improve clarity.
 10. Return only the structured response. Use the exact section_name values supplied by the schema.
+11. Use jurisdiction-neutral terminology unless the workfile names a verified filing authority. Do not assume every jurisdiction is county-administered.
+12. ${disallowedSectionInstruction(assignmentKind)}
 
 SECTION EXPECTATIONS:
-- executive_summary: plain-English decision summary, concluded value, assessment comparison, strongest evidence, and next action.
+- executive_summary: plain-English decision summary, concluded value, strongest evidence, evidence limits, and next action for the assignment kind.
 - assignment_and_scope and certification_and_limiting_conditions: accurately define this as an AI-assisted valuation/appeal analysis, not a signed regulated appraisal.
 - sales_comparison_narrative and adjustment_grid_narrative: explain selection, comparability, adjustments, and reconciliation; never manufacture unsupported adjustment percentages.
 - condition_assessment: distinguish visible observations from owner-reported conditions and recommend qualified inspection where needed.
-- appeal_argument_summary and hearing_script: concise, evidence-led, respectful, and usable by a pro se owner.
-- hearing_script: include likely questions, short answers grounded in the workfile, and a clear requested value.
+- appeal_argument_summary and hearing_script: allowed only for tax appeals; concise, evidence-led, respectful, and usable by a pro se owner.
+- hearing_script: allowed only for tax appeals; include likely questions, short answers grounded in the workfile, and a clear requested value.
 
 Property: ${payload.propertyAddress}
-Service: ${payload.serviceType}
+Stored service type: ${payload.serviceType}
 Property type: ${payload.propertyType}
-County: ${payload.countyRules.countyName}, ${payload.countyRules.state}`;
+Jurisdiction: ${jurisdictionLabel(payload)}`;
 }
 
 export async function generateNarratives(
@@ -216,23 +245,24 @@ export async function generateNarratives(
 }
 
 function filingSystemPrompt(payload: FilingGuidePayload): string {
-  const service = payload.serviceType ?? 'tax_appeal';
+  const assignmentKind = resolveAssignmentKind(payload.serviceType ?? 'tax_appeal');
   const tier = payload.reviewTier ?? 'auto';
+  const jurisdiction = [payload.countyName, payload.state].filter(Boolean).join(', ') || 'the verified jurisdiction';
 
-  if (service === 'pre_purchase') {
+  if (assignmentKind === 'pre_purchase') {
     return `Create a buyer action plan for ${payload.propertyAddress}. Explain supported value, negotiation range, due diligence, tax exposure, repair verification, and a walk-away framework. Do not provide legal or lending advice and do not invent current market facts.`;
   }
 
-  if (service === 'pre_listing') {
+  if (assignmentKind === 'pre_listing') {
     return `Create a seller value-maximization plan for ${payload.propertyAddress}. Prioritize repairs by likely ROI, pricing strategy, documentation, staging, disclosure questions for licensed counsel/agent, and tax-positioning. Do not promise an increase in value or invent market facts.`;
   }
 
-  return `You are Resourceful's property-tax appeal filing coach. Produce an exact, calm, county-specific action plan from the supplied data.
+  return `You are Resourceful's property-tax appeal filing coach. Produce an exact, calm, jurisdiction-specific action plan for ${jurisdiction} from the supplied data.
 
 TIER: ${tier}
 - auto/expert_reviewed: owner files pro se; provide a complete checklist and submission script.
 - guided_filing: owner still files pro se; provide meeting agenda, screen-share workflow, mock-hearing plan, and completion checklist.
-- full_representation: only describe representative filing when authorizedRepAllowed is explicitly true and an executed county-accepted authorization will be obtained. Otherwise route to guided pro se filing. Never claim the appeal has been filed until a confirmation number, timestamp, or accepted-mail record exists.
+- full_representation: only describe representative filing when authorizedRepAllowed is explicitly true and an executed jurisdiction-accepted authorization will be obtained. Otherwise route to guided pro se filing. Never claim the appeal has been filed until a confirmation number, timestamp, or accepted-mail record exists.
 
 REQUIRED CONTENT:
 1. Eligibility and deadline verification, with unknown fields clearly marked.
@@ -245,7 +275,7 @@ REQUIRED CONTENT:
 8. Further-appeal route and verification warning.
 9. Clear disclaimer: informational support, not legal advice.
 
-Do not invent county rules, deadlines, portal behavior, or representative authority. If the workfile is incomplete, say exactly what must be confirmed before submission.`;
+Do not invent jurisdiction rules, deadlines, portal behavior, or representative authority. Do not assume the filing authority is a county board unless the workfile says so. If the workfile is incomplete, say exactly what must be confirmed before submission.`;
 }
 
 export async function generateFilingGuide(

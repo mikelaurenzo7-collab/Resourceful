@@ -1,79 +1,97 @@
 // ─── Cost Approach Analysis ──────────────────────────────────────────────────
-// Structured presentation of the stored workfile inputs:
-// Replacement Cost New → supported depreciation/obsolescence → land input.
+// Structured presentation of release-ready workfile inputs:
+// Replacement Cost New → supported depreciation/obsolescence → sourced land.
 
 import React from 'react';
 import { View, Text, StyleSheet } from '@react-pdf/renderer';
 import { theme, colors } from '../styles/theme';
-import { SectionHeader, NarrativeBlock, ValueCallout } from './shared';
+import { SectionHeader, ValueCallout } from './shared';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
-import { formatCurrency, formatPercent, formatSqFt, formatNumber } from '@/lib/templates/helpers';
-import { findNarrativeContent } from '@/lib/report-narratives';
-
-function validPercent(value: number | null | undefined): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100;
-}
+import {
+  formatCurrency,
+  formatDateShort,
+  formatPercent,
+  formatSqFt,
+  formatNumber,
+} from '@/lib/templates/helpers';
+import { getReportCostAssessment } from '../section-data';
 
 export default function CostApproachTable({ data }: { data: ReportTemplateData }) {
-  const { property, narratives } = data;
+  const { property } = data;
+  const assessment = getReportCostAssessment(data);
+  const {
+    concludedValue: costApproachValue,
+    replacementCostNew: rcn,
+    physicalDepreciationPct: physicalDepreciation,
+    functionalObsolescencePct: functionalObsolescence,
+    totalDepreciationPct: totalDepreciation,
+    landValue,
+    recomputedValue,
+    replacementCostSourceAuthority,
+    depreciationSourceAuthority,
+    landValueSourceAuthority,
+    sourceReferences,
+    methodology,
+    costEffectiveDate,
+    verifiedBy,
+    verifiedAt,
+  } = assessment;
 
-  const costApproachValue = property.cost_approach_value;
-  const rcn = property.cost_approach_rcn;
-  const physicalDepreciation = property.physical_depreciation_pct;
-
-  // Do not imply a complete cost approach from an isolated positive total.
   if (
+    !assessment.isReleaseReady ||
     costApproachValue == null ||
-    !Number.isFinite(costApproachValue) ||
-    costApproachValue <= 0 ||
     rcn == null ||
-    !Number.isFinite(rcn) ||
-    rcn <= 0 ||
-    !validPercent(physicalDepreciation)
+    physicalDepreciation == null ||
+    totalDepreciation == null ||
+    landValue == null ||
+    recomputedValue == null ||
+    replacementCostSourceAuthority == null ||
+    depreciationSourceAuthority == null ||
+    landValueSourceAuthority == null ||
+    sourceReferences == null ||
+    methodology == null ||
+    costEffectiveDate == null ||
+    verifiedBy == null ||
+    verifiedAt == null
   ) {
     return null;
   }
 
-  const functionalObsolescence = validPercent(property.functional_obsolescence_pct)
-    ? property.functional_obsolescence_pct
-    : 0;
-  const totalDepreciation = Math.min(
-    physicalDepreciation + functionalObsolescence,
-    100
-  );
   const depreciationAmount = rcn * (totalDepreciation / 100);
   const depreciatedImprovementValue = Math.max(0, rcn - depreciationAmount);
-  const landValue =
-    property.land_value != null &&
-    Number.isFinite(property.land_value) &&
-    property.land_value >= 0
-      ? property.land_value
-      : null;
-  const recomputedValue = depreciatedImprovementValue + (landValue ?? 0);
-  const reconciliationDifference = costApproachValue - recomputedValue;
-  const reconciliationDifferencePct = recomputedValue > 0
-    ? Math.abs(reconciliationDifference) / recomputedValue
-    : 0;
-
-  const costNarrative = findNarrativeContent(narratives, 'cost_approach_narrative');
   const buildingSqft = property.building_sqft_gross ?? property.building_sqft_living_area ?? null;
   const costPerSqft = buildingSqft != null && buildingSqft > 0
     ? rcn / buildingSqft
     : null;
+  const referenceCount = Object.keys(sourceReferences).length;
 
   return (
-    <View break>
-      <SectionHeader number="XI" title="Cost Approach Analysis" />
+    <View>
+      <SectionHeader number="VII-E1" title="Cost Approach Calculation" />
 
       <Text style={[theme.bodyText, { marginBottom: 8 }]}>
-        This section presents the cost indication stored in the Resourceful workfile. Building area,
-        replacement cost, quality, depreciation, obsolescence, and land inputs may originate from public
-        records, third-party data, disclosed calculations, or clearly labeled assumptions. They are not
-        represented as independent contractor estimates, engineering measurements, or licensed-appraiser
-        observations unless the report expressly documents that source and review.
+        This exhibit presents the independently verified cost indication retained in the Resourceful
+        workfile. Replacement cost, depreciation, obsolescence, land value, source provenance, and
+        effective date must be complete and must reconcile arithmetically before this method may
+        support the final conclusion.
       </Text>
 
-      <Text style={styles.subheading}>Replacement Cost New Input</Text>
+      <Text style={styles.subheading}>Cost Evidence Provenance</Text>
+      <View style={styles.computeTable}>
+        <ComputeRow label="Replacement-Cost Source" value={replacementCostSourceAuthority} />
+        <ComputeRow label="Depreciation / Obsolescence Source" value={depreciationSourceAuthority} />
+        <ComputeRow label="Land-Value Source" value={landValueSourceAuthority} />
+        <ComputeRow label="Cost Evidence Effective Date" value={formatDateShort(costEffectiveDate)} />
+        <ComputeRow label="Methodology" value={methodology} />
+        <ComputeRow
+          label="Structured Source References"
+          value={`${referenceCount} workfile reference${referenceCount === 1 ? '' : 's'} retained`}
+        />
+        <ComputeRow label="Verified By" value={verifiedBy} />
+        <ComputeRow label="Verification Timestamp" value={formatDateShort(verifiedAt)} />
+      </View>
+
+      <Text style={[styles.subheading, { marginTop: 10 }]}>Replacement Cost New Input</Text>
       <View style={styles.computeTable}>
         {buildingSqft != null && buildingSqft > 0 && (
           <ComputeRow label="Building Area Used" value={formatSqFt(buildingSqft)} />
@@ -124,36 +142,16 @@ export default function CostApproachTable({ data }: { data: ReportTemplateData }
         <ComputeRow label="Replacement Cost New Input" value={formatCurrency(rcn)} />
         <ComputeRow label="Less: Combined Depreciation" value={`(${formatCurrency(depreciationAmount)})`} negative />
         <ComputeRow label="Depreciated Improvement Indication" value={formatCurrency(depreciatedImprovementValue)} bold />
-        <ComputeRow
-          label="Land Value Input"
-          value={landValue != null ? formatCurrency(landValue) : 'Not separately available'}
-        />
-        <View style={styles.totalRow}>
+        <ComputeRow label="Sourced Land Value Input" value={formatCurrency(landValue)} />
+        <ComputeRow label="Recomputed Cost Indication" value={formatCurrency(recomputedValue)} bold />
+        <View style={styles.totalRow} wrap={false}>
           <Text style={styles.totalLabel}>Stored Cost Approach Indication</Text>
           <Text style={styles.totalValue}>{formatCurrency(costApproachValue)}</Text>
         </View>
       </View>
 
-      {reconciliationDifferencePct > 0.01 && (
-        <Text style={[theme.bodyText, { marginTop: 6 }]}>
-          The stored cost indication differs from the arithmetic displayed above by{' '}
-          {formatCurrency(Math.abs(reconciliationDifference))}. This may reflect an additional land,
-          depreciation, rounding, or reconciliation input not represented in the structured fields and
-          should be reviewed before relying on the indication.
-        </Text>
-      )}
-
-      {landValue == null && (
-        <Text style={[theme.bodyText, { marginTop: 6 }]}>
-          No separate land value is stored in the structured workfile. The cost indication should not be
-          treated as a complete market-value approach until the land component and its source are verified.
-        </Text>
-      )}
-
-      {costNarrative && <NarrativeBlock content={costNarrative} />}
-
       <ValueCallout
-        label="Workfile Cost Approach Indication"
+        label="Verified Cost Approach Indication"
         value={formatCurrency(costApproachValue)}
         color={colors.accent}
       />
@@ -175,7 +173,7 @@ function ComputeRow({
   negative?: boolean;
 }) {
   return (
-    <View style={styles.row}>
+    <View style={styles.row} wrap={false}>
       <Text style={[styles.rowLabel, bold ? { fontWeight: 600 } : {}]}>{label}</Text>
       <Text
         style={[
@@ -222,15 +220,17 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   rowLabel: {
+    width: '34%',
     fontFamily: 'Inter',
     fontWeight: 400,
-    fontSize: 9,
+    fontSize: 8,
     color: colors.inkBody,
   },
   rowValue: {
+    width: '64%',
     fontFamily: 'Inter',
     fontWeight: 500,
-    fontSize: 9,
+    fontSize: 8,
     color: colors.inkPrimary,
     textAlign: 'right',
   },

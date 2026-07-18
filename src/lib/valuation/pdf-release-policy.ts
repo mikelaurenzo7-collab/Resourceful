@@ -4,6 +4,11 @@
 // database, PDF-rendering, or model dependencies so it can be regression tested.
 
 import {
+  evaluateCostApproachEvidence,
+  type CostApproachEvidenceAssessment,
+  type CostApproachEvidenceInput,
+} from './cost-approach-policy';
+import {
   evaluateIncomeApproachEvidence,
   type IncomeApproachEvidenceAssessment,
 } from './income-approach-policy';
@@ -21,11 +26,7 @@ export interface PdfReleasePolicyInput {
     comparableRentalCount?: number;
     investorSurveyReference?: string | null;
   } | null;
-  costApproach?: {
-    replacementCostNew: number | null | undefined;
-    concludedValue: number | null | undefined;
-    physicalDepreciationPct: number | null | undefined;
-  } | null;
+  costApproach?: CostApproachEvidenceInput | null;
   reconciliationTolerance?: number;
 }
 
@@ -38,6 +39,7 @@ export interface PdfReleasePolicyResult {
   hasComparableSales: boolean;
   hasConcludedValue: boolean;
   incomeAssessment: IncomeApproachEvidenceAssessment | null;
+  costAssessment: CostApproachEvidenceAssessment | null;
   evidenceBackedAlternatives: EvidenceBackedApproach[];
   conclusionReconcilesToAlternative: boolean;
   warnings: string[];
@@ -73,16 +75,9 @@ export function evaluatePdfReleasePolicy(
       })
     : null;
 
-  const cost = input.costApproach;
-  const costValue = cost?.concludedValue;
-  const physicalDepreciationPct = cost?.physicalDepreciationPct;
-  const hasCostApproach =
-    isPositiveFinite(cost?.replacementCostNew) &&
-    isPositiveFinite(costValue) &&
-    physicalDepreciationPct != null &&
-    Number.isFinite(physicalDepreciationPct) &&
-    physicalDepreciationPct >= 0 &&
-    physicalDepreciationPct <= 100;
+  const costAssessment = input.costApproach
+    ? evaluateCostApproachEvidence(input.costApproach)
+    : null;
 
   const evidenceBackedAlternatives: EvidenceBackedApproach[] = [];
   if (incomeAssessment?.isReleaseReady && incomeAssessment.storedValue != null) {
@@ -91,8 +86,11 @@ export function evaluatePdfReleasePolicy(
       value: incomeAssessment.storedValue,
     });
   }
-  if (hasCostApproach) {
-    evidenceBackedAlternatives.push({ label: 'cost approach', value: costValue });
+  if (costAssessment?.isReleaseReady && costAssessment.concludedValue != null) {
+    evidenceBackedAlternatives.push({
+      label: 'cost approach',
+      value: costAssessment.concludedValue,
+    });
   }
 
   const conclusionReconcilesToAlternative =
@@ -116,6 +114,13 @@ export function evaluatePdfReleasePolicy(
     warnings.push(...incomeAssessment.warnings.map((warning) => `Income approach: ${warning}`));
   }
 
+  if (costAssessment && !costAssessment.isReleaseReady) {
+    warnings.push(
+      ...costAssessment.hardFailures.map((failure) => `Cost approach: ${failure}`),
+      ...costAssessment.warnings.map((warning) => `Cost approach: ${warning}`)
+    );
+  }
+
   if (!hasComparableSales) {
     if (evidenceBackedAlternatives.length === 0) {
       hardFailures.push('No evidence-backed valuation approach available');
@@ -136,6 +141,7 @@ export function evaluatePdfReleasePolicy(
     hasComparableSales,
     hasConcludedValue,
     incomeAssessment,
+    costAssessment,
     evidenceBackedAlternatives,
     conclusionReconcilesToAlternative,
     warnings,

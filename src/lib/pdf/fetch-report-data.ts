@@ -16,7 +16,23 @@ import type {
 } from '@/types/database';
 import { getStaticMapUrl } from '@/lib/services/azure-maps';
 import type { ReportTemplateData, FilingGuide } from '@/lib/templates/report-template';
+import {
+  dateOnly,
+  type ValuationEffectiveDateSource,
+} from '@/lib/valuation/valuation-date-policy';
 import { logger } from '@/lib/logger';
+
+type ReportWithEffectiveDate = Report & {
+  valuation_effective_date?: string | null;
+  valuation_effective_date_source?: string | null;
+};
+
+const VALID_VALUATION_DATE_SOURCES = new Set<ValuationEffectiveDateSource>([
+  'intake_current_date',
+  'jurisdiction_convention',
+  'user_supplied',
+  'admin_override',
+]);
 
 function asNonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -222,6 +238,25 @@ export async function fetchReportTemplateData(
 
   if (!report || !propertyData) return null;
 
+  const workfileReport = report as ReportWithEffectiveDate;
+  const valuationDate = dateOnly(workfileReport.valuation_effective_date);
+  const valuationDateSource = workfileReport.valuation_effective_date_source;
+  if (
+    !valuationDate ||
+    !valuationDateSource ||
+    !VALID_VALUATION_DATE_SOURCES.has(valuationDateSource as ValuationEffectiveDateSource)
+  ) {
+    logger.error(
+      {
+        reportId,
+        valuationEffectiveDate: workfileReport.valuation_effective_date ?? null,
+        valuationEffectiveDateSource: valuationDateSource ?? null,
+      },
+      'Report workfile is missing a valid valuation effective date and source'
+    );
+    return null;
+  }
+
   const allNarratives = (narrativesRes.data ?? []) as ReportNarrative[];
   const comps = (compsRes.data ?? []) as ComparableSale[];
   const rentals = (rentalsRes.data ?? []) as ComparableRental[];
@@ -284,8 +319,6 @@ export async function fetchReportTemplateData(
       ?? recoverLegacyFilingGuide(filingGuideNarrative.content, report, countyRule);
   }
 
-  const now = new Date();
-
   return {
     report,
     property: propertyData,
@@ -302,7 +335,7 @@ export async function fetchReportTemplateData(
     },
     filingGuide,
     concludedValue: propertyData.concluded_value ?? 0,
-    valuationDate: report.created_at ?? now.toISOString(),
-    reportDate: now.toISOString(),
+    valuationDate,
+    reportDate: report.pipeline_completed_at ?? report.created_at,
   };
 }

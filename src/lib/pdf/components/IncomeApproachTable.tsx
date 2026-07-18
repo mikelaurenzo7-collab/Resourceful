@@ -5,14 +5,13 @@
 import React from 'react';
 import { View, Text, StyleSheet } from '@react-pdf/renderer';
 import { theme, colors } from '../styles/theme';
-import { SectionHeader, NarrativeBlock, DataTable, ValueCallout } from './shared';
+import { SectionHeader, DataTable, ValueCallout } from './shared';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { formatCurrency, formatPercent, formatSqFt, formatDateShort } from '@/lib/templates/helpers';
-import { findNarrativeContent } from '@/lib/report-narratives';
 import { getReportIncomeAssessment } from '../section-data';
 
 export default function IncomeApproachTable({ data }: { data: ReportTemplateData }) {
-  const { incomeAnalysis, comparableRentals, narratives } = data;
+  const { incomeAnalysis, comparableRentals } = data;
   const incomeAssessment = getReportIncomeAssessment(data);
 
   if (
@@ -26,11 +25,9 @@ export default function IncomeApproachTable({ data }: { data: ReportTemplateData
     return null;
   }
 
-  const incomeNarrative = findNarrativeContent(narratives, 'income_approach_narrative');
-
   return (
-    <View break>
-      <SectionHeader number="XII" title="Income Capitalization Approach" />
+    <View>
+      <SectionHeader number="VII-D1" title="Income Capitalization Calculation" />
 
       <Text style={[theme.bodyText, { marginBottom: 8 }]}>
         The Income Capitalization Approach converts the anticipated income stream from a property
@@ -164,8 +161,6 @@ export default function IncomeApproachTable({ data }: { data: ReportTemplateData
         )}
       </View>
 
-      {incomeNarrative && <NarrativeBlock content={incomeNarrative} />}
-
       <ValueCallout
         label="Income Approach Indication"
         value={formatCurrency(incomeAssessment.storedValue)}
@@ -191,7 +186,7 @@ function ComputeRow({
   indent?: boolean;
 }) {
   return (
-    <View style={styles.row}>
+    <View style={styles.row} wrap={false}>
       <Text style={[styles.rowLabel, bold ? { fontWeight: 600 } : {}, indent ? { paddingLeft: 8 } : {}]}>
         {label}
       </Text>

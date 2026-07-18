@@ -1,3 +1,4 @@
+import { isCanonicalDateOnly } from '@/lib/valuation/valuation-date-policy';
 import {
   hashPdfBuffer,
   type ReportArtifactManifest,
@@ -13,7 +14,8 @@ export type ReportArtifactVerificationCode =
   | 'ARTIFACT_PATH_MISMATCH'
   | 'ARTIFACT_BYTE_LENGTH_MISMATCH'
   | 'ARTIFACT_HASH_MISMATCH'
-  | 'JURISDICTION_RELEASE_NOT_READY';
+  | 'JURISDICTION_RELEASE_NOT_READY'
+  | 'REPORT_INTEGRITY_NOT_READY';
 
 export type ReportArtifactVerificationResult =
   | {
@@ -28,6 +30,22 @@ export type ReportArtifactVerificationResult =
       message: string;
       manifest: ReportArtifactManifest | null;
     };
+
+const VALUATION_EFFECTIVE_DATE_SOURCES = new Set([
+  'intake_current_date',
+  'jurisdiction_convention',
+  'user_supplied',
+  'admin_override',
+]);
+
+const SUPPORTED_MANIFEST_SCHEMA_VERSIONS = new Set([
+  '1.0.0',
+  '1.1.0',
+  '1.2.0',
+  '1.3.0',
+  '1.4.0',
+  '1.5.0',
+]);
 
 export function manifestPathForPdf(pdfPath: string): string {
   const normalized = pdfPath.trim();
@@ -62,6 +80,71 @@ function isManifest(value: unknown): value is ReportArtifactManifest {
     typeof manifest.artifact.manifestPath === 'string' &&
     manifest.jurisdiction &&
     typeof manifest.jurisdiction.releaseReady === 'boolean'
+  );
+}
+
+function schemaParts(
+  schemaVersion: string
+): { major: number; minor: number; patch: number } | null {
+  const match = schemaVersion.match(/^(\d+)\.(\d+)\.(\d+)$/);
+  if (!match) return null;
+
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  const patch = Number(match[3]);
+  if (
+    !Number.isInteger(major) ||
+    !Number.isInteger(minor) ||
+    !Number.isInteger(patch) ||
+    major < 0 ||
+    minor < 0 ||
+    patch < 0
+  ) {
+    return null;
+  }
+  return { major, minor, patch };
+}
+
+function hasSchema13Provenance(manifest: ReportArtifactManifest): boolean {
+  const jurisdiction = manifest.jurisdiction as Partial<ReportArtifactManifest['jurisdiction']>;
+  const evidence = manifest.evidence as Partial<ReportArtifactManifest['evidence']> | undefined;
+  const pluginKeyValid =
+    jurisdiction.pluginKey === null || typeof jurisdiction.pluginKey === 'string';
+  const pluginVersionValid =
+    jurisdiction.pluginVersion === null || typeof jurisdiction.pluginVersion === 'number';
+
+  return Boolean(
+    evidence &&
+    typeof evidence.costApproachReleaseReady === 'boolean' &&
+    typeof jurisdiction.classificationSourceVerified === 'boolean' &&
+    pluginKeyValid &&
+    pluginVersionValid
+  );
+}
+
+function hasSchema14Provenance(manifest: ReportArtifactManifest): boolean {
+  const jurisdiction = manifest.jurisdiction as Partial<ReportArtifactManifest['jurisdiction']>;
+  const strategy = manifest.strategy as Partial<ReportArtifactManifest['strategy']> | undefined;
+
+  return Boolean(
+    isCanonicalDateOnly(jurisdiction.valuationDate) &&
+    typeof jurisdiction.valuationDateSource === 'string' &&
+    VALUATION_EFFECTIVE_DATE_SOURCES.has(jurisdiction.valuationDateSource) &&
+    strategy &&
+    typeof strategy.isRetrospectiveAssignment === 'boolean'
+  );
+}
+
+function hasSchema15Integrity(manifest: ReportArtifactManifest): boolean {
+  const integrity = manifest.integrity as Partial<ReportArtifactManifest['integrity']> | undefined;
+
+  return Boolean(
+    integrity &&
+    typeof integrity.releaseReady === 'boolean' &&
+    Array.isArray(integrity.warningCodes) &&
+    integrity.warningCodes.every((code) => typeof code === 'string') &&
+    Array.isArray(integrity.hardFailureCodes) &&
+    integrity.hardFailureCodes.every((code) => typeof code === 'string')
   );
 }
 
@@ -109,12 +192,40 @@ export function verifyReportArtifact(input: {
   }
 
   const manifest = parsed;
-  if (manifest.schemaVersion.split('.')[0] !== '1') {
+  const schema = schemaParts(manifest.schemaVersion);
+  if (!schema || !SUPPORTED_MANIFEST_SCHEMA_VERSIONS.has(manifest.schemaVersion)) {
     return {
       verified: false,
       code: 'MANIFEST_SCHEMA_UNSUPPORTED',
       message: `Unsupported report manifest schema version '${manifest.schemaVersion}'.`,
       manifest,
+    };
+  }
+
+  if (schema.minor >= 3 && !hasSchema13Provenance(manifest)) {
+    return {
+      verified: false,
+      code: 'MANIFEST_JSON_INVALID',
+      message: 'The report manifest is missing required schema 1.3 provenance fields.',
+      manifest: null,
+    };
+  }
+
+  if (schema.minor >= 4 && !hasSchema14Provenance(manifest)) {
+    return {
+      verified: false,
+      code: 'MANIFEST_JSON_INVALID',
+      message: 'The report manifest is missing required schema 1.4 valuation-date provenance fields.',
+      manifest: null,
+    };
+  }
+
+  if (schema.minor >= 5 && !hasSchema15Integrity(manifest)) {
+    return {
+      verified: false,
+      code: 'MANIFEST_JSON_INVALID',
+      message: 'The report manifest is missing required schema 1.5 nationwide-integrity fields.',
+      manifest: null,
     };
   }
 
@@ -175,6 +286,15 @@ export function verifyReportArtifact(input: {
       verified: false,
       code: 'JURISDICTION_RELEASE_NOT_READY',
       message: 'The report manifest does not record a release-ready jurisdiction decision.',
+      manifest,
+    };
+  }
+
+  if (schema.minor >= 5 && manifest.integrity.releaseReady !== true) {
+    return {
+      verified: false,
+      code: 'REPORT_INTEGRITY_NOT_READY',
+      message: 'The report manifest records unresolved nationwide-integrity hard failures.',
       manifest,
     };
   }

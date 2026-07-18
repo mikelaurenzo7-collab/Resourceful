@@ -1,9 +1,9 @@
-// ─── Property Condition Documentation ────────────────────────────────────────
+// ─── Detailed Condition Evidence ─────────────────────────────────────────────
 
 import React from 'react';
 import { View, Text, StyleSheet } from '@react-pdf/renderer';
 import { theme } from '../styles/theme';
-import { SectionHeader, NarrativeBlock, PhotoGrid } from './shared';
+import { SectionHeader, DataTable } from './shared';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { getConditionColor } from '@/lib/templates/helpers';
 
@@ -15,45 +15,59 @@ const CONDITION_LABELS: Record<string, string> = {
   poor: 'Poor',
 };
 
-export default function ConditionSection({ data }: { data: ReportTemplateData }) {
-  const { photos, narratives, property } = data;
+function titleCase(value: string): string {
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
 
-  // Only render if there are photos with defects
+export default function ConditionSection({ data }: { data: ReportTemplateData }) {
+  const { photos, property } = data;
   const photosWithDefects = photos.filter(
-    p => p.ai_analysis?.defects && p.ai_analysis.defects.length > 0
+    (photo) => (photo.ai_analysis?.defects?.length ?? 0) > 0
   );
   if (photosWithDefects.length === 0) return null;
 
-  const condNarrative = narratives.find(n => n.section_name === 'condition_assessment');
   const rating = property.overall_condition?.toLowerCase() ?? 'average';
   const badgeColor = getConditionColor(rating);
+  const defectRows = photosWithDefects.flatMap((photo, photoIndex) => {
+    const photoLabel =
+      photo.ai_analysis?.professional_caption?.trim() ||
+      photo.caption?.trim() ||
+      (photo.photo_type ? titleCase(photo.photo_type) : `Photo ${photoIndex + 1}`);
 
-  // Build photo items for grid
-  const photoItems = photos
-    .filter(p => p.storage_path)
-    .slice(0, 6)
-    .map(p => ({
-      url: p.storage_path,
-      caption: p.ai_analysis?.professional_caption ?? p.caption ?? p.photo_type ?? 'Photo',
-    }));
+    return (photo.ai_analysis?.defects ?? []).map((defect) => [
+      photoLabel,
+      titleCase(defect.type),
+      titleCase(defect.severity),
+      titleCase(defect.value_impact),
+      defect.description,
+    ]);
+  });
 
   return (
-    <View break>
-      <SectionHeader number="XIII" title="Property Condition Documentation" />
+    <View>
+      <SectionHeader number="III-G" title="Detailed Condition Evidence Table" />
 
-      {/* Condition badge */}
       <View style={styles.badgeRow} wrap={false}>
-        <Text style={theme.label}>Overall Condition Rating: </Text>
+        <Text style={theme.label}>Overall stored condition rating: </Text>
         <View style={[styles.badge, { backgroundColor: badgeColor }]}>
-          <Text style={styles.badgeText}>{CONDITION_LABELS[rating] ?? rating}</Text>
+          <Text style={styles.badgeText}>{CONDITION_LABELS[rating] ?? titleCase(rating)}</Text>
         </View>
       </View>
 
-      {/* AI narrative */}
-      {condNarrative && <NarrativeBlock content={condNarrative.content} />}
+      <Text style={[theme.bodyText, { marginBottom: 8 }]}>
+        The table below preserves structured observations associated with submitted photographs. These
+        observations support visible-condition analysis only. They are not engineering diagnoses,
+        contractor estimates, code determinations, or proof that a defect existed on the valuation date
+        unless the report identifies corroborating dated evidence.
+      </Text>
 
-      {/* Photo grid */}
-      <PhotoGrid photos={photoItems} />
+      <DataTable
+        headers={['Photo / Area', 'Observation', 'Severity', 'Value Relevance', 'Description']}
+        columnWidths={['20%', '17%', '12%', '14%', '37%']}
+        rows={defectRows}
+      />
     </View>
   );
 }

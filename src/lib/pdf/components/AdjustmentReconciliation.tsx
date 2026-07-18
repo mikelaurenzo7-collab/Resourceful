@@ -17,12 +17,11 @@ export default function AdjustmentReconciliation({ data }: { data: ReportTemplat
   const { comparableSales, narratives } = data;
   const reconcNarrative = findNarrativeContent(narratives, 'reconciliation_narrative');
 
-  // Build adjustment range table
-  const adjRows = ADJ_KEYS.map(key => {
+  const adjRows = ADJ_KEYS.map((key) => {
     const field = `adjustment_pct_${key}` as keyof typeof comparableSales[0];
     const vals = comparableSales
-      .map(c => c[field] as number)
-      .filter(v => v != null && v !== 0);
+      .map((comparable) => comparable[field] as number)
+      .filter((value) => value != null && value !== 0);
     if (vals.length === 0) return null;
     const min = Math.min(...vals);
     const max = Math.max(...vals);
@@ -31,23 +30,21 @@ export default function AdjustmentReconciliation({ data }: { data: ReportTemplat
       vals.length === 1 ? `${vals[0].toFixed(1)}%` : `${min.toFixed(1)}% to ${max.toFixed(1)}%`,
       `Applied across ${vals.length} of ${comparableSales.length} comparables`,
     ];
-  }).filter((r): r is string[] => r !== null);
+  }).filter((row): row is string[] => row !== null);
 
   return (
-    <View break>
-      <SectionHeader number="IX" title="Adjustment Reconciliation & Value Conclusion" />
+    <View>
+      <SectionHeader number="VIII-B" title="Reconciliation & Final Value Conclusion" />
 
       {adjRows.length > 0 && (
         <DataTable
-          headers={['Adjustment Category', 'Range Applied', 'Rationale']}
+          headers={['Adjustment Category', 'Range Applied', 'Application Summary']}
           columnWidths={['25%', '25%', '50%']}
           rows={adjRows}
         />
       )}
 
-      {/* Reconciliation narrative */}
       {reconcNarrative && <NarrativeBlock content={reconcNarrative} />}
-
       <ValueConclusionTable data={data} />
     </View>
   );

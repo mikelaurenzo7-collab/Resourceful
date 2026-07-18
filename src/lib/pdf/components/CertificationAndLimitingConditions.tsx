@@ -1,12 +1,12 @@
-// ─── Certification & Limiting Conditions Section ───────────────────────────
+// ─── Certification Boundary & Limiting Conditions ───────────────────────────
 import React from 'react';
 import { View } from '@react-pdf/renderer';
 import { NarrativeBlock, SectionHeader } from './shared';
 
 export default function CertificationAndLimitingConditions({ content }: { content: string }) {
   return (
-    <View break>
-      <SectionHeader number="ADD-B" title="Certification & Limiting Conditions" />
+    <View>
+      <SectionHeader number="ADD-C" title="Certification Boundary & Limiting Conditions" />
       <NarrativeBlock content={content} />
     </View>
   );

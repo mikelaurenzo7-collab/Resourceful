@@ -58,18 +58,34 @@ export async function GET(request: NextRequest) {
         ? { status: 'error', message: `DB query failed: ${error.message}`, latencyMs: latency }
         : { status: 'ok', message: 'Connected', latencyMs: latency };
 
-      const { error: schemaError } = await supabase
-        .from('reports')
-        .select('outcome_followup_claimed_at')
-        .limit(1);
-      results.supabase_schema = schemaError
+      const [reportSchema, propertySchema, jurisdictionSchema] = await Promise.all([
+        supabase
+          .from('reports')
+          .select('outcome_followup_claimed_at,is_retrospective_assignment,valuation_effective_date,valuation_effective_date_source')
+          .limit(1),
+        supabase
+          .from('property_data')
+          .select('unit_count,unit_count_source_type,unit_count_source_reference')
+          .limit(1),
+        supabase
+          .from('county_rules')
+          .select('jurisdiction_plugin_key,jurisdiction_plugin_version')
+          .limit(1),
+      ]);
+      const schemaErrors = [
+        reportSchema.error ? `reports: ${reportSchema.error.message}` : null,
+        propertySchema.error ? `property_data: ${propertySchema.error.message}` : null,
+        jurisdictionSchema.error ? `county_rules: ${jurisdictionSchema.error.message}` : null,
+      ].filter((message): message is string => Boolean(message));
+
+      results.supabase_schema = schemaErrors.length > 0
         ? {
             status: 'error',
-            message: `Required delivery schema is missing or inaccessible: ${schemaError.message}`,
+            message: `Required delivery and report-workfile schema is missing or inaccessible: ${schemaErrors.join('; ')}`,
           }
         : {
             status: 'ok',
-            message: 'Delivery and follow-up schema is current',
+            message: 'Delivery, follow-up, valuation-date provenance, evidence provenance, and jurisdiction-plugin schema is current',
           };
 
       const { data: buckets, error: storageError } = await supabase.storage.listBuckets();

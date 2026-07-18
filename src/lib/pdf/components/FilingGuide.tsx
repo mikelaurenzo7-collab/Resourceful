@@ -1,5 +1,6 @@
-// ─── County Filing Instructions ──────────────────────────────────────────────
-// Only rendered for tax_appeal service type.
+// ─── Verified County Filing Instructions ─────────────────────────────────────
+// Rendered only after the generation-time jurisdiction release gate confirms
+// that authority, deadline, steps, and required documents match the active rule.
 
 import React from 'react';
 import { View, Text, StyleSheet } from '@react-pdf/renderer';
@@ -9,24 +10,27 @@ import type { FilingGuide as FilingGuideData } from '@/lib/templates/report-temp
 
 export default function FilingGuide({ guide }: { guide: FilingGuideData }) {
   return (
-    <View break>
-      <SectionHeader number="ADD-A" title="County Filing Instructions" />
+    <View>
+      <SectionHeader number="ADD-A" title="Verified County Filing Instructions" />
 
-      {/* Deadline callout — visually prominent */}
       <View style={styles.deadlineBox} wrap={false}>
-        <Text style={[theme.label, { color: colors.accent }]}>Appeal Deadline</Text>
-        <Text style={styles.deadlineText}>{guide.filing_deadline ?? 'Contact your county assessor for deadlines'}</Text>
-        <Text style={[theme.caption, { marginTop: 2 }]}>
-          {guide.appeal_board_name}
-        </Text>
+        <Text style={[theme.label, { color: colors.accent }]}>Verified Filing Deadline / Rule</Text>
+        <Text style={styles.deadlineText}>{guide.filing_deadline}</Text>
+        <Text style={[theme.caption, { marginTop: 2 }]}>{guide.appeal_board_name}</Text>
       </View>
 
-      {/* Filing method & fee */}
+      <Text style={[theme.bodyText, { marginBottom: 10 }]}>
+        Filing rules can change and may depend on township, notice date, assessment year, property class,
+        or the stage of review. Use the authority and channel identified below, preserve submission proof,
+        and recheck the official portal immediately before filing. Resourceful does not represent that a
+        report alone satisfies every evidentiary or procedural requirement.
+      </Text>
+
       <View style={styles.infoGrid} wrap={false}>
         {guide.online_filing_url && (
           <View style={styles.infoItem}>
-            <Text style={theme.label}>Online Filing</Text>
-            <Text style={theme.tableCell}>{guide.online_filing_url}</Text>
+            <Text style={theme.label}>Official Filing Channel</Text>
+            <Text style={styles.urlText}>{guide.online_filing_url}</Text>
           </View>
         )}
         {guide.fee_amount && (
@@ -43,14 +47,13 @@ export default function FilingGuide({ guide }: { guide: FilingGuideData }) {
         )}
       </View>
 
-      {/* Step-by-step filing sequence */}
       {(guide.steps ?? []).length > 0 && (
         <View style={{ marginTop: 12 }}>
-          <Text style={theme.headingMD}>Step-by-Step Filing Process</Text>
-          {guide.steps.map((step, i) => (
-            <View key={i} style={styles.stepRow} wrap={false}>
+          <Text style={theme.headingMD}>Filing Sequence</Text>
+          {guide.steps.map((step, index) => (
+            <View key={index} style={styles.stepRow} wrap={false}>
               <View style={styles.stepNumber}>
-                <Text style={styles.stepNumText}>{i + 1}</Text>
+                <Text style={styles.stepNumText}>{index + 1}</Text>
               </View>
               <Text style={[theme.tableCell, { fontSize: 10, flex: 1 }]}>{step}</Text>
             </View>
@@ -58,28 +61,26 @@ export default function FilingGuide({ guide }: { guide: FilingGuideData }) {
         </View>
       )}
 
-      {/* Required documents */}
       {(guide.required_documents ?? []).length > 0 && (
         <View style={{ marginTop: 10 }}>
-          <Text style={theme.headingMD}>Required Documents</Text>
-          {guide.required_documents.map((doc, i) => (
-            <Text key={i} style={[theme.tableCell, { fontSize: 9, marginLeft: 8, marginTop: 2 }]}>
-              • {doc}
+          <Text style={theme.headingMD}>Authority-Identified Required Documents</Text>
+          {guide.required_documents.map((document, index) => (
+            <Text key={index} style={[theme.tableCell, { fontSize: 9, marginLeft: 8, marginTop: 2 }]}>
+              • {document}
             </Text>
           ))}
-          <Text style={[theme.tableCell, { fontSize: 9, marginLeft: 8, marginTop: 2, fontWeight: 600 }]}>
-            • Your Resourceful report (PDF) — attach as evidence
+          <Text style={[theme.caption, { marginLeft: 8, marginTop: 4 }]}>
+            Include the Resourceful report only when it is relevant and the authority’s filing rules permit or request supporting valuation evidence.
           </Text>
         </View>
       )}
 
-      {/* Tips */}
       {(guide.tips ?? []).length > 0 && (
         <View style={{ marginTop: 10 }}>
-          <Text style={theme.headingMD}>Pro Se Tips</Text>
-          {guide.tips.map((tip, i) => (
-            <Text key={i} style={[theme.bodyText, { fontSize: 9, marginTop: 3 }]}>
-              {i + 1}. {tip}
+          <Text style={theme.headingMD}>Preparation Notes</Text>
+          {guide.tips.map((tip, index) => (
+            <Text key={index} style={[theme.bodyText, { fontSize: 9, marginTop: 3 }]}>
+              {index + 1}. {tip}
             </Text>
           ))}
         </View>
@@ -104,6 +105,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.inkPrimary,
     marginTop: 4,
+    textAlign: 'center',
   },
   infoGrid: {
     flexDirection: 'row',
@@ -112,6 +114,12 @@ const styles = StyleSheet.create({
   },
   infoItem: {
     flex: 1,
+  },
+  urlText: {
+    fontFamily: 'Inter',
+    fontSize: 7.5,
+    lineHeight: 1.3,
+    color: colors.inkPrimary,
   },
   stepRow: {
     flexDirection: 'row',

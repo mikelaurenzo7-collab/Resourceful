@@ -13,6 +13,8 @@ const MULTIFAMILY_PHRASES = [
   'four flat',
 ] as const;
 
+const NUMERIC_MULTI_UNIT_PATTERN = /\b(?:[2-9]\d*)[\s-]+(?:unit|units|flat|flats)\b/;
+
 const NONRESIDENTIAL_INCOME_PHRASES = [
   'commercial',
   'industrial',
@@ -47,6 +49,10 @@ function containsAny(value: string, phrases: readonly string[]): boolean {
   return phrases.some((phrase) => containsPhrase(value, phrase));
 }
 
+function containsNumericMultiUnitDescriptor(value: string): boolean {
+  return NUMERIC_MULTI_UNIT_PATTERN.test(value);
+}
+
 export function isMultifamilyProperty(descriptor: PropertyTypeDescriptor): boolean {
   return [
     descriptor.propertyType,
@@ -54,7 +60,11 @@ export function isMultifamilyProperty(descriptor: PropertyTypeDescriptor): boole
     descriptor.propertyClassDescription,
   ]
     .map(normalize)
-    .some((value) => containsAny(value, MULTIFAMILY_PHRASES));
+    .some(
+      (value) =>
+        containsAny(value, MULTIFAMILY_PHRASES) ||
+        containsNumericMultiUnitDescriptor(value)
+    );
 }
 
 /**
