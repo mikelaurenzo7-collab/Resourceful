@@ -40,8 +40,23 @@ export type MeasurementSource = 'google_earth' | 'user_submitted' | 'attom' | 'c
 
 export type ReviewTier = 'auto' | 'expert_reviewed' | 'guided_filing' | 'full_representation';
 
+export type ValuationEffectiveDateSource =
+  | 'intake_current_date'
+  | 'jurisdiction_convention'
+  | 'user_supplied'
+  | 'admin_override';
+
+export type EvidenceSourceType =
+  | 'owner_statement'
+  | 'photograph'
+  | 'public_record'
+  | 'licensed_data'
+  | 'calculation'
+  | 'assumption'
+  | 'professional_judgment';
+
 // ─── Table Row Types ─────────────────────────────────────────────────────────
-// These types match the database migration exactly (001_initial_schema.sql)
+// These types match the current database migration set.
 // IMPORTANT: Use `type` instead of `interface` so they extend Record<string, unknown>
 // which is required by Supabase's GenericTable constraint.
 
@@ -87,6 +102,10 @@ export type Report = {
   approved_at: string | null;
   approved_by: string | null;
   delivered_at: string | null;
+  // Explicit assignment and valuation-date provenance (migration 030)
+  is_retrospective_assignment: boolean;
+  valuation_effective_date: string | null;
+  valuation_effective_date_source: ValuationEffectiveDateSource | null;
   // Review tier
   review_tier: ReviewTier;
   // Tax bill data (user-provided for 15% discount)
@@ -185,12 +204,12 @@ export type PropertyData = {
   physical_depreciation_pct: number | null;
   effective_age_source: string | null;
   // Cost approach inputs and outputs (migration 010)
-  land_value: number | null;                    // assessor's split land value (from ATTOM)
-  quality_grade: string | null;                 // 'economy' | 'average' | 'good' | 'excellent' | 'luxury'
-  cost_approach_rcn: number | null;             // replacement cost new (building only)
-  cost_approach_value: number | null;           // RCN × (1 − depr%) + land_value
-  functional_obsolescence_pct: number | null;   // incurable super-adequacy %
-  functional_obsolescence_notes: string | null; // explanation of functional obsolescence
+  land_value: number | null;
+  quality_grade: string | null;
+  cost_approach_rcn: number | null;
+  cost_approach_value: number | null;
+  functional_obsolescence_pct: number | null;
+  functional_obsolescence_notes: string | null;
   // Photo value attribution — tracks exactly how much photos moved the needle
   concluded_value: number | null;
   concluded_value_without_photos: number | null;
@@ -216,6 +235,14 @@ export type PropertyData = {
   apn: string | null;
   regrid_parcel_id: string | null;
   parcel_data_source: string | null;
+  // Workfile provenance (migration 030)
+  unit_count: number | null;
+  unit_count_source_type: EvidenceSourceType | null;
+  unit_count_source_reference: string | null;
+  regulatory_source_authority: string | null;
+  regulatory_source_url: string | null;
+  property_class_source_authority: string | null;
+  property_class_source_url: string | null;
   created_at: string;
 };
 
@@ -435,18 +462,19 @@ export type CountyRule = {
   success_rate_pct: number | null;
   success_rate_source: string | null;
   avg_savings_pct: number | null;
-  // Per-county land-to-value ratio overrides (nullable — falls back to IAAO national constant when null)
+  // Per-county land-to-value ratio overrides
   land_ratio_residential: number | null;
   land_ratio_commercial: number | null;
   land_ratio_industrial: number | null;
-
+  // Versioned jurisdiction behavior (migration 030)
+  jurisdiction_plugin_key: string | null;
+  jurisdiction_plugin_version: number | null;
   // Cook County enrichment fields
   level_of_assessment_commercial?: number | null;
   level_of_assessment_residential?: number | null;
   cost_approach_disfavored?: boolean | null;
   valuation_date_convention?: string | null;
   fair_cash_value_synonym?: boolean | null;
-
   // Standard fields
   is_active: boolean;
   last_verified_date: string | null;
@@ -588,9 +616,9 @@ export type FormSubmission = {
   id: string;
   report_id: string;
   county_fips: string;
-  submission_method: string; // 'online' | 'email' | 'mail' | 'in_person'
+  submission_method: string;
   portal_url: string | null;
-  submission_status: string; // 'prefill_ready' | 'submitted' | 'confirmed'
+  submission_status: string;
   prefill_data: Record<string, unknown> | null;
   submitted_at: string | null;
   confirmation_number: string | null;
@@ -601,9 +629,35 @@ export type FormSubmission = {
 
 // ─── Insert Types (omit server-generated fields) ────────────────────────────
 
-export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_score' | 'case_value_at_stake' | 'is_underassessed' | 'underassessment_pct' | 'appeal_outcome_details' | 'outcome_reported_at' | 'actual_savings_cents' | 'outcome_notes' | 'referral_code_id' | 'referral_discount_cents' | 'api_partner_id' | 'is_white_label' | 'email_delivery_preference' | 'outcome_followup_sent_at' | 'outcome_followup_token' | 'recovery_email_sent_at' | 'notification_sent_at'> & {
+export type ReportInsert = Omit<Report,
+  | 'id'
+  | 'created_at'
+  | 'is_retrospective_assignment'
+  | 'valuation_effective_date'
+  | 'valuation_effective_date_source'
+  | 'case_strength_score'
+  | 'case_value_at_stake'
+  | 'is_underassessed'
+  | 'underassessment_pct'
+  | 'appeal_outcome_details'
+  | 'outcome_reported_at'
+  | 'actual_savings_cents'
+  | 'outcome_notes'
+  | 'referral_code_id'
+  | 'referral_discount_cents'
+  | 'api_partner_id'
+  | 'is_white_label'
+  | 'email_delivery_preference'
+  | 'outcome_followup_sent_at'
+  | 'outcome_followup_token'
+  | 'recovery_email_sent_at'
+  | 'notification_sent_at'
+> & {
   id?: string;
   created_at?: string;
+  is_retrospective_assignment?: boolean;
+  valuation_effective_date?: string | null;
+  valuation_effective_date_source?: ValuationEffectiveDateSource | null;
   // Computed by Stage 5 — not needed at creation time; DB defaults apply
   case_strength_score?: number | null;
   case_value_at_stake?: number | null;
@@ -627,9 +681,26 @@ export type ReportInsert = Omit<Report, 'id' | 'created_at' | 'case_strength_sco
   recovery_email_sent_at?: string | null;
 };
 
-export type PropertyDataInsert = Omit<PropertyData, 'id' | 'created_at'> & {
+export type PropertyDataInsert = Omit<PropertyData,
+  | 'id'
+  | 'created_at'
+  | 'unit_count'
+  | 'unit_count_source_type'
+  | 'unit_count_source_reference'
+  | 'regulatory_source_authority'
+  | 'regulatory_source_url'
+  | 'property_class_source_authority'
+  | 'property_class_source_url'
+> & {
   id?: string;
   created_at?: string;
+  unit_count?: number | null;
+  unit_count_source_type?: EvidenceSourceType | null;
+  unit_count_source_reference?: string | null;
+  regulatory_source_authority?: string | null;
+  regulatory_source_url?: string | null;
+  property_class_source_authority?: string | null;
+  property_class_source_url?: string | null;
 };
 
 export type MeasurementInsert = Omit<Measurement, 'id' | 'created_at'> & {
@@ -664,9 +735,14 @@ export type ReportNarrativeInsert = Omit<ReportNarrative, 'id' | 'generated_at'>
   generated_at?: string;
 };
 
-export type CountyRuleInsert = Omit<CountyRule, 'created_at' | 'updated_at'> & {
+export type CountyRuleInsert = Omit<
+  CountyRule,
+  'created_at' | 'updated_at' | 'jurisdiction_plugin_key' | 'jurisdiction_plugin_version'
+> & {
   created_at?: string;
   updated_at?: string;
+  jurisdiction_plugin_key?: string | null;
+  jurisdiction_plugin_version?: number | null;
 };
 
 export type AdminUserInsert = Omit<AdminUser, 'id' | 'created_at'> & {
