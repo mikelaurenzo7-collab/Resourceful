@@ -1,16 +1,21 @@
 // ─── Outcome Follow-Up Service ───────────────────────────────────────────────
-// Sends outcome requests after delivery. Successful responses feed the county
-// calibration loop; failed email attempts remain retryable with the same token.
+// Sends outcome requests after delivery. Responses feed the county calibration
+// loop. A short-lived database lease and a stable email idempotency key prevent
+// overlapping workers from sending the same follow-up concurrently.
 
 import { randomUUID } from 'node:crypto';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendVerifiedOutcomeFollowupEmail } from '@/lib/services/customer-notification-email';
 import { calculateAssessmentGap } from '@/lib/valuation/assessment-gap';
-import type { Report, PropertyData } from '@/types/database';
+import type { Database, Report, PropertyData } from '@/types/database';
 import { emailLogger } from '@/lib/logger';
 
 const FOLLOWUP_DELAY_DAYS = 60;
+const CLAIM_LEASE_MINUTES = 15;
+const FOLLOWUP_SELECT: string =
+  'id, client_email, client_name, property_address, city, state, outcome_followup_token, outcome_followup_claimed_at';
 
 type FollowupReport = Pick<
   Report,
@@ -21,21 +26,45 @@ type FollowupReport = Pick<
   | 'city'
   | 'state'
   | 'outcome_followup_token'
->;
+> & {
+  outcome_followup_claimed_at: string | null;
+};
+
+async function releaseClaim(
+  supabase: SupabaseClient<Database>,
+  reportId: string,
+  claimedAt: string
+): Promise<string | null> {
+  const { error } = await supabase
+    .from('reports')
+    .update({ outcome_followup_claimed_at: null } as Record<string, unknown>)
+    .eq('id', reportId)
+    .eq('outcome_followup_claimed_at' as string, claimedAt)
+    .is('outcome_followup_sent_at', null);
+
+  return error?.message ?? null;
+}
 
 export async function sendOutcomeFollowups(): Promise<{ sent: number; errors: number }> {
   const supabase = createAdminClient();
-  const cutoffDate = new Date();
+  const now = new Date();
+  const cutoffDate = new Date(now);
   cutoffDate.setDate(cutoffDate.getDate() - FOLLOWUP_DELAY_DAYS);
+  const leaseCutoff = new Date(
+    now.getTime() - CLAIM_LEASE_MINUTES * 60 * 1000
+  ).toISOString();
+  const availableLeaseFilter =
+    `outcome_followup_claimed_at.is.null,outcome_followup_claimed_at.lt.${leaseCutoff}`;
 
   const { data: reports, error } = await supabase
     .from('reports')
-    .select('id, client_email, client_name, property_address, city, state, outcome_followup_token')
+    .select(FOLLOWUP_SELECT)
     .eq('status', 'delivered')
     .eq('service_type', 'tax_appeal')
     .is('outcome_reported_at', null)
     .is('outcome_followup_sent_at', null)
     .lte('delivered_at', cutoffDate.toISOString())
+    .or(availableLeaseFilter)
     .limit(50);
 
   if (error) {
@@ -56,30 +85,39 @@ export async function sendOutcomeFollowups(): Promise<{ sent: number; errors: nu
   let errors = 0;
 
   for (const rawReport of reports) {
-    const report = rawReport as FollowupReport;
-    if (!report.client_email) continue;
+    const candidate = rawReport as unknown as FollowupReport;
+    if (!candidate.client_email) continue;
+
+    const token = candidate.outcome_followup_token?.trim() || randomUUID();
+    const claimedAt = new Date().toISOString();
+    const { data: claimedRaw, error: claimError } = await supabase
+      .from('reports')
+      .update({
+        outcome_followup_token: token,
+        outcome_followup_claimed_at: claimedAt,
+      } as Record<string, unknown>)
+      .eq('id', candidate.id)
+      .eq('status', 'delivered')
+      .is('outcome_reported_at', null)
+      .is('outcome_followup_sent_at', null)
+      .or(availableLeaseFilter)
+      .select(FOLLOWUP_SELECT)
+      .single();
+
+    if (claimError || !claimedRaw) {
+      if (claimError && claimError.code !== 'PGRST116') {
+        emailLogger.error(
+          { reportId: candidate.id, error: claimError.message },
+          '[outcome-followup] Failed to claim follow-up'
+        );
+        errors++;
+      }
+      continue;
+    }
+
+    const report = claimedRaw as unknown as FollowupReport;
 
     try {
-      const token = report.outcome_followup_token?.trim() || randomUUID();
-
-      if (!report.outcome_followup_token) {
-        const { error: tokenError } = await supabase
-          .from('reports')
-          .update({ outcome_followup_token: token })
-          .eq('id', report.id)
-          .is('outcome_reported_at', null)
-          .is('outcome_followup_sent_at', null);
-
-        if (tokenError) {
-          emailLogger.error(
-            { reportId: report.id, error: tokenError.message },
-            '[outcome-followup] Failed to persist outcome token'
-          );
-          errors++;
-          continue;
-        }
-      }
-
       const { data: propertyDataRaw, error: propertyError } = await supabase
         .from('property_data')
         .select('assessed_value, concluded_value, assessment_ratio')
@@ -118,35 +156,46 @@ export async function sendOutcomeFollowups(): Promise<{ sent: number; errors: nu
       });
 
       if (result.error) {
+        const releaseError = await releaseClaim(supabase, report.id, claimedAt);
         emailLogger.error(
-          { reportId: report.id, error: result.error },
+          { reportId: report.id, error: result.error, releaseError },
           '[outcome-followup] Email failed and remains eligible for retry'
         );
         errors++;
         continue;
       }
 
-      const { error: sentStampError } = await supabase
+      const { data: stamped, error: sentStampError } = await supabase
         .from('reports')
-        .update({ outcome_followup_sent_at: new Date().toISOString() })
+        .update({
+          outcome_followup_sent_at: new Date().toISOString(),
+          outcome_followup_claimed_at: null,
+        } as Record<string, unknown>)
         .eq('id', report.id)
         .eq('outcome_followup_token', token)
+        .eq('outcome_followup_claimed_at' as string, claimedAt)
         .is('outcome_reported_at', null)
-        .is('outcome_followup_sent_at', null);
+        .is('outcome_followup_sent_at', null)
+        .select('id')
+        .single();
 
-      if (sentStampError) {
+      if (sentStampError || !stamped) {
         emailLogger.error(
-          { reportId: report.id, error: sentStampError.message },
-          '[outcome-followup] Email sent but success stamp failed'
+          {
+            reportId: report.id,
+            error: sentStampError?.message ?? 'claim changed before success stamp',
+          },
+          '[outcome-followup] Email sent but success stamp failed; lease will expire safely'
         );
         errors++;
       } else {
         sent++;
       }
     } catch (error) {
+      const releaseError = await releaseClaim(supabase, report.id, claimedAt);
       const message = error instanceof Error ? error.message : String(error);
       emailLogger.error(
-        { reportId: report.id, message },
+        { reportId: report.id, message, releaseError },
         '[outcome-followup] Unexpected processing error'
       );
       errors++;
