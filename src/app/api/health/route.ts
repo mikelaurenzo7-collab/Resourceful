@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       const [reportSchema, propertySchema, jurisdictionSchema] = await Promise.all([
         supabase
           .from('reports')
-          .select('outcome_followup_claimed_at,is_retrospective_assignment')
+          .select('outcome_followup_claimed_at,is_retrospective_assignment,valuation_effective_date,valuation_effective_date_source')
           .limit(1),
         supabase
           .from('property_data')
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
           }
         : {
             status: 'ok',
-            message: 'Delivery, follow-up, workfile provenance, and jurisdiction-plugin schema is current',
+            message: 'Delivery, follow-up, valuation-date provenance, evidence provenance, and jurisdiction-plugin schema is current',
           };
 
       const { data: buckets, error: storageError } = await supabase.storage.listBuckets();
