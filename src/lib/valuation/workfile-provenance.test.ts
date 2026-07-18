@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
+import type { CountyRule } from '@/types/database';
 import {
   getClassificationSourceEvidence,
   getJurisdictionPlugin,
@@ -108,12 +109,17 @@ describe('workfile provenance', () => {
     const rule = {
       jurisdiction_plugin_key: 'cook_county_classification',
       jurisdiction_plugin_version: 1,
-    } as never;
+    } satisfies Pick<CountyRule, 'jurisdiction_plugin_key' | 'jurisdiction_plugin_version'>;
+    const fipsOnly = {
+      jurisdiction_plugin_key: null,
+      jurisdiction_plugin_version: null,
+    } satisfies Pick<CountyRule, 'jurisdiction_plugin_key' | 'jurisdiction_plugin_version'>;
+
     expect(getJurisdictionPlugin(rule)).toEqual({
       key: 'cook_county_classification',
       version: 1,
     });
     expect(isCookCountyJurisdiction(rule)).toBe(true);
-    expect(isCookCountyJurisdiction({ county_fips: '17031' } as never)).toBe(false);
+    expect(isCookCountyJurisdiction(fipsOnly)).toBe(false);
   });
 });
