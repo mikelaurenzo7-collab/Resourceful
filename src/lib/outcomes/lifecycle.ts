@@ -89,7 +89,16 @@ export function validateOutcomeFilingContext(input: {
   filedAt: string | null | undefined;
   filingMethod: string | null | undefined;
 }): LifecycleValidationResult {
-  if (input.outcome === 'didnt_file') return { valid: true };
+  if (input.outcome === 'didnt_file') {
+    if (isFiledOrLater(input.filingStatus) || input.filedAt || input.filingMethod) {
+      return {
+        valid: false,
+        error: 'This case already contains filing proof and cannot be marked as not filed. Contact support to correct the record.',
+      };
+    }
+
+    return { valid: true };
+  }
 
   if (input.outcome === 'pending' && input.filingStatus === 'closed') {
     return {
