@@ -55,6 +55,16 @@ export function getReportCostAssessment(
     physicalDepreciationPct: data.property.physical_depreciation_pct,
     functionalObsolescencePct: data.property.functional_obsolescence_pct,
     landValue: data.property.land_value,
+    replacementCostSourceAuthority: data.property.cost_replacement_source_authority,
+    depreciationSourceAuthority: data.property.cost_depreciation_source_authority,
+    landValueSourceAuthority: data.property.cost_land_source_authority,
+    sourceReferences: data.property.cost_source_references,
+    methodology: data.property.cost_methodology,
+    costEffectiveDate: data.property.cost_effective_date,
+    expectedEffectiveDate: data.valuationDate,
+    verificationState: data.property.cost_verification_state,
+    verifiedBy: data.property.cost_verified_by,
+    verifiedAt: data.property.cost_verified_at,
   });
 }
 
