@@ -124,6 +124,30 @@ describe('evaluateAssessmentContext', () => {
     expect(result.warnings.join(' ')).toContain('year-specific');
   });
 
+  it('prefers an explicit industrial level when it differs from the commercial level', () => {
+    const result = evaluateAssessmentContext({
+      serviceType: 'tax_appeal',
+      countyFips: '99999',
+      propertyType: 'industrial',
+      taxYearInAppeal: 2025,
+      valuationDate: '2025-01-01',
+      assessmentRatio: 0.2,
+      assessmentMethodology: 'Industrial classification',
+      propertyClassDescription: 'Warehouse',
+      countyRule: countyRule({
+        county_fips: '99999',
+        county_name: 'Example County',
+        assessment_ratio_commercial: 0.25,
+        assessment_ratio_industrial: 0.2,
+        level_of_assessment_commercial: 0.25,
+        valuation_date_convention: 'January 1 of the assessment year',
+      }),
+    });
+
+    expect(result.hardFailures).toEqual([]);
+    expect(result.expectedAssessmentRatio).toBe(0.2);
+  });
+
   it('rejects a valuation date that contradicts the jurisdiction convention', () => {
     const result = evaluateAssessmentContext({
       serviceType: 'tax_appeal',
