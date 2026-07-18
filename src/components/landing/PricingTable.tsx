@@ -35,7 +35,7 @@ const tiers = [
     name: 'Guided Filing',
     tier: 'guided_filing' as const,
     description:
-      'Expert Review plus a live working session to help you prepare the filing and understand the hearing process.',
+      'Residential Expert Review plus a live working session to help you prepare the filing and understand the hearing process.',
     features: [
       'Everything in Expert Review',
       'Live filing-preparation session',
@@ -109,7 +109,7 @@ export default function PricingTable() {
               </ul>
 
               {tier.appealOnly && (
-                <p className="text-xs text-cream/50 mb-3">Available for tax-appeal matters.</p>
+                <p className="text-xs text-cream/50 mb-3">Instant checkout is available for residential tax-appeal matters.</p>
               )}
 
               <Link
@@ -128,8 +128,8 @@ export default function PricingTable() {
       </div>
 
       <div className="mx-auto mt-8 max-w-3xl space-y-2 text-center text-xs leading-relaxed text-cream/50">
-        <p>Upload a readable tax bill and save 15% where the discount is shown at checkout. Commercial and complex-property pricing varies by scope.</p>
-        <p>Filing, representation, and attorney services are offered only after jurisdiction and eligibility review and are not included unless expressly stated in a written engagement.</p>
+        <p>Upload a readable tax bill and save 15% where the discount is shown at checkout. Commercial, industrial, land, and agricultural Case Analysis and Expert Review are priced at checkout; Guided Filing requires a separate property-scope and professional-availability review.</p>
+        <p>Filing on your behalf, hearing representation, and attorney services are offered only after jurisdiction and eligibility review and are not included unless expressly stated in a written engagement.</p>
       </div>
     </section>
   );

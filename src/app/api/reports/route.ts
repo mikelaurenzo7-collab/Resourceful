@@ -71,12 +71,17 @@ export async function POST(request: NextRequest) {
     const tax_bill_pin = d.tax_bill_pin || null;
     const referral_code = d.referral_code || null;
 
-    const serviceEligibility = validateCheckoutService(service_type, review_tier);
+    const serviceEligibility = validateCheckoutService(
+      service_type,
+      review_tier,
+      property_type
+    );
     if (!serviceEligibility.allowed) {
       apiLogger.warn(
         {
           code: serviceEligibility.code,
           serviceType: service_type,
+          propertyType: property_type,
           reviewTier: review_tier,
           state,
           county,
@@ -94,9 +99,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Tax-appeal checkout is fail-closed. The browser screen is advisory; this
-    // authoritative check repeats address resolution and jurisdiction freshness
-    // before a report row or PaymentIntent exists.
     const jurisdictionEligibility = await screenServiceJurisdiction({
       serviceType: service_type,
       propertyAddress: property_address,

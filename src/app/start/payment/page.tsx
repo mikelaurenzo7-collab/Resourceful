@@ -70,7 +70,7 @@ const TIER_DETAILS: Record<
   guided_filing: {
     name: 'Guided Filing',
     shortDescription:
-      'Expert Review plus a live working session to help you prepare the filing and understand the hearing process.',
+      'Residential Expert Review plus a live working session to help you prepare the filing and understand the hearing process.',
     delivery: 'Review delivery followed by a scheduled working session',
     features: [
       'Everything in Expert Review',
@@ -79,13 +79,20 @@ const TIER_DETAILS: Record<
       'Hearing preparation and talking points',
       'You remain responsible for signing and filing',
     ],
-    badge: 'Tax appeals only',
+    badge: 'Residential appeals',
   },
 };
 
-function normalizeTier(tier: ReviewTier, isTaxAppeal: boolean): PurchasableTier {
-  if (tier === 'full_representation') return isTaxAppeal ? 'guided_filing' : 'expert_reviewed';
-  if (tier === 'guided_filing' && !isTaxAppeal) return 'expert_reviewed';
+function normalizeTier(
+  tier: ReviewTier,
+  supportsInstantGuidedFiling: boolean
+): PurchasableTier {
+  if (tier === 'full_representation') {
+    return supportsInstantGuidedFiling ? 'guided_filing' : 'expert_reviewed';
+  }
+  if (tier === 'guided_filing' && !supportsInstantGuidedFiling) {
+    return 'expert_reviewed';
+  }
   return tier;
 }
 
@@ -162,7 +169,12 @@ function CheckoutForm() {
   const [error, setError] = useState('');
 
   const isTaxAppeal = state.serviceType === 'tax_appeal';
-  const selectedTier = normalizeTier(state.reviewTier, isTaxAppeal);
+  const supportsInstantGuidedFiling =
+    isTaxAppeal && state.propertyType === 'residential';
+  const selectedTier = normalizeTier(
+    state.reviewTier,
+    supportsInstantGuidedFiling
+  );
   const tierDetails = TIER_DETAILS[selectedTier];
   const serviceLabel = getServiceLabel(state.serviceType, state.desiredOutcome);
   const selectedIssues = PROPERTY_ISSUES.filter((issue) => (state.propertyIssues ?? []).includes(issue.id));
@@ -350,7 +362,12 @@ export default function PaymentPage() {
   const [referralError, setReferralError] = useState('');
 
   const isTaxAppeal = state.serviceType === 'tax_appeal';
-  const selectedTier = normalizeTier(state.reviewTier, isTaxAppeal);
+  const supportsInstantGuidedFiling =
+    isTaxAppeal && state.propertyType === 'residential';
+  const selectedTier = normalizeTier(
+    state.reviewTier,
+    supportsInstantGuidedFiling
+  );
 
   useEffect(() => {
     setCurrentStep(4);
@@ -372,7 +389,7 @@ export default function PaymentPage() {
         if (user?.email) setEmail(user.email);
       });
     });
-  }, [isTaxAppeal, router, selectedTier, setCurrentStep, state.address, state.hasTaxBill, state.propertyType, state.reviewTier, state.serviceType, updateState]);
+  }, [router, selectedTier, setCurrentStep, state.address, state.hasTaxBill, state.propertyType, state.reviewTier, state.serviceType, updateState]);
 
   const handleTierSelect = (tier: PurchasableTier) => {
     const priceCents = state.serviceType && state.propertyType
@@ -452,7 +469,10 @@ export default function PaymentPage() {
 
       if (!response.ok) {
         if (responseBody.recommendedTier) {
-          const recommendedTier = normalizeTier(responseBody.recommendedTier as ReviewTier, isTaxAppeal);
+          const recommendedTier = normalizeTier(
+            responseBody.recommendedTier as ReviewTier,
+            supportsInstantGuidedFiling
+          );
           handleTierSelect(recommendedTier);
         }
 
@@ -491,7 +511,7 @@ export default function PaymentPage() {
     }
   };
 
-  const tierOptions: PurchasableTier[] = isTaxAppeal
+  const tierOptions: PurchasableTier[] = supportsInstantGuidedFiling
     ? ['auto', 'expert_reviewed', 'guided_filing']
     : ['auto', 'expert_reviewed'];
 
@@ -541,11 +561,22 @@ export default function PaymentPage() {
             ))}
           </section>
 
+          {isTaxAppeal && !supportsInstantGuidedFiling && (
+            <aside className="rounded-xl border border-amber-400/15 bg-amber-400/[0.035] p-5">
+              <p className="text-sm font-medium text-cream">Need guided filing for this property?</p>
+              <p className="mt-1 text-xs leading-relaxed text-cream/50">
+                Commercial, industrial, land, and agricultural appeals require a property-scope and professional-availability review before Guided Filing can be quoted. Choose Expert Review now or contact{' '}
+                <a href="mailto:support@resourceful.app" className="text-gold underline hover:text-gold-light">support@resourceful.app</a>{' '}
+                for scoped filing support.
+              </p>
+            </aside>
+          )}
+
           {isTaxAppeal && (
             <aside className="rounded-xl border border-cream/[0.08] bg-navy-light/35 p-5">
               <p className="text-sm font-medium text-cream">Need someone to file or appear for you?</p>
               <p className="mt-1 text-xs leading-relaxed text-cream/50">
-                Representation is not sold through instant checkout. Resourceful must first verify the jurisdiction, eligible representative type, professional availability, authorization requirements, and scope. Start with Guided Filing or contact{' '}
+                Representation is not sold through instant checkout. Resourceful must first verify the property scope, jurisdiction, eligible representative type, professional availability, authorization requirements, conflicts, and fee. {supportsInstantGuidedFiling ? 'Start with Guided Filing or contact' : 'Choose Expert Review or contact'}{' '}
                 <a href="mailto:support@resourceful.app" className="text-gold underline hover:text-gold-light">support@resourceful.app</a>{' '}
                 for an eligibility review.
               </p>
