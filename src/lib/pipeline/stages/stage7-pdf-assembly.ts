@@ -1,6 +1,6 @@
 // ─── Stage 7: PDF Assembly ───────────────────────────────────────────────────
-// Fetches all report data, validates release evidence, renders to PDF via
-// @react-pdf/renderer, and publishes an immutable PDF/manifest artifact pair.
+// Fetches all report data, validates release evidence and case profile, renders
+// the authoritative React-PDF document, and publishes an immutable artifact pair.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
@@ -11,6 +11,8 @@ import {
   createReportArtifactManifest,
   serializeReportArtifactManifest,
 } from '@/lib/pdf/report-artifact-manifest';
+import { evaluateReportProfileCompleteness } from '@/lib/pdf/report-profile';
+import { evaluateAssessmentContext } from '@/lib/valuation/assessment-context-policy';
 import { evaluatePdfReleasePolicy } from '@/lib/valuation/pdf-release-policy';
 import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
 import { evaluateTaxAppealRelease } from '@/lib/valuation/tax-appeal-release-policy';
@@ -93,18 +95,23 @@ export async function runPdfAssembly(
     hardFails.push(jurisdictionRelease.message);
   }
 
-  const isTaxAppeal = templateData.report.service_type === 'tax_appeal';
-  const criticalSections = isTaxAppeal
-    ? ['executive_summary', 'appeal_argument_summary']
-    : ['executive_summary'];
-  const existingSections = new Set(templateData.narratives.map((n) => n.section_name));
-  for (const section of criticalSections) {
-    if (!existingSections.has(section)) {
-      const issue = `Missing critical narrative: ${section}`;
-      qaIssues.push(issue);
-      hardFails.push(issue);
-    }
-  }
+  const profileAssessment = evaluateReportProfileCompleteness(templateData);
+  qaIssues.push(...profileAssessment.warnings, ...profileAssessment.hardFailures);
+  hardFails.push(...profileAssessment.hardFailures);
+
+  const assessmentContext = evaluateAssessmentContext({
+    serviceType: templateData.report.service_type,
+    countyFips: templateData.report.county_fips,
+    propertyType: templateData.report.property_type,
+    taxYearInAppeal: templateData.property.tax_year_in_appeal,
+    valuationDate: templateData.valuationDate,
+    assessmentRatio: templateData.property.assessment_ratio,
+    assessmentMethodology: templateData.property.assessment_methodology,
+    propertyClassDescription: templateData.property.property_class_description,
+    countyRule: templateData.countyRule,
+  });
+  qaIssues.push(...assessmentContext.warnings, ...assessmentContext.hardFailures);
+  hardFails.push(...assessmentContext.hardFailures);
 
   if (!templateData.property.building_sqft_living_area && !templateData.property.lot_size_sqft) {
     qaIssues.push('No square footage data (building or lot)');
@@ -114,14 +121,16 @@ export async function runPdfAssembly(
     pipelineLogger.warn(
       {
         reportId,
+        reportProfile: profileAssessment.profile.id,
         qaIssues,
         jurisdictionRelease,
+        assessmentContext,
         incomeAssessment: valuationRelease.incomeAssessment,
         evidenceBackedAlternatives: valuationRelease.evidenceBackedAlternatives,
         concludedValue: templateData.concludedValue,
         conclusionReconcilesToAlternative: valuationRelease.conclusionReconcilesToAlternative,
       },
-      '[stage7] QA pre-flight warnings'
+      '[stage7] QA pre-flight findings'
     );
   }
 
@@ -129,7 +138,10 @@ export async function runPdfAssembly(
     return { success: false, error: `QA pre-flight failed: ${hardFails.join('; ')}` };
   }
 
-  pipelineLogger.info({ reportId }, '[stage7] Rendering PDF for report ...');
+  pipelineLogger.info(
+    { reportId, reportProfile: profileAssessment.profile.id },
+    '[stage7] Rendering case-specific PDF report ...'
+  );
 
   let pdfBuffer: Buffer;
   try {
@@ -188,8 +200,6 @@ export async function runPdfAssembly(
     .from('reports')
     .update({
       report_pdf_storage_path: pdfPath,
-      // A new immutable artifact requires its own delivery notification. Never
-      // let a prior release's receipt suppress retries for this release.
       notification_sent_at: null,
     })
     .eq('id', reportId);
@@ -208,6 +218,7 @@ export async function runPdfAssembly(
   pipelineLogger.info(
     {
       reportId,
+      reportProfile: profileAssessment.profile.id,
       sizeKB: (pdfBuffer.length / 1024).toFixed(0),
       pdfSha256: manifest.artifact.sha256,
       jurisdictionReleaseCode: jurisdictionRelease.code,
