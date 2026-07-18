@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { evaluatePdfReleasePolicy } from './pdf-release-policy';
+import {
+  evaluatePdfReleasePolicy,
+  type PdfReleasePolicyInput,
+} from './pdf-release-policy';
 
-function completeIncome(overrides: Record<string, unknown> = {}) {
+type IncomeApproachInput = NonNullable<PdfReleasePolicyInput['incomeApproach']>;
+
+function completeIncome(
+  overrides: Partial<IncomeApproachInput> = {}
+): IncomeApproachInput {
   return {
     supportedForProperty: true,
     netOperatingIncome: 150_000,
