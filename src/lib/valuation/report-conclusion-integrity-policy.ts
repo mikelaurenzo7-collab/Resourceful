@@ -23,6 +23,21 @@ const CONCLUSION_SECTIONS = [
   'reconciliation_narrative',
 ] as const;
 
+const MONTHS: Record<string, number> = {
+  january: 1,
+  february: 2,
+  march: 3,
+  april: 4,
+  may: 5,
+  june: 6,
+  july: 7,
+  august: 8,
+  september: 9,
+  october: 10,
+  november: 11,
+  december: 12,
+};
+
 const VALUE_LABEL_PATTERN = /\b(?:final\s+(?:as[- ]is\s+)?(?:market\s+)?value|reconciled\s+(?:market\s+)?value|market\s+value\s+conclusion|opinion\s+of\s+(?:the\s+)?(?:as[- ]is\s+)?market\s+value)\b[^$\d]{0,180}\$\s*([\d,]+(?:\.\d{1,2})?)/gi;
 const EFFECTIVE_DATE_LABEL_PATTERN = /\b(?:valuation\s+date|effective\s+date|market\s+value\s+as\s+of|opinion\s+of\s+value\s+as\s+of)\b[^\dA-Za-z]{0,30}((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})/gi;
 
@@ -37,13 +52,28 @@ function parseCurrency(raw: string): number | null {
   return Number.isFinite(value) && value > 0 ? value : null;
 }
 
+function canonicalDate(year: number, month: number, day: number): string | null {
+  const candidate = `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return dateOnly(candidate);
+}
+
 function parseDate(raw: string): string | null {
   const direct = dateOnly(raw);
   if (direct) return direct;
 
-  const parsed = new Date(`${raw} 12:00:00 UTC`);
-  if (!Number.isFinite(parsed.getTime())) return null;
-  return parsed.toISOString().slice(0, 10);
+  const longForm = raw.match(/^([A-Za-z]+)\s+(\d{1,2}),\s+(\d{4})$/);
+  if (longForm) {
+    const month = MONTHS[longForm[1].toLowerCase()];
+    if (!month) return null;
+    return canonicalDate(Number(longForm[3]), month, Number(longForm[2]));
+  }
+
+  const slashForm = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (slashForm) {
+    return canonicalDate(Number(slashForm[3]), Number(slashForm[1]), Number(slashForm[2]));
+  }
+
+  return null;
 }
 
 function money(value: number): string {
