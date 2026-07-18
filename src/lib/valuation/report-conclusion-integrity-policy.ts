@@ -3,8 +3,10 @@ import { dateOnly } from './valuation-date-policy';
 
 export type ReportConclusionIntegrityCode =
   | 'FINAL_VALUE_LABEL_MISSING'
+  | 'FINAL_VALUE_INVALID'
   | 'FINAL_VALUE_MISMATCH'
   | 'EFFECTIVE_DATE_LABEL_MISSING'
+  | 'EFFECTIVE_DATE_INVALID'
   | 'EFFECTIVE_DATE_MISMATCH';
 
 export interface ReportConclusionIntegrityAssessment {
@@ -13,7 +15,9 @@ export interface ReportConclusionIntegrityAssessment {
   warningCodes: ReportConclusionIntegrityCode[];
   hardFailureCodes: ReportConclusionIntegrityCode[];
   labeledValues: Array<{ section: string; value: number }>;
+  invalidLabeledValues: Array<{ section: string; raw: string }>;
   labeledEffectiveDates: Array<{ section: string; date: string }>;
+  invalidLabeledEffectiveDates: Array<{ section: string; raw: string }>;
 }
 
 const CONCLUSION_SECTIONS = [
@@ -88,7 +92,9 @@ export function evaluateReportConclusionIntegrity(
   const warningCodes: ReportConclusionIntegrityCode[] = [];
   const hardFailureCodes: ReportConclusionIntegrityCode[] = [];
   const labeledValues: Array<{ section: string; value: number }> = [];
+  const invalidLabeledValues: Array<{ section: string; raw: string }> = [];
   const labeledEffectiveDates: Array<{ section: string; date: string }> = [];
+  const invalidLabeledEffectiveDates: Array<{ section: string; raw: string }> = [];
 
   for (const section of CONCLUSION_SECTIONS) {
     const text = narrativeText(data, section);
@@ -96,16 +102,31 @@ export function evaluateReportConclusionIntegrity(
 
     for (const match of text.matchAll(VALUE_LABEL_PATTERN)) {
       const value = parseCurrency(match[1]);
-      if (value != null) labeledValues.push({ section, value });
+      if (value != null) {
+        labeledValues.push({ section, value });
+      } else {
+        invalidLabeledValues.push({ section, raw: match[1] });
+      }
     }
 
     for (const match of text.matchAll(EFFECTIVE_DATE_LABEL_PATTERN)) {
       const date = parseDate(match[1]);
-      if (date != null) labeledEffectiveDates.push({ section, date });
+      if (date != null) {
+        labeledEffectiveDates.push({ section, date });
+      } else {
+        invalidLabeledEffectiveDates.push({ section, raw: match[1] });
+      }
     }
   }
 
-  if (labeledValues.length === 0) {
+  if (invalidLabeledValues.length > 0) {
+    hardFailures.push(
+      `Narrative contains invalid labeled final-value text: ${invalidLabeledValues
+        .map(({ section, raw }) => `${section} states $${raw}`)
+        .join('; ')}`
+    );
+    hardFailureCodes.push('FINAL_VALUE_INVALID');
+  } else if (labeledValues.length === 0) {
     warnings.push(
       'No machine-checkable final-value label was found in the executive or reconciliation narratives; the deterministic conclusion exhibit remains authoritative.'
     );
@@ -122,7 +143,14 @@ export function evaluateReportConclusionIntegrity(
     }
   }
 
-  if (labeledEffectiveDates.length === 0) {
+  if (invalidLabeledEffectiveDates.length > 0) {
+    hardFailures.push(
+      `Narrative contains invalid labeled valuation/effective-date text: ${invalidLabeledEffectiveDates
+        .map(({ section, raw }) => `${section} states ${raw}`)
+        .join('; ')}`
+    );
+    hardFailureCodes.push('EFFECTIVE_DATE_INVALID');
+  } else if (labeledEffectiveDates.length === 0) {
     warnings.push(
       'No machine-checkable valuation/effective-date label was found in the executive or reconciliation narratives; the deterministic cover and conclusion exhibits remain authoritative.'
     );
@@ -145,6 +173,8 @@ export function evaluateReportConclusionIntegrity(
     warningCodes,
     hardFailureCodes,
     labeledValues,
+    invalidLabeledValues,
     labeledEffectiveDates,
+    invalidLabeledEffectiveDates,
   };
 }
