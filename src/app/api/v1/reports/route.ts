@@ -1,6 +1,6 @@
 // ─── Partner API: Create Report ──────────────────────────────────────────────
 // POST /api/v1/reports — programmatic report creation for API partners.
-// Partner billing does not bypass service or jurisdiction release boundaries.
+// Partner billing does not bypass service, scope, or jurisdiction boundaries.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -89,13 +89,18 @@ export async function POST(request: NextRequest) {
       review_tier,
     } = parsed.data;
 
-    const serviceEligibility = validateCheckoutService(service_type, review_tier);
+    const serviceEligibility = validateCheckoutService(
+      service_type,
+      review_tier,
+      property_type
+    );
     if (!serviceEligibility.allowed) {
       apiLogger.warn(
         {
           partnerId: partner.id,
           code: serviceEligibility.code,
           serviceType: service_type,
+          propertyType: property_type,
           reviewTier: review_tier,
           state,
           county,
@@ -212,7 +217,7 @@ export async function POST(request: NextRequest) {
       } catch (dbErr) {
         apiLogger.error(
           { reportId: report.id, dbErr: String(dbErr), pipelineError: message },
-          '[partner-api] CRITICAL: Pipeline and error recording failed'
+          '[partner-api] CRITICAL: Pipeline failed AND error recording failed'
         );
       }
     });
