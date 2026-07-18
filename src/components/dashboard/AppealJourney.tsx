@@ -61,6 +61,9 @@ export default function AppealJourney({
   const [saveError, setSaveError] = useState('');
 
   const finalOutcome = appealOutcome != null && appealOutcome !== 'pending';
+  const finalOutcomeLabel = appealOutcome
+    ? OUTCOME_LABELS[appealOutcome]?.label ?? appealOutcome
+    : null;
   const authorityReviewStarted =
     ['hearing_scheduled', 'decision_pending', 'closed'].includes(localFilingStatus) ||
     appealOutcome === 'pending' ||
@@ -131,7 +134,7 @@ export default function AppealJourney({
       key: 'closed',
       label: 'Case Closed',
       done: caseClosed,
-      sub: finalOutcome ? OUTCOME_LABELS[appealOutcome]?.label ?? appealOutcome : null,
+      sub: finalOutcome ? finalOutcomeLabel : null,
     },
   ] as const;
 
