@@ -90,6 +90,25 @@ describe('evaluateCaseStrategy', () => {
     expect(result.hardFailures.some((failure) => failure.includes('condition_assessment'))).toBe(true);
   });
 
+  it('does not treat ordinary income-model vacancy language as subject distress', () => {
+    const data = baseData({
+      report: { ...baseData().report, property_type: 'commercial' },
+      property: {
+        ...baseData().property,
+        property_subtype: 'Office building',
+        property_class_description: 'Commercial office',
+      },
+      narratives: [
+        ...baseData().narratives,
+        narrative('income_approach_narrative', 'A stabilized vacancy and collection loss of 7% was applied.'),
+      ],
+      incomeAnalysis: { id: 'income-1' },
+    });
+
+    const result = evaluateCaseStrategy(data);
+    expect(result.flags).not.toContain('distressed_or_vacant');
+  });
+
   it('flags a recent subject sale for arm-length and effective-date screening', () => {
     const data = baseData({
       property: {
