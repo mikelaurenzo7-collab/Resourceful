@@ -2,11 +2,14 @@ import { createHash } from 'node:crypto';
 
 import { AI_MODELS } from '@/config/ai';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
+import { buildReportProfile } from './report-profile';
+import { evaluateAssessmentContext } from '@/lib/valuation/assessment-context-policy';
+import { evaluateCaseStrategy, type CaseStrategyFlag } from '@/lib/valuation/case-strategy-policy';
 import type { PdfReleasePolicyResult } from '@/lib/valuation/pdf-release-policy';
 import type { TaxAppealReleaseResult } from '@/lib/valuation/tax-appeal-release-policy';
 
-export const REPORT_MANIFEST_SCHEMA_VERSION = '1.1.0';
-export const REPORT_RENDERER_VERSION = 'react-pdf-1';
+export const REPORT_MANIFEST_SCHEMA_VERSION = '1.2.0';
+export const REPORT_RENDERER_VERSION = 'react-pdf-2';
 
 export interface ReportArtifactPaths {
   pdfPath: string;
@@ -22,6 +25,9 @@ export interface ReportArtifactManifest {
     serviceType: string;
     propertyType: string;
     reviewTier: string;
+    profileId: string;
+    documentTitle: string;
+    narrativeSections: string[];
   };
   jurisdiction: {
     reportCountyFips: string | null;
@@ -31,14 +37,27 @@ export interface ReportArtifactManifest {
     ruleLastVerifiedDate: string | null;
     releaseReady: boolean;
     releaseCode: string;
+    assessmentYear: number | null;
+    valuationDate: string;
+    appliedAssessmentRatio: number | null;
+    expectedAssessmentRatio: number | null;
+    requiresYearSpecificEqualizationSource: boolean;
+  };
+  strategy: {
+    flags: CaseStrategyFlag[];
+    recentSubjectSaleDate: string | null;
+    warnings: string[];
   };
   evidence: {
     comparableSales: number;
     comparableRentals: number;
     photos: number;
     narratives: number;
+    sourceBackedComparableSales: number;
+    distressedComparableSales: number;
     filingGuideIncluded: boolean;
     incomeApproachReleaseReady: boolean;
+    costApproachIncluded: boolean;
   };
   valuation: {
     concludedValue: number;
@@ -110,6 +129,25 @@ export function createReportArtifactManifest(input: {
   } = input;
   const sha256 = hashPdfBuffer(pdfBuffer);
   const paths = buildReportArtifactPaths(data.report.id, generatedAt, sha256);
+  const profile = buildReportProfile(data);
+  const assessmentContext = evaluateAssessmentContext({
+    serviceType: data.report.service_type,
+    countyFips: data.report.county_fips,
+    propertyType: data.report.property_type,
+    taxYearInAppeal: data.property.tax_year_in_appeal,
+    valuationDate: data.valuationDate,
+    assessmentRatio: data.property.assessment_ratio,
+    assessmentMethodology: data.property.assessment_methodology,
+    propertyClassDescription: data.property.property_class_description,
+    countyRule: data.countyRule,
+  });
+  const caseStrategy = evaluateCaseStrategy(data);
+  const sourceBackedComparableSales = data.comparableSales.filter(
+    (sale) => Boolean(sale.county_recorder_url?.trim() || sale.deed_document_number?.trim())
+  ).length;
+  const distressedComparableSales = data.comparableSales.filter(
+    (sale) => sale.is_distressed_sale
+  ).length;
 
   return {
     schemaVersion: REPORT_MANIFEST_SCHEMA_VERSION,
@@ -120,6 +158,9 @@ export function createReportArtifactManifest(input: {
       serviceType: data.report.service_type,
       propertyType: data.report.property_type,
       reviewTier: data.report.review_tier,
+      profileId: profile.id,
+      documentTitle: profile.documentTitle,
+      narrativeSections: profile.narrativeSections.map((section) => section.key),
     },
     jurisdiction: {
       reportCountyFips: data.report.county_fips,
@@ -129,14 +170,29 @@ export function createReportArtifactManifest(input: {
       ruleLastVerifiedDate: data.countyRule?.last_verified_date ?? null,
       releaseReady: jurisdictionRelease.allowed,
       releaseCode: jurisdictionRelease.code,
+      assessmentYear: data.property.tax_year_in_appeal,
+      valuationDate: data.valuationDate,
+      appliedAssessmentRatio: assessmentContext.appliedAssessmentRatio,
+      expectedAssessmentRatio: assessmentContext.expectedAssessmentRatio,
+      requiresYearSpecificEqualizationSource:
+        assessmentContext.requiresYearSpecificEqualizationSource,
+    },
+    strategy: {
+      flags: caseStrategy.flags,
+      recentSubjectSaleDate: caseStrategy.recentSubjectSaleDate,
+      warnings: [...caseStrategy.warnings],
     },
     evidence: {
       comparableSales: data.comparableSales.length,
       comparableRentals: data.comparableRentals.length,
       photos: data.photos.length,
       narratives: data.narratives.length,
+      sourceBackedComparableSales,
+      distressedComparableSales,
       filingGuideIncluded: data.filingGuide != null,
       incomeApproachReleaseReady: valuationRelease.incomeAssessment?.isReleaseReady === true,
+      costApproachIncluded:
+        data.property.cost_approach_value != null && data.property.cost_approach_value > 0,
     },
     valuation: {
       concludedValue: data.concludedValue,
@@ -144,7 +200,11 @@ export function createReportArtifactManifest(input: {
         label: approach.label,
         value: approach.value,
       })),
-      warnings: [...valuationRelease.warnings],
+      warnings: [
+        ...valuationRelease.warnings,
+        ...assessmentContext.warnings,
+        ...caseStrategy.warnings,
+      ],
     },
     models: {
       primary: AI_MODELS.PRIMARY,
