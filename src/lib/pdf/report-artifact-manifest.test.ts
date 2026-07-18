@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import type { PdfReleasePolicyResult } from '@/lib/valuation/pdf-release-policy';
+import type { TaxAppealReleaseResult } from '@/lib/valuation/tax-appeal-release-policy';
 import {
   buildReportArtifactPaths,
   createReportArtifactManifest,
@@ -17,6 +18,13 @@ const valuationRelease: PdfReleasePolicyResult = {
   conclusionReconcilesToAlternative: false,
   warnings: ['Only 2 comparable sales (minimum 3 recommended)'],
   hardFailures: [],
+};
+
+const jurisdictionRelease: TaxAppealReleaseResult = {
+  allowed: true,
+  code: 'JURISDICTION_RELEASE_READY',
+  message: 'The tax-appeal filing package matches the current verified jurisdiction record.',
+  jurisdictionEvaluation: null,
 };
 
 function createData(): ReportTemplateData {
@@ -78,6 +86,7 @@ describe('report artifact manifest', () => {
       pdfBuffer: pdf,
       generatedAt: '2026-07-18T15:04:05.678Z',
       valuationRelease,
+      jurisdictionRelease,
     });
     const serialized = serializeReportArtifactManifest(manifest).toString('utf8');
 
@@ -95,6 +104,8 @@ describe('report artifact manifest', () => {
       ruleCountyFips: '17031',
       reportState: 'IL',
       ruleState: 'IL',
+      releaseReady: true,
+      releaseCode: 'JURISDICTION_RELEASE_READY',
     });
     expect(serialized).not.toContain('private@example.com');
     expect(serialized).not.toContain('Private Customer');

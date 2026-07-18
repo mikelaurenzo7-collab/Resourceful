@@ -3,8 +3,9 @@ import { createHash } from 'node:crypto';
 import { AI_MODELS } from '@/config/ai';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import type { PdfReleasePolicyResult } from '@/lib/valuation/pdf-release-policy';
+import type { TaxAppealReleaseResult } from '@/lib/valuation/tax-appeal-release-policy';
 
-export const REPORT_MANIFEST_SCHEMA_VERSION = '1.0.0';
+export const REPORT_MANIFEST_SCHEMA_VERSION = '1.1.0';
 export const REPORT_RENDERER_VERSION = 'react-pdf-1';
 
 export interface ReportArtifactPaths {
@@ -28,6 +29,8 @@ export interface ReportArtifactManifest {
     reportState: string | null;
     ruleState: string | null;
     ruleLastVerifiedDate: string | null;
+    releaseReady: boolean;
+    releaseCode: string;
   };
   evidence: {
     comparableSales: number;
@@ -62,7 +65,7 @@ function compactTimestamp(value: string): string {
     throw new Error('Report artifact generation time must be a valid date');
   }
 
-  return parsed.toISOString().replace(/[-:.]/g, '').replace('Z', 'Z');
+  return parsed.toISOString().replace(/[-:.]/g, '');
 }
 
 export function hashPdfBuffer(pdfBuffer: Buffer): string {
@@ -96,8 +99,15 @@ export function createReportArtifactManifest(input: {
   pdfBuffer: Buffer;
   generatedAt: string;
   valuationRelease: PdfReleasePolicyResult;
+  jurisdictionRelease: TaxAppealReleaseResult;
 }): ReportArtifactManifest {
-  const { data, pdfBuffer, generatedAt, valuationRelease } = input;
+  const {
+    data,
+    pdfBuffer,
+    generatedAt,
+    valuationRelease,
+    jurisdictionRelease,
+  } = input;
   const sha256 = hashPdfBuffer(pdfBuffer);
   const paths = buildReportArtifactPaths(data.report.id, generatedAt, sha256);
 
@@ -117,6 +127,8 @@ export function createReportArtifactManifest(input: {
       reportState: data.report.state_abbreviation ?? data.report.state,
       ruleState: data.countyRule?.state_abbreviation ?? null,
       ruleLastVerifiedDate: data.countyRule?.last_verified_date ?? null,
+      releaseReady: jurisdictionRelease.allowed,
+      releaseCode: jurisdictionRelease.code,
     },
     evidence: {
       comparableSales: data.comparableSales.length,
