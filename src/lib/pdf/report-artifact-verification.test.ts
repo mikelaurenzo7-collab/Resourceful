@@ -1,0 +1,141 @@
+import { describe, expect, it } from 'vitest';
+
+import type { ReportTemplateData } from '@/lib/templates/report-template';
+import type { PdfReleasePolicyResult } from '@/lib/valuation/pdf-release-policy';
+import type { TaxAppealReleaseResult } from '@/lib/valuation/tax-appeal-release-policy';
+import {
+  createReportArtifactManifest,
+  serializeReportArtifactManifest,
+} from './report-artifact-manifest';
+import {
+  manifestPathForPdf,
+  verifyReportArtifact,
+} from './report-artifact-verification';
+
+const pdf = Buffer.from('%PDF-1.7 verified artifact');
+const valuationRelease: PdfReleasePolicyResult = {
+  hasComparableSales: true,
+  hasConcludedValue: true,
+  incomeAssessment: null,
+  evidenceBackedAlternatives: [],
+  conclusionReconcilesToAlternative: false,
+  warnings: [],
+  hardFailures: [],
+};
+const jurisdictionRelease: TaxAppealReleaseResult = {
+  allowed: true,
+  code: 'JURISDICTION_RELEASE_READY',
+  message: 'ready',
+  jurisdictionEvaluation: null,
+};
+
+function createData(): ReportTemplateData {
+  return {
+    report: {
+      id: 'report-123',
+      service_type: 'tax_appeal',
+      property_type: 'residential',
+      review_tier: 'expert_reviewed',
+      county_fips: '17031',
+      state: 'Illinois',
+      state_abbreviation: 'IL',
+    },
+    property: {},
+    comparableSales: [],
+    comparableRentals: [],
+    photos: [],
+    narratives: [],
+    countyRule: null,
+    filingGuide: null,
+    maps: {},
+    incomeAnalysis: null,
+    concludedValue: 425_000,
+    valuationDate: '2026-01-01',
+    reportDate: '2026-07-18',
+  } as unknown as ReportTemplateData;
+}
+
+function createManifestJson(): string {
+  return serializeReportArtifactManifest(
+    createReportArtifactManifest({
+      data: createData(),
+      pdfBuffer: pdf,
+      generatedAt: '2026-07-18T15:04:05.678Z',
+      valuationRelease,
+      jurisdictionRelease,
+    })
+  ).toString('utf8');
+}
+
+function verify(manifestJson = createManifestJson(), pdfBuffer = pdf) {
+  const parsed = JSON.parse(manifestJson) as { artifact: { pdfPath: string } };
+  return verifyReportArtifact({
+    reportId: 'report-123',
+    serviceType: 'tax_appeal',
+    propertyType: 'residential',
+    reviewTier: 'expert_reviewed',
+    pdfPath: parsed.artifact.pdfPath,
+    pdfBuffer,
+    manifestJson,
+  });
+}
+
+describe('verifyReportArtifact', () => {
+  it('verifies an internally consistent PDF and manifest pair', () => {
+    expect(verify()).toMatchObject({
+      verified: true,
+      code: 'REPORT_ARTIFACT_VERIFIED',
+    });
+  });
+
+  it('derives the adjacent manifest path only from a PDF path', () => {
+    expect(manifestPathForPdf('report/releases/release.pdf')).toBe(
+      'report/releases/release.manifest.json'
+    );
+    expect(() => manifestPathForPdf('report/releases/release.txt')).toThrow('.pdf storage path');
+  });
+
+  it('rejects corrupted PDF bytes', () => {
+    expect(verify(createManifestJson(), Buffer.from('%PDF-corrupted'))).toMatchObject({
+      verified: false,
+      code: 'ARTIFACT_BYTE_LENGTH_MISMATCH',
+    });
+  });
+
+  it('rejects report-contract, path, and jurisdiction contradictions', () => {
+    const manifest = JSON.parse(createManifestJson()) as Record<string, any>;
+
+    const wrongReport = structuredClone(manifest);
+    wrongReport.report.id = 'report-other';
+    expect(verify(JSON.stringify(wrongReport))).toMatchObject({ code: 'REPORT_ID_MISMATCH' });
+
+    const wrongTier = structuredClone(manifest);
+    wrongTier.report.reviewTier = 'auto';
+    expect(verify(JSON.stringify(wrongTier))).toMatchObject({ code: 'REPORT_CONTRACT_MISMATCH' });
+
+    const wrongPath = structuredClone(manifest);
+    wrongPath.artifact.manifestPath = 'wrong.manifest.json';
+    expect(verify(JSON.stringify(wrongPath))).toMatchObject({ code: 'ARTIFACT_PATH_MISMATCH' });
+
+    const notReady = structuredClone(manifest);
+    notReady.jurisdiction.releaseReady = false;
+    expect(verify(JSON.stringify(notReady))).toMatchObject({ code: 'JURISDICTION_RELEASE_NOT_READY' });
+  });
+
+  it('rejects invalid JSON and unsupported schemas', () => {
+    const invalidJson = verifyReportArtifact({
+      reportId: 'report-123',
+      serviceType: 'tax_appeal',
+      propertyType: 'residential',
+      reviewTier: 'expert_reviewed',
+      pdfPath: 'report-123/releases/release.pdf',
+      pdfBuffer: pdf,
+      manifestJson: '{',
+    });
+    expect(invalidJson.code).toBe('MANIFEST_JSON_INVALID');
+
+    const manifest = JSON.parse(createManifestJson()) as Record<string, any>;
+    manifest.schemaVersion = '2.0.0';
+    expect(verify(JSON.stringify(manifest))).toMatchObject({ code: 'MANIFEST_SCHEMA_UNSUPPORTED' });
+  });
+});
