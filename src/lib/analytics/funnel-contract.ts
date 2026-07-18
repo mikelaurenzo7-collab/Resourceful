@@ -44,17 +44,25 @@ export const SAFE_FUNNEL_PROPERTY_KEYS = [
   'has_context',
 ] as const;
 
-const PATH_TO_STEP: Record<string, FunnelStep> = {
-  '/start': 'goals',
-  '/start/property': 'property',
-  '/start/situation': 'situation',
-  '/start/payment': 'payment',
-  '/start/photos': 'photos',
-  '/start/success': 'success',
+const PATH_TO_STEP: Record<string, { name: FunnelStep; number: number }> = {
+  '/start': { name: 'goals', number: 1 },
+  '/start/property': { name: 'property', number: 2 },
+  '/start/situation': { name: 'situation', number: 3 },
+  '/start/payment': { name: 'payment', number: 4 },
+  '/start/photos': { name: 'photos', number: 5 },
+  '/start/success': { name: 'success', number: 5 },
 };
 
+function clampStepNumber(stepNumber: number): number {
+  return Math.max(1, Math.min(5, Math.trunc(stepNumber || 1)));
+}
+
 export function getFunnelStep(pathname: string): FunnelStep {
-  return PATH_TO_STEP[pathname] ?? 'unknown';
+  return PATH_TO_STEP[pathname]?.name ?? 'unknown';
+}
+
+export function getFunnelStepNumber(pathname: string, currentStep: number): number {
+  return PATH_TO_STEP[pathname]?.number ?? clampStepNumber(currentStep);
 }
 
 export function getPhotoEvidenceBucket(photoCount: number, photosSkipped: boolean): PhotoEvidenceBucket {
@@ -83,7 +91,7 @@ export function getPriceBand(priceCents: number): PriceBand {
 export function buildSafeFunnelProperties(input: FunnelContextInput): SafeFunnelProperties {
   const properties: SafeFunnelProperties = {
     step: getFunnelStep(input.pathname),
-    step_number: Math.max(1, Math.min(5, Math.trunc(input.currentStep || 1))),
+    step_number: getFunnelStepNumber(input.pathname, input.currentStep),
     review_tier: input.reviewTier,
     has_tax_bill: input.hasTaxBill,
     photo_evidence: getPhotoEvidenceBucket(input.photoCount, input.photosSkipped),
