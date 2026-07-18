@@ -174,7 +174,7 @@ export default function ComparableSaleProfiles({ data }: { data: ReportTemplateD
 
 const styles = StyleSheet.create({
   address: {
-    fontFamily: 'Playfair Display',
+    fontFamily: 'Source Serif 4',
     fontSize: 15,
     fontWeight: 600,
     color: colors.inkPrimary,
