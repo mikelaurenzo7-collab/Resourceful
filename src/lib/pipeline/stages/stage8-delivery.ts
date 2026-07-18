@@ -10,6 +10,7 @@ import type { Database, Report, PropertyData } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import {
   manifestPathForPdf,
+  releaseKeyForPdfPath,
   verifyReportArtifact,
 } from '@/lib/pdf/report-artifact-verification';
 import { sendVerifiedReportReadyNotification } from '@/lib/services/customer-notification-email';
@@ -19,18 +20,24 @@ import { pipelineLogger } from '@/lib/logger';
 
 const DELIVERABLE_STATUSES: Report['status'][] = ['approved', 'delivering'];
 
+type StoredArtifactVerification =
+  | { success: true; releaseKey: string }
+  | { success: false; error: string };
+
 async function verifyStoredReportArtifact(
   report: Report,
   supabase: SupabaseClient<Database>
-): Promise<StageResult> {
+): Promise<StoredArtifactVerification> {
   const pdfPath = report.report_pdf_storage_path;
   if (!pdfPath) {
     return { success: false, error: 'No PDF storage path found on report. Run PDF assembly first.' };
   }
 
   let manifestPath: string;
+  let releaseKey: string;
   try {
     manifestPath = manifestPathForPdf(pdfPath);
+    releaseKey = releaseKeyForPdfPath(pdfPath);
   } catch (error) {
     return {
       success: false,
@@ -75,7 +82,7 @@ async function verifyStoredReportArtifact(
     };
   }
 
-  return { success: true };
+  return { success: true, releaseKey };
 }
 
 /**
@@ -181,6 +188,7 @@ export async function runDelivery(
     const emailResult = await sendVerifiedReportReadyNotification({
       to: report.client_email,
       reportId,
+      artifactReleaseKey: artifactVerification.releaseKey,
       serviceType: report.service_type,
       propertyAddress,
       concludedMarketValue: propertyData?.concluded_value ?? null,
@@ -209,7 +217,11 @@ export async function runDelivery(
         );
       } else {
         pipelineLogger.info(
-          { reportId, emailId: emailResult.data?.id },
+          {
+            reportId,
+            artifactReleaseKey: artifactVerification.releaseKey,
+            emailId: emailResult.data?.id,
+          },
           '[stage8] Report delivered with notification'
         );
       }
