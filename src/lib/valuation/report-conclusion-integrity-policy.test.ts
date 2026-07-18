@@ -82,6 +82,19 @@ describe('evaluateReportConclusionIntegrity', () => {
     expect(result.hardFailures[0]).toContain('2025-07-29');
   });
 
+  it('does not normalize impossible labeled dates into a different calendar date', () => {
+    const result = evaluateReportConclusionIntegrity(dataWith([
+      narrative(
+        'reconciliation_narrative',
+        'The final market value is $985,000. The valuation date is February 30, 2025.'
+      ),
+    ]));
+
+    expect(result.hardFailures).toEqual([]);
+    expect(result.labeledEffectiveDates).toEqual([]);
+    expect(result.warningCodes).toContain('EFFECTIVE_DATE_LABEL_MISSING');
+  });
+
   it('warns when prose contains no machine-checkable conclusion labels', () => {
     const result = evaluateReportConclusionIntegrity(dataWith([
       narrative('reconciliation_narrative', 'The evidence was reconciled with greatest weight to sales.'),
