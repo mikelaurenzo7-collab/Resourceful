@@ -39,7 +39,6 @@ export async function POST(
       );
     }
 
-    // Atomically claim the report so two admins cannot approve it concurrently.
     const admin = createAdminClient();
     const { data: claimed, error: claimError } = await admin
       .from('reports')
@@ -63,8 +62,6 @@ export async function POST(
     const deliveryResult = await runDelivery(reportId, user.id, admin);
 
     if (!deliveryResult.success) {
-      // Roll back only the claim made by this request. Never overwrite a state
-      // changed concurrently by another process.
       const { error: rollbackError } = await admin
         .from('reports')
         .update({ status: 'pending_approval' as const })
@@ -89,19 +86,34 @@ export async function POST(
       );
     }
 
-    await createApprovalEvent({
-      report_id: reportId,
-      admin_user_id: user.id,
-      action: 'approved',
-      section_name: null,
-      notes: 'Report artifact verified, approved, and delivered',
-    });
+    let auditWarning: string | undefined;
+    try {
+      await createApprovalEvent(
+        {
+          report_id: reportId,
+          admin_user_id: user.id,
+          action: 'approved',
+          section_name: null,
+          notes: 'Report artifact verified, approved, and delivered',
+        },
+        admin
+      );
+    } catch (error) {
+      auditWarning = error instanceof Error ? error.message : String(error);
+      apiLogger.error(
+        { reportId, error: auditWarning },
+        'Report was delivered but approval audit event could not be recorded'
+      );
+    }
 
     return NextResponse.json(
       {
         message: 'Report verified, approved, and delivered',
         reportId,
         status: 'delivered',
+        ...(auditWarning
+          ? { warning: 'Delivery succeeded, but the approval audit event requires operator review.' }
+          : {}),
       },
       { status: 200 }
     );
