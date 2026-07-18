@@ -1,18 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { track } from '@vercel/analytics';
 
 import { useWizard } from '@/components/intake/WizardLayout';
-import {
-  buildSafeFunnelProperties,
-  type FunnelEventName,
-  type SafeFunnelProperties,
-} from '@/lib/analytics/funnel-contract';
+import { trackFunnelEventOnce } from '@/lib/analytics/funnel-client';
+import { buildSafeFunnelProperties } from '@/lib/analytics/funnel-contract';
 import type { ServiceType } from '@/types/database';
 
-const TRACKED_SESSION_PREFIX = 'resourceful:funnel:';
 const SAFE_SERVICE_TYPES = new Set<ServiceType>(['tax_appeal', 'pre_purchase', 'pre_listing']);
 
 function resolveServiceType(
@@ -25,36 +20,10 @@ function resolveServiceType(
     : null;
 }
 
-function safelyTrackOnce(
-  tracked: Set<string>,
-  eventName: FunnelEventName,
-  milestoneIdentity: string,
-  properties: SafeFunnelProperties,
-) {
-  const fingerprint = `${eventName}:${milestoneIdentity}`;
-  const storageKey = `${TRACKED_SESSION_PREFIX}${fingerprint}`;
-
-  if (tracked.has(fingerprint)) return;
-
-  try {
-    if (sessionStorage.getItem(storageKey)) {
-      tracked.add(fingerprint);
-      return;
-    }
-
-    track(eventName, properties);
-    sessionStorage.setItem(storageKey, '1');
-    tracked.add(fingerprint);
-  } catch {
-    // Analytics must never interrupt intake, checkout, or delivery.
-  }
-}
-
 export default function FunnelAnalytics() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { state, currentStep } = useWizard();
-  const trackedRef = useRef(new Set<string>());
 
   const serviceType = resolveServiceType(state.serviceType, searchParams.get('serviceType'));
   const properties = useMemo(
@@ -87,8 +56,7 @@ export default function FunnelAnalytics() {
   );
 
   useEffect(() => {
-    safelyTrackOnce(
-      trackedRef.current,
+    trackFunnelEventOnce(
       'Resourceful Intake Step Viewed',
       pathname,
       {
@@ -100,18 +68,12 @@ export default function FunnelAnalytics() {
 
   useEffect(() => {
     if (!serviceType) return;
-    safelyTrackOnce(
-      trackedRef.current,
-      'Resourceful Service Selected',
-      serviceType,
-      properties,
-    );
+    trackFunnelEventOnce('Resourceful Service Selected', serviceType, properties);
   }, [properties, serviceType]);
 
   useEffect(() => {
     if (currentStep < 3 || !state.address || !state.propertyType) return;
-    safelyTrackOnce(
-      trackedRef.current,
+    trackFunnelEventOnce(
       'Resourceful Property Details Completed',
       `${serviceType ?? 'unknown'}:${state.propertyType}`,
       properties,
@@ -120,8 +82,7 @@ export default function FunnelAnalytics() {
 
   useEffect(() => {
     if (currentStep < 4 || !state.propertyType) return;
-    safelyTrackOnce(
-      trackedRef.current,
+    trackFunnelEventOnce(
       'Resourceful Situation Completed',
       `${serviceType ?? 'unknown'}:${state.propertyType}`,
       properties,
@@ -130,8 +91,7 @@ export default function FunnelAnalytics() {
 
   useEffect(() => {
     if (!state.reportId || !state.clientSecret) return;
-    safelyTrackOnce(
-      trackedRef.current,
+    trackFunnelEventOnce(
       'Resourceful Checkout Initialized',
       `${serviceType ?? 'unknown'}:${state.propertyType ?? 'unknown'}:${state.reviewTier}`,
       properties,
@@ -140,28 +100,17 @@ export default function FunnelAnalytics() {
 
   useEffect(() => {
     if (state.photoCount <= 0) return;
-    safelyTrackOnce(
-      trackedRef.current,
-      'Resourceful Photo Evidence Added',
-      'added',
-      properties,
-    );
+    trackFunnelEventOnce('Resourceful Photo Evidence Added', 'added', properties);
   }, [properties, state.photoCount]);
 
   useEffect(() => {
     if (!state.photosSkipped) return;
-    safelyTrackOnce(
-      trackedRef.current,
-      'Resourceful Photo Evidence Skipped',
-      'skipped',
-      properties,
-    );
+    trackFunnelEventOnce('Resourceful Photo Evidence Skipped', 'skipped', properties);
   }, [properties, state.photosSkipped]);
 
   useEffect(() => {
     if (pathname !== '/start/success') return;
-    safelyTrackOnce(
-      trackedRef.current,
+    trackFunnelEventOnce(
       'Resourceful Intake Success Viewed',
       serviceType ?? 'unknown',
       properties,
