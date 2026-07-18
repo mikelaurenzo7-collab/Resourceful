@@ -38,4 +38,27 @@ describe('authoritative final-report renderer', () => {
     expect(stage7).not.toContain('generateReportHtml');
     expect(stage7).not.toContain('puppeteer');
   });
+
+  it('drives the report body and table of contents from one ordered render plan', () => {
+    const reportDocument = readFileSync(
+      join(process.cwd(), 'src', 'lib', 'pdf', 'ReportDocument.tsx'),
+      'utf8'
+    );
+    const contents = readFileSync(
+      join(process.cwd(), 'src', 'lib', 'pdf', 'components', 'TableOfContents.tsx'),
+      'utf8'
+    );
+    const plan = readFileSync(
+      join(process.cwd(), 'src', 'lib', 'pdf', 'report-render-plan.ts'),
+      'utf8'
+    );
+
+    expect(reportDocument).toContain('const plan = buildReportRenderPlan(data)');
+    expect(reportDocument).toContain('<TableOfContents data={data} plan={plan} />');
+    expect(reportDocument).toContain('plan.sections.filter');
+    expect(contents).toContain('const renderPlan = plan ?? buildReportRenderPlan(data)');
+    expect(contents).toContain('sections.map');
+    expect(plan).toContain('export function buildReportRenderPlan');
+    expect(plan).toContain('normalizedNarratives');
+  });
 });
