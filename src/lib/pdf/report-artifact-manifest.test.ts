@@ -14,6 +14,7 @@ const valuationRelease: PdfReleasePolicyResult = {
   hasComparableSales: true,
   hasConcludedValue: true,
   incomeAssessment: null,
+  costAssessment: null,
   evidenceBackedAlternatives: [],
   conclusionReconcilesToAlternative: false,
   warnings: ['Only 2 comparable sales (minimum 3 recommended)'],
