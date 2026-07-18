@@ -44,6 +44,18 @@ function createGuide(overrides: Partial<FilingGuide> = {}): FilingGuide {
   };
 }
 
+const JURISDICTION_FAILURE_CASES: Array<[string, CountyRule | null]> = [
+  ['JURISDICTION_NOT_SUPPORTED', null],
+  ['JURISDICTION_INACTIVE', createRule({ is_active: false })],
+  ['JURISDICTION_MISMATCH', createRule({ county_fips: '17043' })],
+  ['JURISDICTION_UNVERIFIED', createRule({ last_verified_date: null })],
+  ['JURISDICTION_RULES_STALE', createRule({ last_verified_date: '2025-01-01' })],
+  [
+    'JURISDICTION_RULES_INCOMPLETE',
+    createRule({ accepts_online_filing: false, portal_url: null, appeal_board_address: null }),
+  ],
+];
+
 describe('evaluateTaxAppealRelease', () => {
   it('does not require a filing-jurisdiction release check for non-appeal assignments', () => {
     const result = evaluateTaxAppealRelease({
@@ -77,29 +89,22 @@ describe('evaluateTaxAppealRelease', () => {
     });
   });
 
-  it.each([
-    ['JURISDICTION_NOT_SUPPORTED', null],
-    ['JURISDICTION_INACTIVE', createRule({ is_active: false })],
-    ['JURISDICTION_MISMATCH', createRule({ county_fips: '17043' })],
-    ['JURISDICTION_UNVERIFIED', createRule({ last_verified_date: null })],
-    ['JURISDICTION_RULES_STALE', createRule({ last_verified_date: '2025-01-01' })],
-    [
-      'JURISDICTION_RULES_INCOMPLETE',
-      createRule({ accepts_online_filing: false, portal_url: null, appeal_board_address: null }),
-    ],
-  ])('propagates the verified county-rule failure %s', (code, rule) => {
-    const result = evaluateTaxAppealRelease({
-      serviceType: 'tax_appeal',
-      reportCountyFips: '17031',
-      reportState: 'IL',
-      countyRule: rule,
-      filingGuide: createGuide(),
-      now: NOW,
-    });
+  it.each(JURISDICTION_FAILURE_CASES)(
+    'propagates the verified county-rule failure %s',
+    (code, rule) => {
+      const result = evaluateTaxAppealRelease({
+        serviceType: 'tax_appeal',
+        reportCountyFips: '17031',
+        reportState: 'IL',
+        countyRule: rule,
+        filingGuide: createGuide(),
+        now: NOW,
+      });
 
-    expect(result.allowed).toBe(false);
-    expect(result.code).toBe(code);
-  });
+      expect(result.allowed).toBe(false);
+      expect(result.code).toBe(code);
+    }
+  );
 
   it('blocks a missing or structurally incomplete filing guide', () => {
     const missing = evaluateTaxAppealRelease({
