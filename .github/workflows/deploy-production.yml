@@ -79,6 +79,7 @@ jobs:
 
       - name: Run static validation
         run: |
+          pnpm check:migrations
           pnpm lint
           pnpm typecheck
           pnpm test
