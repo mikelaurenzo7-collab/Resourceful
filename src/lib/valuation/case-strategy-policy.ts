@@ -18,18 +18,26 @@ export interface CaseStrategyAssessment {
   hardFailures: string[];
 }
 
-const DISTRESS_PATTERN = /\b(vacant|vacancy|unoccupied|disrepair|poor condition|deferred maintenance|renovation|rehabilitation|uninhabitable|boarded|fire damage|water damage|demolition)\b/i;
+const DISTRESS_PATTERN = /\b(vacant|unoccupied|disrepair|poor condition|deferred maintenance|renovation|rehabilitation|uninhabitable|boarded|fire damage|water damage|demolition)\b/i;
 const REGULATORY_PATTERN = /\b(code violation|building violation|zoning violation|illegal unit|nonconforming|non-conforming|condemnation|municipal violation)\b/i;
 const MULTIFAMILY_PATTERN = /\b(multifamily|multi-family|apartment|duplex|triplex|fourplex|two[- ]unit|three[- ]unit|four[- ]unit|2[- ]unit|3[- ]unit|4[- ]unit)\b/i;
 const INDUSTRIAL_PATTERN = /\b(industrial|warehouse|flex|manufacturing|distribution|factory|logistics)\b/i;
 const UNIT_COUNT_PATTERN = /\b(?:number of units|unit count|two units|three units|four units|2 units|3 units|4 units|\([2-9]\)\s*units?)\b/i;
 const SALE_DATE_KEYS = ['sale_date', 'transfer_date', 'recording_date', 'document_date', 'date'] as const;
+const SUBJECT_EVIDENCE_NARRATIVES = new Set([
+  'summary_of_salient_facts',
+  'executive_summary',
+  'property_history',
+  'property_description',
+  'condition_assessment',
+  'appeal_argument_summary',
+]);
 
 function hasText(value: string | null | undefined): boolean {
   return Boolean(value?.trim());
 }
 
-function combinedCaseText(data: ReportTemplateData): string {
+function subjectEvidenceText(data: ReportTemplateData): string {
   return [
     data.property.property_subtype,
     data.property.property_class_description,
@@ -38,7 +46,9 @@ function combinedCaseText(data: ReportTemplateData): string {
     data.property.zoning_conformance,
     data.report.additional_notes,
     ...(data.report.property_issues ?? []),
-    ...data.narratives.map((narrative) => narrative.content),
+    ...data.narratives
+      .filter((narrative) => SUBJECT_EVIDENCE_NARRATIVES.has(narrative.section_name))
+      .map((narrative) => narrative.content),
   ]
     .filter((value): value is string => hasText(value))
     .join(' ');
@@ -83,7 +93,7 @@ export function evaluateCaseStrategy(data: ReportTemplateData): CaseStrategyAsse
   const flags = new Set<CaseStrategyFlag>();
   const warnings: string[] = [];
   const hardFailures: string[] = [];
-  const caseText = combinedCaseText(data);
+  const caseText = subjectEvidenceText(data);
   const descriptor = [
     data.property.property_subtype,
     data.property.property_class_description,
