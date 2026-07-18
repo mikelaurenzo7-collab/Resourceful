@@ -4,7 +4,12 @@ import {
   isMultifamilyProperty,
   supportsIncomeApproach,
 } from '@/lib/valuation/property-type-policy';
-import { hasReleaseReadyIncomeApproach } from './section-data';
+import { isCookCountyJurisdiction } from '@/lib/valuation/workfile-provenance';
+import {
+  getReportCostAssessment,
+  hasReleaseReadyCostApproach,
+  hasReleaseReadyIncomeApproach,
+} from './section-data';
 
 export const REPORT_NARRATIVE_SECTION_SPECS = [
   { key: 'summary_of_salient_facts', number: 'I-A', title: 'Summary of Salient Facts' },
@@ -148,7 +153,7 @@ export function buildReportProfile(data: ReportTemplateData): ReportProfile {
     data.report.desired_outcome
   );
   const isTaxAppeal = assignmentKind === 'tax_appeal';
-  const isCookCounty = data.report.county_fips === '17031' || /cook/i.test(data.report.county ?? '');
+  const isCookCounty = isCookCountyJurisdiction(data.countyRule);
   const propertyDescriptor = {
     propertyType: data.report.property_type,
     propertySubtype: data.property.property_subtype,
@@ -163,7 +168,7 @@ export function buildReportProfile(data: ReportTemplateData): ReportProfile {
     data.report.review_tier !== 'auto';
   const hasSalesApproach = data.comparableSales.length > 0;
   const hasIncomeApproach = hasReleaseReadyIncomeApproach(data);
-  const hasCostApproach = (data.property.cost_approach_value ?? 0) > 0;
+  const hasCostApproach = hasReleaseReadyCostApproach(data);
   const hasConditionEvidence = detectConditionEvidence(data);
   const requiresHighestAndBestUse =
     isComplexProperty ||
@@ -258,17 +263,28 @@ export function evaluateReportProfileCompleteness(
   }
 
   if (profile.hasSalesApproach && data.report.review_tier !== 'auto') {
-    const sourcedComparables = data.comparableSales.filter(
-      (sale) => hasText(sale.county_recorder_url) || hasText(sale.deed_document_number)
+    const unsourcedComparables = data.comparableSales.filter(
+      (sale) => !hasText(sale.county_recorder_url) && !hasText(sale.deed_document_number)
     ).length;
 
-    if (sourcedComparables === 0) {
-      hardFailures.push('Reviewed report has no source-backed comparable transaction');
-    } else if (sourcedComparables < data.comparableSales.length) {
-      warnings.push(
-        `${data.comparableSales.length - sourcedComparables} comparable sale(s) lack a recorder link or deed document number`
+    if (unsourcedComparables > 0) {
+      hardFailures.push(
+        `${unsourcedComparables} reviewed comparable sale(s) lack a recorder link or deed document number`
       );
     }
+  }
+
+  const hasAnyCostInput = [
+    data.property.cost_approach_rcn,
+    data.property.cost_approach_value,
+    data.property.physical_depreciation_pct,
+    data.property.functional_obsolescence_pct,
+    data.property.land_value,
+  ].some((value) => value != null);
+  if (hasAnyCostInput) {
+    const costAssessment = getReportCostAssessment(data);
+    hardFailures.push(...costAssessment.hardFailures);
+    warnings.push(...costAssessment.warnings);
   }
 
   const distressedComparables = data.comparableSales.filter((sale) => sale.is_distressed_sale).length;
