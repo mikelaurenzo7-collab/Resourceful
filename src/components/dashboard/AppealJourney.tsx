@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface AppealJourneyProps {
   reportId: string;
@@ -10,28 +11,29 @@ interface AppealJourneyProps {
   appealOutcome: string | null;
   outcomeReportedAt: string | null;
   deliveredAt: string | null;
-  /** Days since delivery — used to decide whether to prompt for outcome */
   daysSinceDelivery: number;
 }
 
 const OUTCOME_LABELS: Record<string, { label: string; color: string }> = {
-  won:         { label: 'Won',          color: 'emerald' },
-  lost:        { label: 'Lost',         color: 'red' },
-  pending:     { label: 'Pending',      color: 'amber' },
-  withdrew:    { label: 'Withdrew',     color: 'slate' },
-  didnt_file:  { label: "Didn't File",  color: 'slate' },
+  won: { label: 'Won', color: 'emerald' },
+  lost: { label: 'Lost', color: 'red' },
+  pending: { label: 'Pending', color: 'amber' },
+  withdrew: { label: 'Withdrew', color: 'slate' },
+  didnt_file: { label: "Didn't File", color: 'slate' },
 };
 
 const METHOD_LABELS: Record<string, string> = {
-  online:    'Online',
-  email:     'Email',
-  mail:      'Mail',
+  online: 'Online',
+  email: 'Email',
+  mail: 'Mail',
   in_person: 'In Person',
 };
 
 function fmt(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
   });
 }
 
@@ -45,21 +47,31 @@ export default function AppealJourney({
   deliveredAt,
   daysSinceDelivery,
 }: AppealJourneyProps) {
-  const hasFiled = filedAt != null || filingStatus === 'filed' || filingStatus === 'hearing_scheduled' || filingStatus === 'decision_pending' || filingStatus === 'closed';
-  const hasOutcome = appealOutcome != null && appealOutcome !== 'pending';
+  const router = useRouter();
+  const initiallyFiled =
+    filedAt != null ||
+    ['filed', 'hearing_scheduled', 'decision_pending', 'closed'].includes(filingStatus);
 
   const [localFiledAt, setLocalFiledAt] = useState(filedAt);
   const [localFilingMethod, setLocalFilingMethod] = useState(filingMethod);
-  const [localFiled, setLocalFiled] = useState(hasFiled);
-
+  const [localFilingStatus, setLocalFilingStatus] = useState(filingStatus);
+  const [localFiled, setLocalFiled] = useState(initiallyFiled);
   const [showFilingForm, setShowFilingForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  const finalOutcome = appealOutcome != null && appealOutcome !== 'pending';
+  const authorityReviewStarted =
+    ['hearing_scheduled', 'decision_pending', 'closed'].includes(localFilingStatus) ||
+    appealOutcome === 'pending' ||
+    finalOutcome;
+  const caseClosed = localFilingStatus === 'closed' || finalOutcome;
 
   const markFiled = async (method: string) => {
     setSaving(true);
     setSaveError('');
     const today = new Date().toISOString().substring(0, 10);
+
     try {
       const res = await fetch(`/api/reports/${reportId}`, {
         method: 'PATCH',
@@ -72,12 +84,15 @@ export default function AppealJourney({
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
-        throw new Error(json.error ?? 'Failed to save');
+        throw new Error(json.error ?? 'Failed to save filing details.');
       }
+
       setLocalFiledAt(today);
       setLocalFilingMethod(method);
+      setLocalFilingStatus('filed');
       setLocalFiled(true);
       setShowFilingForm(false);
+      router.refresh();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Failed to save. Try again.');
     } finally {
@@ -85,11 +100,10 @@ export default function AppealJourney({
     }
   };
 
-  // ── Step definitions ────────────────────────────────────────────────────
   const steps = [
     {
       key: 'delivered',
-      label: 'Report Delivered',
+      label: 'Report Ready',
       done: true,
       date: deliveredAt ? fmt(deliveredAt) : null,
     },
@@ -101,126 +115,150 @@ export default function AppealJourney({
       sub: localFilingMethod ? METHOD_LABELS[localFilingMethod] ?? localFilingMethod : null,
     },
     {
-      key: 'outcome',
-      label: 'Outcome',
-      done: hasOutcome,
+      key: 'review',
+      label: 'Authority Review',
+      done: authorityReviewStarted,
+      sub: appealOutcome === 'pending' ? 'Decision pending' : null,
+    },
+    {
+      key: 'decision',
+      label: 'Decision Received',
+      done: finalOutcome,
       date: outcomeReportedAt ? fmt(outcomeReportedAt) : null,
       outcome: appealOutcome,
     },
+    {
+      key: 'closed',
+      label: 'Case Closed',
+      done: caseClosed,
+      sub: finalOutcome ? OUTCOME_LABELS[appealOutcome]?.label ?? appealOutcome : null,
+    },
   ] as const;
 
+  const firstIncomplete = steps.findIndex((step) => !step.done);
   const outcomeInfo = appealOutcome ? OUTCOME_LABELS[appealOutcome] : null;
 
   return (
     <div className="card-premium rounded-xl overflow-hidden">
-      {/* ── 3-step tracker ────────────────────────────────────────────── */}
-      <div className="grid grid-cols-3 divide-x divide-gold/[0.08]">
-        {steps.map((step) => (
-          <div
-            key={step.key}
-            className={`px-4 py-4 ${step.done ? 'bg-emerald-950/[0.12]' : ''}`}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              {step.done ? (
-                <div className="w-4 h-4 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                  <svg className="w-2.5 h-2.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-              ) : (
-                <div className="w-4 h-4 rounded-full border border-cream/10 flex-shrink-0" />
-              )}
-              <span className={`text-xs font-medium leading-tight ${step.done ? 'text-emerald-400/80' : 'text-cream/25'}`}>
-                {step.label}
-              </span>
-            </div>
-
-            {step.done && step.date && (
-              <p className="text-[10px] text-cream/20 pl-6">{step.date}</p>
-            )}
-            {'sub' in step && step.sub && step.done && (
-              <p className="text-[10px] text-cream/15 pl-6">{step.sub}</p>
-            )}
-            {'outcome' in step && step.outcome && outcomeInfo && (
-              <p className={`text-[10px] pl-6 font-medium mt-0.5 ${
-                outcomeInfo.color === 'emerald' ? 'text-emerald-400/70'
-                : outcomeInfo.color === 'red' ? 'text-red-400/70'
-                : outcomeInfo.color === 'amber' ? 'text-amber-400/70'
-                : 'text-cream/30'
-              }`}>
-                {outcomeInfo.label}
-              </p>
-            )}
-          </div>
-        ))}
+      <div className="px-5 py-4 border-b border-gold/[0.08]">
+        <p className="text-[10px] uppercase tracking-[0.2em] font-semibold text-gold/65">
+          Appeal Lifecycle
+        </p>
+        <h3 className="text-sm font-medium text-cream mt-1">From report delivery through final decision</h3>
       </div>
 
-      {/* ── CTA strip ─────────────────────────────────────────────────── */}
-      {!localFiled && !showFilingForm && (
-        <div className="px-4 py-3 border-t border-gold/[0.06] flex items-center justify-between gap-3">
-          <p className="text-[11px] text-cream/25">Filed your appeal yet?</p>
+      <div className="grid grid-cols-1 sm:grid-cols-5 divide-y sm:divide-y-0 sm:divide-x divide-gold/[0.08]">
+        {steps.map((step, index) => {
+          const isCurrent = firstIncomplete === index;
+          return (
+            <div
+              key={step.key}
+              className={`px-4 py-4 ${step.done ? 'bg-emerald-950/[0.12]' : isCurrent ? 'bg-gold/[0.035]' : ''}`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                {step.done ? (
+                  <div className="w-4 h-4 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-2.5 h-2.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                ) : isCurrent ? (
+                  <div className="w-4 h-4 rounded-full border border-gold/50 bg-gold/10 flex-shrink-0" />
+                ) : (
+                  <div className="w-4 h-4 rounded-full border border-cream/10 flex-shrink-0" />
+                )}
+                <span className={`text-xs font-medium leading-tight ${
+                  step.done ? 'text-emerald-400/80' : isCurrent ? 'text-gold/80' : 'text-cream/25'
+                }`}>
+                  {step.label}
+                </span>
+              </div>
+
+              {'date' in step && step.done && step.date && (
+                <p className="text-[10px] text-cream/25 pl-6">{step.date}</p>
+              )}
+              {'sub' in step && step.sub && (
+                <p className="text-[10px] text-cream/25 pl-6">{step.sub}</p>
+              )}
+              {'outcome' in step && step.outcome && outcomeInfo && (
+                <p className={`text-[10px] pl-6 font-medium mt-0.5 ${
+                  outcomeInfo.color === 'emerald' ? 'text-emerald-400/70'
+                    : outcomeInfo.color === 'red' ? 'text-red-400/70'
+                      : outcomeInfo.color === 'amber' ? 'text-amber-400/70'
+                        : 'text-cream/30'
+                }`}>
+                  {outcomeInfo.label}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {!localFiled && !showFilingForm && !finalOutcome && (
+        <div className="px-5 py-4 border-t border-gold/[0.06] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-xs text-cream/55">Filed the appeal?</p>
+            <p className="text-[11px] text-cream/25 mt-0.5">Record the submission method and date to unlock decision tracking.</p>
+          </div>
           <button
             onClick={() => setShowFilingForm(true)}
-            className="text-[11px] font-medium text-gold hover:text-gold-light transition-colors"
+            className="text-xs font-medium text-gold hover:text-gold-light transition-colors"
           >
-            Mark as Filed
+            Record Filing →
           </button>
         </div>
       )}
 
       {!localFiled && showFilingForm && (
-        <div className="px-4 py-4 border-t border-gold/[0.08] space-y-3">
-          <p className="text-xs text-cream/40">How did you file?</p>
-          {saveError && (
-            <p className="text-xs text-red-400">{saveError}</p>
-          )}
+        <div className="px-5 py-4 border-t border-gold/[0.08] space-y-3">
+          <p className="text-xs text-cream/45">How was the appeal submitted?</p>
+          {saveError && <p className="text-xs text-red-400">{saveError}</p>}
           <div className="flex flex-wrap gap-2">
             {(['online', 'email', 'mail', 'in_person'] as const).map((method) => (
               <button
                 key={method}
                 onClick={() => markFiled(method)}
                 disabled={saving}
-                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gold/20 text-cream/50 hover:border-gold/40 hover:text-cream/80 transition-all disabled:opacity-40 capitalize"
+                className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gold/20 text-cream/50 hover:border-gold/40 hover:text-cream/80 transition-all disabled:opacity-40"
               >
-                {saving ? (
-                  <span className="inline-flex items-center gap-1">
-                    <span className="w-2.5 h-2.5 border border-gold/40 border-t-transparent rounded-full animate-spin" />
-                    Saving…
-                  </span>
-                ) : (
-                  METHOD_LABELS[method]
-                )}
+                {saving ? 'Saving…' : METHOD_LABELS[method]}
               </button>
             ))}
           </div>
           <button
-            onClick={() => { setShowFilingForm(false); setSaveError(''); }}
-            className="text-[10px] text-cream/20 hover:text-cream/40 transition-colors"
+            onClick={() => {
+              setShowFilingForm(false);
+              setSaveError('');
+            }}
+            className="text-[10px] text-cream/25 hover:text-cream/45 transition-colors"
           >
             Cancel
           </button>
         </div>
       )}
 
-      {/* ── Outcome prompt (30+ days after delivery, not yet recorded) ── */}
-      {localFiled && !hasOutcome && daysSinceDelivery >= 30 && (
-        <div className="px-4 py-3 border-t border-gold/[0.06] flex items-center justify-between gap-3">
-          <p className="text-[11px] text-cream/25">How did your appeal go?</p>
+      {localFiled && !finalOutcome && daysSinceDelivery >= 30 && (
+        <div className="px-5 py-4 border-t border-gold/[0.06] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-xs text-cream/55">
+              {appealOutcome === 'pending' ? 'Has the authority issued a decision?' : 'How did the appeal go?'}
+            </p>
+            <p className="text-[11px] text-cream/25 mt-0.5">Keep the case record current and improve future evidence calibration.</p>
+          </div>
           <a
             href={`/report/${reportId}`}
-            className="text-[11px] font-medium text-gold hover:text-gold-light transition-colors"
+            className="text-xs font-medium text-gold hover:text-gold-light transition-colors"
           >
-            Share Your Result
+            {appealOutcome === 'pending' ? 'Update Decision →' : 'Share Result →'}
           </a>
         </div>
       )}
 
-      {/* ── Outcome recorded: savings display ─────────────────────────── */}
-      {hasOutcome && appealOutcome === 'won' && (
-        <div className="px-4 py-3 border-t border-emerald-500/10 bg-emerald-950/10">
-          <p className="text-[11px] text-emerald-400/70 font-medium">
-            Appeal won
-            {outcomeReportedAt && ` · reported ${fmt(outcomeReportedAt)}`}
+      {finalOutcome && appealOutcome === 'won' && (
+        <div className="px-5 py-4 border-t border-emerald-500/10 bg-emerald-950/10">
+          <p className="text-xs text-emerald-400/75 font-medium">
+            Appeal won{outcomeReportedAt && ` · final result recorded ${fmt(outcomeReportedAt)}`}
           </p>
         </div>
       )}
