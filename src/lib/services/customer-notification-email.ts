@@ -8,6 +8,7 @@ import { isRetryableError, withRetry } from '@/lib/utils/retry';
 export interface ReportReadyNotificationParams {
   to: string;
   reportId: string;
+  artifactReleaseKey: string;
   serviceType: ServiceType;
   propertyAddress: string;
   concludedMarketValue: number | null;
@@ -221,7 +222,7 @@ export async function sendVerifiedReportReadyNotification(
         subject: content.subject,
         html: content.html,
       },
-      `report-ready/${params.reportId}`
+      `report-ready/${params.reportId}/${params.artifactReleaseKey}`
     );
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (error) {
