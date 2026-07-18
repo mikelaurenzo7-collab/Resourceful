@@ -125,6 +125,33 @@ describe('buildReportRenderPlan', () => {
     expect(complete.sections.some((section) => section.id === 'narrative:cost_approach_narrative')).toBe(true);
   });
 
+  it('renders adjustment and reliability analysis before comparable profiles', () => {
+    const plan = buildReportRenderPlan(data({
+      comparableSales: [
+        {
+          id: 'comp-1',
+          county_recorder_url: 'https://recorder.example/document/1',
+        },
+      ],
+      narratives: [
+        ...data().narratives,
+        narrative('sales_comparison_narrative', 'Sales methodology'),
+        narrative('adjustment_grid_narrative', 'Adjustment reliability analysis'),
+      ],
+    }));
+    const ids = plan.sections.map((section) => section.id);
+
+    expect(ids.indexOf('comparable-grid')).toBeGreaterThan(
+      ids.indexOf('narrative:sales_comparison_narrative')
+    );
+    expect(ids.indexOf('narrative:adjustment_grid_narrative')).toBeGreaterThan(
+      ids.indexOf('comparable-grid')
+    );
+    expect(ids.indexOf('comparable-profiles')).toBeGreaterThan(
+      ids.indexOf('narrative:adjustment_grid_narrative')
+    );
+  });
+
   it('uses exactly one terminal legal-boundary section', () => {
     const certified = buildReportRenderPlan(data({
       narratives: [
