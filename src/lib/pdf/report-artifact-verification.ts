@@ -29,6 +29,13 @@ export type ReportArtifactVerificationResult =
       manifest: ReportArtifactManifest | null;
     };
 
+const VALUATION_EFFECTIVE_DATE_SOURCES = new Set([
+  'intake_current_date',
+  'jurisdiction_convention',
+  'user_supplied',
+  'admin_override',
+]);
+
 export function manifestPathForPdf(pdfPath: string): string {
   const normalized = pdfPath.trim();
   if (!normalized || !normalized.endsWith('.pdf')) {
@@ -92,6 +99,19 @@ function hasSchema13Provenance(manifest: ReportArtifactManifest): boolean {
   );
 }
 
+function hasSchema14Provenance(manifest: ReportArtifactManifest): boolean {
+  const jurisdiction = manifest.jurisdiction as Partial<ReportArtifactManifest['jurisdiction']>;
+  const strategy = manifest.strategy as Partial<ReportArtifactManifest['strategy']> | undefined;
+
+  return Boolean(
+    typeof jurisdiction.valuationDate === 'string' &&
+    typeof jurisdiction.valuationDateSource === 'string' &&
+    VALUATION_EFFECTIVE_DATE_SOURCES.has(jurisdiction.valuationDateSource) &&
+    strategy &&
+    typeof strategy.isRetrospectiveAssignment === 'boolean'
+  );
+}
+
 export function verifyReportArtifact(input: {
   reportId: string;
   serviceType: string;
@@ -151,6 +171,15 @@ export function verifyReportArtifact(input: {
       verified: false,
       code: 'MANIFEST_JSON_INVALID',
       message: 'The report manifest is missing required schema 1.3 provenance fields.',
+      manifest: null,
+    };
+  }
+
+  if (schema.minor >= 4 && !hasSchema14Provenance(manifest)) {
+    return {
+      verified: false,
+      code: 'MANIFEST_JSON_INVALID',
+      message: 'The report manifest is missing required schema 1.4 valuation-date provenance fields.',
       manifest: null,
     };
   }
