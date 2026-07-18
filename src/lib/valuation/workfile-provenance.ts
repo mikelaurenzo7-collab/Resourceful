@@ -23,6 +23,11 @@ const VALUATION_EFFECTIVE_DATE_SOURCES = [
   'admin_override',
 ] as const satisfies readonly ValuationEffectiveDateSource[];
 
+type JurisdictionPluginRule = Pick<
+  CountyRule,
+  'jurisdiction_plugin_key' | 'jurisdiction_plugin_version'
+>;
+
 export interface ValuationEffectiveDateEvidence {
   date: string | null;
   source: ValuationEffectiveDateSource | null;
@@ -131,7 +136,7 @@ export function getClassificationSourceEvidence(data: ReportTemplateData): Offic
 }
 
 export function getJurisdictionPlugin(
-  countyRule: CountyRule | null | undefined
+  countyRule: JurisdictionPluginRule | null | undefined
 ): JurisdictionPlugin | null {
   if (!countyRule) return null;
   const key = hasText(countyRule.jurisdiction_plugin_key)
@@ -148,7 +153,7 @@ export function getJurisdictionPlugin(
 }
 
 export function isCookCountyJurisdiction(
-  countyRule: CountyRule | null | undefined
+  countyRule: JurisdictionPluginRule | null | undefined
 ): boolean {
   const plugin = getJurisdictionPlugin(countyRule);
   return plugin?.key === 'cook_county_classification' && plugin.version >= 1;
