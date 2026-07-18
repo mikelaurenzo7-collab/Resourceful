@@ -188,6 +188,9 @@ export async function runPdfAssembly(
     .from('reports')
     .update({
       report_pdf_storage_path: pdfPath,
+      // A new immutable artifact requires its own delivery notification. Never
+      // let a prior release's receipt suppress retries for this release.
+      notification_sent_at: null,
     })
     .eq('id', reportId);
 
