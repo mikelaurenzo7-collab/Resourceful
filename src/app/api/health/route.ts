@@ -7,6 +7,7 @@ import type { NextRequest } from 'next/server';
 import { AI_MODELS } from '@/config/ai';
 import { getFastAiConfigSummary } from '@/lib/services/fast-ai';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
+import { getDeploymentIdentity } from '@/lib/utils/deployment-identity';
 
 interface ServiceStatus {
   status: 'ok' | 'error' | 'not_configured';
@@ -16,17 +17,6 @@ interface ServiceStatus {
 
 const REQUIRED_STORAGE_BUCKETS = ['reports', 'photos'] as const;
 const NO_STORE_HEADERS = { 'Cache-Control': 'no-store, max-age=0' };
-const DEPLOYMENT_COMMIT =
-  process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? 'unknown';
-const DEPLOYMENT_ENVIRONMENT =
-  process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? 'unknown';
-
-function deploymentIdentity() {
-  return {
-    commit: DEPLOYMENT_COMMIT,
-    environment: DEPLOYMENT_ENVIRONMENT,
-  };
-}
 
 export async function GET(request: NextRequest) {
   // Public callers get liveness plus non-sensitive deployment identity. The
@@ -38,7 +28,7 @@ export async function GET(request: NextRequest) {
       {
         healthy: true,
         timestamp: new Date().toISOString(),
-        deployment: deploymentIdentity(),
+        deployment: getDeploymentIdentity(),
       },
       { headers: NO_STORE_HEADERS }
     );
@@ -154,7 +144,7 @@ export async function GET(request: NextRequest) {
     {
       healthy: !hasDependencyError,
       timestamp: new Date().toISOString(),
-      deployment: deploymentIdentity(),
+      deployment: getDeploymentIdentity(),
       services: results,
     },
     {
