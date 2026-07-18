@@ -24,6 +24,7 @@ function baseData(overrides: Record<string, unknown> = {}): ReportTemplateData {
       id: 'report-1',
       service_type: 'tax_appeal',
       desired_outcome: null,
+      is_retrospective_assignment: false,
       property_type: 'residential',
       property_issues: [],
       additional_notes: null,
@@ -36,6 +37,11 @@ function baseData(overrides: Record<string, unknown> = {}): ReportTemplateData {
       zoning_conformance: 'Legal conforming',
       deed_history: null,
       data_collection_notes: null,
+      unit_count: null,
+      unit_count_source_type: null,
+      unit_count_source_reference: null,
+      regulatory_source_authority: null,
+      regulatory_source_url: null,
       building_sqft_gross: 1800,
       building_sqft_living_area: 1800,
       dock_door_count: null,
@@ -157,41 +163,38 @@ describe('evaluateCaseStrategy', () => {
     expect(result.hardFailures).toContain('A recent subject transfer requires a dedicated property_history narrative');
   });
 
-  it('warns against verified per-unit metrics when multifamily unit count is not source labeled', () => {
+  it('rejects a prose-only multifamily unit count', () => {
     const data = baseData({
       property: {
         ...baseData().property,
-        property_subtype: 'Multifamily building',
+        property_subtype: '12-unit multifamily building',
         property_class_description: 'Apartment property',
+        data_collection_notes: 'The assessor record identifies a 12-unit property.',
       },
-      narratives: [
-        narrative('summary_of_salient_facts', 'Residential income property'),
-        narrative('property_description', 'A masonry apartment building'),
-        ...baseData().narratives.filter(
-          (section) => !['summary_of_salient_facts', 'property_description'].includes(section.section_name)
-        ),
-      ],
+      comparableSales: [{ property_class: 'Twelve-unit multifamily' }],
     });
 
     const result = evaluateCaseStrategy(data);
     expect(result.flags).toContain('multifamily_unit_economics');
-    expect(result.warnings.some((warning) => warning.includes('source-labeled unit count'))).toBe(true);
+    expect(result.hardFailures.some((failure) => failure.includes('structured unit count'))).toBe(true);
   });
 
-  it('recognizes a hyphenated multifamily unit count as documented evidence', () => {
+  it('accepts an attributed structured multifamily unit count', () => {
     const data = baseData({
       property: {
         ...baseData().property,
-        property_subtype: '3-unit multifamily building',
+        property_subtype: '12-unit multifamily building',
         property_class_description: 'Apartment property',
-        data_collection_notes: 'Assessor record identifies a 3-unit property.',
+        unit_count: 12,
+        unit_count_source_type: 'public_record',
+        unit_count_source_reference: 'County assessor property record',
       },
-      comparableSales: [{ property_class: 'Three-unit multifamily' }],
+      comparableSales: [{ property_class: 'Twelve-unit multifamily' }],
     });
 
     const result = evaluateCaseStrategy(data);
     expect(result.flags).toContain('multifamily_unit_economics');
-    expect(result.warnings.some((warning) => warning.includes('source-labeled unit count'))).toBe(false);
+    expect(result.hardFailures.some((failure) => failure.includes('structured unit count'))).toBe(false);
   });
 
   it('requires positive building area for an industrial or flex assignment', () => {
@@ -211,8 +214,22 @@ describe('evaluateCaseStrategy', () => {
     expect(result.hardFailures).toContain('Industrial/flex analysis requires a positive building-area input');
   });
 
-  it('requires effective-date market analysis for a retrospective assignment', () => {
+  it('does not infer a retrospective assignment from report latency', () => {
     const data = baseData({
+      reportDate: '2026-03-11',
+      valuationDate: '2025-07-29',
+    });
+
+    const result = evaluateCaseStrategy(data);
+    expect(result.flags).not.toContain('retrospective_effective_date');
+  });
+
+  it('requires effective-date market analysis when the assignment is explicitly retrospective', () => {
+    const data = baseData({
+      report: {
+        ...baseData().report,
+        is_retrospective_assignment: true,
+      },
       reportDate: '2026-03-11',
       valuationDate: '2025-07-29',
       narratives: baseData().narratives.filter(
@@ -225,16 +242,34 @@ describe('evaluateCaseStrategy', () => {
     expect(result.hardFailures).toContain('A retrospective valuation requires market_analysis tied to the effective date');
   });
 
-  it('requires a sourced regulatory analysis instead of treating a code issue as zoning nonconformance', () => {
+  it('blocks an unsourced regulatory claim', () => {
     const data = baseData({
       report: {
         ...baseData().report,
-        property_issues: ['Active City of Chicago building code violation'],
+        property_issues: ['Active City building code violation'],
       },
     });
 
     const result = evaluateCaseStrategy(data);
     expect(result.flags).toContain('regulatory_or_code_issue');
-    expect(result.warnings.some((warning) => warning.includes('distinguish zoning legality'))).toBe(true);
+    expect(result.hardFailures.some((failure) => failure.includes('official authority'))).toBe(true);
+  });
+
+  it('accepts a regulatory claim with an official authority and source URL', () => {
+    const data = baseData({
+      report: {
+        ...baseData().report,
+        property_issues: ['Active City building code violation'],
+      },
+      property: {
+        ...baseData().property,
+        regulatory_source_authority: 'City Department of Buildings',
+        regulatory_source_url: 'https://city.example.gov/case/123',
+      },
+    });
+
+    const result = evaluateCaseStrategy(data);
+    expect(result.flags).toContain('regulatory_or_code_issue');
+    expect(result.hardFailures.some((failure) => failure.includes('official authority'))).toBe(false);
   });
 });
