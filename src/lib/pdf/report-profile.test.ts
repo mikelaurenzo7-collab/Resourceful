@@ -40,6 +40,15 @@ function baseData(overrides: Record<string, unknown> = {}): ReportTemplateData {
       physical_depreciation_pct: null,
       functional_obsolescence_pct: null,
       land_value: null,
+      cost_replacement_source_authority: null,
+      cost_depreciation_source_authority: null,
+      cost_land_source_authority: null,
+      cost_source_references: null,
+      cost_methodology: null,
+      cost_effective_date: null,
+      cost_verification_state: null,
+      cost_verified_by: null,
+      cost_verified_at: null,
       zoning_designation: 'R-1',
       zoning_description: null,
       tax_year_in_appeal: 2025,
@@ -52,6 +61,12 @@ function baseData(overrides: Record<string, unknown> = {}): ReportTemplateData {
       narrative('property_description'),
       narrative('property_history'),
       narrative('assessment_data'),
+      narrative('site_description_narrative'),
+      narrative('improvement_description_narrative'),
+      narrative('area_analysis_county'),
+      narrative('area_analysis_city'),
+      narrative('area_analysis_neighborhood'),
+      narrative('market_analysis'),
       narrative('hbu_as_vacant'),
       narrative('hbu_as_improved'),
       narrative('appeal_argument_summary'),
@@ -59,6 +74,7 @@ function baseData(overrides: Record<string, unknown> = {}): ReportTemplateData {
       narrative('adjustment_grid_narrative'),
       narrative('assessment_equity'),
       narrative('reconciliation_narrative'),
+      narrative('certification_and_limiting_conditions'),
     ],
     comparableSales: [
       {
@@ -99,7 +115,7 @@ function baseData(overrides: Record<string, unknown> = {}): ReportTemplateData {
 }
 
 describe('buildReportProfile', () => {
-  it('creates a tax-appeal profile with appeal and equity sections', () => {
+  it('creates a tax-appeal profile with appeal, market-context, equity, and certification sections', () => {
     const profile = buildReportProfile(baseData());
 
     expect(profile.documentTitle).toBe('Property Tax Appeal Valuation Analysis');
@@ -107,6 +123,9 @@ describe('buildReportProfile', () => {
     expect(profile.requiredNarratives).toContain('appeal_argument_summary');
     expect(profile.requiredNarratives).toContain('assessment_equity');
     expect(profile.requiredNarratives).toContain('hbu_as_vacant');
+    expect(profile.requiredNarratives).toContain('area_analysis_city');
+    expect(profile.requiredNarratives).toContain('area_analysis_neighborhood');
+    expect(profile.requiredNarratives).toContain('certification_and_limiting_conditions');
   });
 
   it('does not activate Cook County behavior from county text or FIPS alone', () => {
@@ -126,6 +145,7 @@ describe('buildReportProfile', () => {
     const profile = buildReportProfile(data);
     expect(profile.isComplexProperty).toBe(true);
     expect(profile.isIncomeProperty).toBe(true);
+    expect(profile.requiredNarratives).toContain('area_analysis_county');
     expect(profile.requiredNarratives).toContain('market_analysis');
   });
 
@@ -145,7 +165,7 @@ describe('buildReportProfile', () => {
     expect(profile.requiredNarratives).toContain('condition_assessment');
   });
 
-  it('activates the cost approach only when its inputs reconcile', () => {
+  it('activates the cost approach only when arithmetic and provenance reconcile', () => {
     const incomplete = buildReportProfile(baseData({
       property: {
         ...baseData().property,
@@ -162,6 +182,19 @@ describe('buildReportProfile', () => {
         physical_depreciation_pct: 10,
         functional_obsolescence_pct: 0,
         land_value: 20_000,
+        cost_replacement_source_authority: 'Marshall & Swift/Boeckh, 2025 local cost service',
+        cost_depreciation_source_authority: 'Documented age-life analysis reviewed by Test Reviewer',
+        cost_land_source_authority: 'Verified land-sale workfile and assessor record',
+        cost_source_references: {
+          replacementCost: 'MSB-2025-Q1-local-index',
+          depreciation: 'workfile/depreciation-analysis-1',
+          landValue: 'workfile/land-sales-1',
+        },
+        cost_methodology: 'RCN less physical and functional depreciation, plus land value.',
+        cost_effective_date: '2025-01-01',
+        cost_verification_state: 'verified',
+        cost_verified_by: 'Test Reviewer, controlled fixture',
+        cost_verified_at: '2026-07-18T12:00:00.000Z',
       },
     }));
     expect(complete.hasCostApproach).toBe(true);
@@ -178,6 +211,17 @@ describe('evaluateReportProfileCompleteness', () => {
 
     const result = evaluateReportProfileCompleteness(data);
     expect(result.hardFailures.some((failure) => failure.includes('assessment_equity'))).toBe(true);
+  });
+
+  it('fails when the certification boundary is missing', () => {
+    const data = baseData({
+      narratives: baseData().narratives.filter(
+        (section) => section.section_name !== 'certification_and_limiting_conditions'
+      ),
+    });
+
+    const result = evaluateReportProfileCompleteness(data);
+    expect(result.hardFailures.some((failure) => failure.includes('certification_and_limiting_conditions'))).toBe(true);
   });
 
   it('requires every reviewed comparable to have transaction provenance', () => {
@@ -210,6 +254,7 @@ describe('evaluateReportProfileCompleteness', () => {
     const result = evaluateReportProfileCompleteness(data);
     expect(result.hardFailures.some((failure) => failure.includes('replacement-cost-new'))).toBe(true);
     expect(result.hardFailures.some((failure) => failure.includes('land-value'))).toBe(true);
+    expect(result.hardFailures.some((failure) => failure.includes('verification state'))).toBe(true);
   });
 
   it('warns when distressed sales are retained', () => {
