@@ -9,6 +9,7 @@ import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { formatCurrency, formatSqFt, formatLotSize, formatNumber } from '@/lib/templates/helpers';
 import { getAssessorImpliedMarketValue } from '@/lib/dashboard/value-comparison';
 import FloodZoneAndEnvironmental from './FloodZoneAndEnvironmental';
+import { SectionHeader } from './shared';
 
 interface DetailRow {
   label: string;
@@ -28,7 +29,6 @@ export default function PropertyDetails({ data }: { data: ReportTemplateData }) 
     property.assessment_ratio
   );
 
-  // ── Site Data ──────────────────────────────────────────
   const siteDetails: DetailRow[] = [
     { label: 'Parcel Number (APN)', value: property.apn ?? report.pin ?? null },
     { label: 'Owner of Record', value: property.owner_name },
@@ -42,7 +42,6 @@ export default function PropertyDetails({ data }: { data: ReportTemplateData }) 
     { label: 'FEMA Map Panel', value: property.flood_map_panel_number },
   ].filter((row) => row.value != null);
 
-  // ── Improvement Data ───────────────────────────────────
   const improvementDetails: DetailRow[] = [
     { label: 'Property Type', value: property.property_class_description ?? report.property_type ?? null },
     { label: 'Property Subtype', value: property.property_subtype },
@@ -67,7 +66,6 @@ export default function PropertyDetails({ data }: { data: ReportTemplateData }) 
     { label: 'Overall Condition', value: property.overall_condition ? capitalize(property.overall_condition) : null },
   ].filter((row) => row.value != null);
 
-  // ── Assessment Data ────────────────────────────────────
   const assessmentDetails: DetailRow[] = [
     { label: 'Raw Assessed Value', value: property.assessed_value ? formatCurrency(property.assessed_value) : null },
     { label: 'Assessment Source', value: property.assessed_value_source },
@@ -78,7 +76,6 @@ export default function PropertyDetails({ data }: { data: ReportTemplateData }) 
     { label: 'Land Value (Assessor)', value: property.land_value ? formatCurrency(property.land_value) : null },
   ].filter((row) => row.value != null);
 
-  // ── Industrial / Commercial extras ─────────────────────
   const industrialDetails: DetailRow[] = [
     { label: 'Dock Doors', value: property.dock_door_count != null ? String(property.dock_door_count) : null },
     { label: 'Overhead Doors', value: property.overhead_door_count != null ? String(property.overhead_door_count) : null },
@@ -88,12 +85,8 @@ export default function PropertyDetails({ data }: { data: ReportTemplateData }) 
 
   return (
     <View>
-      <View style={styles.titleRow} wrap={false}>
-        <Text style={theme.headingLG}>Property Identification Summary</Text>
-        <View style={theme.sectionDivider} />
-      </View>
+      <SectionHeader number="I-A1" title="Property Identification & Valuation Facts" />
 
-      {/* Address block */}
       <View style={styles.addressBlock} wrap={false}>
         <Text style={styles.addressText}>
           {[report.property_address, report.city, report.state].filter(Boolean).join(', ')}
@@ -119,10 +112,14 @@ function DetailGrid({ title, rows }: { title: string; rows: DetailRow[] }) {
   }
 
   return (
-    <View style={styles.gridSection} wrap={false}>
-      <Text style={styles.gridTitle}>{title}</Text>
+    <View style={styles.gridSection}>
+      <Text style={styles.gridTitle} wrap={false}>{title}</Text>
       {pairs.map((pair, index) => (
-        <View key={index} style={[styles.gridRow, index % 2 !== 0 ? { backgroundColor: colors.rowAlt } : {}]}>
+        <View
+          key={index}
+          wrap={false}
+          style={[styles.gridRow, index % 2 !== 0 ? { backgroundColor: colors.rowAlt } : {}]}
+        >
           <View style={styles.gridCell}>
             <Text style={styles.cellLabel}>{pair[0]!.label}</Text>
             <Text style={styles.cellValue}>{pair[0]!.value}</Text>
@@ -164,7 +161,6 @@ function capitalize(value: string): string {
 }
 
 const styles = StyleSheet.create({
-  titleRow: { marginBottom: 8 },
   addressBlock: {
     backgroundColor: colors.calloutBg,
     padding: 10,
