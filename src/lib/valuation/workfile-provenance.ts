@@ -1,9 +1,10 @@
 import type { ReportTemplateData } from '@/lib/templates/report-template';
-import type { CountyRule, PropertyData, Report } from '@/types/database';
-import {
-  dateOnly,
-  type ValuationEffectiveDateSource,
-} from './valuation-date-policy';
+import type {
+  CountyRule,
+  EvidenceSourceType,
+  ValuationEffectiveDateSource,
+} from '@/types/database';
+import { dateOnly } from './valuation-date-policy';
 
 export const EVIDENCE_SOURCE_TYPES = [
   'owner_statement',
@@ -13,9 +14,7 @@ export const EVIDENCE_SOURCE_TYPES = [
   'calculation',
   'assumption',
   'professional_judgment',
-] as const;
-
-export type EvidenceSourceType = typeof EVIDENCE_SOURCE_TYPES[number];
+] as const satisfies readonly EvidenceSourceType[];
 
 const VALUATION_EFFECTIVE_DATE_SOURCES = [
   'intake_current_date',
@@ -23,27 +22,6 @@ const VALUATION_EFFECTIVE_DATE_SOURCES = [
   'user_supplied',
   'admin_override',
 ] as const satisfies readonly ValuationEffectiveDateSource[];
-
-interface ReportWorkfileFields {
-  is_retrospective_assignment?: boolean | null;
-  valuation_effective_date?: string | null;
-  valuation_effective_date_source?: string | null;
-}
-
-interface PropertyWorkfileFields {
-  unit_count?: number | null;
-  unit_count_source_type?: string | null;
-  unit_count_source_reference?: string | null;
-  regulatory_source_authority?: string | null;
-  regulatory_source_url?: string | null;
-  property_class_source_authority?: string | null;
-  property_class_source_url?: string | null;
-}
-
-interface CountyRulePluginFields {
-  jurisdiction_plugin_key?: string | null;
-  jurisdiction_plugin_version?: number | null;
-}
 
 export interface ValuationEffectiveDateEvidence {
   date: string | null;
@@ -73,14 +51,6 @@ function hasText(value: string | null | undefined): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-function asReportWorkfile(data: ReportTemplateData): Report & ReportWorkfileFields {
-  return data.report as Report & ReportWorkfileFields;
-}
-
-function asPropertyWorkfile(data: ReportTemplateData): PropertyData & PropertyWorkfileFields {
-  return data.property as PropertyData & PropertyWorkfileFields;
-}
-
 export function isHttpUrl(value: string | null | undefined): boolean {
   if (!hasText(value)) return false;
   try {
@@ -92,18 +62,16 @@ export function isHttpUrl(value: string | null | undefined): boolean {
 }
 
 export function isRetrospectiveAssignment(data: ReportTemplateData): boolean {
-  return asReportWorkfile(data).is_retrospective_assignment === true;
+  return data.report.is_retrospective_assignment === true;
 }
 
 export function getValuationEffectiveDateEvidence(
   data: ReportTemplateData
 ): ValuationEffectiveDateEvidence {
-  const report = asReportWorkfile(data);
-  const date = dateOnly(report.valuation_effective_date);
-  const source = VALUATION_EFFECTIVE_DATE_SOURCES.includes(
-    report.valuation_effective_date_source as ValuationEffectiveDateSource
-  )
-    ? report.valuation_effective_date_source as ValuationEffectiveDateSource
+  const date = dateOnly(data.report.valuation_effective_date);
+  const storedSource = data.report.valuation_effective_date_source;
+  const source = storedSource != null && VALUATION_EFFECTIVE_DATE_SOURCES.includes(storedSource)
+    ? storedSource
     : null;
 
   return {
@@ -114,18 +82,17 @@ export function getValuationEffectiveDateEvidence(
 }
 
 export function getUnitCountEvidence(data: ReportTemplateData): UnitCountEvidence {
-  const property = asPropertyWorkfile(data);
+  const storedCount = data.property.unit_count;
   const count =
-    typeof property.unit_count === 'number' && Number.isInteger(property.unit_count) && property.unit_count > 0
-      ? property.unit_count
+    typeof storedCount === 'number' && Number.isInteger(storedCount) && storedCount > 0
+      ? storedCount
       : null;
-  const sourceType = EVIDENCE_SOURCE_TYPES.includes(
-    property.unit_count_source_type as EvidenceSourceType
-  )
-    ? property.unit_count_source_type as EvidenceSourceType
+  const storedSourceType = data.property.unit_count_source_type;
+  const sourceType = storedSourceType != null && EVIDENCE_SOURCE_TYPES.includes(storedSourceType)
+    ? storedSourceType
     : null;
-  const sourceReference = hasText(property.unit_count_source_reference)
-    ? property.unit_count_source_reference.trim()
+  const sourceReference = hasText(data.property.unit_count_source_reference)
+    ? data.property.unit_count_source_reference.trim()
     : null;
 
   return {
@@ -150,15 +117,16 @@ function officialSource(
 }
 
 export function getRegulatorySourceEvidence(data: ReportTemplateData): OfficialSourceEvidence {
-  const property = asPropertyWorkfile(data);
-  return officialSource(property.regulatory_source_authority, property.regulatory_source_url);
+  return officialSource(
+    data.property.regulatory_source_authority,
+    data.property.regulatory_source_url
+  );
 }
 
 export function getClassificationSourceEvidence(data: ReportTemplateData): OfficialSourceEvidence {
-  const property = asPropertyWorkfile(data);
   return officialSource(
-    property.property_class_source_authority,
-    property.property_class_source_url
+    data.property.property_class_source_authority,
+    data.property.property_class_source_url
   );
 }
 
@@ -166,15 +134,14 @@ export function getJurisdictionPlugin(
   countyRule: CountyRule | null | undefined
 ): JurisdictionPlugin | null {
   if (!countyRule) return null;
-  const rule = countyRule as CountyRule & CountyRulePluginFields;
-  const key = hasText(rule.jurisdiction_plugin_key)
-    ? rule.jurisdiction_plugin_key.trim()
+  const key = hasText(countyRule.jurisdiction_plugin_key)
+    ? countyRule.jurisdiction_plugin_key.trim()
     : null;
   const version =
-    typeof rule.jurisdiction_plugin_version === 'number' &&
-    Number.isInteger(rule.jurisdiction_plugin_version) &&
-    rule.jurisdiction_plugin_version > 0
-      ? rule.jurisdiction_plugin_version
+    typeof countyRule.jurisdiction_plugin_version === 'number' &&
+    Number.isInteger(countyRule.jurisdiction_plugin_version) &&
+    countyRule.jurisdiction_plugin_version > 0
+      ? countyRule.jurisdiction_plugin_version
       : null;
 
   return key != null && version != null ? { key, version } : null;
