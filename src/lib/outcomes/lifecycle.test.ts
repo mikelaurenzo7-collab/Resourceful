@@ -50,6 +50,17 @@ describe('appeal outcome lifecycle', () => {
     ).toEqual({ valid: true });
   });
 
+  it('does not reopen a closed case as pending', () => {
+    expect(
+      validateOutcomeFilingContext({
+        outcome: 'pending',
+        filingStatus: 'closed',
+        filedAt: '2026-07-01',
+        filingMethod: 'online',
+      }).valid
+    ).toBe(false);
+  });
+
   it('maps pending and final decisions to deterministic filing states', () => {
     expect(filingStatusForOutcome('pending', 'filed')).toBe('decision_pending');
     expect(filingStatusForOutcome('won', 'decision_pending')).toBe('closed');
