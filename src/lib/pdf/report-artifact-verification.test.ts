@@ -10,6 +10,7 @@ import {
 } from './report-artifact-manifest';
 import {
   manifestPathForPdf,
+  releaseKeyForPdfPath,
   verifyReportArtifact,
 } from './report-artifact-verification';
 
@@ -93,11 +94,14 @@ describe('verifyReportArtifact', () => {
     });
   });
 
-  it('derives the adjacent manifest path only from a PDF path', () => {
-    expect(manifestPathForPdf('report/releases/release.pdf')).toBe(
-      'report/releases/release.manifest.json'
+  it('derives the adjacent manifest path and immutable release key', () => {
+    const path = 'report/releases/20260718T150405678Z_a1b2c3d4e5f60718.pdf';
+    expect(manifestPathForPdf(path)).toBe(
+      'report/releases/20260718T150405678Z_a1b2c3d4e5f60718.manifest.json'
     );
+    expect(releaseKeyForPdfPath(path)).toBe('20260718T150405678Z_a1b2c3d4e5f60718');
     expect(() => manifestPathForPdf('report/releases/release.txt')).toThrow('.pdf storage path');
+    expect(() => releaseKeyForPdfPath('report/releases/not safe.pdf')).toThrow('safe immutable release key');
   });
 
   it('rejects corrupted PDF bytes by length and hash', () => {
