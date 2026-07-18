@@ -21,6 +21,7 @@ import {
 import { evaluateNationwideReportIntegrity } from '@/lib/valuation/nationwide-report-integrity-policy';
 import { evaluatePdfReleasePolicy } from '@/lib/valuation/pdf-release-policy';
 import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
+import { evaluateReportConclusionIntegrity } from '@/lib/valuation/report-conclusion-integrity-policy';
 import { evaluateTaxAppealRelease } from '@/lib/valuation/tax-appeal-release-policy';
 import { getClassificationSourceEvidence } from '@/lib/valuation/workfile-provenance';
 import { pipelineLogger } from '@/lib/logger';
@@ -149,6 +150,10 @@ export async function runPdfAssembly(
   qaIssues.push(...nationwideIntegrity.warnings, ...nationwideIntegrity.hardFailures);
   hardFails.push(...nationwideIntegrity.hardFailures);
 
+  const conclusionIntegrity = evaluateReportConclusionIntegrity(templateData);
+  qaIssues.push(...conclusionIntegrity.warnings, ...conclusionIntegrity.hardFailures);
+  hardFails.push(...conclusionIntegrity.hardFailures);
+
   if (!templateData.property.building_sqft_living_area && !templateData.property.lot_size_sqft) {
     qaIssues.push('No square footage data (building or lot)');
   }
@@ -166,6 +171,7 @@ export async function runPdfAssembly(
         caseStrategyFlags: caseStrategy.flags,
         recentSubjectSaleDate: caseStrategy.recentSubjectSaleDate,
         nationwideIntegrity,
+        conclusionIntegrity,
         qaIssues: uniqueQaIssues,
         jurisdictionRelease,
         assessmentContext,
@@ -190,6 +196,7 @@ export async function runPdfAssembly(
       assignmentKind: profileAssessment.profile.assignmentKind,
       caseStrategyFlags: caseStrategy.flags,
       nationwideIntegrityWarningCodes: nationwideIntegrity.warningCodes,
+      conclusionIntegrityWarningCodes: conclusionIntegrity.warningCodes,
     },
     '[stage7] Rendering case-specific PDF report ...'
   );
@@ -273,6 +280,7 @@ export async function runPdfAssembly(
       assignmentKind: profileAssessment.profile.assignmentKind,
       caseStrategyFlags: caseStrategy.flags,
       nationwideIntegrityWarningCodes: nationwideIntegrity.warningCodes,
+      conclusionIntegrityWarningCodes: conclusionIntegrity.warningCodes,
       sizeKB: (pdfBuffer.length / 1024).toFixed(0),
       pdfSha256: manifest.artifact.sha256,
       jurisdictionReleaseCode: jurisdictionRelease.code,
