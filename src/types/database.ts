@@ -55,6 +55,8 @@ export type EvidenceSourceType =
   | 'assumption'
   | 'professional_judgment';
 
+export type CostVerificationState = 'verified' | 'assumption' | 'unverified';
+
 // ─── Table Row Types ─────────────────────────────────────────────────────────
 // These types match the current database migration set.
 // IMPORTANT: Use `type` instead of `interface` so they extend Record<string, unknown>
@@ -210,6 +212,16 @@ export type PropertyData = {
   cost_approach_value: number | null;
   functional_obsolescence_pct: number | null;
   functional_obsolescence_notes: string | null;
+  // Cost approach provenance (migration 033)
+  cost_replacement_source_authority: string | null;
+  cost_depreciation_source_authority: string | null;
+  cost_land_source_authority: string | null;
+  cost_source_references: Record<string, unknown> | null;
+  cost_methodology: string | null;
+  cost_effective_date: string | null;
+  cost_verification_state: CostVerificationState | null;
+  cost_verified_by: string | null;
+  cost_verified_at: string | null;
   // Photo value attribution — tracks exactly how much photos moved the needle
   concluded_value: number | null;
   concluded_value_without_photos: number | null;
@@ -426,7 +438,6 @@ export type CountyRule = {
   assessor_api_documentation_url: string | null;
   assessor_api_notes: string | null;
   pro_se_tips: string | null;
-  // Filing schedule fields
   assessment_cycle: string | null;
   assessment_notices_mailed: string | null;
   appeal_window_days: number | null;
@@ -435,47 +446,38 @@ export type CountyRule = {
   appeal_window_end_day: number | null;
   next_appeal_deadline: string | null;
   current_tax_year: number | null;
-  // Filing steps and requirements
   filing_steps: { step_number: number; title: string; description: string; url?: string; form_name?: string }[] | null;
   required_documents: string[] | null;
   informal_review_available: boolean;
   informal_review_notes: string | null;
-  // Hearing details
   hearing_duration_minutes: number | null;
   hearing_scheduling_notes: string | null;
   virtual_hearing_available: boolean;
   virtual_hearing_platform: string | null;
-  // Representation rules
   authorized_rep_allowed: boolean | null;
   authorized_rep_form_url: string | null;
   authorized_rep_types: string[] | null;
   rep_restrictions_notes: string | null;
-  // Further appeal / escalation
   further_appeal_body: string | null;
   further_appeal_deadline_rule: string | null;
   further_appeal_url: string | null;
   further_appeal_fee_cents: number;
-  // Board intelligence & strategy
   board_personality_notes: string | null;
   winning_argument_patterns: string | null;
   common_assessor_errors: string | null;
   success_rate_pct: number | null;
   success_rate_source: string | null;
   avg_savings_pct: number | null;
-  // Per-county land-to-value ratio overrides
   land_ratio_residential: number | null;
   land_ratio_commercial: number | null;
   land_ratio_industrial: number | null;
-  // Versioned jurisdiction behavior (migration 030)
   jurisdiction_plugin_key: string | null;
   jurisdiction_plugin_version: number | null;
-  // Cook County enrichment fields
   level_of_assessment_commercial?: number | null;
   level_of_assessment_residential?: number | null;
   cost_approach_disfavored?: boolean | null;
   valuation_date_convention?: string | null;
   fair_cash_value_synonym?: boolean | null;
-  // Standard fields
   is_active: boolean;
   last_verified_date: string | null;
   verified_by: string | null;
@@ -502,8 +504,6 @@ export type ApprovalEvent = {
   notes: string | null;
   created_at: string;
 };
-
-// ─── Attorney Network ─────────────────────────────────────────────────────────
 
 export type Attorney = {
   id: string;
@@ -555,7 +555,6 @@ export type AttorneyReferralInsert = {
   revenue_share_cents?: number | null;
 };
 
-// ─── Referral Codes ──────────────────────────────────────────────────────
 export type ReferralCode = {
   id: string;
   code: string;
@@ -570,7 +569,6 @@ export type ReferralCode = {
   created_at: string;
 };
 
-// ─── Reminder Subscriptions ──────────────────────────────────────────────
 export type ReminderSubscription = {
   id: string;
   email: string;
@@ -589,7 +587,6 @@ export type ReminderSubscription = {
   created_at: string;
 };
 
-// ─── API Partners ────────────────────────────────────────────────────────
 export type ApiPartner = {
   id: string;
   firm_name: string;
@@ -610,8 +607,6 @@ export type ApiPartner = {
   updated_at: string;
 };
 
-// ─── Form Submissions ─────────────────────────────────────────────────────────
-
 export type FormSubmission = {
   id: string;
   report_id: string;
@@ -626,8 +621,6 @@ export type FormSubmission = {
   created_at: string;
   updated_at: string;
 };
-
-// ─── Insert Types (omit server-generated fields) ────────────────────────────
 
 export type ReportInsert = Omit<Report,
   | 'id'
@@ -658,26 +651,21 @@ export type ReportInsert = Omit<Report,
   is_retrospective_assignment?: boolean;
   valuation_effective_date?: string | null;
   valuation_effective_date_source?: ValuationEffectiveDateSource | null;
-  // Computed by Stage 5 — not needed at creation time; DB defaults apply
   case_strength_score?: number | null;
   case_value_at_stake?: number | null;
   is_underassessed?: boolean;
   underassessment_pct?: number | null;
-  // Appeal outcome tracking — populated after appeal resolution
   appeal_outcome_details?: Record<string, unknown> | null;
   outcome_reported_at?: string | null;
   actual_savings_cents?: number | null;
   outcome_notes?: string | null;
-  // Referral & API partner — DB defaults apply
   referral_code_id?: string | null;
   referral_discount_cents?: number;
   api_partner_id?: string | null;
   is_white_label?: boolean;
-  // Dashboard-first delivery — DB defaults apply
   email_delivery_preference?: boolean;
   outcome_followup_sent_at?: string | null;
   outcome_followup_token?: string | null;
-  // Cart recovery — DB default null
   recovery_email_sent_at?: string | null;
 };
 
@@ -691,6 +679,15 @@ export type PropertyDataInsert = Omit<PropertyData,
   | 'regulatory_source_url'
   | 'property_class_source_authority'
   | 'property_class_source_url'
+  | 'cost_replacement_source_authority'
+  | 'cost_depreciation_source_authority'
+  | 'cost_land_source_authority'
+  | 'cost_source_references'
+  | 'cost_methodology'
+  | 'cost_effective_date'
+  | 'cost_verification_state'
+  | 'cost_verified_by'
+  | 'cost_verified_at'
 > & {
   id?: string;
   created_at?: string;
@@ -701,65 +698,36 @@ export type PropertyDataInsert = Omit<PropertyData,
   regulatory_source_url?: string | null;
   property_class_source_authority?: string | null;
   property_class_source_url?: string | null;
+  cost_replacement_source_authority?: string | null;
+  cost_depreciation_source_authority?: string | null;
+  cost_land_source_authority?: string | null;
+  cost_source_references?: Record<string, unknown> | null;
+  cost_methodology?: string | null;
+  cost_effective_date?: string | null;
+  cost_verification_state?: CostVerificationState | null;
+  cost_verified_by?: string | null;
+  cost_verified_at?: string | null;
 };
 
-export type MeasurementInsert = Omit<Measurement, 'id' | 'created_at'> & {
-  id?: string;
-  created_at?: string;
-};
-
-export type PhotoInsert = Omit<Photo, 'id' | 'uploaded_at'> & {
-  id?: string;
-  uploaded_at?: string;
-};
-
+export type MeasurementInsert = Omit<Measurement, 'id' | 'created_at'> & { id?: string; created_at?: string };
+export type PhotoInsert = Omit<Photo, 'id' | 'uploaded_at'> & { id?: string; uploaded_at?: string };
 export type ComparableSaleInsert = Omit<ComparableSale, 'id' | 'created_at' | 'is_distressed_sale'> & {
   id?: string;
   created_at?: string;
-  // DB default false; explicitly set by Stage 2 arms-length screening
   is_distressed_sale?: boolean;
 };
-
-export type ComparableRentalInsert = Omit<ComparableRental, 'id' | 'created_at'> & {
-  id?: string;
-  created_at?: string;
-};
-
-export type IncomeAnalysisInsert = Omit<IncomeAnalysis, 'id' | 'created_at'> & {
-  id?: string;
-  created_at?: string;
-};
-
-export type ReportNarrativeInsert = Omit<ReportNarrative, 'id' | 'generated_at'> & {
-  id?: string;
-  generated_at?: string;
-};
-
-export type CountyRuleInsert = Omit<
-  CountyRule,
-  'created_at' | 'updated_at' | 'jurisdiction_plugin_key' | 'jurisdiction_plugin_version'
-> & {
+export type ComparableRentalInsert = Omit<ComparableRental, 'id' | 'created_at'> & { id?: string; created_at?: string };
+export type IncomeAnalysisInsert = Omit<IncomeAnalysis, 'id' | 'created_at'> & { id?: string; created_at?: string };
+export type ReportNarrativeInsert = Omit<ReportNarrative, 'id' | 'generated_at'> & { id?: string; generated_at?: string };
+export type CountyRuleInsert = Omit<CountyRule, 'created_at' | 'updated_at' | 'jurisdiction_plugin_key' | 'jurisdiction_plugin_version'> & {
   created_at?: string;
   updated_at?: string;
   jurisdiction_plugin_key?: string | null;
   jurisdiction_plugin_version?: number | null;
 };
-
-export type AdminUserInsert = Omit<AdminUser, 'id' | 'created_at'> & {
-  id?: string;
-  created_at?: string;
-};
-
-export type ApprovalEventInsert = Omit<ApprovalEvent, 'id' | 'created_at'> & {
-  id?: string;
-  created_at?: string;
-};
-
-export type AttorneyInsert = Omit<Attorney, 'id' | 'created_at' | 'updated_at'> & {
-  id?: string;
-  created_at?: string;
-  updated_at?: string;
-};
+export type AdminUserInsert = Omit<AdminUser, 'id' | 'created_at'> & { id?: string; created_at?: string };
+export type ApprovalEventInsert = Omit<ApprovalEvent, 'id' | 'created_at'> & { id?: string; created_at?: string };
+export type AttorneyInsert = Omit<Attorney, 'id' | 'created_at' | 'updated_at'> & { id?: string; created_at?: string; updated_at?: string };
 
 export type FormSubmissionInsert = {
   report_id: string;
@@ -773,8 +741,6 @@ export type FormSubmissionInsert = {
   notes?: string | null;
 };
 
-// ─── Update Types ───────────────────────────────────────────────────────────
-
 export type ReportUpdate = Partial<Report>;
 export type PropertyDataUpdate = Partial<PropertyData>;
 export type MeasurementUpdate = Partial<Measurement>;
@@ -784,121 +750,33 @@ export type IncomeAnalysisUpdate = Partial<IncomeAnalysis>;
 export type ReportNarrativeUpdate = Partial<ReportNarrative>;
 export type CountyRuleUpdate = Partial<CountyRule>;
 
-// ─── Database Type (Supabase-compatible) ────────────────────────────────────
-// Must satisfy GenericSchema from @supabase/postgrest-js which requires:
-// - Tables: Record<string, { Row, Insert, Update, Relationships }>
-// - Views: Record<string, GenericView>
-// - Functions: Record<string, GenericFunction>
-
 export type Database = {
   public: {
     Tables: {
-      users: {
-        Row: User;
-        Insert: Omit<User, 'created_at'> & { created_at?: string };
-        Update: Partial<User>;
-        Relationships: [];
-      };
-      reports: {
-        Row: Report;
-        Insert: ReportInsert;
-        Update: ReportUpdate;
-        Relationships: [];
-      };
-      property_data: {
-        Row: PropertyData;
-        Insert: PropertyDataInsert;
-        Update: PropertyDataUpdate;
-        Relationships: [];
-      };
-      measurements: {
-        Row: Measurement;
-        Insert: MeasurementInsert;
-        Update: MeasurementUpdate;
-        Relationships: [];
-      };
-      photos: {
-        Row: Photo;
-        Insert: PhotoInsert;
-        Update: PhotoUpdate;
-        Relationships: [];
-      };
-      comparable_sales: {
-        Row: ComparableSale;
-        Insert: ComparableSaleInsert;
-        Update: ComparableSaleUpdate;
-        Relationships: [];
-      };
-      comparable_rentals: {
-        Row: ComparableRental;
-        Insert: ComparableRentalInsert;
-        Update: Partial<ComparableRental>;
-        Relationships: [];
-      };
-      income_analysis: {
-        Row: IncomeAnalysis;
-        Insert: IncomeAnalysisInsert;
-        Update: IncomeAnalysisUpdate;
-        Relationships: [];
-      };
-      report_narratives: {
-        Row: ReportNarrative;
-        Insert: ReportNarrativeInsert;
-        Update: ReportNarrativeUpdate;
-        Relationships: [];
-      };
-      county_rules: {
-        Row: CountyRule;
-        Insert: CountyRuleInsert;
-        Update: CountyRuleUpdate;
-        Relationships: [];
-      };
-      admin_users: {
-        Row: AdminUser;
-        Insert: AdminUserInsert;
-        Update: Partial<AdminUser>;
-        Relationships: [];
-      };
-      approval_events: {
-        Row: ApprovalEvent;
-        Insert: ApprovalEventInsert;
-        Update: Partial<ApprovalEvent>;
-        Relationships: [];
-      };
-      attorneys: {
-        Row: Attorney;
-        Insert: AttorneyInsert;
-        Update: Partial<Attorney>;
-        Relationships: [];
-      };
-      attorney_referrals: {
-        Row: AttorneyReferral;
-        Insert: AttorneyReferralInsert;
-        Update: Partial<AttorneyReferral>;
-        Relationships: [];
-      };
-      form_submissions: {
-        Row: FormSubmission;
-        Insert: FormSubmissionInsert;
-        Update: Partial<FormSubmission>;
-        Relationships: [];
-      };
+      users: { Row: User; Insert: Omit<User, 'created_at'> & { created_at?: string }; Update: Partial<User>; Relationships: [] };
+      reports: { Row: Report; Insert: ReportInsert; Update: ReportUpdate; Relationships: [] };
+      property_data: { Row: PropertyData; Insert: PropertyDataInsert; Update: PropertyDataUpdate; Relationships: [] };
+      measurements: { Row: Measurement; Insert: MeasurementInsert; Update: MeasurementUpdate; Relationships: [] };
+      photos: { Row: Photo; Insert: PhotoInsert; Update: PhotoUpdate; Relationships: [] };
+      comparable_sales: { Row: ComparableSale; Insert: ComparableSaleInsert; Update: ComparableSaleUpdate; Relationships: [] };
+      comparable_rentals: { Row: ComparableRental; Insert: ComparableRentalInsert; Update: Partial<ComparableRental>; Relationships: [] };
+      income_analysis: { Row: IncomeAnalysis; Insert: IncomeAnalysisInsert; Update: IncomeAnalysisUpdate; Relationships: [] };
+      report_narratives: { Row: ReportNarrative; Insert: ReportNarrativeInsert; Update: ReportNarrativeUpdate; Relationships: [] };
+      county_rules: { Row: CountyRule; Insert: CountyRuleInsert; Update: CountyRuleUpdate; Relationships: [] };
+      admin_users: { Row: AdminUser; Insert: AdminUserInsert; Update: Partial<AdminUser>; Relationships: [] };
+      approval_events: { Row: ApprovalEvent; Insert: ApprovalEventInsert; Update: Partial<ApprovalEvent>; Relationships: [] };
+      attorneys: { Row: Attorney; Insert: AttorneyInsert; Update: Partial<Attorney>; Relationships: [] };
+      attorney_referrals: { Row: AttorneyReferral; Insert: AttorneyReferralInsert; Update: Partial<AttorneyReferral>; Relationships: [] };
+      form_submissions: { Row: FormSubmission; Insert: FormSubmissionInsert; Update: Partial<FormSubmission>; Relationships: [] };
       referral_codes: {
         Row: ReferralCode;
-        Insert: Omit<ReferralCode, 'id' | 'created_at' | 'times_used'> & {
-          id?: string;
-          created_at?: string;
-          times_used?: number;
-        };
+        Insert: Omit<ReferralCode, 'id' | 'created_at' | 'times_used'> & { id?: string; created_at?: string; times_used?: number };
         Update: Partial<ReferralCode>;
         Relationships: [];
       };
       reminder_subscriptions: {
         Row: ReminderSubscription;
-        Insert: Omit<ReminderSubscription, 'id' | 'created_at'> & {
-          id?: string;
-          created_at?: string;
-        };
+        Insert: Omit<ReminderSubscription, 'id' | 'created_at'> & { id?: string; created_at?: string };
         Update: Partial<ReminderSubscription>;
         Relationships: [];
       };
