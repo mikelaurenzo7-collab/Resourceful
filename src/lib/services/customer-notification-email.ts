@@ -31,6 +31,11 @@ export interface EmailResult {
   error: string | null;
 }
 
+export interface CustomerEmailContent {
+  subject: string;
+  html: string;
+}
+
 let resendClient: Resend | null = null;
 
 function getResend(): Resend {
@@ -109,15 +114,14 @@ function valueRow(label: string, value: number | null, emphasis = false): string
   </tr>`;
 }
 
-export async function sendVerifiedReportReadyNotification(
-  params: ReportReadyNotificationParams
-): Promise<EmailResult> {
-  const appUrl = getAppUrl();
+export function buildReportReadyEmailContent(
+  params: ReportReadyNotificationParams,
+  appUrl = getAppUrl()
+): CustomerEmailContent {
   const reportUrl = `${appUrl}/report/${encodeURIComponent(params.reportId)}`;
   const downloadUrl = `${appUrl}/api/reports/${encodeURIComponent(params.reportId)}/download`;
   const copy = assignmentCopy(params.serviceType);
   const isTaxAppeal = params.serviceType === 'tax_appeal';
-
   const assessmentRows = isTaxAppeal
     ? [
         valueRow('Current Assessed Value', params.currentAssessedValue),
@@ -126,50 +130,93 @@ export async function sendVerifiedReportReadyNotification(
       ].join('')
     : '';
 
+  return {
+    subject: copy.subject,
+    html: wrapHtml(`
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;">
+        <h1 style="color:#1a1a1a;font-size:24px;">Your Report Is Ready</h1>
+        <p>Your ${escapeHtml(copy.noun)} for <strong>${escapeHtml(params.propertyAddress)}</strong> has completed review and is available in your Resourceful dashboard.</p>
+
+        <div style="background:#f5f5f5;border-radius:8px;padding:20px;margin:24px 0;">
+          <table style="width:100%;border-collapse:collapse;">
+            ${valueRow('Concluded Market Value', params.concludedMarketValue)}
+            ${assessmentRows}
+          </table>
+        </div>
+
+        ${isTaxAppeal && params.assessmentGap != null && params.assessmentGap > 0 ? `
+          <p style="font-size:13px;color:#555;">
+            The assessment gap compares the current assessed value with the report's indicated assessed value. It is not an estimate or guarantee of tax savings. Actual taxes depend on the taxing jurisdiction, equalization, exemptions, tax rates, and the final decision.
+          </p>
+        ` : ''}
+
+        <p>Your report includes ${escapeHtml(copy.contents)}.</p>
+
+        <a href="${reportUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:600;font-size:16px;">
+          View Your Report
+        </a>
+
+        <p style="margin-top:16px;">
+          <a href="${downloadUrl}" style="color:#2563eb;text-decoration:underline;font-size:13px;">Download PDF</a>
+        </p>
+
+        <p style="margin-top:24px;font-size:13px;color:#666;">
+          Your report remains available in your dashboard.${isTaxAppeal && params.countyName ? ` Review the report page for ${escapeHtml(params.countyName)} filing requirements and deadlines.` : ''}
+        </p>
+
+        <p style="margin-top:32px;font-size:12px;color:#999;">
+          This market value analysis is not a certified appraisal or legal advice.
+        </p>
+      </div>
+    `),
+  };
+}
+
+export function buildOutcomeFollowupEmailContent(
+  params: OutcomeFollowupParams,
+  appUrl = getAppUrl()
+): CustomerEmailContent {
+  const greeting = params.clientName ? `Hi ${escapeHtml(params.clientName)}` : 'Hi there';
+  const outcomeUrl = `${appUrl}/report/${encodeURIComponent(params.reportId)}?token=${encodeURIComponent(params.outcomeToken)}`;
+  const reportUrl = `${appUrl}/report/${encodeURIComponent(params.reportId)}`;
+
+  return {
+    subject: 'How Did Your Property Tax Appeal Go?',
+    html: wrapHtml(`
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;">
+        <h1 style="color:#1a1a1a;font-size:24px;">How Did Your Appeal Go?</h1>
+        <p>${greeting},</p>
+        <p>A couple of months ago, Resourceful prepared your property assessment report for <strong>${escapeHtml(params.propertyAddress)}</strong>${params.assessmentGap != null && params.assessmentGap > 0 ? ` with an estimated assessment gap of <strong>${escapeHtml(formatDollarValue(params.assessmentGap))}</strong>` : ''}.</p>
+
+        <p>Share the current status of your appeal. Outcome data helps Resourceful measure report performance and improve future county-specific analysis.</p>
+
+        <a href="${outcomeUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:600;font-size:16px;margin:16px 0;">
+          Share Your Result
+        </a>
+
+        <p style="font-size:13px;color:#666;">It takes less than 30 seconds. Tell us whether you did not file, the appeal is pending, or the decision was granted, partially granted, denied, or withdrawn—and provide the final assessed value when available.</p>
+
+        <p style="margin-top:32px;font-size:12px;color:#999;">
+          You received this email because you purchased a Resourceful property tax assessment report.<br>
+          Your report remains available at <a href="${reportUrl}" style="color:#2563eb;">${reportUrl}</a>.
+        </p>
+      </div>
+    `),
+  };
+}
+
+export async function sendVerifiedReportReadyNotification(
+  params: ReportReadyNotificationParams
+): Promise<EmailResult> {
+  const content = buildReportReadyEmailContent(params);
+
   try {
     const result = await sendWithRetry({
       from: getFromAddress(),
       to: params.to,
-      subject: copy.subject,
-      html: wrapHtml(`
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;">
-          <h1 style="color:#1a1a1a;font-size:24px;">Your Report Is Ready</h1>
-          <p>Your ${escapeHtml(copy.noun)} for <strong>${escapeHtml(params.propertyAddress)}</strong> has completed review and is available in your Resourceful dashboard.</p>
-
-          <div style="background:#f5f5f5;border-radius:8px;padding:20px;margin:24px 0;">
-            <table style="width:100%;border-collapse:collapse;">
-              ${valueRow('Concluded Market Value', params.concludedMarketValue)}
-              ${assessmentRows}
-            </table>
-          </div>
-
-          ${isTaxAppeal && params.assessmentGap != null && params.assessmentGap > 0 ? `
-            <p style="font-size:13px;color:#555;">
-              The assessment gap compares the current assessed value with the report's indicated assessed value. It is not an estimate or guarantee of tax savings. Actual taxes depend on the taxing jurisdiction, equalization, exemptions, tax rates, and the final decision.
-            </p>
-          ` : ''}
-
-          <p>Your report includes ${escapeHtml(copy.contents)}.</p>
-
-          <a href="${reportUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:600;font-size:16px;">
-            View Your Report
-          </a>
-
-          <p style="margin-top:16px;">
-            <a href="${downloadUrl}" style="color:#2563eb;text-decoration:underline;font-size:13px;">Download PDF</a>
-          </p>
-
-          <p style="margin-top:24px;font-size:13px;color:#666;">
-            Your report remains available in your dashboard.${isTaxAppeal && params.countyName ? ` Review the report page for ${escapeHtml(params.countyName)} filing requirements and deadlines.` : ''}
-          </p>
-
-          <p style="margin-top:32px;font-size:12px;color:#999;">
-            This market value analysis is not a certified appraisal or legal advice.
-          </p>
-        </div>
-      `),
+      subject: content.subject,
+      html: content.html,
     });
-
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -181,38 +228,15 @@ export async function sendVerifiedReportReadyNotification(
 export async function sendVerifiedOutcomeFollowupEmail(
   params: OutcomeFollowupParams
 ): Promise<EmailResult> {
-  const appUrl = getAppUrl();
-  const greeting = params.clientName ? `Hi ${escapeHtml(params.clientName)}` : 'Hi there';
-  const outcomeUrl = `${appUrl}/report/${encodeURIComponent(params.reportId)}?token=${encodeURIComponent(params.outcomeToken)}`;
-  const reportUrl = `${appUrl}/report/${encodeURIComponent(params.reportId)}`;
+  const content = buildOutcomeFollowupEmailContent(params);
 
   try {
     const result = await sendWithRetry({
       from: getFromAddress(),
       to: params.to,
-      subject: 'How Did Your Property Tax Appeal Go?',
-      html: wrapHtml(`
-        <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;">
-          <h1 style="color:#1a1a1a;font-size:24px;">How Did Your Appeal Go?</h1>
-          <p>${greeting},</p>
-          <p>A couple of months ago, Resourceful prepared your property assessment report for <strong>${escapeHtml(params.propertyAddress)}</strong>${params.assessmentGap != null && params.assessmentGap > 0 ? ` with an estimated assessment gap of <strong>${escapeHtml(formatDollarValue(params.assessmentGap))}</strong>` : ''}.</p>
-
-          <p>Share the current status of your appeal. Outcome data helps Resourceful measure report performance and improve future county-specific analysis.</p>
-
-          <a href="${outcomeUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:600;font-size:16px;margin:16px 0;">
-            Share Your Result
-          </a>
-
-          <p style="font-size:13px;color:#666;">It takes less than 30 seconds. Tell us whether the appeal was granted, denied, partially granted, withdrawn, or is still pending—and provide the final assessed value when available.</p>
-
-          <p style="margin-top:32px;font-size:12px;color:#999;">
-            You received this email because you purchased a Resourceful property tax assessment report.<br>
-            Your report remains available at <a href="${reportUrl}" style="color:#2563eb;">${reportUrl}</a>.
-          </p>
-        </div>
-      `),
+      subject: content.subject,
+      html: content.html,
     });
-
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
