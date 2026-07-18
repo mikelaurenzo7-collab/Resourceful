@@ -25,6 +25,9 @@ function baseData(overrides: Record<string, unknown> = {}): ReportTemplateData {
       service_type: 'tax_appeal',
       desired_outcome: null,
       is_retrospective_assignment: false,
+      valuation_effective_date: '2025-01-01',
+      valuation_effective_date_source: 'jurisdiction_convention',
+      created_at: '2025-01-15T00:00:00.000Z',
       property_type: 'residential',
       property_issues: [],
       additional_notes: null,
@@ -78,6 +81,7 @@ describe('evaluateCaseStrategy', () => {
       report: {
         ...baseData().report,
         desired_outcome: '[INDEPENDENT_VALUATION] Estate planning decision support',
+        valuation_effective_date_source: 'intake_current_date',
       },
       narratives: baseData().narratives.map((section) =>
         section.section_name === 'appeal_argument_summary'
@@ -216,6 +220,12 @@ describe('evaluateCaseStrategy', () => {
 
   it('does not infer a retrospective assignment from report latency', () => {
     const data = baseData({
+      report: {
+        ...baseData().report,
+        valuation_effective_date: '2025-07-29',
+        valuation_effective_date_source: 'user_supplied',
+        created_at: '2026-03-11T00:00:00.000Z',
+      },
       reportDate: '2026-03-11',
       valuationDate: '2025-07-29',
     });
@@ -229,6 +239,9 @@ describe('evaluateCaseStrategy', () => {
       report: {
         ...baseData().report,
         is_retrospective_assignment: true,
+        valuation_effective_date: '2025-07-29',
+        valuation_effective_date_source: 'user_supplied',
+        created_at: '2026-03-11T00:00:00.000Z',
       },
       reportDate: '2026-03-11',
       valuationDate: '2025-07-29',
@@ -240,6 +253,30 @@ describe('evaluateCaseStrategy', () => {
     const result = evaluateCaseStrategy(data);
     expect(result.flags).toContain('retrospective_effective_date');
     expect(result.hardFailures).toContain('A retrospective valuation requires market_analysis tied to the effective date');
+  });
+
+  it('rejects a missing or contradictory effective-date workfile', () => {
+    const missing = baseData({
+      report: {
+        ...baseData().report,
+        valuation_effective_date: null,
+        valuation_effective_date_source: null,
+      },
+    });
+    const contradictory = baseData({
+      report: {
+        ...baseData().report,
+        valuation_effective_date: '2024-01-01',
+        valuation_effective_date_source: 'jurisdiction_convention',
+      },
+    });
+
+    expect(
+      evaluateCaseStrategy(missing).hardFailures.some((failure) => failure.includes('effective date'))
+    ).toBe(true);
+    expect(
+      evaluateCaseStrategy(contradictory).hardFailures.some((failure) => failure.includes('does not match'))
+    ).toBe(true);
   });
 
   it('blocks an unsourced regulatory claim', () => {
