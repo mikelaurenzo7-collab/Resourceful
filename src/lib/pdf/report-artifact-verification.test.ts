@@ -19,6 +19,7 @@ const valuationRelease: PdfReleasePolicyResult = {
   hasComparableSales: true,
   hasConcludedValue: true,
   incomeAssessment: null,
+  costAssessment: null,
   evidenceBackedAlternatives: [],
   conclusionReconcilesToAlternative: false,
   warnings: [],
@@ -138,7 +139,7 @@ describe('verifyReportArtifact', () => {
     expect(verify(JSON.stringify(notReady))).toMatchObject({ code: 'JURISDICTION_RELEASE_NOT_READY' });
   });
 
-  it('rejects invalid JSON and unsupported schemas', () => {
+  it('rejects invalid JSON, unsupported schemas, and malformed 1.3 provenance', () => {
     const invalidJson = verifyReportArtifact({
       reportId: 'report-123',
       serviceType: 'tax_appeal',
@@ -153,5 +154,12 @@ describe('verifyReportArtifact', () => {
     const manifest = parseManifest();
     manifest.schemaVersion = '2.0.0';
     expect(verify(JSON.stringify(manifest))).toMatchObject({ code: 'MANIFEST_SCHEMA_UNSUPPORTED' });
+
+    const missingCostReadiness = structuredClone(parseManifest()) as unknown as Record<string, unknown>;
+    const evidence = missingCostReadiness.evidence as Record<string, unknown>;
+    delete evidence.costApproachReleaseReady;
+    expect(verify(JSON.stringify(missingCostReadiness))).toMatchObject({
+      code: 'MANIFEST_JSON_INVALID',
+    });
   });
 });
