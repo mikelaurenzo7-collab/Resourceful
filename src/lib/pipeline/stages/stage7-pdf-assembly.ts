@@ -14,6 +14,10 @@ import {
 import { evaluateReportProfileCompleteness } from '@/lib/pdf/report-profile';
 import { evaluateAssessmentContext } from '@/lib/valuation/assessment-context-policy';
 import { evaluateCaseStrategy } from '@/lib/valuation/case-strategy-policy';
+import {
+  hasAnyCostApproachEvidence,
+  type CostApproachEvidenceInput,
+} from '@/lib/valuation/cost-approach-policy';
 import { evaluatePdfReleasePolicy } from '@/lib/valuation/pdf-release-policy';
 import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
 import { evaluateTaxAppealRelease } from '@/lib/valuation/tax-appeal-release-policy';
@@ -78,6 +82,13 @@ export async function runPdfAssembly(
     propertySubtype: templateData.property.property_subtype,
     propertyClassDescription: templateData.property.property_class_description,
   });
+  const costApproachInput: CostApproachEvidenceInput = {
+    replacementCostNew: templateData.property.cost_approach_rcn,
+    concludedValue: templateData.property.cost_approach_value,
+    physicalDepreciationPct: templateData.property.physical_depreciation_pct,
+    functionalObsolescencePct: templateData.property.functional_obsolescence_pct,
+    landValue: templateData.property.land_value,
+  };
 
   const valuationRelease = evaluatePdfReleasePolicy({
     comparableSaleCount: templateData.comparableSales?.length ?? 0,
@@ -92,13 +103,9 @@ export async function runPdfAssembly(
           investorSurveyReference: templateData.incomeAnalysis.investor_survey_reference,
         }
       : null,
-    costApproach: {
-      replacementCostNew: templateData.property.cost_approach_rcn,
-      concludedValue: templateData.property.cost_approach_value,
-      physicalDepreciationPct: templateData.property.physical_depreciation_pct,
-      functionalObsolescencePct: templateData.property.functional_obsolescence_pct,
-      landValue: templateData.property.land_value,
-    },
+    costApproach: hasAnyCostApproachEvidence(costApproachInput)
+      ? costApproachInput
+      : null,
   });
 
   qaIssues.push(...valuationRelease.warnings, ...valuationRelease.hardFailures);
