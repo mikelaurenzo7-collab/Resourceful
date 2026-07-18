@@ -12,9 +12,11 @@ import type { TaxAppealReleaseResult } from '@/lib/valuation/tax-appeal-release-
 import {
   getClassificationSourceEvidence,
   getJurisdictionPlugin,
+  getValuationEffectiveDateEvidence,
+  isRetrospectiveAssignment,
 } from '@/lib/valuation/workfile-provenance';
 
-export const REPORT_MANIFEST_SCHEMA_VERSION = '1.3.0';
+export const REPORT_MANIFEST_SCHEMA_VERSION = '1.4.0';
 export const REPORT_RENDERER_VERSION = 'react-pdf-2';
 
 export interface ReportArtifactPaths {
@@ -47,6 +49,7 @@ export interface ReportArtifactManifest {
     releaseCode: string;
     assessmentYear: number | null;
     valuationDate: string;
+    valuationDateSource: string | null;
     appliedAssessmentRatio: number | null;
     expectedAssessmentRatio: number | null;
     classificationSourceVerified: boolean;
@@ -54,6 +57,7 @@ export interface ReportArtifactManifest {
   };
   strategy: {
     flags: CaseStrategyFlag[];
+    isRetrospectiveAssignment: boolean;
     recentSubjectSaleDate: string | null;
     warnings: string[];
   };
@@ -149,6 +153,7 @@ export function createReportArtifactManifest(input: {
   const profile = buildReportProfile(data);
   const releaseServiceType = effectiveServiceType(profile.assignmentKind);
   const classificationSource = getClassificationSourceEvidence(data);
+  const effectiveDateEvidence = getValuationEffectiveDateEvidence(data);
   const jurisdictionPlugin = getJurisdictionPlugin(data.countyRule);
   const costAssessment = getReportCostAssessment(data);
   const assessmentContext = evaluateAssessmentContext({
@@ -197,6 +202,7 @@ export function createReportArtifactManifest(input: {
       releaseCode: jurisdictionRelease.code,
       assessmentYear: data.property.tax_year_in_appeal,
       valuationDate: data.valuationDate,
+      valuationDateSource: effectiveDateEvidence.source,
       appliedAssessmentRatio: assessmentContext.appliedAssessmentRatio,
       expectedAssessmentRatio: assessmentContext.expectedAssessmentRatio,
       classificationSourceVerified: classificationSource.isVerified,
@@ -205,6 +211,7 @@ export function createReportArtifactManifest(input: {
     },
     strategy: {
       flags: caseStrategy.flags,
+      isRetrospectiveAssignment: isRetrospectiveAssignment(data),
       recentSubjectSaleDate: caseStrategy.recentSubjectSaleDate,
       warnings: [...caseStrategy.warnings],
     },
