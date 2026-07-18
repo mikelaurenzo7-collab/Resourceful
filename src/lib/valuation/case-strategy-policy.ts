@@ -4,9 +4,11 @@ import {
   isMultifamilyProperty,
   supportsIncomeApproach,
 } from './property-type-policy';
+import { evaluateValuationEffectiveDate } from './valuation-date-policy';
 import {
   getRegulatorySourceEvidence,
   getUnitCountEvidence,
+  getValuationEffectiveDateEvidence,
   isRetrospectiveAssignment,
 } from './workfile-provenance';
 
@@ -136,6 +138,20 @@ export function evaluateCaseStrategy(data: ReportTemplateData): CaseStrategyAsse
   const isRetrospective = isRetrospectiveAssignment(data);
   const unitCountEvidence = getUnitCountEvidence(data);
   const regulatorySource = getRegulatorySourceEvidence(data);
+  const effectiveDateEvidence = getValuationEffectiveDateEvidence(data);
+  const effectiveDateAssessment = evaluateValuationEffectiveDate({
+    effectiveDate: effectiveDateEvidence.date,
+    source: effectiveDateEvidence.source,
+    isRetrospectiveAssignment: isRetrospective,
+    reportCreatedAt: data.report.created_at,
+  });
+  hardFailures.push(...effectiveDateAssessment.hardFailures);
+
+  if (effectiveDateAssessment.date != null && effectiveDateAssessment.date !== data.valuationDate) {
+    hardFailures.push(
+      `Rendered valuation date ${data.valuationDate} does not match the sourced workfile effective date ${effectiveDateAssessment.date}`
+    );
+  }
 
   if (isTaxAppeal) flags.add('tax_appeal');
   if (isDistressedOrVacant) flags.add('distressed_or_vacant');
