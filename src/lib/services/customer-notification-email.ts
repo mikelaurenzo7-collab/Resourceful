@@ -49,10 +49,13 @@ function getFromAddress(): string {
   return process.env.RESEND_FROM_ADDRESS?.trim() || 'reports@resourceful.app';
 }
 
-async function sendWithRetry(params: Parameters<Resend['emails']['send']>[0]) {
+async function sendWithRetry(
+  params: Parameters<Resend['emails']['send']>[0],
+  idempotencyKey: string
+) {
   return withRetry(
     async () => {
-      const result = await getResend().emails.send(params);
+      const result = await getResend().emails.send(params, { idempotencyKey });
       if (result.error) throw new Error(result.error.message);
       return result;
     },
@@ -211,12 +214,15 @@ export async function sendVerifiedReportReadyNotification(
   const content = buildReportReadyEmailContent(params);
 
   try {
-    const result = await sendWithRetry({
-      from: getFromAddress(),
-      to: params.to,
-      subject: content.subject,
-      html: content.html,
-    });
+    const result = await sendWithRetry(
+      {
+        from: getFromAddress(),
+        to: params.to,
+        subject: content.subject,
+        html: content.html,
+      },
+      `report-ready/${params.reportId}`
+    );
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -231,12 +237,15 @@ export async function sendVerifiedOutcomeFollowupEmail(
   const content = buildOutcomeFollowupEmailContent(params);
 
   try {
-    const result = await sendWithRetry({
-      from: getFromAddress(),
-      to: params.to,
-      subject: content.subject,
-      html: content.html,
-    });
+    const result = await sendWithRetry(
+      {
+        from: getFromAddress(),
+        to: params.to,
+        subject: content.subject,
+        html: content.html,
+      },
+      `outcome-followup/${params.reportId}/${params.outcomeToken}`
+    );
     return { data: { id: result.data?.id ?? '' }, error: null };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
