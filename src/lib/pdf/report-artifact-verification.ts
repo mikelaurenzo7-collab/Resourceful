@@ -37,6 +37,16 @@ export function manifestPathForPdf(pdfPath: string): string {
   return `${normalized.slice(0, -4)}.manifest.json`;
 }
 
+export function releaseKeyForPdfPath(pdfPath: string): string {
+  manifestPathForPdf(pdfPath);
+  const filename = pdfPath.trim().split('/').pop();
+  const releaseKey = filename?.slice(0, -4);
+  if (!releaseKey || !/^[a-zA-Z0-9_-]+$/.test(releaseKey)) {
+    throw new Error('Report PDF filename does not contain a safe immutable release key');
+  }
+  return releaseKey;
+}
+
 function isManifest(value: unknown): value is ReportArtifactManifest {
   if (!value || typeof value !== 'object') return false;
   const manifest = value as Partial<ReportArtifactManifest>;
@@ -67,6 +77,7 @@ export function verifyReportArtifact(input: {
   let expectedManifestPath: string;
   try {
     expectedManifestPath = manifestPathForPdf(input.pdfPath);
+    releaseKeyForPdfPath(input.pdfPath);
   } catch (error) {
     return {
       verified: false,
