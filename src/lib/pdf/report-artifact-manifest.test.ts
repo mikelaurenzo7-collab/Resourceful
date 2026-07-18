@@ -58,6 +58,7 @@ function createData(): ReportTemplateData {
       client_email: 'private@example.com',
       client_name: 'Private Customer',
       property_address: '123 Private Street',
+      city: 'Chicago',
       service_type: 'tax_appeal',
       desired_outcome: null,
       is_retrospective_assignment: false,
@@ -88,6 +89,10 @@ function createData(): ReportTemplateData {
       assessment_ratio: 0.1,
       assessment_methodology: 'Cook County residential classification',
       tax_year_in_appeal: 2026,
+      flood_zone_designation: 'Zone X',
+      flood_map_panel_number: '17031C0001J',
+      flood_map_panel_date: '2024-01-01',
+      fema_raw_response: { source: 'FEMA NFHL' },
       cost_approach_rcn: null,
       cost_approach_value: null,
       physical_depreciation_pct: null,
@@ -117,7 +122,9 @@ function createData(): ReportTemplateData {
       narrative('property_history'),
       narrative('assessment_data'),
       narrative('property_description'),
-      narrative('market_analysis'),
+      narrative('area_analysis_city', 'Chicago Area Analysis'),
+      narrative('area_analysis_county', 'Cook County regional context'),
+      narrative('market_analysis', 'Q1 2026 residential market summary'),
       narrative('hbu_as_vacant'),
       narrative('hbu_as_improved'),
       narrative('appeal_argument_summary', 'Market value and assessment equity argument'),
@@ -180,7 +187,7 @@ describe('report artifact manifest', () => {
     });
     const serialized = serializeReportArtifactManifest(manifest).toString('utf8');
 
-    expect(manifest.schemaVersion).toBe('1.4.0');
+    expect(manifest.schemaVersion).toBe('1.5.0');
     expect(manifest.rendererVersion).toBe('react-pdf-2');
     expect(manifest.artifact.bytes).toBe(pdf.byteLength);
     expect(manifest.artifact.sha256).toBe(hashPdfBuffer(pdf));
@@ -193,7 +200,7 @@ describe('report artifact manifest', () => {
       comparableSales: 2,
       comparableRentals: 0,
       photos: 1,
-      narratives: 14,
+      narratives: 16,
       sourceBackedComparableSales: 1,
       distressedComparableSales: 1,
       filingGuideIncluded: true,
@@ -219,6 +226,11 @@ describe('report artifact manifest', () => {
     expect(manifest.strategy).toMatchObject({
       flags: expect.arrayContaining(['tax_appeal']),
       isRetrospectiveAssignment: false,
+    });
+    expect(manifest.integrity).toMatchObject({
+      releaseReady: true,
+      hardFailureCodes: [],
+      warningCodes: expect.arrayContaining(['TECHNOLOGY_REVIEW_REQUIRED']),
     });
     expect(serialized).not.toContain('private@example.com');
     expect(serialized).not.toContain('Private Customer');
