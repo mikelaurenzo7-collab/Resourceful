@@ -1,7 +1,6 @@
 // ─── Create Report API ──────────────────────────────────────────────────────
-// POST: Validate input, create report row with 'intake' status, create Stripe
-// PaymentIntent, and return report ID + client secret.
-// No authentication required — email-only identification.
+// POST: Validate input, verify the purchasable service and jurisdiction, create
+// the report row, create the Stripe PaymentIntent, and return the payment secret.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { reportCreateSchema } from '@/lib/validations/report';
@@ -15,23 +14,28 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { validateReferralCode, applyReferralCode } from '@/lib/services/referral-service';
 import { validateCheckoutService } from '@/lib/services/service-eligibility';
+import { screenServiceJurisdiction } from '@/lib/services/jurisdiction-eligibility';
 import type { Report } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
 
-// Founder-bypass path triggers the full pipeline inline via runPipeline().catch(...).
-// Without an extended maxDuration, Vercel kills the function after the default
-// (10s Hobby / 60s Pro), dropping the pipeline mid-stage. The stale-pipeline
-// cron would recover it within ~1 hour, but raising maxDuration lets the
-// first attempt actually finish for small-to-medium reports.
 export const maxDuration = 300;
+
+function jurisdictionFailureStatus(code: string): number {
+  if (code === 'ADDRESS_VERIFICATION_FAILED' || code === 'COUNTY_FIPS_UNRESOLVED') {
+    return 503;
+  }
+  return 409;
+}
 
 export async function POST(request: NextRequest) {
   try {
-    // ── Rate limit: 10 reports per 15 minutes per IP ─────────────────────
-    const rateLimited = await applyRateLimit(request, { prefix: 'create-report', limit: 10, windowSeconds: 900 });
+    const rateLimited = await applyRateLimit(request, {
+      prefix: 'create-report',
+      limit: 10,
+      windowSeconds: 900,
+    });
     if (rateLimited) return rateLimited;
 
-    // ── Parse and validate input ───────────────────────────────────────────
     const body = await request.json();
     const parsed = reportCreateSchema.safeParse(body);
 
@@ -43,14 +47,15 @@ export async function POST(request: NextRequest) {
     }
 
     const d = parsed.data;
-    // Normalize empty strings to null for DB columns that expect null over ''
     const client_email = d.client_email;
     const client_name = d.client_name;
-    const property_address = d.property_address;
-    const city = d.city || null;
-    const state = d.state || null;
-    const county = d.county || null;
-    const county_fips = d.county_fips || null;
+    let property_address = d.property_address;
+    let city = d.city || null;
+    let state = d.state || null;
+    let county = d.county || null;
+    let county_fips = d.county_fips || null;
+    let latitude: number | null = null;
+    let longitude: number | null = null;
     const pin = d.pin || null;
     const property_type = d.property_type;
     const service_type = d.service_type;
@@ -66,9 +71,6 @@ export async function POST(request: NextRequest) {
     const tax_bill_pin = d.tax_bill_pin || null;
     const referral_code = d.referral_code || null;
 
-    // ── Service eligibility gate ──────────────────────────────────────────
-    // Reject unsupported combinations before creating a report or collecting
-    // payment. Never silently downgrade a customer's chosen service.
     const serviceEligibility = validateCheckoutService(service_type, review_tier);
     if (!serviceEligibility.allowed) {
       apiLogger.warn(
@@ -92,8 +94,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Per-email concurrency check (prevent abuse) ─────────────────────
-    // Max 3 reports in 'intake' or 'processing' state per email
+    // Tax-appeal checkout is fail-closed. The browser screen is advisory; this
+    // authoritative check repeats address resolution and jurisdiction freshness
+    // before a report row or PaymentIntent exists.
+    const jurisdictionEligibility = await screenServiceJurisdiction({
+      serviceType: service_type,
+      propertyAddress: property_address,
+      city,
+      state,
+      county,
+    });
+
+    if (!jurisdictionEligibility.allowed) {
+      apiLogger.warn(
+        {
+          code: jurisdictionEligibility.code,
+          serviceType: service_type,
+          state,
+          county,
+          retryable: jurisdictionEligibility.retryable,
+        },
+        '[api/reports] Jurisdiction failed prepayment release gate'
+      );
+
+      return NextResponse.json(
+        {
+          error: jurisdictionEligibility.message,
+          code: jurisdictionEligibility.code,
+          retryable: jurisdictionEligibility.retryable,
+          jurisdiction: jurisdictionEligibility.jurisdiction,
+        },
+        { status: jurisdictionFailureStatus(jurisdictionEligibility.code) }
+      );
+    }
+
+    if (jurisdictionEligibility.jurisdiction) {
+      property_address = jurisdictionEligibility.jurisdiction.line1;
+      city = jurisdictionEligibility.jurisdiction.city || city;
+      state = jurisdictionEligibility.jurisdiction.state || state;
+      county = jurisdictionEligibility.jurisdiction.county || county;
+      county_fips = jurisdictionEligibility.jurisdiction.countyFips;
+      latitude = jurisdictionEligibility.jurisdiction.latitude;
+      longitude = jurisdictionEligibility.jurisdiction.longitude;
+    }
+
     const supabaseForCheck = createAdminClient();
     const { count: activeReports } = await supabaseForCheck
       .from('reports')
@@ -108,9 +152,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Check founder access ─────────────────────────────────────────────
-    // Founder bypass requires BOTH: email matches AND user is authenticated
-    // (prevents abuse by claiming a founder email without logging in)
     let founderAccess = false;
     if (isFounderEmail(client_email)) {
       const supabase = await createClient();
@@ -118,22 +159,23 @@ export async function POST(request: NextRequest) {
       founderAccess = !!user && user.email?.toLowerCase() === client_email.toLowerCase();
     }
 
-    // ── Calculate price (tier-aware, tax bill discount applied) ──────────
-    let priceCents = founderAccess ? 0 : getPriceCents(service_type, property_type, review_tier, has_tax_bill);
+    let priceCents = founderAccess
+      ? 0
+      : getPriceCents(service_type, property_type, review_tier, has_tax_bill);
 
-    // ── Validate and apply referral code discount ────────────────────────
     let referralValidation = null;
     if (!founderAccess && referral_code) {
       referralValidation = await validateReferralCode(referral_code);
       if (referralValidation.valid && referralValidation.discountPct > 0) {
-        const discountCents = Math.round(priceCents * (referralValidation.discountPct / 100));
-        priceCents = priceCents - discountCents;
+        const discountCents = Math.round(
+          priceCents * (referralValidation.discountPct / 100)
+        );
+        priceCents -= discountCents;
       }
     }
 
-    // ── Create report row via repository ─────────────────────────────────
     const report = (await createReport({
-      user_id: null, // no auth account — email-only identification
+      user_id: null,
       client_email,
       client_name: client_name || null,
       status: founderAccess ? 'paid' : 'intake',
@@ -146,8 +188,8 @@ export async function POST(request: NextRequest) {
       county,
       county_fips,
       pin: pin ?? tax_bill_pin,
-      latitude: null,
-      longitude: null,
+      latitude,
+      longitude,
       report_pdf_storage_path: null,
       admin_notes: founderAccess ? 'Founder account — complimentary access' : null,
       stripe_payment_intent_id: null,
@@ -176,39 +218,45 @@ export async function POST(request: NextRequest) {
       savings_amount_cents: null,
     })) as Report;
 
-    // ── Apply referral code to report if validated ───────────────────────
     if (referralValidation?.valid && referralValidation.code) {
-      const basePriceCents = getPriceCents(service_type, property_type, review_tier, has_tax_bill);
+      const basePriceCents = getPriceCents(
+        service_type,
+        property_type,
+        review_tier,
+        has_tax_bill
+      );
       const discountCents = basePriceCents - priceCents;
       await applyReferralCode(report.id, referralValidation.code.id, discountCents);
     }
 
-    // ── Founder bypass: skip Stripe, trigger pipeline directly ───────────
     if (founderAccess) {
-      apiLogger.info({ id: report.id }, '[api/reports] Founder access for report — skipping payment');
+      apiLogger.info({ id: report.id }, '[api/reports] Founder access — skipping payment');
       runPipeline(report.id).catch(async (err) => {
         const message = err instanceof Error ? err.message : String(err);
         apiLogger.error({ id: report.id, message }, '[api/reports] Pipeline failed for founder report');
         try {
           await createAdminClient().from('reports').update({
             status: 'failed',
-            pipeline_error_log: { stage: 'pipeline', error: message, timestamp: new Date().toISOString() },
+            pipeline_error_log: {
+              stage: 'pipeline',
+              error: message,
+              timestamp: new Date().toISOString(),
+            },
           }).eq('id', report.id);
         } catch (dbErr) {
-          apiLogger.error({ id: report.id, dbErr, message }, '[api/reports] CRITICAL: Pipeline failed AND error recording failed for founder report');
+          apiLogger.error(
+            { id: report.id, dbErr, message },
+            '[api/reports] CRITICAL: Pipeline and error recording failed'
+          );
         }
       });
+
       return NextResponse.json(
-        {
-          reportId: report.id,
-          founderAccess: true,
-          priceCents: 0,
-        },
+        { reportId: report.id, founderAccess: true, priceCents: 0 },
         { status: 201 }
       );
     }
 
-    // ── Create Stripe PaymentIntent ────────────────────────────────────────
     const { data: payment, error: paymentError } = await createPaymentIntent({
       amountCents: priceCents,
       customerEmail: client_email,
@@ -217,14 +265,18 @@ export async function POST(request: NextRequest) {
         service_type,
         property_type,
         review_tier,
+        county_fips: county_fips ?? '',
       },
     });
 
     if (paymentError || !payment) {
       apiLogger.error({ err: paymentError }, 'Failed to create payment intent');
-      // Clean up orphaned report to prevent blocking the per-email concurrency limit
       try {
-        await createAdminClient().from('reports').delete().eq('id', report.id).eq('status', 'intake');
+        await createAdminClient()
+          .from('reports')
+          .delete()
+          .eq('id', report.id)
+          .eq('status', 'intake');
       } catch (cleanupErr) {
         apiLogger.error({ err: cleanupErr }, 'Failed to clean up orphaned report');
       }
@@ -234,25 +286,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ── Store PaymentIntent ID on report ───────────────────────────────────
     await updateReport(report.id, {
       stripe_payment_intent_id: payment.id,
     });
 
-    // ── Return report ID and client secret ─────────────────────────────────
     return NextResponse.json(
       {
         reportId: report.id,
         clientSecret: payment.clientSecret,
         priceCents,
+        jurisdiction:
+          jurisdictionEligibility.code === 'JURISDICTION_VERIFIED'
+            ? jurisdictionEligibility.jurisdiction
+            : null,
       },
       { status: 201 }
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error({ err: message, stack: err instanceof Error ? err.stack : undefined }, 'Unhandled error');
+    apiLogger.error(
+      { err: message, stack: err instanceof Error ? err.stack : undefined },
+      'Unhandled report creation error'
+    );
 
-    // Surface database/Supabase errors for debugging (non-sensitive)
     const isDbError = message.includes('Failed to create report') || message.includes('violates');
     return NextResponse.json(
       { error: isDbError ? message : 'Internal server error' },
