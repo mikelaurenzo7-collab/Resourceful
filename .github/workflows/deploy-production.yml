@@ -102,14 +102,50 @@ jobs:
           }
           NODE
 
+      - name: Repair canonical public app URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          env_file=".vercel/.env.production.local"
+          vercel env pull "$env_file" \
+            --yes \
+            --environment=production \
+            --token="$VERCEL_TOKEN"
+
+          current_url="$(node --env-file="$env_file" -p 'process.env.NEXT_PUBLIC_APP_URL || ""')"
+          if [ "$current_url" = "$CANONICAL_APP_URL" ]; then
+            echo "NEXT_PUBLIC_APP_URL already matches the canonical production origin."
+          elif [ -z "$current_url" ]; then
+            echo "NEXT_PUBLIC_APP_URL is missing; adding the canonical production origin."
+            printf '%s' "$CANONICAL_APP_URL" | vercel env add \
+              NEXT_PUBLIC_APP_URL production \
+              --yes \
+              --token="$VERCEL_TOKEN"
+          else
+            echo "Repairing NEXT_PUBLIC_APP_URL from '$current_url' to '$CANONICAL_APP_URL'."
+            printf '%s' "$CANONICAL_APP_URL" | vercel env update \
+              NEXT_PUBLIC_APP_URL production \
+              --yes \
+              --token="$VERCEL_TOKEN"
+          fi
+
+          # Re-pull after a mutation so the build and every downstream assertion
+          # use the value stored by Vercel rather than the pre-repair snapshot.
+          vercel env pull "$env_file" \
+            --yes \
+            --environment=production \
+            --token="$VERCEL_TOKEN"
+
+          repaired_url="$(node --env-file="$env_file" -p 'process.env.NEXT_PUBLIC_APP_URL || ""')"
+          if [ "$repaired_url" != "$CANONICAL_APP_URL" ]; then
+            echo "::error::Vercel did not persist the canonical NEXT_PUBLIC_APP_URL. Received '${repaired_url:-missing}'."
+            exit 1
+          fi
+
       - name: Verify production environment contract
         shell: bash
         run: |
           set -euo pipefail
-          vercel env pull .vercel/.env.production.local \
-            --yes \
-            --environment=production \
-            --token="$VERCEL_TOKEN"
           node --env-file=.vercel/.env.production.local - <<'NODE'
           const required = [
             'NEXT_PUBLIC_SUPABASE_URL',
