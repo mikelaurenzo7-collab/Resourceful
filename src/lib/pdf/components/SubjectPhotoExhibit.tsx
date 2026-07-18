@@ -10,6 +10,7 @@ interface ExhibitImage {
   url: string;
   caption: string;
   captionSource?: PhotoCaptionSource;
+  sourceLabel?: string;
 }
 
 export type SubjectExhibitMode = 'all' | 'maps' | 'photos';
@@ -20,6 +21,30 @@ function chunk<T>(items: T[], size: number): T[][] {
     chunks.push(items.slice(index, index + size));
   }
   return chunks;
+}
+
+function mapSourceLabel(urlValue: string): string {
+  try {
+    const url = new URL(urlValue);
+    const hostname = url.hostname.toLowerCase();
+
+    if (hostname === 'atlas.microsoft.com' || hostname.endsWith('.atlas.microsoft.com')) {
+      return 'Map source: Microsoft Azure Maps · licensed map service';
+    }
+    if (hostname.includes('arcgis') || hostname.endsWith('.esri.com')) {
+      return 'Map source: Esri ArcGIS · public or licensed GIS service; verify layer terms';
+    }
+    if (hostname.endsWith('.fema.gov') || hostname === 'fema.gov') {
+      return 'Map source: Federal Emergency Management Agency · public record';
+    }
+    if (hostname.endsWith('.gov')) {
+      return `Map source: ${hostname} · public record; verify issuing authority and layer date`;
+    }
+
+    return `Map source host: ${hostname} · stored workfile reference; authority and license require verification`;
+  } catch {
+    return 'Map source: stored workfile reference · authority and license require verification';
+  }
 }
 
 export default function SubjectPhotoExhibit({
@@ -33,7 +58,11 @@ export default function SubjectPhotoExhibit({
     ? []
     : [data.maps.regional, data.maps.neighborhood, data.maps.parcel]
       .filter((map): map is NonNullable<typeof map> => Boolean(map?.url))
-      .map((map) => ({ url: map.url, caption: map.caption }));
+      .map((map) => ({
+        url: map.url,
+        caption: map.caption,
+        sourceLabel: mapSourceLabel(map.url),
+      }));
 
   const photos: ExhibitImage[] = mode === 'maps'
     ? []
@@ -60,9 +89,10 @@ export default function SubjectPhotoExhibit({
           <PageFooter />
           <SectionHeader number="EX-1" title="Subject Maps & Parcel Context" />
           <Text style={[theme.bodyText, styles.scopeNote]}>
-            These maps orient the subject within its regional, neighborhood, and parcel context. Map
-            boundaries, labels, and imagery should be verified against the identified public or licensed
-            source before they are used for filing, zoning, survey, access, or legal-description purposes.
+            These maps orient the subject within its regional, neighborhood, and parcel context. Each
+            exhibit identifies the available source authority or host and evidence category. Map boundaries,
+            labels, imagery, layer dates, and license terms must still be verified before use for filing,
+            zoning, survey, access, flood, or legal-description purposes.
           </Text>
           <View style={styles.mapGrid}>
             {maps.map((map, index) => (
@@ -70,6 +100,9 @@ export default function SubjectPhotoExhibit({
                 {/* eslint-disable-next-line jsx-a11y/alt-text */}
                 <Image src={map.url} style={[styles.mapImage, { height: mapHeight }]} />
                 <Text style={styles.caption}>{map.caption}</Text>
+                {map.sourceLabel && (
+                  <Text style={styles.sourceLabel}>{map.sourceLabel}</Text>
+                )}
               </View>
             ))}
           </View>
@@ -159,6 +192,13 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   captionSource: {
+    fontFamily: 'Inter',
+    fontSize: 6.5,
+    color: colors.inkMuted,
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  sourceLabel: {
     fontFamily: 'Inter',
     fontSize: 6.5,
     color: colors.inkMuted,
