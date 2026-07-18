@@ -1,7 +1,9 @@
 const MULTIFAMILY_PHRASES = [
   'multifamily',
   'multi family',
-  'apartment',
+  'apartment building',
+  'apartment complex',
+  'apartment property',
   'apartments',
   'duplex',
   'triplex',
@@ -58,7 +60,7 @@ export function isMultifamilyProperty(descriptor: PropertyTypeDescriptor): boole
 /**
  * Conservatively decide whether the Income Capitalization Approach is relevant.
  * Generic residential descriptions do not become income property merely because
- * they mention an amenity such as a home office or retail-style finish.
+ * they mention an amenity such as a home office or apartment-style finish.
  */
 export function supportsIncomeApproach(descriptor: PropertyTypeDescriptor): boolean {
   const propertyType = normalize(descriptor.propertyType);
