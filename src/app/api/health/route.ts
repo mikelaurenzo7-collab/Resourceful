@@ -1,11 +1,13 @@
 // ─── Health Check Endpoint ────────────────────────────────────────────────────
-// GET /api/health — public liveness plus authenticated dependency diagnostics.
+// GET /api/health — public liveness and deployment identity plus authenticated
+// dependency diagnostics.
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { AI_MODELS } from '@/config/ai';
 import { getFastAiConfigSummary } from '@/lib/services/fast-ai';
 import { verifyCronAuth } from '@/lib/utils/cron-auth';
+import { getDeploymentIdentity } from '@/lib/utils/deployment-identity';
 
 interface ServiceStatus {
   status: 'ok' | 'error' | 'not_configured';
@@ -17,12 +19,17 @@ const REQUIRED_STORAGE_BUCKETS = ['reports', 'photos'] as const;
 const NO_STORE_HEADERS = { 'Cache-Control': 'no-store, max-age=0' };
 
 export async function GET(request: NextRequest) {
-  // Public callers get liveness only. CRON_SECRET-authenticated callers receive
-  // the dependency matrix without exposing configuration details publicly.
+  // Public callers get liveness plus non-sensitive deployment identity. The
+  // release workflow uses the commit to prove that both the immutable deployment
+  // URL and canonical alias point to the commit being promoted.
   const authFailure = verifyCronAuth(request);
   if (authFailure) {
     return NextResponse.json(
-      { healthy: true, timestamp: new Date().toISOString() },
+      {
+        healthy: true,
+        timestamp: new Date().toISOString(),
+        deployment: getDeploymentIdentity(),
+      },
       { headers: NO_STORE_HEADERS }
     );
   }
@@ -137,6 +144,7 @@ export async function GET(request: NextRequest) {
     {
       healthy: !hasDependencyError,
       timestamp: new Date().toISOString(),
+      deployment: getDeploymentIdentity(),
       services: results,
     },
     {
