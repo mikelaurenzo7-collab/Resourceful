@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { CountyRule } from '@/types/database';
 import { evaluateAssessmentContext } from './assessment-context-policy';
 
-function countyRule(overrides: Partial<CountyRule> = {}): CountyRule {
+type CountyRuleFixture = CountyRule & {
+  jurisdiction_plugin_key?: string | null;
+  jurisdiction_plugin_version?: number | null;
+};
+
+function countyRule(overrides: Partial<CountyRuleFixture> = {}): CountyRuleFixture {
   return {
     county_fips: '17031',
     county_name: 'Cook County',
@@ -83,6 +88,8 @@ function countyRule(overrides: Partial<CountyRule> = {}): CountyRule {
     notes: null,
     created_at: '2026-01-01',
     updated_at: '2026-07-01',
+    jurisdiction_plugin_key: 'cook_county_classification',
+    jurisdiction_plugin_version: 1,
     ...overrides,
   };
 }
@@ -105,7 +112,7 @@ describe('evaluateAssessmentContext', () => {
     expect(result.hardFailures).toEqual([]);
   });
 
-  it('accepts a standard Cook County commercial appeal and requires year-specific equalization sourcing', () => {
+  it('accepts a configured Cook County commercial appeal and requires year-specific sourcing', () => {
     const result = evaluateAssessmentContext({
       serviceType: 'tax_appeal',
       countyFips: '17031',
@@ -121,10 +128,29 @@ describe('evaluateAssessmentContext', () => {
     expect(result.hardFailures).toEqual([]);
     expect(result.expectedAssessmentRatio).toBe(0.25);
     expect(result.requiresYearSpecificEqualizationSource).toBe(true);
-    expect(result.warnings.join(' ')).toContain('year-specific');
   });
 
-  it('accepts an explicit prior-year valuation convention without imposing a same-year rule', () => {
+  it('does not activate Cook County behavior from FIPS alone', () => {
+    const result = evaluateAssessmentContext({
+      serviceType: 'tax_appeal',
+      countyFips: '17031',
+      propertyType: 'commercial',
+      taxYearInAppeal: 2025,
+      valuationDate: '2025-01-01',
+      assessmentRatio: 0.25,
+      assessmentMethodology: 'Commercial classification',
+      propertyClassDescription: 'Commercial building',
+      countyRule: countyRule({
+        jurisdiction_plugin_key: null,
+        jurisdiction_plugin_version: null,
+      }),
+    });
+
+    expect(result.isCookCounty).toBe(false);
+    expect(result.requiresYearSpecificEqualizationSource).toBe(false);
+  });
+
+  it('accepts an explicit prior-year valuation convention', () => {
     const result = evaluateAssessmentContext({
       serviceType: 'tax_appeal',
       countyFips: '99998',
@@ -140,6 +166,8 @@ describe('evaluateAssessmentContext', () => {
         state_abbreviation: 'PY',
         state_name: 'Prior Year State',
         valuation_date_convention: 'January 1 of the preceding year',
+        jurisdiction_plugin_key: null,
+        jurisdiction_plugin_version: null,
       }),
     });
 
@@ -163,13 +191,15 @@ describe('evaluateAssessmentContext', () => {
         state_abbreviation: 'UC',
         state_name: 'Unspecified Convention State',
         valuation_date_convention: null,
+        jurisdiction_plugin_key: null,
+        jurisdiction_plugin_version: null,
       }),
     });
 
-    expect(result.hardFailures.some((failure) => failure.includes('does not document a cross-year convention'))).toBe(true);
+    expect(result.hardFailures.some((failure) => failure.includes('cross-year convention'))).toBe(true);
   });
 
-  it('prefers an explicit industrial level when it differs from the commercial level', () => {
+  it('prefers an explicit industrial level', () => {
     const result = evaluateAssessmentContext({
       serviceType: 'tax_appeal',
       countyFips: '99999',
@@ -185,7 +215,8 @@ describe('evaluateAssessmentContext', () => {
         assessment_ratio_commercial: 0.25,
         assessment_ratio_industrial: 0.2,
         level_of_assessment_commercial: 0.25,
-        valuation_date_convention: 'January 1 of the assessment year',
+        jurisdiction_plugin_key: null,
+        jurisdiction_plugin_version: null,
       }),
     });
 
@@ -209,7 +240,7 @@ describe('evaluateAssessmentContext', () => {
     expect(result.hardFailures.some((failure) => failure.includes('January 1'))).toBe(true);
   });
 
-  it('rejects an unexplained assessment-level mismatch', () => {
+  it('rejects a text-only classification exception', () => {
     const result = evaluateAssessmentContext({
       serviceType: 'tax_appeal',
       countyFips: '17031',
@@ -217,15 +248,15 @@ describe('evaluateAssessmentContext', () => {
       taxYearInAppeal: 2025,
       valuationDate: '2025-01-01',
       assessmentRatio: 0.2,
-      assessmentMethodology: 'Standard commercial classification',
+      assessmentMethodology: 'Non-profit special classification',
       propertyClassDescription: 'Office',
       countyRule: countyRule(),
     });
 
-    expect(result.hardFailures.some((failure) => failure.includes('without a documented classification exception'))).toBe(true);
+    expect(result.hardFailures.some((failure) => failure.includes('official authority'))).toBe(true);
   });
 
-  it('allows a documented special classification mismatch as a warning', () => {
+  it('allows a sourced special classification mismatch as a warning', () => {
     const result = evaluateAssessmentContext({
       serviceType: 'tax_appeal',
       countyFips: '17031',
@@ -233,16 +264,18 @@ describe('evaluateAssessmentContext', () => {
       taxYearInAppeal: 2025,
       valuationDate: '2025-01-01',
       assessmentRatio: 0.2,
-      assessmentMethodology: 'Non-profit special classification verified from assessor record',
+      assessmentMethodology: 'Non-profit special classification',
       propertyClassDescription: 'Office',
+      classificationSourceAuthority: 'Cook County Assessor',
+      classificationSourceUrl: 'https://assessor.example.gov/parcel/123',
       countyRule: countyRule(),
     });
 
     expect(result.hardFailures).toEqual([]);
-    expect(result.warnings.some((warning) => warning.includes('special classification'))).toBe(true);
+    expect(result.warnings.some((warning) => warning.includes('verified special-classification'))).toBe(true);
   });
 
-  it('does not invent a generic assessment level for land', () => {
+  it('fails closed when the jurisdiction has no land assessment level', () => {
     const result = evaluateAssessmentContext({
       serviceType: 'tax_appeal',
       countyFips: '17031',
@@ -255,8 +288,7 @@ describe('evaluateAssessmentContext', () => {
       countyRule: countyRule(),
     });
 
-    expect(result.hardFailures).toEqual([]);
     expect(result.expectedAssessmentRatio).toBeNull();
-    expect(result.warnings.some((warning) => warning.includes('No generic land assessment level'))).toBe(true);
+    expect(result.hardFailures.some((failure) => failure.includes('does not provide'))).toBe(true);
   });
 });
