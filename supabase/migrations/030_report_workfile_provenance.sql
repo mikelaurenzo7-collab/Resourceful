@@ -20,6 +20,8 @@ alter table public.county_rules
   add column if not exists jurisdiction_plugin_key text,
   add column if not exists jurisdiction_plugin_version integer;
 
+-- Add checks without scanning existing production rows under a long-lived
+-- ACCESS EXCLUSIVE lock. Migration 031 validates these constraints separately.
 alter table public.reports
   drop constraint if exists reports_valuation_effective_date_source_valid,
   add constraint reports_valuation_effective_date_source_valid
@@ -30,19 +32,19 @@ alter table public.reports
         'user_supplied',
         'admin_override'
       )
-    ),
+    ) not valid,
   drop constraint if exists reports_effective_date_source_pair,
   add constraint reports_effective_date_source_pair
     check (
       (valuation_effective_date is null and valuation_effective_date_source is null)
       or
       (valuation_effective_date is not null and valuation_effective_date_source is not null)
-    );
+    ) not valid;
 
 alter table public.property_data
   drop constraint if exists property_data_unit_count_positive,
   add constraint property_data_unit_count_positive
-    check (unit_count is null or unit_count > 0),
+    check (unit_count is null or unit_count > 0) not valid,
   drop constraint if exists property_data_unit_count_source_type_valid,
   add constraint property_data_unit_count_source_type_valid
     check (
@@ -55,13 +57,13 @@ alter table public.property_data
         'assumption',
         'professional_judgment'
       )
-    ),
+    ) not valid,
   drop constraint if exists property_data_regulatory_source_url_http,
   add constraint property_data_regulatory_source_url_http
-    check (regulatory_source_url is null or regulatory_source_url ~* '^https?://'),
+    check (regulatory_source_url is null or regulatory_source_url ~* '^https?://') not valid,
   drop constraint if exists property_data_class_source_url_http,
   add constraint property_data_class_source_url_http
-    check (property_class_source_url is null or property_class_source_url ~* '^https?://');
+    check (property_class_source_url is null or property_class_source_url ~* '^https?://') not valid;
 
 alter table public.county_rules
   drop constraint if exists county_rules_plugin_version_positive,
@@ -70,7 +72,7 @@ alter table public.county_rules
       (jurisdiction_plugin_key is null and jurisdiction_plugin_version is null)
       or
       (jurisdiction_plugin_key is not null and jurisdiction_plugin_version is not null and jurisdiction_plugin_version > 0)
-    );
+    ) not valid;
 
 create or replace function public.resourceful_tax_appeal_effective_date(
   assessment_year integer,
@@ -124,14 +126,10 @@ begin
   independent_override := trim(coalesce(new.desired_outcome, '')) like '[INDEPENDENT_VALUATION]%';
 
   if new.service_type <> 'tax_appeal' or independent_override then
-    new.valuation_effective_date := coalesce(
-      new.valuation_effective_date,
-      coalesce(new.created_at::date, current_date)
-    );
-    new.valuation_effective_date_source := coalesce(
-      new.valuation_effective_date_source,
-      'intake_current_date'
-    );
+    -- Assignment routing changed. Replace any stale jurisdiction-derived date
+    -- instead of preserving it through COALESCE.
+    new.valuation_effective_date := coalesce(new.created_at::date, current_date);
+    new.valuation_effective_date_source := 'intake_current_date';
     return new;
   end if;
 
@@ -263,8 +261,8 @@ for each row
 execute function public.resourceful_sync_effective_dates_from_county_rule();
 
 -- Current-value assignments use the stable intake date, not the later PDF
--- generation timestamp. Tax appeals are backfilled only when the stored county
--- convention explicitly identifies January 1 and the assessment year relation.
+-- generation timestamp. Replace stale jurisdiction-derived values when an
+-- assignment has been rerouted; preserve explicit user/admin effective dates.
 update public.reports
 set
   valuation_effective_date = created_at::date,
@@ -273,7 +271,7 @@ where (
     service_type <> 'tax_appeal'
     or trim(coalesce(desired_outcome, '')) like '[INDEPENDENT_VALUATION]%'
   )
-  and valuation_effective_date is null;
+  and coalesce(valuation_effective_date_source, '') not in ('user_supplied', 'admin_override');
 
 update public.reports as report
 set
