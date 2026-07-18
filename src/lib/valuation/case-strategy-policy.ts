@@ -1,3 +1,4 @@
+import { resolveAssignmentKind } from '@/lib/assignments/routing';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { supportsIncomeApproach } from './property-type-policy';
 
@@ -22,7 +23,7 @@ const DISTRESS_PATTERN = /\b(vacant|unoccupied|disrepair|poor condition|deferred
 const REGULATORY_PATTERN = /\b(code violation|building violation|zoning violation|illegal unit|nonconforming|non-conforming|condemnation|municipal violation)\b/i;
 const MULTIFAMILY_PATTERN = /\b(multifamily|multi-family|apartment|duplex|triplex|fourplex|two[- ]unit|three[- ]unit|four[- ]unit|2[- ]unit|3[- ]unit|4[- ]unit)\b/i;
 const INDUSTRIAL_PATTERN = /\b(industrial|warehouse|flex|manufacturing|distribution|factory|logistics)\b/i;
-const UNIT_COUNT_PATTERN = /\b(?:number of units|unit count|two units|three units|four units|2 units|3 units|4 units|\([2-9]\)\s*units?)\b/i;
+const UNIT_COUNT_PATTERN = /\b(?:number of units|unit count|two[- ]units?|three[- ]units?|four[- ]units?|[2-9][- ]units?|\([2-9]\)\s*units?)\b/i;
 const SALE_DATE_KEYS = ['sale_date', 'transfer_date', 'recording_date', 'document_date', 'date'] as const;
 const SUBJECT_EVIDENCE_NARRATIVES = new Set([
   'summary_of_salient_facts',
@@ -102,7 +103,11 @@ export function evaluateCaseStrategy(data: ReportTemplateData): CaseStrategyAsse
     .filter((value): value is string => hasText(value))
     .join(' ');
 
-  const isTaxAppeal = data.report.service_type === 'tax_appeal';
+  const assignmentKind = resolveAssignmentKind(
+    data.report.service_type,
+    data.report.desired_outcome
+  );
+  const isTaxAppeal = assignmentKind === 'tax_appeal';
   const isDistressedOrVacant = DISTRESS_PATTERN.test(caseText);
   const hasRegulatoryIssue = REGULATORY_PATTERN.test(caseText);
   const isMultifamily = MULTIFAMILY_PATTERN.test(descriptor);
