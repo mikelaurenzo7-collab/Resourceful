@@ -1,6 +1,6 @@
-// ─── Fallback Workfile Integrity & Limiting Conditions ───────────────────────
-// Used only when the generated certification-and-limiting-conditions narrative
-// is unavailable. It must not imply a licensed appraiser certification.
+// ─── Fallback Certification Boundary & Limiting Conditions ──────────────────
+// Used only when the generated limiting-conditions narrative is unavailable.
+// It must not imply a licensed appraiser certification.
 
 import React from 'react';
 import { View, Text, StyleSheet } from '@react-pdf/renderer';
@@ -18,8 +18,8 @@ export default function Disclaimer({ data }: { data: ReportTemplateData }) {
   );
 
   return (
-    <View break>
-      <SectionHeader number="ADD-B" title="Workfile Integrity & Limiting Conditions" />
+    <View>
+      <SectionHeader number="ADD-C" title="Certification Boundary & Limiting Conditions" />
 
       <Text style={[theme.headingMD, { marginBottom: 6 }]}>Workfile Integrity Statements</Text>
       {[
