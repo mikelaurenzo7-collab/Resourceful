@@ -5,6 +5,7 @@ import { Page, View, Text, Image, StyleSheet } from '@react-pdf/renderer';
 import { theme, colors } from '../styles/theme';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { formatDate } from '@/lib/templates/helpers';
+import { getPhotoCaption } from '../photo-caption';
 import { buildReportProfile } from '../report-profile';
 
 function titleCase(value: string): string {
@@ -24,6 +25,7 @@ export default function CoverPage({ data }: { data: ReportTemplateData }) {
       photo.storage_path &&
       (photo.photo_type === 'exterior_front' || photo.photo_type === 'aerial')
   ) ?? photos.find((photo) => photo.storage_path);
+  const subjectPhotoCaption = subjectPhoto ? getPhotoCaption(subjectPhoto) : null;
   const clientName = report.client_name ?? 'Property Owner';
 
   return (
@@ -39,12 +41,13 @@ export default function CoverPage({ data }: { data: ReportTemplateData }) {
         <Text style={styles.propertyType}>{propertyDescriptor}</Text>
       </View>
 
-      {subjectPhoto?.storage_path ? (
+      {subjectPhoto?.storage_path && subjectPhotoCaption ? (
         <View style={styles.photoContainer}>
           {/* eslint-disable-next-line jsx-a11y/alt-text */}
           <Image src={subjectPhoto.storage_path} style={styles.subjectPhoto} />
-          <Text style={styles.photoCaption}>
-            {subjectPhoto.ai_analysis?.professional_caption ?? subjectPhoto.caption ?? 'Subject Property'}
+          <Text style={styles.photoCaption}>{subjectPhotoCaption.text}</Text>
+          <Text style={styles.photoCaptionSource}>
+            Caption source: {subjectPhotoCaption.source}
           </Text>
         </View>
       ) : (
@@ -152,6 +155,13 @@ const styles = StyleSheet.create({
     color: colors.inkMuted,
     textAlign: 'center',
     marginTop: 4,
+  },
+  photoCaptionSource: {
+    fontFamily: 'Inter',
+    fontSize: 6,
+    color: colors.inkMuted,
+    textAlign: 'center',
+    marginTop: 2,
   },
   photoPlaceholder: {
     width: 430,
