@@ -1,6 +1,9 @@
 import { resolveAssignmentKind } from '@/lib/assignments/routing';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
-import { supportsIncomeApproach } from './property-type-policy';
+import {
+  isMultifamilyProperty,
+  supportsIncomeApproach,
+} from './property-type-policy';
 
 export type CaseStrategyFlag =
   | 'tax_appeal'
@@ -21,9 +24,8 @@ export interface CaseStrategyAssessment {
 
 const DISTRESS_PATTERN = /\b(vacant|unoccupied|disrepair|poor condition|deferred maintenance|renovation|rehabilitation|uninhabitable|boarded|fire damage|water damage|demolition)\b/i;
 const REGULATORY_PATTERN = /\b(code violation|building violation|zoning violation|illegal unit|nonconforming|non-conforming|condemnation|municipal violation)\b/i;
-const MULTIFAMILY_PATTERN = /\b(multifamily|multi-family|apartment|duplex|triplex|fourplex|two[- ]unit|three[- ]unit|four[- ]unit|2[- ]unit|3[- ]unit|4[- ]unit)\b/i;
 const INDUSTRIAL_PATTERN = /\b(industrial|warehouse|flex|manufacturing|distribution|factory|logistics)\b/i;
-const UNIT_COUNT_PATTERN = /\b(?:number of units|unit count|two[- ]units?|three[- ]units?|four[- ]units?|[2-9][- ]units?|\([2-9]\)\s*units?)\b/i;
+const UNIT_COUNT_PATTERN = /\b(?:number of units|unit count|two[- ]units?|three[- ]units?|four[- ]units?|[2-9]\d*[- ]units?|\([2-9]\d*\)\s*units?)\b/i;
 const SALE_DATE_KEYS = ['sale_date', 'transfer_date', 'recording_date', 'document_date', 'date'] as const;
 const SUBJECT_EVIDENCE_NARRATIVES = new Set([
   'summary_of_salient_facts',
@@ -111,6 +113,11 @@ export function evaluateCaseStrategy(data: ReportTemplateData): CaseStrategyAsse
   ]
     .filter((value): value is string => hasText(value))
     .join(' ');
+  const propertyDescriptor = {
+    propertyType: data.report.property_type,
+    propertySubtype: data.property.property_subtype,
+    propertyClassDescription: data.property.property_class_description,
+  };
 
   const assignmentKind = resolveAssignmentKind(
     data.report.service_type,
@@ -119,13 +126,9 @@ export function evaluateCaseStrategy(data: ReportTemplateData): CaseStrategyAsse
   const isTaxAppeal = assignmentKind === 'tax_appeal';
   const isDistressedOrVacant = DISTRESS_PATTERN.test(caseText);
   const hasRegulatoryIssue = REGULATORY_PATTERN.test(caseText);
-  const isMultifamily = MULTIFAMILY_PATTERN.test(descriptor);
+  const isMultifamily = isMultifamilyProperty(propertyDescriptor);
   const isIndustrial = data.report.property_type === 'industrial' || INDUSTRIAL_PATTERN.test(descriptor);
-  const isIncomeProperty = supportsIncomeApproach({
-    propertyType: data.report.property_type,
-    propertySubtype: data.property.property_subtype,
-    propertyClassDescription: data.property.property_class_description,
-  });
+  const isIncomeProperty = supportsIncomeApproach(propertyDescriptor);
   const recentSubjectSaleDate = getRecentSubjectSaleDate(
     data.property.deed_history,
     data.valuationDate
