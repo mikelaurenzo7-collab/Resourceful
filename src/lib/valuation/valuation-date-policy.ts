@@ -15,15 +15,50 @@ export interface ValuationEffectiveDateAssessment {
   hardFailures: string[];
 }
 
+const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
 function validYear(value: number | null | undefined): value is number {
   return Number.isInteger(value) && (value ?? 0) >= 1900 && (value ?? 0) <= 2200;
 }
 
+function canonicalIsoDate(value: string): string | null {
+  const match = value.match(ISO_DATE_PATTERN);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  if (!validYear(year) || month < 1 || month > 12 || day < 1 || day > 31) return null;
+
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return value;
+}
+
 export function dateOnly(value: string | null | undefined): string | null {
-  if (!value?.trim()) return null;
-  const parsed = new Date(value);
+  const normalized = value?.trim();
+  if (!normalized) return null;
+
+  const direct = canonicalIsoDate(normalized);
+  if (direct) return direct;
+
+  const timestampMatch = normalized.match(/^(\d{4}-\d{2}-\d{2})T/);
+  if (!timestampMatch || canonicalIsoDate(timestampMatch[1]) == null) return null;
+
+  const parsed = new Date(normalized);
   if (!Number.isFinite(parsed.getTime())) return null;
   return parsed.toISOString().slice(0, 10);
+}
+
+export function isCanonicalDateOnly(value: unknown): value is string {
+  return typeof value === 'string' && canonicalIsoDate(value) === value;
 }
 
 function normalizedConvention(value: string | null | undefined): string {
