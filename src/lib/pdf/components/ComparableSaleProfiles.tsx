@@ -4,6 +4,7 @@ import { Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 import type { ComparableSale } from '@/types/database';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { formatCurrency, formatDateShort, formatSqFt } from '@/lib/templates/helpers';
+import { isHttpUrl } from '@/lib/valuation/workfile-provenance';
 import { colors, theme } from '../styles/theme';
 import { DataTable, PageFooter, SectionHeader } from './shared';
 
@@ -34,17 +35,26 @@ function formatPercent(value: number): string {
   return `${sign}${value.toFixed(1)}%`;
 }
 
-function sourceSummary(comp: ComparableSale): string {
-  if (!comp.county_recorder_url) {
-    return comp.deed_document_number
-      ? `Deed document stored: ${comp.deed_document_number}`
-      : 'No recorder link or deed document stored';
+export function sourceSummary(comp: ComparableSale): string {
+  const sourceUrl = comp.county_recorder_url?.trim() ?? null;
+  const deedNumber = comp.deed_document_number?.trim() ?? null;
+
+  if (sourceUrl && isHttpUrl(sourceUrl)) {
+    const hostname = new URL(sourceUrl).hostname;
+    return deedNumber
+      ? `Verified HTTP(S) recorder source: ${hostname}; deed ${deedNumber}`
+      : `Verified HTTP(S) recorder source: ${hostname}`;
   }
-  try {
-    return `Documented: ${new URL(comp.county_recorder_url).hostname}`;
-  } catch {
-    return 'Stored source URL is unverified';
+
+  if (deedNumber) {
+    return sourceUrl
+      ? `Deed document stored: ${deedNumber}; source URL is not verified HTTP(S)`
+      : `Deed document stored: ${deedNumber}`;
   }
+
+  return sourceUrl
+    ? 'Stored source reference is not a verified HTTP(S) recorder URL'
+    : 'No recorder link or deed document stored';
 }
 
 export default function ComparableSaleProfiles({ data }: { data: ReportTemplateData }) {
