@@ -5,6 +5,7 @@ import {
 } from './pdf-release-policy';
 
 type IncomeApproachInput = NonNullable<PdfReleasePolicyInput['incomeApproach']>;
+type CostApproachInput = NonNullable<PdfReleasePolicyInput['costApproach']>;
 
 function completeIncome(
   overrides: Partial<IncomeApproachInput> = {}
@@ -20,6 +21,19 @@ function completeIncome(
   };
 }
 
+function completeCost(
+  overrides: Partial<CostApproachInput> = {}
+): CostApproachInput {
+  return {
+    replacementCostNew: 900_000,
+    concludedValue: 750_000,
+    physicalDepreciationPct: 20,
+    functionalObsolescencePct: 0,
+    landValue: 30_000,
+    ...overrides,
+  };
+}
+
 describe('evaluatePdfReleasePolicy', () => {
   it('accepts a normal report with at least three comparable sales', () => {
     const result = evaluatePdfReleasePolicy({
@@ -31,6 +45,7 @@ describe('evaluatePdfReleasePolicy', () => {
     expect(result.warnings).toEqual([]);
     expect(result.hasComparableSales).toBe(true);
     expect(result.incomeAssessment).toBeNull();
+    expect(result.costAssessment).toBeNull();
   });
 
   it('warns but does not fail when only one or two comparable sales are available', () => {
@@ -151,14 +166,11 @@ describe('evaluatePdfReleasePolicy', () => {
     const result = evaluatePdfReleasePolicy({
       comparableSaleCount: 0,
       concludedValue: 760_000,
-      costApproach: {
-        replacementCostNew: 900_000,
-        concludedValue: 750_000,
-        physicalDepreciationPct: 20,
-      },
+      costApproach: completeCost(),
     });
 
     expect(result.hardFailures).toEqual([]);
+    expect(result.costAssessment?.isReleaseReady).toBe(true);
     expect(result.evidenceBackedAlternatives).toEqual([
       { label: 'cost approach', value: 750_000 },
     ]);
@@ -171,14 +183,28 @@ describe('evaluatePdfReleasePolicy', () => {
     const result = evaluatePdfReleasePolicy({
       comparableSaleCount: 0,
       concludedValue: 760_000,
-      costApproach: {
-        replacementCostNew: 900_000,
-        concludedValue: 750_000,
-        physicalDepreciationPct: null,
-      },
+      costApproach: completeCost({ physicalDepreciationPct: null }),
     });
 
+    expect(result.costAssessment?.isReleaseReady).toBe(false);
     expect(result.hardFailures).toContain('No evidence-backed valuation approach available');
+    expect(result.warnings).toContain(
+      'Cost approach: Cost approach requires physical depreciation between 0% and 100%'
+    );
+  });
+
+  it('rejects a cost approach without verified land value', () => {
+    const result = evaluatePdfReleasePolicy({
+      comparableSaleCount: 0,
+      concludedValue: 760_000,
+      costApproach: completeCost({ landValue: null }),
+    });
+
+    expect(result.costAssessment?.isReleaseReady).toBe(false);
+    expect(result.hardFailures).toContain('No evidence-backed valuation approach available');
+    expect(result.warnings).toContain(
+      'Cost approach: Cost approach requires a verified non-negative land-value input'
+    );
   });
 
   it('rejects a conclusion materially outside the supported alternative approach', () => {
@@ -203,11 +229,12 @@ describe('evaluatePdfReleasePolicy', () => {
         concludedCapRate: 0.075,
         concludedValue: 1_200_000,
       }),
-      costApproach: {
+      costApproach: completeCost({
         replacementCostNew: 1_500_000,
         concludedValue: 1_350_000,
         physicalDepreciationPct: 10,
-      },
+        landValue: 0,
+      }),
     });
 
     expect(result.hardFailures).toEqual([]);
