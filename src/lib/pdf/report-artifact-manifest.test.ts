@@ -101,6 +101,15 @@ function createData(): ReportTemplateData {
       physical_depreciation_pct: null,
       functional_obsolescence_pct: null,
       land_value: null,
+      cost_replacement_source_authority: null,
+      cost_depreciation_source_authority: null,
+      cost_land_source_authority: null,
+      cost_source_references: null,
+      cost_methodology: null,
+      cost_effective_date: null,
+      cost_verification_state: null,
+      cost_verified_by: null,
+      cost_verified_at: null,
     },
     comparableSales: [
       {
@@ -245,11 +254,26 @@ describe('report artifact manifest', () => {
 
   it('records cost readiness only when the authoritative release policy approves it', () => {
     const data = createData();
-    data.property.cost_approach_rcn = 500_000;
-    data.property.cost_approach_value = 470_000;
-    data.property.physical_depreciation_pct = 10;
-    data.property.functional_obsolescence_pct = 0;
-    data.property.land_value = 20_000;
+    Object.assign(data.property, {
+      cost_approach_rcn: 500_000,
+      cost_approach_value: 470_000,
+      physical_depreciation_pct: 10,
+      functional_obsolescence_pct: 0,
+      land_value: 20_000,
+      cost_replacement_source_authority: 'Marshall & Swift/Boeckh, 2025 local cost service',
+      cost_depreciation_source_authority: 'Documented age-life analysis reviewed by Test Reviewer',
+      cost_land_source_authority: 'Verified land-sale workfile and assessor record',
+      cost_source_references: {
+        replacementCost: 'MSB-2025-Q1-local-index',
+        depreciation: 'workfile/depreciation-analysis-1',
+        landValue: 'workfile/land-sales-1',
+      },
+      cost_methodology: 'RCN less physical and functional depreciation, plus land value.',
+      cost_effective_date: '2026-01-01',
+      cost_verification_state: 'verified',
+      cost_verified_by: 'Test Reviewer, controlled fixture',
+      cost_verified_at: '2026-07-18T12:00:00.000Z',
+    });
     data.narratives.push(narrative('cost_approach_narrative'));
 
     const costValuationRelease = evaluatePdfReleasePolicy({
@@ -261,6 +285,16 @@ describe('report artifact manifest', () => {
         physicalDepreciationPct: data.property.physical_depreciation_pct,
         functionalObsolescencePct: data.property.functional_obsolescence_pct,
         landValue: data.property.land_value,
+        replacementCostSourceAuthority: data.property.cost_replacement_source_authority,
+        depreciationSourceAuthority: data.property.cost_depreciation_source_authority,
+        landValueSourceAuthority: data.property.cost_land_source_authority,
+        sourceReferences: data.property.cost_source_references,
+        methodology: data.property.cost_methodology,
+        costEffectiveDate: data.property.cost_effective_date,
+        expectedEffectiveDate: data.valuationDate,
+        verificationState: data.property.cost_verification_state,
+        verifiedBy: data.property.cost_verified_by,
+        verifiedAt: data.property.cost_verified_at,
       },
     });
 
@@ -280,10 +314,7 @@ describe('report artifact manifest', () => {
   it('does not record tax-appeal assessment context for an independent valuation override', () => {
     const data = createData();
     data.report.desired_outcome = '[INDEPENDENT_VALUATION] Estate planning decision support';
-    const independentReport = data.report as typeof data.report & {
-      valuation_effective_date_source: string;
-    };
-    independentReport.valuation_effective_date_source = 'intake_current_date';
+    data.report.valuation_effective_date_source = 'intake_current_date';
     data.filingGuide = null;
 
     const manifest = createReportArtifactManifest({
