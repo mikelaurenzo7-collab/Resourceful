@@ -61,17 +61,26 @@ function parseDate(value: unknown): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function deedRecords(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (record): record is Record<string, unknown> =>
+      record != null && typeof record === 'object' && !Array.isArray(record)
+  );
+}
+
 function getRecentSubjectSaleDate(
-  deedHistory: Record<string, unknown>[] | null,
+  deedHistory: unknown,
   valuationDate: string
 ): string | null {
-  if (!deedHistory?.length) return null;
+  const records = deedRecords(deedHistory);
+  if (records.length === 0) return null;
   const effectiveDate = parseDate(valuationDate);
   if (!effectiveDate) return null;
   const lookbackStart = new Date(effectiveDate);
   lookbackStart.setUTCFullYear(lookbackStart.getUTCFullYear() - 3);
 
-  const qualifyingDates = deedHistory
+  const qualifyingDates = records
     .flatMap((record) => SALE_DATE_KEYS.map((key) => parseDate(record[key])))
     .filter((date): date is Date => Boolean(date))
     .filter((date) => date <= effectiveDate && date >= lookbackStart)
