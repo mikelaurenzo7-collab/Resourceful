@@ -319,8 +319,6 @@ export async function fetchReportTemplateData(
       ?? recoverLegacyFilingGuide(filingGuideNarrative.content, report, countyRule);
   }
 
-  const now = new Date();
-
   return {
     report,
     property: propertyData,
@@ -338,6 +336,6 @@ export async function fetchReportTemplateData(
     filingGuide,
     concludedValue: propertyData.concluded_value ?? 0,
     valuationDate,
-    reportDate: report.pipeline_completed_at ?? report.updated_at ?? now.toISOString(),
+    reportDate: report.pipeline_completed_at ?? report.created_at,
   };
 }
