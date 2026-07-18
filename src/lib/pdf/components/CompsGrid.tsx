@@ -46,8 +46,8 @@ export default function CompsGrid({ data }: { data: ReportTemplateData }) {
     : ', with source distance data unavailable for at least part of the set';
 
   return (
-    <View break>
-      <SectionHeader number="VIII" title="Comparable Sales Analysis" />
+    <View>
+      <SectionHeader number="VII-B1" title="Comparable Sales Grid" />
 
       <Text style={[theme.bodyText, { marginBottom: 8 }]}>
         {selectionSummary}{distanceSummary}. Selection, source verification, comparability, and any calculated
@@ -119,7 +119,7 @@ export default function CompsGrid({ data }: { data: ReportTemplateData }) {
         })()}
       </View>
 
-      <Text style={[theme.caption, { marginTop: 5 }]}> 
+      <Text style={[theme.caption, { marginTop: 5 }]}>
         Blank adjustment fields mean no supported adjustment is stored; they must not be interpreted as a confirmed zero adjustment.
       </Text>
     </View>
