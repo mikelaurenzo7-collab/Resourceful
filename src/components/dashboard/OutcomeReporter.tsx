@@ -33,6 +33,7 @@ export default function OutcomeReporter({
   assessedValue,
 }: OutcomeReporterProps) {
   const router = useRouter();
+  const currentIsPending = currentOutcome === 'pending';
   const [outcome, setOutcome] = useState<AppealOutcome | ''>(
     OUTCOMES.some((option) => option.value === currentOutcome)
       ? (currentOutcome as AppealOutcome)
@@ -41,7 +42,7 @@ export default function OutcomeReporter({
   const [newAssessedInput, setNewAssessedInput] = useState('');
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(Boolean(currentOutcome));
+  const [submitted, setSubmitted] = useState(Boolean(currentOutcome && !currentIsPending));
   const [error, setError] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
@@ -102,13 +103,19 @@ export default function OutcomeReporter({
         }),
       });
 
-      const data = await response.json().catch(() => ({})) as { error?: string };
+      const data = await response.json().catch(() => ({})) as {
+        error?: string;
+        final?: boolean;
+        outcome?: AppealOutcome;
+      };
       if (!response.ok) {
         throw new Error(data.error ?? `Failed to save (${response.status})`);
       }
 
-      setSubmitted(true);
+      setSubmitted(Boolean(data.final));
       setIsOpen(false);
+      setNotes('');
+      if (data.outcome) setOutcome(data.outcome);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save. Please try again.');
@@ -121,10 +128,10 @@ export default function OutcomeReporter({
     return (
       <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/[0.05] p-5" data-animate>
         <p className="text-[10px] uppercase tracking-[0.18em] font-semibold text-emerald-300/70">
-          Appeal Result Recorded
+          Final Appeal Result Recorded
         </p>
         <p className="text-sm text-cream/55 mt-2">
-          The reported result was saved and will be used to improve future valuation calibration.
+          The final result was saved and will be used to improve future valuation calibration.
         </p>
       </div>
     );
@@ -140,9 +147,13 @@ export default function OutcomeReporter({
       <div className="px-5 py-4 border-b border-gold/[0.08]">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h3 className="text-sm font-medium text-cream">How did your appeal go?</h3>
+            <h3 className="text-sm font-medium text-cream">
+              {currentIsPending ? 'Decision still pending?' : 'How did your appeal go?'}
+            </h3>
             <p className="text-[11px] text-cream/30 mt-0.5">
-              Your verified result improves future valuation calibration.
+              {currentIsPending
+                ? 'Update the case when the authority issues a final decision.'
+                : 'Adjudicated results improve future valuation calibration.'}
             </p>
           </div>
           {!isOpen && (
@@ -150,11 +161,19 @@ export default function OutcomeReporter({
               onClick={() => setIsOpen(true)}
               className="text-xs font-medium text-gold hover:text-gold-light transition-colors px-3 py-1.5 border border-gold/20 rounded-lg hover:border-gold/40"
             >
-              Share Result
+              {currentIsPending ? 'Update Result' : 'Share Result'}
             </button>
           )}
         </div>
       </div>
+
+      {currentIsPending && !isOpen && (
+        <div className="px-5 py-3 border-b border-amber-400/10 bg-amber-400/[0.035]">
+          <p className="text-[11px] text-amber-200/70">
+            Current case state: decision pending. This is not counted as a win or loss.
+          </p>
+        </div>
+      )}
 
       {isOpen && (
         <div className="px-5 py-5 space-y-5">
@@ -226,7 +245,7 @@ export default function OutcomeReporter({
             <textarea
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              placeholder="Any details about the hearing or decision..."
+              placeholder="Decision date, hearing details, continuance, or other context..."
               rows={2}
               maxLength={5000}
               className="w-full bg-navy-deep/60 border border-gold/15 rounded-lg px-4 py-2.5 text-sm text-cream placeholder:text-cream/20 focus:outline-none focus:border-gold/40 focus:ring-1 focus:ring-gold/20 resize-none"
@@ -255,7 +274,7 @@ export default function OutcomeReporter({
                   Saving…
                 </>
               ) : (
-                'Submit'
+                outcome === 'pending' ? 'Save Pending Status' : 'Submit Final Result'
               )}
             </button>
             <button
