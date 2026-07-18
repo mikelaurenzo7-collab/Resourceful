@@ -50,7 +50,7 @@ function expectedAssessmentRatio(
     case 'commercial':
       return countyRule.level_of_assessment_commercial ?? countyRule.assessment_ratio_commercial ?? null;
     case 'industrial':
-      return countyRule.level_of_assessment_commercial ?? countyRule.assessment_ratio_industrial ?? null;
+      return countyRule.assessment_ratio_industrial ?? countyRule.level_of_assessment_commercial ?? null;
     case 'agricultural':
       return countyRule.assessment_ratio_agricultural ?? null;
     case 'land':
