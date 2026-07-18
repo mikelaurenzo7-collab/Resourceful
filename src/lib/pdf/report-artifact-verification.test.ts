@@ -124,7 +124,7 @@ describe('verifyReportArtifact', () => {
     });
   });
 
-  it('rejects report-contract, path, and jurisdiction contradictions', () => {
+  it('rejects report-contract, path, jurisdiction, and nationwide-integrity contradictions', () => {
     const manifest = parseManifest();
 
     const wrongReport = structuredClone(manifest);
@@ -139,12 +139,21 @@ describe('verifyReportArtifact', () => {
     wrongPath.artifact.manifestPath = 'wrong.manifest.json';
     expect(verify(JSON.stringify(wrongPath))).toMatchObject({ code: 'ARTIFACT_PATH_MISMATCH' });
 
-    const notReady = structuredClone(manifest);
-    notReady.jurisdiction.releaseReady = false;
-    expect(verify(JSON.stringify(notReady))).toMatchObject({ code: 'JURISDICTION_RELEASE_NOT_READY' });
+    const jurisdictionNotReady = structuredClone(manifest);
+    jurisdictionNotReady.jurisdiction.releaseReady = false;
+    expect(verify(JSON.stringify(jurisdictionNotReady))).toMatchObject({
+      code: 'JURISDICTION_RELEASE_NOT_READY',
+    });
+
+    const integrityNotReady = structuredClone(manifest);
+    integrityNotReady.integrity.releaseReady = false;
+    integrityNotReady.integrity.hardFailureCodes = ['MUNICIPALITY_TEMPLATE_LEAK'];
+    expect(verify(JSON.stringify(integrityNotReady))).toMatchObject({
+      code: 'REPORT_INTEGRITY_NOT_READY',
+    });
   });
 
-  it('rejects invalid JSON, unsupported schemas, and malformed 1.3/1.4 provenance', () => {
+  it('rejects invalid JSON, unsupported schemas, and malformed 1.3/1.4/1.5 provenance', () => {
     const invalidJson = verifyReportArtifact({
       reportId: 'report-123',
       serviceType: 'tax_appeal',
@@ -178,6 +187,19 @@ describe('verifyReportArtifact', () => {
     const strategy = missingRetrospectiveFlag.strategy as Record<string, unknown>;
     delete strategy.isRetrospectiveAssignment;
     expect(verify(JSON.stringify(missingRetrospectiveFlag))).toMatchObject({
+      code: 'MANIFEST_JSON_INVALID',
+    });
+
+    const missingIntegrity = structuredClone(parseManifest()) as unknown as Record<string, unknown>;
+    delete missingIntegrity.integrity;
+    expect(verify(JSON.stringify(missingIntegrity))).toMatchObject({
+      code: 'MANIFEST_JSON_INVALID',
+    });
+
+    const malformedIntegrity = structuredClone(parseManifest()) as unknown as Record<string, unknown>;
+    const integrity = malformedIntegrity.integrity as Record<string, unknown>;
+    integrity.hardFailureCodes = 'MUNICIPALITY_TEMPLATE_LEAK';
+    expect(verify(JSON.stringify(malformedIntegrity))).toMatchObject({
       code: 'MANIFEST_JSON_INVALID',
     });
   });
