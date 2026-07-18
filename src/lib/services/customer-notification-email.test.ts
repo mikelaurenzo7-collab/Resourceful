@@ -15,6 +15,7 @@ function reportParams(
   return {
     to: 'customer@example.com',
     reportId: 'report/123',
+    artifactReleaseKey: '20260718T150405678Z_a1b2c3d4e5f60718',
     serviceType: 'tax_appeal',
     propertyAddress: '123 Main & First <Unit 2>',
     concludedMarketValue: 1_000_000,
