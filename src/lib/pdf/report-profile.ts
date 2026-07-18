@@ -4,6 +4,7 @@ import {
   isMultifamilyProperty,
   supportsIncomeApproach,
 } from '@/lib/valuation/property-type-policy';
+import { hasAnyCostApproachEvidence } from '@/lib/valuation/cost-approach-policy';
 import { isCookCountyJurisdiction } from '@/lib/valuation/workfile-provenance';
 import {
   getReportCostAssessment,
@@ -112,13 +113,17 @@ function buildRequiredNarratives(input: {
     'summary_of_salient_facts',
     'executive_summary',
     'property_description',
+    'area_analysis_city',
+    'area_analysis_neighborhood',
     'reconciliation_narrative',
+    'certification_and_limiting_conditions',
   ]);
 
   if (input.isComplexProperty) {
     required.add('property_history');
     required.add('site_description_narrative');
     required.add('improvement_description_narrative');
+    required.add('area_analysis_county');
     required.add('market_analysis');
   }
 
@@ -274,13 +279,23 @@ export function evaluateReportProfileCompleteness(
     }
   }
 
-  const hasAnyCostInput = [
-    data.property.cost_approach_rcn,
-    data.property.cost_approach_value,
-    data.property.physical_depreciation_pct,
-    data.property.functional_obsolescence_pct,
-    data.property.land_value,
-  ].some((value) => value != null);
+  const hasAnyCostInput = hasAnyCostApproachEvidence({
+    replacementCostNew: data.property.cost_approach_rcn,
+    concludedValue: data.property.cost_approach_value,
+    physicalDepreciationPct: data.property.physical_depreciation_pct,
+    functionalObsolescencePct: data.property.functional_obsolescence_pct,
+    landValue: data.property.land_value,
+    replacementCostSourceAuthority: data.property.cost_replacement_source_authority,
+    depreciationSourceAuthority: data.property.cost_depreciation_source_authority,
+    landValueSourceAuthority: data.property.cost_land_source_authority,
+    sourceReferences: data.property.cost_source_references,
+    methodology: data.property.cost_methodology,
+    costEffectiveDate: data.property.cost_effective_date,
+    expectedEffectiveDate: data.valuationDate,
+    verificationState: data.property.cost_verification_state,
+    verifiedBy: data.property.cost_verified_by,
+    verifiedAt: data.property.cost_verified_at,
+  });
   if (hasAnyCostInput) {
     const costAssessment = getReportCostAssessment(data);
     hardFailures.push(...costAssessment.hardFailures);
