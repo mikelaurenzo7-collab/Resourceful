@@ -21,7 +21,7 @@ describe('appeal outcome lifecycle', () => {
     expect(validateOutcomeTransition('didnt_file', 'pending').valid).toBe(false);
   });
 
-  it('requires filing proof for every outcome except did not file', () => {
+  it('requires filing proof for every outcome except a truthful did-not-file result', () => {
     expect(
       validateOutcomeFilingContext({
         outcome: 'pending',
@@ -48,6 +48,15 @@ describe('appeal outcome lifecycle', () => {
         filingMethod: null,
       })
     ).toEqual({ valid: true });
+
+    expect(
+      validateOutcomeFilingContext({
+        outcome: 'didnt_file',
+        filingStatus: 'filed',
+        filedAt: '2026-07-01',
+        filingMethod: 'online',
+      }).valid
+    ).toBe(false);
   });
 
   it('does not reopen a closed case as pending', () => {
