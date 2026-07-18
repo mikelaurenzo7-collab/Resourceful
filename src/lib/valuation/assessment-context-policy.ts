@@ -1,4 +1,8 @@
 import type { CountyRule, PropertyType, ServiceType } from '@/types/database';
+import {
+  isCookCountyJurisdiction,
+  isHttpUrl,
+} from './workfile-provenance';
 
 const RATIO_TOLERANCE = 0.005;
 const SPECIAL_CLASSIFICATION_PATTERN =
@@ -15,6 +19,8 @@ export interface AssessmentContextPolicyInput {
   assessmentRatio: number | null | undefined;
   assessmentMethodology: string | null | undefined;
   propertyClassDescription: string | null | undefined;
+  classificationSourceAuthority?: string | null | undefined;
+  classificationSourceUrl?: string | null | undefined;
   countyRule: CountyRule | null | undefined;
 }
 
@@ -60,12 +66,17 @@ function expectedAssessmentRatio(
   }
 }
 
-function hasSpecialClassificationExplanation(input: AssessmentContextPolicyInput): boolean {
+function hasSourcedSpecialClassification(input: AssessmentContextPolicyInput): boolean {
   const explanation = [input.assessmentMethodology, input.propertyClassDescription]
     .filter((value): value is string => Boolean(value?.trim()))
     .join(' ');
+  const authority = input.classificationSourceAuthority?.trim();
 
-  return SPECIAL_CLASSIFICATION_PATTERN.test(explanation);
+  return (
+    SPECIAL_CLASSIFICATION_PATTERN.test(explanation) &&
+    Boolean(authority) &&
+    isHttpUrl(input.classificationSourceUrl)
+  );
 }
 
 function normalizedValuationConvention(rule: CountyRule | null | undefined): string {
@@ -100,7 +111,7 @@ export function evaluateAssessmentContext(
   input: AssessmentContextPolicyInput
 ): AssessmentContextPolicyResult {
   const applicable = input.serviceType === 'tax_appeal';
-  const isCookCounty = input.countyFips === '17031';
+  const isCookCounty = isCookCountyJurisdiction(input.countyRule);
   const warnings: string[] = [];
   const hardFailures: string[] = [];
 
@@ -161,20 +172,18 @@ export function evaluateAssessmentContext(
       ? appliedRatio - expectedRatio
       : null;
 
-  if (input.propertyType === 'land' && expectedRatio == null) {
-    warnings.push(
-      'No generic land assessment level was inferred; the parcel classification and jurisdiction method require direct verification'
-    );
-  } else if (expectedRatio == null) {
+  if (expectedRatio == null) {
     hardFailures.push('Verified jurisdiction rule does not provide an assessment level for this property type');
   }
 
   if (ratioVariance != null && Math.abs(ratioVariance) > RATIO_TOLERANCE) {
     const mismatch = `Applied assessment level ${(appliedRatio! * 100).toFixed(2)}% differs from the jurisdiction reference ${(expectedRatio! * 100).toFixed(2)}%`;
-    if (hasSpecialClassificationExplanation(input)) {
-      warnings.push(`${mismatch}; retain the documented special classification explanation and source`);
+    if (hasSourcedSpecialClassification(input)) {
+      warnings.push(`${mismatch}; verified special-classification evidence is attached to the workfile`);
     } else {
-      hardFailures.push(`${mismatch} without a documented classification exception`);
+      hardFailures.push(
+        `${mismatch} without a sourced classification exception from an official authority`
+      );
     }
   }
 
