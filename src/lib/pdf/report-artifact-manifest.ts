@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 
 import { AI_MODELS } from '@/config/ai';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
+import type { ServiceType } from '@/types/database';
 import { buildReportProfile } from './report-profile';
 import { evaluateAssessmentContext } from '@/lib/valuation/assessment-context-policy';
 import { evaluateCaseStrategy, type CaseStrategyFlag } from '@/lib/valuation/case-strategy-policy';
@@ -87,6 +88,14 @@ function compactTimestamp(value: string): string {
   return parsed.toISOString().replace(/[-:.]/g, '');
 }
 
+function effectiveServiceType(
+  assignmentKind: 'tax_appeal' | 'pre_purchase' | 'pre_listing' | 'independent_valuation'
+): ServiceType {
+  if (assignmentKind === 'tax_appeal') return 'tax_appeal';
+  if (assignmentKind === 'pre_listing') return 'pre_listing';
+  return 'pre_purchase';
+}
+
 export function hashPdfBuffer(pdfBuffer: Buffer): string {
   return createHash('sha256').update(pdfBuffer).digest('hex');
 }
@@ -130,8 +139,9 @@ export function createReportArtifactManifest(input: {
   const sha256 = hashPdfBuffer(pdfBuffer);
   const paths = buildReportArtifactPaths(data.report.id, generatedAt, sha256);
   const profile = buildReportProfile(data);
+  const releaseServiceType = effectiveServiceType(profile.assignmentKind);
   const assessmentContext = evaluateAssessmentContext({
-    serviceType: data.report.service_type,
+    serviceType: releaseServiceType,
     countyFips: data.report.county_fips,
     propertyType: data.report.property_type,
     taxYearInAppeal: data.property.tax_year_in_appeal,
