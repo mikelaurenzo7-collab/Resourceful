@@ -1,5 +1,9 @@
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import {
+  evaluateCostApproachEvidence,
+  type CostApproachEvidenceAssessment,
+} from '@/lib/valuation/cost-approach-policy';
+import {
   evaluateIncomeApproachEvidence,
   type IncomeApproachEvidenceAssessment,
 } from '@/lib/valuation/income-approach-policy';
@@ -42,6 +46,22 @@ export function hasReleaseReadyIncomeApproach(data: ReportTemplateData): boolean
   return getReportIncomeAssessment(data)?.isReleaseReady === true;
 }
 
+export function getReportCostAssessment(
+  data: ReportTemplateData
+): CostApproachEvidenceAssessment {
+  return evaluateCostApproachEvidence({
+    replacementCostNew: data.property.cost_approach_rcn,
+    concludedValue: data.property.cost_approach_value,
+    physicalDepreciationPct: data.property.physical_depreciation_pct,
+    functionalObsolescencePct: data.property.functional_obsolescence_pct,
+    landValue: data.property.land_value,
+  });
+}
+
+export function hasReleaseReadyCostApproach(data: ReportTemplateData): boolean {
+  return getReportCostAssessment(data).isReleaseReady;
+}
+
 export function buildValueConclusionRows(data: ReportTemplateData): ValueConclusionRowData[] {
   const rows: ValueConclusionRowData[] = [];
   const subjectArea = getSubjectBuildingArea(data);
@@ -66,11 +86,12 @@ export function buildValueConclusionRows(data: ReportTemplateData): ValueConclus
     });
   }
 
-  if (data.property.cost_approach_value != null && data.property.cost_approach_value > 0) {
+  const costAssessment = getReportCostAssessment(data);
+  if (costAssessment.isReleaseReady && costAssessment.concludedValue != null) {
     rows.push({
       approach: 'Cost Approach',
-      total: roundToNearestThousand(data.property.cost_approach_value),
-      valuePerSqFt: computeValuePerSqFt(data.property.cost_approach_value, subjectArea),
+      total: roundToNearestThousand(costAssessment.concludedValue),
+      valuePerSqFt: computeValuePerSqFt(costAssessment.concludedValue, subjectArea),
       role: getApproachRole(data, 'cost'),
     });
   }
