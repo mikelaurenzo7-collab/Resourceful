@@ -1,15 +1,42 @@
 // ─── Stage 7: PDF Assembly ───────────────────────────────────────────────────
 // Fetches all report data, validates release evidence, renders to PDF via
-// @react-pdf/renderer, uploads to Supabase Storage, and sets status to pending_approval.
+// @react-pdf/renderer, and publishes an immutable PDF/manifest artifact pair.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/types/database';
 import type { StageResult } from '../orchestrator';
 import { generateReportPDF } from '@/lib/pdf';
 import { fetchReportTemplateData } from '@/lib/pdf/fetch-report-data';
+import {
+  createReportArtifactManifest,
+  serializeReportArtifactManifest,
+} from '@/lib/pdf/report-artifact-manifest';
 import { evaluatePdfReleasePolicy } from '@/lib/valuation/pdf-release-policy';
 import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
 import { pipelineLogger } from '@/lib/logger';
+
+async function rollbackArtifacts(
+  supabase: SupabaseClient<Database>,
+  paths: string[]
+): Promise<string | null> {
+  try {
+    const { error } = await supabase.storage.from('reports').remove(paths);
+    if (!error) return null;
+
+    pipelineLogger.error(
+      { paths, error: error.message },
+      '[stage7] Failed to roll back partially published report artifacts'
+    );
+    return error.message;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    pipelineLogger.error(
+      { paths, error: message },
+      '[stage7] Report artifact rollback threw unexpectedly'
+    );
+    return message;
+  }
+}
 
 export async function runPdfAssembly(
   reportId: string,
@@ -104,39 +131,77 @@ export async function runPdfAssembly(
     return { success: false, error: `PDF generation failed: ${message}` };
   }
 
-  const shortId = reportId.split('-')[0];
-  const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
-  const storagePath = `${reportId}/report_${shortId}_${dateStr}.pdf`;
+  const generatedAt = new Date().toISOString();
+  const manifest = createReportArtifactManifest({
+    data: templateData,
+    pdfBuffer,
+    generatedAt,
+    valuationRelease,
+  });
+  const manifestBuffer = serializeReportArtifactManifest(manifest);
+  const { pdfPath, manifestPath } = manifest.artifact;
 
-  const { error: uploadError } = await supabase
+  const { error: pdfUploadError } = await supabase
     .storage
     .from('reports')
-    .upload(storagePath, pdfBuffer, {
+    .upload(pdfPath, pdfBuffer, {
       contentType: 'application/pdf',
-      upsert: true,
+      upsert: false,
     });
 
-  if (uploadError) {
+  if (pdfUploadError) {
     return {
       success: false,
-      error: `Failed to upload PDF to storage: ${uploadError.message}`,
+      error: `Failed to upload immutable PDF artifact: ${pdfUploadError.message}`,
+    };
+  }
+
+  const { error: manifestUploadError } = await supabase
+    .storage
+    .from('reports')
+    .upload(manifestPath, manifestBuffer, {
+      contentType: 'application/json; charset=utf-8',
+      upsert: false,
+    });
+
+  if (manifestUploadError) {
+    const rollbackError = await rollbackArtifacts(supabase, [pdfPath]);
+    return {
+      success: false,
+      error: [
+        `Failed to upload report artifact manifest: ${manifestUploadError.message}`,
+        rollbackError ? `Rollback also failed: ${rollbackError}` : null,
+      ].filter(Boolean).join('; '),
     };
   }
 
   const { error: reportUpdateError } = await supabase
     .from('reports')
     .update({
-      report_pdf_storage_path: storagePath,
+      report_pdf_storage_path: pdfPath,
     })
     .eq('id', reportId);
 
   if (reportUpdateError) {
-    return { success: false, error: `Failed to update report after PDF upload: ${reportUpdateError.message}` };
+    const rollbackError = await rollbackArtifacts(supabase, [pdfPath, manifestPath]);
+    return {
+      success: false,
+      error: [
+        `Failed to update report after artifact publication: ${reportUpdateError.message}`,
+        rollbackError ? `Rollback also failed: ${rollbackError}` : null,
+      ].filter(Boolean).join('; '),
+    };
   }
 
   pipelineLogger.info(
-    { reportId, sizeKB: (pdfBuffer.length / 1024).toFixed(0) },
-    '[stage7] PDF assembled and uploaded'
+    {
+      reportId,
+      sizeKB: (pdfBuffer.length / 1024).toFixed(0),
+      pdfSha256: manifest.artifact.sha256,
+      pdfPath,
+      manifestPath,
+    },
+    '[stage7] Immutable PDF and manifest published'
   );
 
   return { success: true };
