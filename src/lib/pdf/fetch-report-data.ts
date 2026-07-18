@@ -107,6 +107,13 @@ function defaultFilingSteps(): string[] {
   ];
 }
 
+function hasValidCoordinates(latitude: number | null, longitude: number | null): boolean {
+  if (latitude == null || longitude == null) return false;
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return false;
+  return latitude !== 0 || longitude !== 0;
+}
+
 export function parseStructuredFilingGuide(
   content: string,
   report: Report,
@@ -236,41 +243,25 @@ export async function fetchReportTemplateData(
     countyRule = (cr?.[0] as CountyRule) ?? null;
   }
 
-  // Generate map URLs
-  const latitude = report.latitude ?? 0;
-  const longitude = report.longitude ?? 0;
-
-  const locationMapUrl = getStaticMapUrl({
-    lat: latitude,
-    lng: longitude,
-    zoom: 15,
-    width: 640,
-    height: 400,
-    markers: [{ lat: latitude, lng: longitude, color: 'red', label: 'S' }],
-  });
-
-  const compMarkers = comps.slice(0, 6).map((c, i) => {
-    const distDeg = (c.distance_miles ?? 1) * 0.0145;
-    const angle = (i / Math.min(comps.length, 6)) * 2 * Math.PI;
-    return {
-      lat: latitude + distDeg * Math.cos(angle),
-      lng: longitude + distDeg * Math.sin(angle),
-      color: 'blue',
-      label: String(i + 1),
-    };
-  });
-
-  const compsMapUrl = getStaticMapUrl({
-    lat: latitude,
-    lng: longitude,
-    zoom: 13,
-    width: 640,
-    height: 400,
-    markers: [
-      { lat: latitude, lng: longitude, color: 'red', label: 'S' },
-      ...compMarkers,
-    ],
-  });
+  // Render only verified subject coordinates. Comparable-sale rows currently do
+  // not carry source coordinates, so Resourceful must not invent marker positions.
+  const locationMapUrl = hasValidCoordinates(report.latitude, report.longitude)
+    ? getStaticMapUrl({
+        lat: report.latitude!,
+        lng: report.longitude!,
+        zoom: 15,
+        width: 640,
+        height: 400,
+        markers: [
+          {
+            lat: report.latitude!,
+            lng: report.longitude!,
+            color: 'red',
+            label: 'S',
+          },
+        ],
+      })
+    : '';
 
   // Get signed URLs for photos
   const photosWithUrls = await Promise.all(
@@ -305,8 +296,9 @@ export async function fetchReportTemplateData(
     narratives,
     countyRule,
     maps: {
-      regional: { url: locationMapUrl, caption: 'Regional Location Map' },
-      neighborhood: { url: compsMapUrl, caption: 'Comparable Sales Map' },
+      regional: locationMapUrl
+        ? { url: locationMapUrl, caption: 'Verified Subject Location Map' }
+        : undefined,
     },
     filingGuide,
     concludedValue: propertyData.concluded_value ?? 0,

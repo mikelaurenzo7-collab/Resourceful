@@ -21,17 +21,20 @@ export function getAppUrl(rawValue = process.env.NEXT_PUBLIC_APP_URL): string {
       return DEFAULT_APP_URL;
     }
 
-    if (parsed.hostname === 'vercel.com' && parsed.pathname !== '/') {
+    if (parsed.username || parsed.password) {
       return DEFAULT_APP_URL;
     }
 
-    parsed.username = '';
-    parsed.password = '';
+    const hostname = parsed.hostname.toLowerCase();
+    if (hostname === 'vercel.com' || hostname.endsWith('.vercel.com')) {
+      return DEFAULT_APP_URL;
+    }
+
     parsed.search = '';
     parsed.hash = '';
-    parsed.pathname = parsed.pathname.replace(/\/+$/, '') || '/';
+    parsed.pathname = '/';
 
-    return parsed.toString().replace(/\/$/, '');
+    return parsed.origin;
   } catch {
     return DEFAULT_APP_URL;
   }
