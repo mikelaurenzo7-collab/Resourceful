@@ -1,120 +1,168 @@
 // ─── Table of Contents ───────────────────────────────────────────────────────
-// Dynamic TOC that lists all sections included in the report.
+// Derived from the actual case profile and evidence inventory.
 
 import React from 'react';
 import { Page, View, Text, StyleSheet } from '@react-pdf/renderer';
 import { theme, colors } from '../styles/theme';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
-import {
-  getAssignmentDisplayLabel,
-  resolveAssignmentKind,
-} from '@/lib/assignments/routing';
-import { hasReleaseReadyIncomeApproach } from '../section-data';
+import { getAssignmentDisplayLabel } from '@/lib/assignments/routing';
+import { formatDate } from '@/lib/templates/helpers';
+import { buildReportProfile } from '../report-profile';
+import { PageFooter } from './shared';
 
 interface TocEntry {
   number: string;
   title: string;
-  indent?: boolean;
+  detail?: string;
+}
+
+const SPECIAL_NARRATIVE_KEYS = new Set([
+  'summary_of_salient_facts',
+  'executive_summary',
+  'assignment_and_scope',
+  'reconciliation_narrative',
+  'hearing_script',
+  'certification_and_limiting_conditions',
+]);
+
+function labelFor(number: string): string {
+  if (!number) return '';
+  if (number.startsWith('EX-')) return `Exhibit ${number.slice(3)}`;
+  if (number.startsWith('ADD-')) return `Addendum ${number.slice(4)}`;
+  return `Section ${number}`;
+}
+
+function titleCase(value: string): string {
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 export default function TableOfContents({ data }: { data: ReportTemplateData }) {
-  const { property, comparableSales, report, photos, filingGuide, narratives } = data;
-  const assignmentKind = resolveAssignmentKind(report.service_type, report.desired_outcome);
+  const { property, comparableSales, report, photos, filingGuide } = data;
+  const profile = buildReportProfile(data);
   const assignmentLabel = getAssignmentDisplayLabel(report.service_type, report.desired_outcome);
-
-  const narrativeSections = new Set(narratives.map((n) => n.section_name));
-  const hasIncome = hasReleaseReadyIncomeApproach(data);
-  const hasCostApproach = property.cost_approach_value != null && property.cost_approach_value > 0;
+  const hasMaps = Boolean(data.maps.regional?.url || data.maps.neighborhood?.url || data.maps.parcel?.url);
+  const photoCount = photos.filter((photo) => Boolean(photo.storage_path)).length;
   const hasPhotoDefects = photos.some((photo) => (photo.ai_analysis?.defects?.length ?? 0) > 0);
   const hasAddendumA =
-    (assignmentKind === 'tax_appeal' && filingGuide != null) ||
-    (assignmentKind === 'pre_listing' && narrativeSections.has('pricing_strategy_guide')) ||
-    (assignmentKind === 'pre_purchase' && narrativeSections.has('negotiation_guide')) ||
-    (assignmentKind === 'independent_valuation' && narrativeSections.has('valuation_use_guide'));
-
-  const addendumATitle = assignmentKind === 'pre_listing'
+    (profile.assignmentKind === 'tax_appeal' && filingGuide != null) ||
+    (profile.assignmentKind === 'pre_listing' && data.narratives.some((n) => n.section_name === 'pricing_strategy_guide')) ||
+    (profile.assignmentKind === 'pre_purchase' && data.narratives.some((n) => n.section_name === 'negotiation_guide')) ||
+    (profile.assignmentKind === 'independent_valuation' && data.narratives.some((n) => n.section_name === 'valuation_use_guide'));
+  const addendumATitle = profile.assignmentKind === 'pre_listing'
     ? 'Pricing Strategy Guide'
-    : assignmentKind === 'pre_purchase'
+    : profile.assignmentKind === 'pre_purchase'
       ? 'Negotiation Strategy Guide'
-      : assignmentKind === 'independent_valuation'
+      : profile.assignmentKind === 'independent_valuation'
         ? 'Valuation Use & Next-Step Guide'
-        : 'County Filing Instructions';
+        : 'Verified County Filing Instructions';
 
   const sections: TocEntry[] = [
     { number: '', title: 'Letter of Transmittal' },
-    { number: '', title: 'Property Identification Summary' },
-    ...(narrativeSections.has('assignment_and_scope')
-      ? [{ number: 'A', title: 'Assignment & Scope' }]
-      : []),
-    ...(narrativeSections.has('summary_of_salient_facts')
-      ? [{ number: 'B', title: 'Summary of Salient Facts' }]
-      : []),
-    ...(narrativeSections.has('property_history')
-      ? [{ number: 'C', title: 'Property History' }]
-      : []),
-    ...(narrativeSections.has('assessment_data')
-      ? [{ number: 'D', title: 'Assessment Data' }]
-      : []),
-    { number: 'I', title: 'Executive Summary' },
-    { number: 'II', title: 'Property Description' },
-    { number: 'III', title: 'Site Description' },
-    { number: 'IV', title: 'Improvement Description' },
-    { number: 'V-A', title: 'Area Analysis — County', indent: true },
-    { number: 'V-B', title: 'Area Analysis — City', indent: true },
-    { number: 'V-C', title: 'Area Analysis — Neighborhood', indent: true },
-    { number: 'VI', title: 'Market Analysis' },
-    { number: 'VII-A', title: 'Highest & Best Use — As Vacant', indent: true },
-    { number: 'VII-B', title: 'Highest & Best Use — As Improved', indent: true },
-    { number: 'VIII', title: 'Sales Comparison Approach' },
-    { number: 'IX', title: 'Adjustment Reconciliation & Value Conclusion' },
   ];
 
-  if (property.assessment_ratio != null) {
-    sections.push({ number: 'X', title: 'Assessment Ratio Analysis' });
+  const hasNarrative = (key: string) => data.narratives.some(
+    (narrative) => narrative.section_name === key && Boolean(narrative.content?.trim())
+  );
+
+  if (hasNarrative('summary_of_salient_facts')) {
+    sections.push({ number: 'I-A', title: 'Summary of Salient Facts' });
+  }
+  sections.push({ number: 'I-A1', title: 'Property Identification & Valuation Facts' });
+  if (hasNarrative('executive_summary')) {
+    sections.push({ number: 'I-B', title: 'Executive Valuation Summary' });
+  }
+  if (hasMaps) {
+    sections.push({ number: 'EX-1', title: 'Subject Maps & Parcel Context' });
+  }
+  if (photoCount > 0) {
+    sections.push({
+      number: 'EX-2',
+      title: 'Subject Photo Exhibit',
+      detail: `${photoCount} images`,
+    });
+  }
+  if (hasNarrative('assignment_and_scope')) {
+    sections.push({ number: 'II', title: 'Assignment & Scope of Work' });
   }
 
-  if (hasCostApproach) {
-    sections.push({ number: 'XI', title: 'Cost Approach Analysis' });
-  }
-
-  if (hasIncome) {
-    sections.push({ number: 'XII', title: 'Income Capitalization Approach' });
+  for (const section of profile.narrativeSections) {
+    if (SPECIAL_NARRATIVE_KEYS.has(section.key)) continue;
+    sections.push({
+      number: section.number,
+      title: section.title,
+      detail: section.required ? 'Required for this profile' : undefined,
+    });
   }
 
   if (hasPhotoDefects) {
-    sections.push({ number: 'XIII', title: 'Property Condition Documentation' });
+    sections.push({ number: 'III-G', title: 'Detailed Condition Evidence Table' });
   }
+  if (comparableSales.length > 0) {
+    sections.push({
+      number: 'VII-B1',
+      title: 'Comparable Sales Grid',
+      detail: `${comparableSales.length} transactions`,
+    });
+    sections.push({
+      number: 'VII-C1',
+      title: 'Comparable Sale Evidence Profiles',
+      detail: `${comparableSales.length} profiles`,
+    });
+  }
+  if (profile.hasIncomeApproach) {
+    sections.push({ number: 'VII-D1', title: 'Income Capitalization Calculation' });
+  }
+  if (profile.hasCostApproach) {
+    sections.push({ number: 'VII-E1', title: 'Cost Approach Calculation' });
+  }
+  if (profile.isTaxAppeal && property.assessment_ratio != null) {
+    sections.push({ number: 'VIII-A1', title: 'Assessment Level Context' });
+  }
+  sections.push({ number: 'VIII-B', title: 'Reconciliation & Final Value Conclusion' });
 
-  sections.push({ number: '', title: '' });
   if (hasAddendumA) {
     sections.push({ number: 'ADD-A', title: addendumATitle });
   }
-  sections.push({ number: 'ADD-B', title: 'Certification & Limiting Conditions' });
+  if (hasNarrative('hearing_script')) {
+    sections.push({ number: 'ADD-B', title: 'Hearing / Reviewer Preparation Guide' });
+  }
+  sections.push({ number: 'ADD-C', title: 'Certification Boundary & Limiting Conditions' });
+
+  const supportedApproaches = [
+    profile.hasSalesApproach ? 'Sales Comparison' : null,
+    profile.hasIncomeApproach ? 'Income Capitalization' : null,
+    profile.hasCostApproach ? 'Cost' : null,
+  ].filter((value): value is string => Boolean(value));
 
   return (
-    <Page size="LETTER" style={theme.page}>
-      <View style={styles.header}>
-        <Text style={theme.headingXL}>Table of Contents</Text>
+    <Page size="LETTER" style={theme.page} wrap>
+      <PageFooter />
+      <View style={styles.header} fixed>
+        <Text style={theme.headingXL}>Table of Contents & Evidence Inventory</Text>
         <View style={theme.sectionDivider} />
       </View>
 
-      {sections.map((entry, index) => {
-        if (!entry.title && !entry.number) {
-          return <View key={index} style={{ height: 12 }} />;
-        }
-
-        return (
-          <View key={index} style={[styles.tocRow, entry.indent ? { paddingLeft: 16 } : {}]}>
-            <Text style={[styles.tocNumber, entry.number.startsWith('ADD') ? styles.addendumLabel : {}]}>
-              {entry.number ? `Section ${entry.number}` : ''}
-            </Text>
-            <View style={styles.tocDots} />
+      {sections.map((entry, index) => (
+        <View key={`${entry.number}-${entry.title}-${index}`} style={styles.tocRow} wrap={false}>
+          <Text style={[styles.tocNumber, entry.number.startsWith('ADD-') ? styles.addendumLabel : {}]}>
+            {labelFor(entry.number)}
+          </Text>
+          <View style={styles.tocDots} />
+          <View style={styles.titleBlock}>
             <Text style={styles.tocTitle}>{entry.title}</Text>
+            {entry.detail && <Text style={styles.tocDetail}>{entry.detail}</Text>}
           </View>
-        );
-      })}
+        </View>
+      ))}
 
-      <View style={styles.metaBlock}>
+      <View style={styles.metaBlock} wrap={false}>
+        <Text style={styles.metaHeading}>Assignment Control</Text>
+        <View style={styles.metaRow}>
+          <Text style={theme.label}>Document Profile</Text>
+          <Text style={theme.tableCell}>{profile.id}</Text>
+        </View>
         <View style={styles.metaRow}>
           <Text style={theme.label}>Assignment</Text>
           <Text style={theme.tableCell}>{assignmentLabel}</Text>
@@ -125,21 +173,33 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
             {[report.property_address, report.city, report.state].filter(Boolean).join(', ')}
           </Text>
         </View>
-        {report.pin && (
-          <View style={styles.metaRow}>
-            <Text style={theme.label}>Parcel Number</Text>
-            <Text style={theme.tableCell}>{report.pin}</Text>
-          </View>
-        )}
         <View style={styles.metaRow}>
           <Text style={theme.label}>Property Type</Text>
           <Text style={theme.tableCell}>
-            {property.property_class_description ?? report.property_type ?? 'Residential'}
+            {property.property_class_description ?? property.property_subtype ?? titleCase(report.property_type)}
           </Text>
         </View>
         <View style={styles.metaRow}>
-          <Text style={theme.label}>Comparable Sales</Text>
-          <Text style={theme.tableCell}>{comparableSales.length} transactions analyzed</Text>
+          <Text style={theme.label}>Valuation Date</Text>
+          <Text style={theme.tableCell}>{formatDate(data.valuationDate)}</Text>
+        </View>
+        {profile.isTaxAppeal && property.tax_year_in_appeal != null && (
+          <View style={styles.metaRow}>
+            <Text style={theme.label}>Assessment Year</Text>
+            <Text style={theme.tableCell}>{property.tax_year_in_appeal}</Text>
+          </View>
+        )}
+        <View style={styles.metaRow}>
+          <Text style={theme.label}>Supported Approaches</Text>
+          <Text style={theme.tableCell}>
+            {supportedApproaches.length > 0 ? supportedApproaches.join(', ') : 'Alternative evidence path documented in report'}
+          </Text>
+        </View>
+        <View style={styles.metaRow}>
+          <Text style={theme.label}>Evidence Counts</Text>
+          <Text style={theme.tableCell}>
+            {comparableSales.length} sales · {data.comparableRentals.length} rentals · {photoCount} photos · {hasMaps ? 'maps included' : 'no maps'}
+          </Text>
         </View>
         <View style={styles.metaRow}>
           <Text style={theme.label}>Report ID</Text>
@@ -152,21 +212,23 @@ export default function TableOfContents({ data }: { data: ReportTemplateData }) 
 
 const styles = StyleSheet.create({
   header: {
-    marginBottom: 16,
+    marginBottom: 14,
+    backgroundColor: colors.background,
   },
   tocRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 5,
+    minHeight: 24,
+    paddingVertical: 4,
     borderBottomWidth: 0.5,
     borderBottomColor: colors.border,
   },
   tocNumber: {
     fontFamily: 'Inter',
     fontWeight: 500,
-    fontSize: 9,
+    fontSize: 8.5,
     color: colors.inkMuted,
-    width: 80,
+    width: 76,
   },
   addendumLabel: {
     color: colors.accent,
@@ -180,18 +242,35 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     height: 8,
   },
+  titleBlock: {
+    width: 270,
+  },
   tocTitle: {
     fontFamily: 'Inter',
     fontWeight: 500,
-    fontSize: 10,
+    fontSize: 9.5,
     color: colors.inkPrimary,
-    maxWidth: 300,
+  },
+  tocDetail: {
+    fontFamily: 'Inter',
+    fontSize: 6.5,
+    color: colors.inkMuted,
+    marginTop: 1,
   },
   metaBlock: {
-    marginTop: 'auto',
-    paddingTop: 16,
+    marginTop: 18,
+    paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: colors.accent,
+  },
+  metaHeading: {
+    fontFamily: 'Inter',
+    fontWeight: 600,
+    fontSize: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    color: colors.inkPrimary,
+    marginBottom: 5,
   },
   metaRow: {
     flexDirection: 'row',
