@@ -4,12 +4,17 @@ import { AI_MODELS } from '@/config/ai';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import type { ServiceType } from '@/types/database';
 import { buildReportProfile } from './report-profile';
+import { getReportCostAssessment } from './section-data';
 import { evaluateAssessmentContext } from '@/lib/valuation/assessment-context-policy';
 import { evaluateCaseStrategy, type CaseStrategyFlag } from '@/lib/valuation/case-strategy-policy';
 import type { PdfReleasePolicyResult } from '@/lib/valuation/pdf-release-policy';
 import type { TaxAppealReleaseResult } from '@/lib/valuation/tax-appeal-release-policy';
+import {
+  getClassificationSourceEvidence,
+  getJurisdictionPlugin,
+} from '@/lib/valuation/workfile-provenance';
 
-export const REPORT_MANIFEST_SCHEMA_VERSION = '1.2.0';
+export const REPORT_MANIFEST_SCHEMA_VERSION = '1.3.0';
 export const REPORT_RENDERER_VERSION = 'react-pdf-2';
 
 export interface ReportArtifactPaths {
@@ -36,12 +41,15 @@ export interface ReportArtifactManifest {
     reportState: string | null;
     ruleState: string | null;
     ruleLastVerifiedDate: string | null;
+    pluginKey: string | null;
+    pluginVersion: number | null;
     releaseReady: boolean;
     releaseCode: string;
     assessmentYear: number | null;
     valuationDate: string;
     appliedAssessmentRatio: number | null;
     expectedAssessmentRatio: number | null;
+    classificationSourceVerified: boolean;
     requiresYearSpecificEqualizationSource: boolean;
   };
   strategy: {
@@ -58,7 +66,7 @@ export interface ReportArtifactManifest {
     distressedComparableSales: number;
     filingGuideIncluded: boolean;
     incomeApproachReleaseReady: boolean;
-    costApproachIncluded: boolean;
+    costApproachReleaseReady: boolean;
   };
   valuation: {
     concludedValue: number;
@@ -140,6 +148,9 @@ export function createReportArtifactManifest(input: {
   const paths = buildReportArtifactPaths(data.report.id, generatedAt, sha256);
   const profile = buildReportProfile(data);
   const releaseServiceType = effectiveServiceType(profile.assignmentKind);
+  const classificationSource = getClassificationSourceEvidence(data);
+  const jurisdictionPlugin = getJurisdictionPlugin(data.countyRule);
+  const costAssessment = getReportCostAssessment(data);
   const assessmentContext = evaluateAssessmentContext({
     serviceType: releaseServiceType,
     countyFips: data.report.county_fips,
@@ -149,6 +160,8 @@ export function createReportArtifactManifest(input: {
     assessmentRatio: data.property.assessment_ratio,
     assessmentMethodology: data.property.assessment_methodology,
     propertyClassDescription: data.property.property_class_description,
+    classificationSourceAuthority: classificationSource.authority,
+    classificationSourceUrl: classificationSource.url,
     countyRule: data.countyRule,
   });
   const caseStrategy = evaluateCaseStrategy(data);
@@ -178,12 +191,15 @@ export function createReportArtifactManifest(input: {
       reportState: data.report.state_abbreviation ?? data.report.state,
       ruleState: data.countyRule?.state_abbreviation ?? null,
       ruleLastVerifiedDate: data.countyRule?.last_verified_date ?? null,
+      pluginKey: jurisdictionPlugin?.key ?? null,
+      pluginVersion: jurisdictionPlugin?.version ?? null,
       releaseReady: jurisdictionRelease.allowed,
       releaseCode: jurisdictionRelease.code,
       assessmentYear: data.property.tax_year_in_appeal,
       valuationDate: data.valuationDate,
       appliedAssessmentRatio: assessmentContext.appliedAssessmentRatio,
       expectedAssessmentRatio: assessmentContext.expectedAssessmentRatio,
+      classificationSourceVerified: classificationSource.isVerified,
       requiresYearSpecificEqualizationSource:
         assessmentContext.requiresYearSpecificEqualizationSource,
     },
@@ -201,8 +217,7 @@ export function createReportArtifactManifest(input: {
       distressedComparableSales,
       filingGuideIncluded: data.filingGuide != null,
       incomeApproachReleaseReady: valuationRelease.incomeAssessment?.isReleaseReady === true,
-      costApproachIncluded:
-        data.property.cost_approach_value != null && data.property.cost_approach_value > 0,
+      costApproachReleaseReady: costAssessment.isReleaseReady,
     },
     valuation: {
       concludedValue: data.concludedValue,
@@ -213,6 +228,7 @@ export function createReportArtifactManifest(input: {
       warnings: [
         ...valuationRelease.warnings,
         ...assessmentContext.warnings,
+        ...costAssessment.warnings,
         ...caseStrategy.warnings,
       ],
     },
