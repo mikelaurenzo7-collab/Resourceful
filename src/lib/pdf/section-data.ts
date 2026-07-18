@@ -1,9 +1,11 @@
 import type { ReportTemplateData } from '@/lib/templates/report-template';
+import { evaluateIncomeApproachEvidence } from '@/lib/valuation/income-approach-policy';
+import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
 
 export interface ValueConclusionRowData {
   approach: string;
   total: number;
-  perUnit: number | null;
+  valuePerSqFt: number | null;
   role: string;
 }
 
@@ -21,16 +23,31 @@ export function buildValueConclusionRows(data: ReportTemplateData): ValueConclus
     rows.push({
       approach: 'Sales Comparison',
       total: roundToNearestThousand(salesIndication),
-      perUnit: computePerUnitValue(salesIndication, subjectArea),
+      valuePerSqFt: computeValuePerSqFt(salesIndication, subjectArea),
       role: getApproachRole(data, 'sales'),
     });
   }
 
-  if (data.incomeAnalysis?.concluded_value_income_approach != null) {
+  const propertySupportsIncomeApproach = supportsIncomeApproach({
+    propertyType: data.report.property_type,
+    propertySubtype: data.property.property_subtype,
+    propertyClassDescription: data.property.property_class_description,
+  });
+  const incomeAssessment = data.incomeAnalysis && propertySupportsIncomeApproach
+    ? evaluateIncomeApproachEvidence({
+        netOperatingIncome: data.incomeAnalysis.net_operating_income,
+        concludedCapRate: data.incomeAnalysis.concluded_cap_rate,
+        concludedValue: data.incomeAnalysis.concluded_value_income_approach,
+        comparableRentalCount: data.comparableRentals.length,
+        investorSurveyReference: data.incomeAnalysis.investor_survey_reference,
+      })
+    : null;
+
+  if (incomeAssessment?.isReleaseReady && incomeAssessment.storedValue != null) {
     rows.push({
       approach: 'Income Capitalization',
-      total: roundToNearestThousand(data.incomeAnalysis.concluded_value_income_approach),
-      perUnit: computePerUnitValue(data.incomeAnalysis.concluded_value_income_approach, subjectArea),
+      total: roundToNearestThousand(incomeAssessment.storedValue),
+      valuePerSqFt: computeValuePerSqFt(incomeAssessment.storedValue, subjectArea),
       role: getApproachRole(data, 'income'),
     });
   }
@@ -39,7 +56,7 @@ export function buildValueConclusionRows(data: ReportTemplateData): ValueConclus
     rows.push({
       approach: 'Cost Approach',
       total: roundToNearestThousand(data.property.cost_approach_value),
-      perUnit: computePerUnitValue(data.property.cost_approach_value, subjectArea),
+      valuePerSqFt: computeValuePerSqFt(data.property.cost_approach_value, subjectArea),
       role: getApproachRole(data, 'cost'),
     });
   }
@@ -118,7 +135,7 @@ function computeSalesComparisonIndication(data: ReportTemplateData): number | nu
   return salePrices.length > 0 ? computeMedian(salePrices) : null;
 }
 
-function computePerUnitValue(total: number, subjectArea: number | null): number | null {
+function computeValuePerSqFt(total: number, subjectArea: number | null): number | null {
   if (subjectArea == null || subjectArea <= 0) {
     return null;
   }
