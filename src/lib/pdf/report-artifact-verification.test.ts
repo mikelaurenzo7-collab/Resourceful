@@ -37,6 +37,11 @@ function createData(): ReportTemplateData {
     report: {
       id: 'report-123',
       service_type: 'tax_appeal',
+      desired_outcome: null,
+      is_retrospective_assignment: false,
+      valuation_effective_date: '2026-01-01',
+      valuation_effective_date_source: 'jurisdiction_convention',
+      created_at: '2026-01-15T00:00:00.000Z',
       property_type: 'residential',
       review_tier: 'expert_reviewed',
       county_fips: '17031',
@@ -139,7 +144,7 @@ describe('verifyReportArtifact', () => {
     expect(verify(JSON.stringify(notReady))).toMatchObject({ code: 'JURISDICTION_RELEASE_NOT_READY' });
   });
 
-  it('rejects invalid JSON, unsupported schemas, and malformed 1.3 provenance', () => {
+  it('rejects invalid JSON, unsupported schemas, and malformed 1.3/1.4 provenance', () => {
     const invalidJson = verifyReportArtifact({
       reportId: 'report-123',
       serviceType: 'tax_appeal',
@@ -159,6 +164,20 @@ describe('verifyReportArtifact', () => {
     const evidence = missingCostReadiness.evidence as Record<string, unknown>;
     delete evidence.costApproachReleaseReady;
     expect(verify(JSON.stringify(missingCostReadiness))).toMatchObject({
+      code: 'MANIFEST_JSON_INVALID',
+    });
+
+    const missingDateSource = structuredClone(parseManifest()) as unknown as Record<string, unknown>;
+    const jurisdiction = missingDateSource.jurisdiction as Record<string, unknown>;
+    delete jurisdiction.valuationDateSource;
+    expect(verify(JSON.stringify(missingDateSource))).toMatchObject({
+      code: 'MANIFEST_JSON_INVALID',
+    });
+
+    const missingRetrospectiveFlag = structuredClone(parseManifest()) as unknown as Record<string, unknown>;
+    const strategy = missingRetrospectiveFlag.strategy as Record<string, unknown>;
+    delete strategy.isRetrospectiveAssignment;
+    expect(verify(JSON.stringify(missingRetrospectiveFlag))).toMatchObject({
       code: 'MANIFEST_JSON_INVALID',
     });
   });
