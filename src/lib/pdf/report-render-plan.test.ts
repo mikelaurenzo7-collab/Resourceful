@@ -98,6 +98,37 @@ describe('buildReportRenderPlan', () => {
     expect(plan.sections.find((section) => section.id === 'photos')?.detail).toBe('1 image');
   });
 
+  it('requires a renderable photo before adding the detailed condition table', () => {
+    const defect = {
+      type: 'roof',
+      description: 'Visible roof wear',
+      severity: 'moderate',
+      value_impact: 'medium',
+      report_language: 'Visible roof wear was observed.',
+    };
+    const withoutImage = buildReportRenderPlan(data({
+      photos: [
+        {
+          id: 'photo-1',
+          storage_path: '   ',
+          ai_analysis: { defects: [defect] },
+        },
+      ],
+    }));
+    expect(withoutImage.sections.some((section) => section.id === 'condition-table')).toBe(false);
+
+    const withImage = buildReportRenderPlan(data({
+      photos: [
+        {
+          id: 'photo-1',
+          storage_path: 'reports/photo-1.jpg',
+          ai_analysis: { defects: [defect] },
+        },
+      ],
+    }));
+    expect(withImage.sections.some((section) => section.id === 'condition-table')).toBe(true);
+  });
+
   it('adds income and cost calculation pages only when their evidence is release-ready', () => {
     const incomplete = buildReportRenderPlan(data({
       property: {
@@ -150,6 +181,24 @@ describe('buildReportRenderPlan', () => {
     expect(ids.indexOf('comparable-profiles')).toBeGreaterThan(
       ids.indexOf('narrative:adjustment_grid_narrative')
     );
+  });
+
+  it('renders a hearing script only for a tax-appeal profile', () => {
+    const currentNarratives = [
+      ...data().narratives,
+      narrative('hearing_script', 'Hearing preparation script'),
+    ];
+    const ordinary = buildReportRenderPlan(data({ narratives: currentNarratives }));
+    expect(ordinary.sections.some((section) => section.id === 'narrative:hearing_script')).toBe(false);
+
+    const appeal = buildReportRenderPlan(data({
+      report: {
+        ...data().report,
+        service_type: 'tax_appeal',
+      },
+      narratives: currentNarratives,
+    }));
+    expect(appeal.sections.some((section) => section.id === 'narrative:hearing_script')).toBe(true);
   });
 
   it('uses exactly one terminal legal-boundary section', () => {
