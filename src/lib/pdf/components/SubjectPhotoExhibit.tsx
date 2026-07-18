@@ -2,13 +2,17 @@ import React, { Fragment } from 'react';
 import { Image, Page, StyleSheet, Text, View } from '@react-pdf/renderer';
 
 import type { ReportTemplateData } from '@/lib/templates/report-template';
+import { getPhotoCaption, type PhotoCaptionSource } from '../photo-caption';
 import { theme, colors } from '../styles/theme';
 import { PageFooter, SectionHeader } from './shared';
 
 interface ExhibitImage {
   url: string;
   caption: string;
+  captionSource?: PhotoCaptionSource;
 }
+
+export type SubjectExhibitMode = 'all' | 'maps' | 'photos';
 
 function chunk<T>(items: T[], size: number): T[][] {
   const chunks: T[][] = [];
@@ -18,25 +22,31 @@ function chunk<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
-export default function SubjectPhotoExhibit({ data }: { data: ReportTemplateData }) {
-  const maps: ExhibitImage[] = [
-    data.maps.regional,
-    data.maps.neighborhood,
-    data.maps.parcel,
-  ]
-    .filter((map): map is NonNullable<typeof map> => Boolean(map?.url))
-    .map((map) => ({ url: map.url, caption: map.caption }));
+export default function SubjectPhotoExhibit({
+  data,
+  mode = 'all',
+}: {
+  data: ReportTemplateData;
+  mode?: SubjectExhibitMode;
+}) {
+  const maps: ExhibitImage[] = mode === 'photos'
+    ? []
+    : [data.maps.regional, data.maps.neighborhood, data.maps.parcel]
+      .filter((map): map is NonNullable<typeof map> => Boolean(map?.url))
+      .map((map) => ({ url: map.url, caption: map.caption }));
 
-  const photos: ExhibitImage[] = data.photos
-    .filter((photo) => Boolean(photo.storage_path))
-    .map((photo, index) => ({
-      url: photo.storage_path,
-      caption:
-        photo.ai_analysis?.professional_caption?.trim() ||
-        photo.caption?.trim() ||
-        photo.photo_type?.replace(/_/g, ' ') ||
-        `Subject photograph ${index + 1}`,
-    }));
+  const photos: ExhibitImage[] = mode === 'maps'
+    ? []
+    : data.photos
+      .filter((photo) => Boolean(photo.storage_path))
+      .map((photo) => {
+        const caption = getPhotoCaption(photo);
+        return {
+          url: photo.storage_path,
+          caption: caption.text,
+          captionSource: caption.source,
+        };
+      });
 
   if (maps.length === 0 && photos.length === 0) return null;
 
@@ -74,10 +84,10 @@ export default function SubjectPhotoExhibit({ data }: { data: ReportTemplateData
 
           {pageIndex === 0 && (
             <Text style={[theme.bodyText, styles.scopeNote]}>
-              This exhibit preserves the subject imagery available in the Resourceful workfile. Captions
-              are descriptive aids. Images and automated observations are not represented as a licensed
-              inspection, engineering opinion, survey, or independent measurement unless the report
-              expressly identifies that source and review.
+              This exhibit preserves the subject imagery available in the Resourceful workfile. Every
+              caption identifies whether it came from AI-assisted analysis, a submitted caption, a
+              photo-type label, or an unlabeled fallback. Images and automated observations are not
+              represented as a licensed inspection, engineering opinion, survey, or independent measurement.
             </Text>
           )}
 
@@ -87,6 +97,9 @@ export default function SubjectPhotoExhibit({ data }: { data: ReportTemplateData
                 {/* eslint-disable-next-line jsx-a11y/alt-text */}
                 <Image src={photo.url} style={styles.photo} />
                 <Text style={styles.caption}>{photo.caption}</Text>
+                {photo.captionSource && (
+                  <Text style={styles.captionSource}>Caption source: {photo.captionSource}</Text>
+                )}
               </View>
             ))}
           </View>
@@ -144,7 +157,13 @@ const styles = StyleSheet.create({
     color: colors.inkPrimary,
     textAlign: 'center',
     marginTop: 5,
-    textTransform: 'capitalize',
+  },
+  captionSource: {
+    fontFamily: 'Inter',
+    fontSize: 6.5,
+    color: colors.inkMuted,
+    textAlign: 'center',
+    marginTop: 2,
   },
   exhibitCounter: {
     fontFamily: 'Inter',
