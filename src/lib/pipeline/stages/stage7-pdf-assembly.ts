@@ -18,6 +18,7 @@ import {
   hasAnyCostApproachEvidence,
   type CostApproachEvidenceInput,
 } from '@/lib/valuation/cost-approach-policy';
+import { evaluateNationwideReportIntegrity } from '@/lib/valuation/nationwide-report-integrity-policy';
 import { evaluatePdfReleasePolicy } from '@/lib/valuation/pdf-release-policy';
 import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
 import { evaluateTaxAppealRelease } from '@/lib/valuation/tax-appeal-release-policy';
@@ -144,6 +145,10 @@ export async function runPdfAssembly(
   qaIssues.push(...caseStrategy.warnings, ...caseStrategy.hardFailures);
   hardFails.push(...caseStrategy.hardFailures);
 
+  const nationwideIntegrity = evaluateNationwideReportIntegrity(templateData);
+  qaIssues.push(...nationwideIntegrity.warnings, ...nationwideIntegrity.hardFailures);
+  hardFails.push(...nationwideIntegrity.hardFailures);
+
   if (!templateData.property.building_sqft_living_area && !templateData.property.lot_size_sqft) {
     qaIssues.push('No square footage data (building or lot)');
   }
@@ -160,6 +165,7 @@ export async function runPdfAssembly(
         releaseServiceType,
         caseStrategyFlags: caseStrategy.flags,
         recentSubjectSaleDate: caseStrategy.recentSubjectSaleDate,
+        nationwideIntegrity,
         qaIssues: uniqueQaIssues,
         jurisdictionRelease,
         assessmentContext,
@@ -183,6 +189,7 @@ export async function runPdfAssembly(
       reportProfile: profileAssessment.profile.id,
       assignmentKind: profileAssessment.profile.assignmentKind,
       caseStrategyFlags: caseStrategy.flags,
+      nationwideIntegrityWarningCodes: nationwideIntegrity.warningCodes,
     },
     '[stage7] Rendering case-specific PDF report ...'
   );
@@ -265,6 +272,7 @@ export async function runPdfAssembly(
       reportProfile: profileAssessment.profile.id,
       assignmentKind: profileAssessment.profile.assignmentKind,
       caseStrategyFlags: caseStrategy.flags,
+      nationwideIntegrityWarningCodes: nationwideIntegrity.warningCodes,
       sizeKB: (pdfBuffer.length / 1024).toFixed(0),
       pdfSha256: manifest.artifact.sha256,
       jurisdictionReleaseCode: jurisdictionRelease.code,
