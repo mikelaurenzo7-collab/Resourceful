@@ -82,7 +82,7 @@ describe('evaluateReportConclusionIntegrity', () => {
     expect(result.hardFailures[0]).toContain('2025-07-29');
   });
 
-  it('does not normalize impossible labeled dates into a different calendar date', () => {
+  it('fails release rather than normalizing an impossible labeled date', () => {
     const result = evaluateReportConclusionIntegrity(dataWith([
       narrative(
         'reconciliation_narrative',
@@ -90,9 +90,12 @@ describe('evaluateReportConclusionIntegrity', () => {
       ),
     ]));
 
-    expect(result.hardFailures).toEqual([]);
     expect(result.labeledEffectiveDates).toEqual([]);
-    expect(result.warningCodes).toContain('EFFECTIVE_DATE_LABEL_MISSING');
+    expect(result.invalidLabeledEffectiveDates).toEqual([
+      { section: 'reconciliation_narrative', raw: 'February 30, 2025' },
+    ]);
+    expect(result.hardFailureCodes).toContain('EFFECTIVE_DATE_INVALID');
+    expect(result.hardFailures[0]).toContain('February 30, 2025');
   });
 
   it('warns when prose contains no machine-checkable conclusion labels', () => {
