@@ -1,3 +1,4 @@
+import { isCanonicalDateOnly } from '@/lib/valuation/valuation-date-policy';
 import {
   hashPdfBuffer,
   type ReportArtifactManifest,
@@ -37,6 +38,15 @@ const VALUATION_EFFECTIVE_DATE_SOURCES = new Set([
   'admin_override',
 ]);
 
+const SUPPORTED_MANIFEST_SCHEMA_VERSIONS = new Set([
+  '1.0.0',
+  '1.1.0',
+  '1.2.0',
+  '1.3.0',
+  '1.4.0',
+  '1.5.0',
+]);
+
 export function manifestPathForPdf(pdfPath: string): string {
   const normalized = pdfPath.trim();
   if (!normalized || !normalized.endsWith('.pdf')) {
@@ -73,14 +83,26 @@ function isManifest(value: unknown): value is ReportArtifactManifest {
   );
 }
 
-function schemaParts(schemaVersion: string): { major: number; minor: number } | null {
-  const [majorText, minorText] = schemaVersion.split('.');
-  const major = Number(majorText);
-  const minor = Number(minorText);
-  if (!Number.isInteger(major) || !Number.isInteger(minor) || major < 0 || minor < 0) {
+function schemaParts(
+  schemaVersion: string
+): { major: number; minor: number; patch: number } | null {
+  const match = schemaVersion.match(/^(\d+)\.(\d+)\.(\d+)$/);
+  if (!match) return null;
+
+  const major = Number(match[1]);
+  const minor = Number(match[2]);
+  const patch = Number(match[3]);
+  if (
+    !Number.isInteger(major) ||
+    !Number.isInteger(minor) ||
+    !Number.isInteger(patch) ||
+    major < 0 ||
+    minor < 0 ||
+    patch < 0
+  ) {
     return null;
   }
-  return { major, minor };
+  return { major, minor, patch };
 }
 
 function hasSchema13Provenance(manifest: ReportArtifactManifest): boolean {
@@ -105,7 +127,7 @@ function hasSchema14Provenance(manifest: ReportArtifactManifest): boolean {
   const strategy = manifest.strategy as Partial<ReportArtifactManifest['strategy']> | undefined;
 
   return Boolean(
-    typeof jurisdiction.valuationDate === 'string' &&
+    isCanonicalDateOnly(jurisdiction.valuationDate) &&
     typeof jurisdiction.valuationDateSource === 'string' &&
     VALUATION_EFFECTIVE_DATE_SOURCES.has(jurisdiction.valuationDateSource) &&
     strategy &&
@@ -171,7 +193,7 @@ export function verifyReportArtifact(input: {
 
   const manifest = parsed;
   const schema = schemaParts(manifest.schemaVersion);
-  if (!schema || schema.major !== 1) {
+  if (!schema || !SUPPORTED_MANIFEST_SCHEMA_VERSIONS.has(manifest.schemaVersion)) {
     return {
       verified: false,
       code: 'MANIFEST_SCHEMA_UNSUPPORTED',
