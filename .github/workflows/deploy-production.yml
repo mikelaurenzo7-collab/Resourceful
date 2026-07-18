@@ -8,7 +8,7 @@ on:
 
 concurrency:
   group: resourceful-production
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -17,27 +17,33 @@ jobs:
   validate-and-deploy:
     name: Validate and deploy production
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: production
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      # Vercel project identifiers are routing identifiers, not credentials.
+      # Pin them here so this workflow cannot deploy Resourceful into the
+      # unrelated `resourceful` project that is connected to the J2C repository.
+      VERCEL_ORG_ID: team_ssX7cPECdHvXGFHSOuS9iXos
+      VERCEL_PROJECT_ID: prj_j6M19RLIb5zIyju5W8J2meEDESqG
+      CANONICAL_APP_URL: https://resourceful-7x38.vercel.app
 
     steps:
-      - name: Verify deployment credentials
+      - name: Verify deployment token and project binding
         shell: bash
         run: |
-          missing=0
-          for key in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
-            if [ -z "${!key}" ]; then
-              echo "::error::$key is not configured in the GitHub production environment."
-              missing=1
-            fi
-          done
-          exit "$missing"
+          set -euo pipefail
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::VERCEL_TOKEN is not configured in the GitHub production environment."
+            exit 1
+          fi
+          test "$VERCEL_ORG_ID" = "team_ssX7cPECdHvXGFHSOuS9iXos"
+          test "$VERCEL_PROJECT_ID" = "prj_j6M19RLIb5zIyju5W8J2meEDESqG"
 
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -52,6 +58,22 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Verify toolchain contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --version
+          pnpm --version
+          node - <<'NODE'
+          const pkg = require('./package.json');
+          if (pkg.engines?.node !== '22.x') {
+            throw new Error(`package.json engines.node must be 22.x, received ${pkg.engines?.node ?? 'missing'}`);
+          }
+          if (pkg.packageManager !== 'pnpm@9.15.5') {
+            throw new Error(`packageManager must be pnpm@9.15.5, received ${pkg.packageManager ?? 'missing'}`);
+          }
+          NODE
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -61,11 +83,38 @@ jobs:
           pnpm typecheck
           pnpm test
 
-      - name: Install Vercel CLI
-        run: npm install --global vercel
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@51.6.1
 
-      - name: Pull production project settings
-        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+      - name: Pull exact production project settings
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+          node - <<'NODE'
+          const project = require('./.vercel/project.json');
+          const expectedOrg = process.env.VERCEL_ORG_ID;
+          const expectedProject = process.env.VERCEL_PROJECT_ID;
+          if (project.orgId !== expectedOrg || project.projectId !== expectedProject) {
+            throw new Error(
+              `Vercel project mismatch: received ${project.orgId}/${project.projectId}, expected ${expectedOrg}/${expectedProject}`
+            );
+          }
+          NODE
+
+      - name: Verify canonical production environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          vercel env pull .vercel/.env.production.local \
+            --yes \
+            --environment=production \
+            --token="$VERCEL_TOKEN"
+          configured_url="$(node --env-file=.vercel/.env.production.local -p 'process.env.NEXT_PUBLIC_APP_URL || ""')"
+          if [ "$configured_url" != "$CANONICAL_APP_URL" ]; then
+            echo "::error::NEXT_PUBLIC_APP_URL must equal $CANONICAL_APP_URL; received '${configured_url:-missing}'."
+            exit 1
+          fi
 
       - name: Build production artifact
         run: vercel build --prod --token="$VERCEL_TOKEN"
@@ -74,18 +123,54 @@ jobs:
         id: deploy
         shell: bash
         run: |
+          set -euo pipefail
           deployment_url="$(vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN")"
+          deployment_url="${deployment_url%/}"
           echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
           echo "### Resourceful production deployment" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Commit: \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Commit: \`$GITHUB_SHA\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Deployment: $deployment_url" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Canonical domain: https://resourceful-7x38.vercel.app" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Canonical domain: $CANONICAL_APP_URL" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Verify canonical production health
+      - name: Verify immutable deployment identity
         shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
         run: |
+          set -euo pipefail
           curl --fail --silent --show-error --retry 8 --retry-delay 5 \
             --max-time 30 \
-            https://resourceful-7x38.vercel.app/api/health > /tmp/resourceful-health.json
-          cat /tmp/resourceful-health.json
+            "$DEPLOYMENT_URL/api/health" > /tmp/resourceful-deployment-health.json
+          node - "$GITHUB_SHA" /tmp/resourceful-deployment-health.json <<'NODE'
+          const fs = require('node:fs');
+          const [expected, file] = process.argv.slice(2);
+          const body = JSON.parse(fs.readFileSync(file, 'utf8'));
+          if (body.healthy !== true) throw new Error('Immutable deployment health is not healthy.');
+          if (body.deployment?.commit !== expected) {
+            throw new Error(`Immutable deployment commit mismatch: ${body.deployment?.commit ?? 'missing'} !== ${expected}`);
+          }
+          if (body.deployment?.environment !== 'production') {
+            throw new Error(`Immutable deployment environment is ${body.deployment?.environment ?? 'missing'}, expected production.`);
+          }
+          NODE
+
+      - name: Verify canonical alias promoted to the same commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 \
+            --max-time 30 \
+            "$CANONICAL_APP_URL/api/health" > /tmp/resourceful-canonical-health.json
+          node - "$GITHUB_SHA" /tmp/resourceful-canonical-health.json <<'NODE'
+          const fs = require('node:fs');
+          const [expected, file] = process.argv.slice(2);
+          const body = JSON.parse(fs.readFileSync(file, 'utf8'));
+          if (body.healthy !== true) throw new Error('Canonical production health is not healthy.');
+          if (body.deployment?.commit !== expected) {
+            throw new Error(`Canonical alias is stale: ${body.deployment?.commit ?? 'missing'} !== ${expected}`);
+          }
+          if (body.deployment?.environment !== 'production') {
+            throw new Error(`Canonical environment is ${body.deployment?.environment ?? 'missing'}, expected production.`);
+          }
+          NODE
