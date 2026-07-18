@@ -5,23 +5,21 @@
 import React from 'react';
 import { View, Text, StyleSheet } from '@react-pdf/renderer';
 import { theme, colors } from '../styles/theme';
-import { SectionHeader, NarrativeBlock, ValueCallout } from './shared';
+import { SectionHeader, ValueCallout } from './shared';
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { formatCurrency, formatPercent, formatSqFt, formatNumber } from '@/lib/templates/helpers';
-import { findNarrativeContent } from '@/lib/report-narratives';
 
 function validPercent(value: number | null | undefined): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 100;
 }
 
 export default function CostApproachTable({ data }: { data: ReportTemplateData }) {
-  const { property, narratives } = data;
+  const { property } = data;
 
   const costApproachValue = property.cost_approach_value;
   const rcn = property.cost_approach_rcn;
   const physicalDepreciation = property.physical_depreciation_pct;
 
-  // Do not imply a complete cost approach from an isolated positive total.
   if (
     costApproachValue == null ||
     !Number.isFinite(costApproachValue) ||
@@ -55,18 +53,17 @@ export default function CostApproachTable({ data }: { data: ReportTemplateData }
     ? Math.abs(reconciliationDifference) / recomputedValue
     : 0;
 
-  const costNarrative = findNarrativeContent(narratives, 'cost_approach_narrative');
   const buildingSqft = property.building_sqft_gross ?? property.building_sqft_living_area ?? null;
   const costPerSqft = buildingSqft != null && buildingSqft > 0
     ? rcn / buildingSqft
     : null;
 
   return (
-    <View break>
-      <SectionHeader number="XI" title="Cost Approach Analysis" />
+    <View>
+      <SectionHeader number="VII-E1" title="Cost Approach Calculation" />
 
       <Text style={[theme.bodyText, { marginBottom: 8 }]}>
-        This section presents the cost indication stored in the Resourceful workfile. Building area,
+        This exhibit presents the cost indication stored in the Resourceful workfile. Building area,
         replacement cost, quality, depreciation, obsolescence, and land inputs may originate from public
         records, third-party data, disclosed calculations, or clearly labeled assumptions. They are not
         represented as independent contractor estimates, engineering measurements, or licensed-appraiser
@@ -128,7 +125,7 @@ export default function CostApproachTable({ data }: { data: ReportTemplateData }
           label="Land Value Input"
           value={landValue != null ? formatCurrency(landValue) : 'Not separately available'}
         />
-        <View style={styles.totalRow}>
+        <View style={styles.totalRow} wrap={false}>
           <Text style={styles.totalLabel}>Stored Cost Approach Indication</Text>
           <Text style={styles.totalValue}>{formatCurrency(costApproachValue)}</Text>
         </View>
@@ -149,8 +146,6 @@ export default function CostApproachTable({ data }: { data: ReportTemplateData }
           treated as a complete market-value approach until the land component and its source are verified.
         </Text>
       )}
-
-      {costNarrative && <NarrativeBlock content={costNarrative} />}
 
       <ValueCallout
         label="Workfile Cost Approach Indication"
@@ -175,7 +170,7 @@ function ComputeRow({
   negative?: boolean;
 }) {
   return (
-    <View style={styles.row}>
+    <View style={styles.row} wrap={false}>
       <Text style={[styles.rowLabel, bold ? { fontWeight: 600 } : {}]}>{label}</Text>
       <Text
         style={[
