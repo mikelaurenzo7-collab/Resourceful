@@ -1,6 +1,6 @@
 // ─── Admin Approve Report API ────────────────────────────────────────────────
-// POST: Verify admin user, call stage 8 delivery, record approval_event,
-// update report status.
+// POST: Verify admin user, atomically claim a report, verify and deliver the
+// approved artifact, then record the approval event.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
@@ -18,7 +18,6 @@ export async function POST(
   try {
     const { id: reportId } = await params;
 
-    // ── Authenticate user ──────────────────────────────────────────────────
     const supabase = await createClient();
     const {
       data: { user },
@@ -32,7 +31,6 @@ export async function POST(
       );
     }
 
-    // ── Verify admin ───────────────────────────────────────────────────────
     const adminCheck = await isAdminWithEmailMatch(user.id, user.email);
     if (!adminCheck) {
       return NextResponse.json(
@@ -41,7 +39,7 @@ export async function POST(
       );
     }
 
-    // ── Atomically claim report for approval (prevents two admins approving simultaneously) ──
+    // Atomically claim the report so two admins cannot approve it concurrently.
     const admin = createAdminClient();
     const { data: claimed, error: claimError } = await admin
       .from('reports')
@@ -52,7 +50,6 @@ export async function POST(
       .single();
 
     if (claimError || !claimed) {
-      // Either report doesn't exist or another admin already claimed it
       const report = await getReportById(reportId);
       if (!report) {
         return NextResponse.json({ error: 'Report not found' }, { status: 404 });
@@ -63,17 +60,31 @@ export async function POST(
       );
     }
 
-    // ── Run delivery (stage 8) ─────────────────────────────────────────────
     const deliveryResult = await runDelivery(reportId, user.id, admin);
 
     if (!deliveryResult.success) {
-      // Rollback: return to pending_approval so another admin can retry
-      await admin
+      // Roll back only the claim made by this request. Never overwrite a state
+      // changed concurrently by another process.
+      const { error: rollbackError } = await admin
         .from('reports')
         .update({ status: 'pending_approval' as const })
-        .eq('id', reportId);
+        .eq('id', reportId)
+        .eq('status', 'delivering');
+
+      if (rollbackError) {
+        apiLogger.error(
+          { reportId, error: rollbackError.message },
+          'Delivery failed and approval claim rollback also failed'
+        );
+      }
+
       return NextResponse.json(
-        { error: `Delivery failed: ${deliveryResult.error}` },
+        {
+          error: [
+            `Delivery failed: ${deliveryResult.error}`,
+            rollbackError ? `Approval rollback failed: ${rollbackError.message}` : null,
+          ].filter(Boolean).join('; '),
+        },
         { status: 500 }
       );
     }
@@ -83,12 +94,12 @@ export async function POST(
       admin_user_id: user.id,
       action: 'approved',
       section_name: null,
-      notes: 'Report approved and delivered',
+      notes: 'Report artifact verified, approved, and delivered',
     });
 
     return NextResponse.json(
       {
-        message: 'Report approved and delivered',
+        message: 'Report verified, approved, and delivered',
         reportId,
         status: 'delivered',
       },
