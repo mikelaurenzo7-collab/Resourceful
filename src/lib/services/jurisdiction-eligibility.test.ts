@@ -13,9 +13,14 @@ function verifiedRule(overrides: Partial<CountyRule> = {}): CountyRule {
     appeal_board_name: 'Cook County Board of Review',
     appeal_deadline_rule: 'File during the published township window.',
     next_appeal_deadline: null,
-    filing_steps: [
-      { step_number: 1, title: 'Prepare evidence', description: 'Assemble the filing package.' },
-    ],
+    accepts_online_filing: true,
+    accepts_email_filing: false,
+    requires_mail_filing: false,
+    portal_url: 'https://appeals.example.gov/',
+    filing_email: null,
+    appeal_board_address: null,
+    form_download_url: null,
+    evidence_requirements: ['Comparable sales'],
     required_documents: ['Complaint form', 'Comparable evidence'],
     ...overrides,
   } as CountyRule;
@@ -41,7 +46,7 @@ describe('evaluateTaxAppealJurisdiction', () => {
     });
   });
 
-  it('accepts a verified explicit deadline in place of a general deadline rule', () => {
+  it('accepts a future verified explicit deadline in place of a general rule', () => {
     const result = evaluateTaxAppealJurisdiction({
       countyFips: '17031',
       state: 'IL',
@@ -54,6 +59,23 @@ describe('evaluateTaxAppealJurisdiction', () => {
 
     expect(result.allowed).toBe(true);
     if (result.allowed) expect(result.filingDeadline).toBe('2026-09-15');
+  });
+
+  it('falls back to the verified deadline rule when an explicit date has passed', () => {
+    const result = evaluateTaxAppealJurisdiction({
+      countyFips: '17031',
+      state: 'IL',
+      rule: verifiedRule({
+        next_appeal_deadline: '2026-05-15',
+        appeal_deadline_rule: 'May 15 or 30 days after notice, whichever is later.',
+      }),
+      now: NOW,
+    });
+
+    expect(result.allowed).toBe(true);
+    if (result.allowed) {
+      expect(result.filingDeadline).toBe('May 15 or 30 days after notice, whichever is later.');
+    }
   });
 
   it('blocks missing and inactive jurisdiction records', () => {
@@ -125,12 +147,20 @@ describe('evaluateTaxAppealJurisdiction', () => {
     ).toMatchObject({ allowed: false, code: 'JURISDICTION_RULES_STALE' });
   });
 
-  it('requires authority, deadline, filing steps, and required documents', () => {
+  it('requires authority, current deadline logic, a filing channel, and evidence requirements', () => {
     for (const rule of [
       verifiedRule({ appeal_board_name: '' }),
       verifiedRule({ appeal_deadline_rule: '', next_appeal_deadline: null }),
-      verifiedRule({ filing_steps: [] }),
-      verifiedRule({ required_documents: [] }),
+      verifiedRule({
+        accepts_online_filing: false,
+        accepts_email_filing: false,
+        requires_mail_filing: false,
+        portal_url: null,
+        filing_email: null,
+        appeal_board_address: null,
+        form_download_url: null,
+      }),
+      verifiedRule({ required_documents: [], evidence_requirements: [] }),
     ]) {
       expect(
         evaluateTaxAppealJurisdiction({
@@ -141,5 +171,16 @@ describe('evaluateTaxAppealJurisdiction', () => {
         })
       ).toMatchObject({ allowed: false, code: 'JURISDICTION_RULES_INCOMPLETE' });
     }
+  });
+
+  it('accepts verified evidence requirements when required_documents is not populated', () => {
+    expect(
+      evaluateTaxAppealJurisdiction({
+        countyFips: '17031',
+        state: 'IL',
+        rule: verifiedRule({ required_documents: [], evidence_requirements: ['Sales evidence'] }),
+        now: NOW,
+      }).allowed
+    ).toBe(true);
   });
 });
