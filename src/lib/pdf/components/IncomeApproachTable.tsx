@@ -1,7 +1,6 @@
 // ─── Income Capitalization Approach ──────────────────────────────────────────
-// Structured presentation of the income approach:
-// Rental Comparable Grid → Pro Forma Income Statement → Cap Rate Analysis
-// → Indicated Value by Income Approach
+// Structured presentation of rental evidence, pro forma income, cap-rate source,
+// mathematical indication, and the reconciled income conclusion.
 
 import React from 'react';
 import { View, Text, StyleSheet } from '@react-pdf/renderer';
@@ -10,13 +9,22 @@ import { SectionHeader, NarrativeBlock, DataTable, ValueCallout } from './shared
 import type { ReportTemplateData } from '@/lib/templates/report-template';
 import { formatCurrency, formatPercent, formatSqFt, formatDateShort } from '@/lib/templates/helpers';
 import { findNarrativeContent } from '@/lib/report-narratives';
+import { getReportIncomeAssessment } from '../section-data';
 
 export default function IncomeApproachTable({ data }: { data: ReportTemplateData }) {
-  const { incomeAnalysis, comparableRentals, narratives, report } = data;
+  const { incomeAnalysis, comparableRentals, narratives } = data;
+  const incomeAssessment = getReportIncomeAssessment(data);
 
-  // Guard: only render for commercial/industrial with income data
-  const isIncomeProperty = report.property_type === 'commercial' || report.property_type === 'industrial';
-  if (!isIncomeProperty || !incomeAnalysis) return null;
+  if (
+    !incomeAnalysis ||
+    !incomeAssessment?.isReleaseReady ||
+    incomeAssessment.calculatedValue == null ||
+    incomeAssessment.storedValue == null ||
+    incomeAnalysis.net_operating_income == null ||
+    incomeAnalysis.concluded_cap_rate == null
+  ) {
+    return null;
+  }
 
   const incomeNarrative = findNarrativeContent(narratives, 'income_approach_narrative');
 
@@ -26,35 +34,31 @@ export default function IncomeApproachTable({ data }: { data: ReportTemplateData
 
       <Text style={[theme.bodyText, { marginBottom: 8 }]}>
         The Income Capitalization Approach converts the anticipated income stream from a property
-        into an indication of value, using currently applicable market-derived rates.
+        into an indication of value using supported rental evidence and a market-derived capitalization rate.
       </Text>
 
-      {/* Rental Comparables Grid */}
-      {comparableRentals.length > 0 && (
-        <View style={{ marginBottom: 12 }}>
-          <Text style={styles.subheading}>Comparable Rental Survey</Text>
-          <DataTable
-            headers={['Address', 'Lease Date', 'SF Leased', 'Rent/SF/Yr', 'Lease Type', 'Eff. Net Rent']}
-            columnWidths={['25%', '12%', '13%', '13%', '14%', '14%']}
-            numericColumns={[2, 3, 5]}
-            rows={comparableRentals.map(r => [
-              r.address ? (r.address.length > 28 ? r.address.slice(0, 26) + '…' : r.address) : '—',
-              r.lease_date ? formatDateShort(r.lease_date) : '—',
-              r.building_sqft_leased ? formatSqFt(r.building_sqft_leased).replace(' SF', '') : '—',
-              r.rent_per_sqft_yr ? `$${r.rent_per_sqft_yr.toFixed(2)}` : '—',
-              r.lease_type ?? '—',
-              r.effective_net_rent_per_sqft ? `$${r.effective_net_rent_per_sqft.toFixed(2)}` : '—',
-            ])}
-          />
-          {incomeAnalysis.concluded_market_rent_per_sqft_yr && (
-            <Text style={[theme.caption, { marginTop: 4 }]}>
-              Concluded Market Rent: ${incomeAnalysis.concluded_market_rent_per_sqft_yr.toFixed(2)}/SF/Year
-            </Text>
-          )}
-        </View>
-      )}
+      <View style={{ marginBottom: 12 }}>
+        <Text style={styles.subheading}>Comparable Rental Survey</Text>
+        <DataTable
+          headers={['Address', 'Lease Date', 'SF Leased', 'Rent/SF/Yr', 'Lease Type', 'Eff. Net Rent']}
+          columnWidths={['25%', '12%', '13%', '13%', '14%', '14%']}
+          numericColumns={[2, 3, 5]}
+          rows={comparableRentals.map((r) => [
+            r.address ? (r.address.length > 28 ? `${r.address.slice(0, 26)}…` : r.address) : '—',
+            r.lease_date ? formatDateShort(r.lease_date) : '—',
+            r.building_sqft_leased ? formatSqFt(r.building_sqft_leased).replace(' SF', '') : '—',
+            r.rent_per_sqft_yr ? `$${r.rent_per_sqft_yr.toFixed(2)}` : '—',
+            r.lease_type ?? '—',
+            r.effective_net_rent_per_sqft ? `$${r.effective_net_rent_per_sqft.toFixed(2)}` : '—',
+          ])}
+        />
+        {incomeAnalysis.concluded_market_rent_per_sqft_yr != null && (
+          <Text style={[theme.caption, { marginTop: 4 }]}>
+            Concluded Market Rent: ${incomeAnalysis.concluded_market_rent_per_sqft_yr.toFixed(2)}/SF/Year
+          </Text>
+        )}
+      </View>
 
-      {/* Pro Forma Income Statement */}
       <Text style={styles.subheading}>Pro Forma Income Statement</Text>
       <View style={styles.computeTable}>
         {incomeAnalysis.potential_gross_income != null && (
@@ -71,7 +75,6 @@ export default function IncomeApproachTable({ data }: { data: ReportTemplateData
           <ComputeRow label="Effective Gross Income" value={formatCurrency(incomeAnalysis.effective_gross_income)} bold />
         )}
 
-        {/* Operating Expenses */}
         {incomeAnalysis.expense_nnn_during_vacancy != null && incomeAnalysis.expense_nnn_during_vacancy > 0 && (
           <ComputeRow label="  NNN Expenses During Vacancy" value={`(${formatCurrency(incomeAnalysis.expense_nnn_during_vacancy)})`} negative indent />
         )}
@@ -96,87 +99,81 @@ export default function IncomeApproachTable({ data }: { data: ReportTemplateData
           />
         )}
 
-        {/* NOI */}
-        {incomeAnalysis.net_operating_income != null && (
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Net Operating Income</Text>
-            <Text style={styles.totalValue}>{formatCurrency(incomeAnalysis.net_operating_income)}</Text>
+        <View style={styles.totalRow}>
+          <Text style={styles.totalLabel}>Net Operating Income</Text>
+          <Text style={styles.totalValue}>{formatCurrency(incomeAnalysis.net_operating_income)}</Text>
+        </View>
+      </View>
+
+      <View style={{ marginTop: 12 }}>
+        <Text style={styles.subheading}>Capitalization Rate Analysis</Text>
+        <View style={styles.computeTable}>
+          {incomeAnalysis.cap_rate_market_low != null && incomeAnalysis.cap_rate_market_high != null && (
+            <ComputeRow
+              label="Market Cap Rate Range"
+              value={`${formatPercent(incomeAnalysis.cap_rate_market_low)} – ${formatPercent(incomeAnalysis.cap_rate_market_high)}`}
+            />
+          )}
+          {incomeAnalysis.cap_rate_investor_survey_avg != null && (
+            <ComputeRow
+              label="Investor Survey Average"
+              value={formatPercent(incomeAnalysis.cap_rate_investor_survey_avg)}
+            />
+          )}
+          <View style={{ paddingHorizontal: 8, paddingBottom: 4 }}>
+            <Text style={[theme.caption, { fontStyle: 'italic' }]}>
+              Source: {incomeAnalysis.investor_survey_reference}
+            </Text>
           </View>
+          <ComputeRow
+            label="Concluded Capitalization Rate"
+            value={formatPercent(incomeAnalysis.concluded_cap_rate)}
+            bold
+            accent
+          />
+        </View>
+      </View>
+
+      <View style={{ marginTop: 12 }}>
+        <Text style={styles.subheading}>Income Approach Computation</Text>
+        <View style={styles.computeTable}>
+          <ComputeRow
+            label="Net Operating Income"
+            value={formatCurrency(incomeAnalysis.net_operating_income)}
+          />
+          <ComputeRow
+            label="Divided by: Cap Rate"
+            value={formatPercent(incomeAnalysis.concluded_cap_rate)}
+          />
+          <ComputeRow
+            label="Calculated Value (NOI ÷ Cap Rate)"
+            value={formatCurrency(incomeAssessment.calculatedValue)}
+            bold
+          />
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Reconciled Income Approach Indication</Text>
+            <Text style={styles.totalValue}>
+              {formatCurrency(incomeAssessment.storedValue)}
+            </Text>
+          </View>
+        </View>
+        {incomeAssessment.reconciliationDifference != null && (
+          <Text style={[theme.caption, { marginTop: 4 }]}>
+            Stored conclusion differs from the direct NOI/cap-rate calculation by {formatCurrency(Math.abs(incomeAssessment.reconciliationDifference))}, within the report release tolerance.
+          </Text>
         )}
       </View>
 
-      {/* Capitalization Rate Analysis */}
-      {incomeAnalysis.concluded_cap_rate != null && (
-        <View style={{ marginTop: 12 }}>
-          <Text style={styles.subheading}>Capitalization Rate Analysis</Text>
-          <View style={styles.computeTable}>
-            {incomeAnalysis.cap_rate_market_low != null && incomeAnalysis.cap_rate_market_high != null && (
-              <ComputeRow
-                label="Market Cap Rate Range"
-                value={`${formatPercent(incomeAnalysis.cap_rate_market_low)} – ${formatPercent(incomeAnalysis.cap_rate_market_high)}`}
-              />
-            )}
-            {incomeAnalysis.cap_rate_investor_survey_avg != null && (
-              <ComputeRow
-                label="Investor Survey Average"
-                value={formatPercent(incomeAnalysis.cap_rate_investor_survey_avg)}
-              />
-            )}
-            {incomeAnalysis.investor_survey_reference && (
-              <View style={{ paddingHorizontal: 8, paddingBottom: 4 }}>
-                <Text style={[theme.caption, { fontStyle: 'italic' }]}>
-                  Source: {incomeAnalysis.investor_survey_reference}
-                </Text>
-              </View>
-            )}
-            <ComputeRow
-              label="Concluded Capitalization Rate"
-              value={formatPercent(incomeAnalysis.concluded_cap_rate)}
-              bold
-              accent
-            />
-          </View>
-        </View>
-      )}
-
-      {/* Final Computation */}
-      {incomeAnalysis.concluded_value_income_approach != null && (
-        <View style={{ marginTop: 12 }}>
-          <Text style={styles.subheading}>Income Approach Computation</Text>
-          <View style={styles.computeTable}>
-            <ComputeRow
-              label="Net Operating Income"
-              value={formatCurrency(incomeAnalysis.net_operating_income ?? 0)}
-            />
-            <ComputeRow
-              label="Divided by: Cap Rate"
-              value={formatPercent(incomeAnalysis.concluded_cap_rate ?? 0)}
-            />
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Indicated Value by Income Approach</Text>
-              <Text style={styles.totalValue}>
-                {formatCurrency(incomeAnalysis.concluded_value_income_approach)}
-              </Text>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Narrative */}
       {incomeNarrative && <NarrativeBlock content={incomeNarrative} />}
 
-      {incomeAnalysis.concluded_value_income_approach != null && (
-        <ValueCallout
-          label="Income Approach Indication"
-          value={formatCurrency(incomeAnalysis.concluded_value_income_approach)}
-          color={colors.accent}
-        />
-      )}
+      <ValueCallout
+        label="Income Approach Indication"
+        value={formatCurrency(incomeAssessment.storedValue)}
+        color={colors.accent}
+      />
     </View>
   );
 }
-
-// ─── Sub-Components ──────────────────────────────────────────────────────────
 
 function ComputeRow({
   label,
@@ -211,8 +208,6 @@ function ComputeRow({
     </View>
   );
 }
-
-// ─── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
   subheading: {
