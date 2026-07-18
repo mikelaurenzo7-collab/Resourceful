@@ -159,6 +159,24 @@ describe('evaluateNationwideReportIntegrity', () => {
     expect(result.hardFailureCodes).toContain('FLOOD_ASSERTION_UNSOURCED');
   });
 
+  it('does not treat an empty FEMA payload as official flood evidence', () => {
+    const result = evaluateNationwideReportIntegrity(data({
+      property: {
+        ...data().property,
+        flood_zone_designation: null,
+        flood_map_panel_number: null,
+        flood_map_panel_date: null,
+        fema_raw_response: {},
+      },
+      narratives: [
+        ...data().narratives.filter((item) => item.section_name !== 'property_description'),
+        narrative('property_description', 'The subject is outside the floodplain.'),
+      ],
+    }));
+
+    expect(result.hardFailureCodes).toContain('FLOOD_ASSERTION_UNSOURCED');
+  });
+
   it('blocks automated reports from claiming appraisal identity', () => {
     const result = evaluateNationwideReportIntegrity(data({
       narratives: [
@@ -193,6 +211,6 @@ describe('evaluateNationwideReportIntegrity', () => {
       ],
     }));
     expect(complete.hardFailureCodes).not.toContain('ESTATE_ASSIGNMENT_INCOMPLETE');
-    expect(complete.warningCodes).toContain('ESTATE_ASSIGNMENT_INCOMPLETE');
+    expect(complete.warningCodes).toContain('ESTATE_PACKAGE_RETENTION_REQUIRED');
   });
 });
