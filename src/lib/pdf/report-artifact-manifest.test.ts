@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ReportTemplateData } from '@/lib/templates/report-template';
-import type { PdfReleasePolicyResult } from '@/lib/valuation/pdf-release-policy';
+import {
+  evaluatePdfReleasePolicy,
+  type PdfReleasePolicyResult,
+} from '@/lib/valuation/pdf-release-policy';
 import type { TaxAppealReleaseResult } from '@/lib/valuation/tax-appeal-release-policy';
 import {
   buildReportArtifactPaths,
@@ -240,7 +243,7 @@ describe('report artifact manifest', () => {
     expect(serialized).not.toContain('https://assessor.example.gov/parcel/123');
   });
 
-  it('records cost readiness only when all reproducible inputs reconcile', () => {
+  it('records cost readiness only when the authoritative release policy approves it', () => {
     const data = createData();
     data.property.cost_approach_rcn = 500_000;
     data.property.cost_approach_value = 470_000;
@@ -249,14 +252,27 @@ describe('report artifact manifest', () => {
     data.property.land_value = 20_000;
     data.narratives.push(narrative('cost_approach_narrative'));
 
+    const costValuationRelease = evaluatePdfReleasePolicy({
+      comparableSaleCount: data.comparableSales.length,
+      concludedValue: data.concludedValue,
+      costApproach: {
+        replacementCostNew: data.property.cost_approach_rcn,
+        concludedValue: data.property.cost_approach_value,
+        physicalDepreciationPct: data.property.physical_depreciation_pct,
+        functionalObsolescencePct: data.property.functional_obsolescence_pct,
+        landValue: data.property.land_value,
+      },
+    });
+
     const manifest = createReportArtifactManifest({
       data,
       pdfBuffer: Buffer.from('%PDF-1.7 cost evidence bytes'),
       generatedAt: '2026-07-18T15:04:05.678Z',
-      valuationRelease,
+      valuationRelease: costValuationRelease,
       jurisdictionRelease,
     });
 
+    expect(costValuationRelease.costAssessment?.isReleaseReady).toBe(true);
     expect(manifest.report.profileId).toBe('resourceful-v2:tax_appeal:complex:sales-cost');
     expect(manifest.evidence.costApproachReleaseReady).toBe(true);
   });
