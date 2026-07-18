@@ -4,9 +4,9 @@ import { supportsIncomeApproach } from '@/lib/valuation/property-type-policy';
 import { hasReleaseReadyIncomeApproach } from './section-data';
 
 export const REPORT_NARRATIVE_SECTION_SPECS = [
-  { key: 'assignment_and_scope', number: 'I', title: 'Assignment & Scope of Work' },
-  { key: 'summary_of_salient_facts', number: 'II-A', title: 'Summary of Salient Facts' },
-  { key: 'executive_summary', number: 'II-B', title: 'Executive Valuation Summary' },
+  { key: 'summary_of_salient_facts', number: 'I-A', title: 'Summary of Salient Facts' },
+  { key: 'executive_summary', number: 'I-B', title: 'Executive Valuation Summary' },
+  { key: 'assignment_and_scope', number: 'II', title: 'Assignment & Scope of Work' },
   { key: 'property_history', number: 'III-A', title: 'Property History & Transaction Context' },
   { key: 'assessment_data', number: 'III-B', title: 'Assessment Data & Classification' },
   { key: 'property_description', number: 'III-C', title: 'Subject Property Description' },
@@ -201,13 +201,17 @@ export function buildReportProfile(data: ReportTemplateData): ReportProfile {
     }));
 
   const complexity = isComplexProperty ? 'complex' : 'standard';
-  const evidenceMode = hasIncomeApproach
+  const evidenceMode = hasSalesApproach && hasIncomeApproach
     ? 'sales-income'
-    : hasCostApproach
+    : hasSalesApproach && hasCostApproach
       ? 'sales-cost'
-      : hasSalesApproach
-        ? 'sales'
-        : 'alternative';
+      : hasIncomeApproach
+        ? 'income'
+        : hasCostApproach
+          ? 'cost'
+          : hasSalesApproach
+            ? 'sales'
+            : 'alternative';
 
   return {
     id: `resourceful-v2:${assignmentKind}:${complexity}:${evidenceMode}`,
