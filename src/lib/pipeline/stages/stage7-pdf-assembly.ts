@@ -90,6 +90,16 @@ export async function runPdfAssembly(
     physicalDepreciationPct: templateData.property.physical_depreciation_pct,
     functionalObsolescencePct: templateData.property.functional_obsolescence_pct,
     landValue: templateData.property.land_value,
+    replacementCostSourceAuthority: templateData.property.cost_replacement_source_authority,
+    depreciationSourceAuthority: templateData.property.cost_depreciation_source_authority,
+    landValueSourceAuthority: templateData.property.cost_land_source_authority,
+    sourceReferences: templateData.property.cost_source_references,
+    methodology: templateData.property.cost_methodology,
+    costEffectiveDate: templateData.property.cost_effective_date,
+    expectedEffectiveDate: templateData.valuationDate,
+    verificationState: templateData.property.cost_verification_state,
+    verifiedBy: templateData.property.cost_verified_by,
+    verifiedAt: templateData.property.cost_verified_at,
   };
 
   const valuationRelease = evaluatePdfReleasePolicy({
