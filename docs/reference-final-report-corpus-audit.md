@@ -12,12 +12,14 @@ The audit covers ten supplied final-report files representing nine unique report
 - office property;
 - industrial property;
 - flex office/industrial property;
-- vacant or distressed income-producing property.
+- vacant or distressed income-producing property;
 - mixed-use or multi-parcel commercial assignments.
 
 The source documents are treated as professional workflow references, not as reusable templates. Client names, contact details, parcel identifiers, signatures, license numbers, and report prose must not be copied into Resourceful fixtures or documentation.
 
 The corpus sets a high professional baseline for length, evidence density, and appraisal-style organization. It also demonstrates why Resourceful needs deterministic release controls: copied municipality or zoning-authority references, retrospective-date market-vintage issues, and stale local language can appear even in otherwise serious reports.
+
+Implementation note: these corpus lessons are now enforced in Resourceful's release policy through municipality-template leak checks, market-vintage controls for retrospective assignments, cost-approach support requirements, complex-report map warnings, and branded report-scope labels.
 
 ## 2. Report architecture worth preserving
 
