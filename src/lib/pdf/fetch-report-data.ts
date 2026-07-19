@@ -58,6 +58,28 @@ function asStringArray(value: unknown): string[] {
     .filter(Boolean);
 }
 
+function asEvidenceRequirementArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => {
+      if (typeof item === 'string') return item;
+      if (!item || typeof item !== 'object') return '';
+
+      const record = item as Record<string, unknown>;
+      const title = asNonEmptyString(record.title)
+        ?? asNonEmptyString(record.name)
+        ?? asNonEmptyString(record.label);
+      const description = asNonEmptyString(record.description)
+        ?? asNonEmptyString(record.detail)
+        ?? asNonEmptyString(record.notes);
+
+      if (title && description) return `${title}: ${description}`;
+      return title ?? description ?? '';
+    })
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function uniqueStrings(values: Array<string | null | undefined>): string[] {
   return [...new Set(values.map((value) => value?.trim()).filter((value): value is string => Boolean(value)))];
 }
@@ -141,6 +163,8 @@ export function parseStructuredFilingGuide(
     if (steps.length === 0) return null;
 
     const requiredDocuments = asStringArray(parsed.required_documents);
+    const jurisdictionRequiredDocuments = asEvidenceRequirementArray(countyRule?.required_documents);
+    const jurisdictionEvidenceRequirements = asEvidenceRequirementArray(countyRule?.evidence_requirements);
     const tips = asStringArray(parsed.tips);
 
     return {
@@ -151,7 +175,9 @@ export function parseStructuredFilingGuide(
       steps,
       required_documents: requiredDocuments.length > 0
         ? requiredDocuments
-        : countyRule?.required_documents ?? countyRule?.evidence_requirements ?? [],
+        : jurisdictionRequiredDocuments.length > 0
+          ? jurisdictionRequiredDocuments
+          : jurisdictionEvidenceRequirements,
       tips: tips.length > 0
         ? tips
         : uniqueStrings([
@@ -184,9 +210,13 @@ export function recoverLegacyFilingGuide(
       ? narrativeSteps
       : defaultFilingSteps();
 
-  const requiredDocuments = countyRule?.required_documents
-    ?? countyRule?.evidence_requirements
-    ?? ['Confirm the jurisdiction’s current required documents before filing.'];
+  const jurisdictionRequiredDocuments = asEvidenceRequirementArray(countyRule?.required_documents);
+  const jurisdictionEvidenceRequirements = asEvidenceRequirementArray(countyRule?.evidence_requirements);
+  const requiredDocuments = jurisdictionRequiredDocuments.length > 0
+    ? jurisdictionRequiredDocuments
+    : jurisdictionEvidenceRequirements.length > 0
+      ? jurisdictionEvidenceRequirements
+      : ['Confirm the jurisdiction’s current required documents before filing.'];
 
   const tips = uniqueStrings([
     countyRule?.pro_se_tips,

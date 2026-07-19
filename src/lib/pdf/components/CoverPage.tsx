@@ -14,6 +14,21 @@ function titleCase(value: string): string {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+function reviewScopeLabel(value: string): string {
+  switch (value) {
+    case 'auto':
+      return 'Automated evidence assembly with quality controls';
+    case 'expert_reviewed':
+      return 'Expert-reviewed evidence and valuation analysis';
+    case 'guided_filing':
+      return 'Guided filing package with reviewed evidence';
+    case 'full_representation':
+      return 'Represented case package subject to signed engagement';
+    default:
+      return titleCase(value);
+  }
+}
+
 export default function CoverPage({ data }: { data: ReportTemplateData }) {
   const { report, property, photos } = data;
   const profile = buildReportProfile(data);
@@ -79,7 +94,7 @@ export default function CoverPage({ data }: { data: ReportTemplateData }) {
       <View style={styles.coverFooter}>
         <Text style={styles.preparedFor}>Prepared for {clientName}</Text>
         <Text style={theme.caption}>
-          Review tier: {titleCase(report.review_tier)}  ·  Document profile: {profile.id}
+          Review scope: {reviewScopeLabel(report.review_tier)}
         </Text>
         <Text style={styles.boundary}>
           AI-assisted valuation analysis based on the evidence, assumptions, effective date, and review scope documented in this report. It is not a signed or certified appraisal unless a qualified appraiser reviews, executes, and assumes responsibility for the assignment.

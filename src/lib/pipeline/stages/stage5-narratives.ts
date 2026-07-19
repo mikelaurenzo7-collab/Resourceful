@@ -17,8 +17,6 @@ import {
   CASE_STRENGTH,
   REPLACEMENT_COST_PER_SQFT,
   OVER_IMPROVEMENT_THRESHOLD_PCT,
-  CONDITION_DEFECT_ADJUSTMENTS,
-  CONDITION_BASE_OFFSET,
   OVER_IMPROVEMENT_ADJ_PCT,
   OVER_IMPROVEMENT_ADJ_MAX_PCT,
   LAND_RATIO_BY_SUBTYPE,
@@ -499,75 +497,10 @@ export async function runNarratives(
   }
 
   // ── Value WITHOUT photo condition adjustments (market data only) ───────
-  // Strip out the photo-based condition adjustment from each comp to see
-  // what the value would be using only market data + standard adjustments.
-  // Stage 4 stores the photo adjustment in adjustment_pct_condition on top
-  // of the base condition adjustment from stage 2. We need to reverse it.
+  // Current evidence policy does not let AI photo labels directly adjust
+  // comparable values, effective age, depreciation, or concluded value.
   let concludedValueWithoutPhotos = concludedValue; // same if no photos
-  let photoConditionAdjustmentPct: number | null = null;
-
-  if (photoAnalyses.length > 0 && comps.length > 0) {
-    // Re-derive the photo adjustment the same way stage4 does
-    const allPhotoDefects: Array<{ severity: string; value_impact: string }> = [];
-    for (const pa of photoAnalyses) {
-      for (const d of pa.defects) {
-        allPhotoDefects.push({ severity: d.severity, value_impact: d.value_impact });
-      }
-    }
-
-    let defectAdj = 0;
-    for (const defect of allPhotoDefects) {
-      const severityMap = CONDITION_DEFECT_ADJUSTMENTS[defect.severity] ?? CONDITION_DEFECT_ADJUSTMENTS.minor;
-      defectAdj += severityMap[defect.value_impact] ?? severityMap.low;
-    }
-
-    // Condition ratings from photo analyses
-    const conditionRatings = photoAnalyses.map(p => p.condition_rating);
-    const overallCondition: string = conditionRatings.length > 0
-      ? (() => {
-          const freq: Record<string, number> = {};
-          for (const v of conditionRatings) freq[v] = (freq[v] ?? 0) + 1;
-          const order = ['poor', 'fair', 'average', 'good', 'excellent'];
-          let maxCount = 0;
-          let mode: string = conditionRatings[0];
-          for (const [val, count] of Object.entries(freq)) {
-            if (count > maxCount || (count === maxCount && order.indexOf(val) < order.indexOf(mode))) {
-              maxCount = count;
-              mode = val;
-            }
-          }
-          return mode;
-        })()
-      : 'average';
-
-    const baseOffset = CONDITION_BASE_OFFSET[overallCondition] ?? 0;
-    photoConditionAdjustmentPct = Math.max(
-      Math.round((defectAdj + baseOffset) * 100) / 100,
-      -25
-    );
-
-    // Only compute the "without photos" value if photos actually changed anything
-    if (photoConditionAdjustmentPct !== 0) {
-      // Reverse the photo adjustment on each comp to get the pre-photo price
-      const pricesWithoutPhotos = comps
-        .map((c) => {
-          if (!c.adjusted_price_per_sqft || !c.sale_price || !c.building_sqft || c.building_sqft <= 0 || c.net_adjustment_pct == null) return null;
-          // The current net includes the photo adjustment. Remove it.
-          const netWithoutPhoto = c.net_adjustment_pct - photoConditionAdjustmentPct!;
-          return Math.round(((c.sale_price * (1 + netWithoutPhoto / 100)) / c.building_sqft) * 100) / 100;
-        })
-        .filter((p): p is number => p != null && p > 0)
-        .sort((a, b) => a - b);
-
-      if (pricesWithoutPhotos.length > 0 && propertyData.building_sqft_gross) {
-        const mid = Math.floor(pricesWithoutPhotos.length / 2);
-        const median = pricesWithoutPhotos.length % 2 === 0
-          ? (pricesWithoutPhotos[mid - 1] + pricesWithoutPhotos[mid]) / 2
-          : pricesWithoutPhotos[mid];
-        concludedValueWithoutPhotos = Math.round(median * propertyData.building_sqft_gross);
-      }
-    }
-  }
+  const photoConditionAdjustmentPct: number | null = photoAnalyses.length > 0 ? 0 : null;
 
   // Round to nearest $1,000
   concludedValue = Math.round(concludedValue / 1000) * 1000;
@@ -811,7 +744,7 @@ export async function runNarratives(
       dataAnomalies.push(
         `Property built in ${propertyData.year_built} (${actualAge} years old) has accumulated ${depreciationPct.toFixed(1)}% physical depreciation ` +
         `against its ${propertyData.property_subtype ?? 'building category'} economic life — ` +
-        `assessor must account for this depreciation in the assessment`
+        `review whether the jurisdiction record and selected comparables reflect this condition evidence`
       );
     } else if (!depreciationPct) {
       dataAnomalies.push(
@@ -823,7 +756,7 @@ export async function runNarratives(
 
   if (propertyData.flood_zone_designation && !['X', 'C'].includes(propertyData.flood_zone_designation)) {
     dataAnomalies.push(
-      `Property is in flood zone ${propertyData.flood_zone_designation} — flood risk typically warrants 5-15% value reduction that assessors often overlook`
+      `Property is in flood zone ${propertyData.flood_zone_designation} — review official flood evidence, insurance context, and market support before making a value claim`
     );
   }
 
@@ -939,12 +872,12 @@ export async function runNarratives(
     }
     if ((propertyData.physical_depreciation_pct ?? 0) > 30) {
       appealGrounds.push(
-        `Property has accumulated ${propertyData.physical_depreciation_pct?.toFixed(1)}% physical depreciation not reflected in the assessment`
+        `Property has documented ${propertyData.physical_depreciation_pct?.toFixed(1)}% physical depreciation that should be reconciled against the assessment record and comparable evidence`
       );
     }
     if (propertyData.flood_zone_designation && !['X', 'C'].includes(propertyData.flood_zone_designation)) {
       appealGrounds.push(
-        `Property is in FEMA flood zone ${propertyData.flood_zone_designation} — a risk factor that suppresses market value`
+        `Property is in FEMA flood zone ${propertyData.flood_zone_designation} — a documented risk factor requiring official-source and market-evidence review`
       );
     }
     if (functionalObsolescencePct > 0) {

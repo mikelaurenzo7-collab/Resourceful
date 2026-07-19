@@ -320,6 +320,7 @@ function imageContent(image: string | { data: string; mimeType: string }) {
     image_url: typeof image === 'string'
       ? image
       : `data:${image.mimeType};base64,${image.data}`,
+    detail: 'high' as const,
   };
 }
 
@@ -455,6 +456,7 @@ export async function parseTaxBill(
     : {
         type: 'input_image' as const,
         image_url: `data:${mimeType};base64,${base64Data}`,
+        detail: 'high' as const,
       };
 
   try {

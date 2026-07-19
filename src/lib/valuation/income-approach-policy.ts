@@ -42,6 +42,8 @@ export function evaluateIncomeApproachEvidence(
 ): IncomeApproachEvidenceAssessment {
   const hasNoi = isPositiveFinite(input.netOperatingIncome);
   const hasCapRate = isValidDecimalCapRate(input.concludedCapRate);
+  const netOperatingIncome = hasNoi ? input.netOperatingIncome : null;
+  const concludedCapRate = hasCapRate ? input.concludedCapRate : null;
   const storedValue = isPositiveFinite(input.concludedValue)
     ? input.concludedValue
     : null;
@@ -49,8 +51,8 @@ export function evaluateIncomeApproachEvidence(
   const hasCapRateSource = Boolean(input.investorSurveyReference?.trim());
   const hasCompleteInputs = hasNoi && hasCapRate && storedValue != null;
 
-  const calculatedValue = hasNoi && hasCapRate
-    ? input.netOperatingIncome / input.concludedCapRate
+  const calculatedValue = netOperatingIncome != null && concludedCapRate != null
+    ? netOperatingIncome / concludedCapRate
     : null;
   const reconciliationDifference = calculatedValue != null && storedValue != null
     ? storedValue - calculatedValue

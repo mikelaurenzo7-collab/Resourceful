@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 
-import { useWizard, PROPERTY_ISSUES } from '@/components/intake/WizardLayout';
+import { PROPERTY_ISSUES, PropertyIssueIcon, useWizard } from '@/components/intake/WizardLayout';
 import Button from '@/components/ui/Button';
 import { formatPrice, getPriceCents, TAX_BILL_DISCOUNT } from '@/config/pricing';
 import { isIndependentValuationPurpose } from '@/lib/assignments/routing';
@@ -263,8 +263,9 @@ function CheckoutForm() {
                 <p className="mb-2 text-sm text-cream/40">Property issues provided</p>
                 <div className="flex flex-wrap gap-1.5">
                   {selectedIssues.map((issue) => (
-                    <span key={issue.id} className="rounded border border-gold/10 bg-gold/5 px-2 py-0.5 text-xs text-cream/60">
-                      {issue.icon} {issue.label}
+                    <span key={issue.id} className="inline-flex items-center gap-1.5 rounded border border-gold/10 bg-gold/5 px-2 py-0.5 text-xs text-cream/60">
+                      <PropertyIssueIcon issue={issue} className="h-3 w-3 text-gold/70" />
+                      {issue.label}
                     </span>
                   ))}
                 </div>

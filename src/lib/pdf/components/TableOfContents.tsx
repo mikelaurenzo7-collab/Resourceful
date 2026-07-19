@@ -71,8 +71,8 @@ export default function TableOfContents({
       <View style={styles.metaBlock} wrap={false}>
         <Text style={styles.metaHeading}>Assignment Control</Text>
         <View style={styles.metaRow}>
-          <Text style={theme.label}>Document Profile</Text>
-          <Text style={theme.tableCell}>{profile.id}</Text>
+          <Text style={theme.label}>Document Scope</Text>
+          <Text style={theme.tableCell}>{profile.documentTitle}</Text>
         </View>
         <View style={styles.metaRow}>
           <Text style={theme.label}>Assignment</Text>

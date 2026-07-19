@@ -323,7 +323,7 @@ export function hasOnlyValidSourceCitations(
   content: string,
   sourceCount: number
 ): boolean {
-  const citations = [...content.matchAll(SOURCE_CITATION_PATTERN)]
+  const citations = Array.from(content.matchAll(SOURCE_CITATION_PATTERN))
     .map((match) => Number(match[1]));
 
   return (
@@ -337,11 +337,11 @@ export function hasOnlyValidSourceCitations(
 }
 
 function citedSourceIndexes(content: string, sourceCount: number): number[] {
-  const indexes = [...content.matchAll(SOURCE_CITATION_PATTERN)]
+  const indexes = Array.from(content.matchAll(SOURCE_CITATION_PATTERN))
     .map((match) => Number(match[1]) - 1)
     .filter((index) => Number.isInteger(index) && index >= 0 && index < sourceCount);
 
-  return [...new Set(indexes)];
+  return Array.from(new Set(indexes));
 }
 
 export async function researchAppealStrategy(

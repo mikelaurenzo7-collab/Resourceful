@@ -501,7 +501,7 @@ export async function sendPaymentReceipt(
           </a>
 
           <p style="margin-top: 24px; font-size: 13px; color: #666;">
-            <strong>Tip:</strong> Upload photos of your property's condition from your dashboard. Photos showing deferred maintenance or issues can strengthen your case.
+            <strong>Tip:</strong> Upload clear photos of your property's condition from your dashboard. Relevant, captioned photos help reviewers understand the property-specific evidence.
           </p>
 
           <p style="margin-top: 32px; font-size: 12px; color: #999;">

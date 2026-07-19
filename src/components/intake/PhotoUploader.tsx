@@ -11,14 +11,14 @@ interface PhotoRequirement {
 
 const requirementsByPropertyType: Record<PropertyType, PhotoRequirement[]> = {
   residential: [
-    { type: 'exterior_front', label: 'Front Exterior', reason: 'Establishes curb appeal, architectural style, and visible condition for the Board of Review.' },
-    { type: 'exterior_rear', label: 'Rear Exterior', reason: 'Reveals additions, decks, or deferred maintenance not visible from the street.' },
+    { type: 'exterior_front', label: 'Front Exterior', reason: 'Documents curb appeal, architectural style, and visible exterior condition for reviewer context.' },
+    { type: 'exterior_rear', label: 'Rear Exterior', reason: 'Shows additions, decks, access, or maintenance items not visible from the street.' },
     { type: 'exterior_east', label: 'Left Side', reason: 'Documents siding condition, window count, and any structural concerns.' },
-    { type: 'exterior_west', label: 'Right Side', reason: 'Completes the exterior documentation. Assessors compare all four elevations.' },
-    { type: 'interior_kitchen', label: 'Kitchen', reason: 'Kitchen condition heavily influences market value. Outdated kitchens support lower valuations.' },
-    { type: 'interior_bathroom', label: 'Primary Bathroom', reason: 'Bathroom quality is a key comparable adjustment factor.' },
+    { type: 'exterior_west', label: 'Right Side', reason: 'Completes exterior documentation when side access is safe and available.' },
+    { type: 'interior_kitchen', label: 'Kitchen', reason: 'Documents age, finish level, layout, and visible condition for comparable-quality review.' },
+    { type: 'interior_bathroom', label: 'Primary Bathroom', reason: 'Documents age, quality, and visible condition for comparable-quality review.' },
     { type: 'interior_living', label: 'Major Living Areas', reason: 'Documents overall interior condition, finishes, and floor coverings.' },
-    { type: 'deferred_maintenance', label: 'Deferred Maintenance', reason: 'Critical evidence. Peeling paint, water damage, aging systems, or needed repairs all support a lower valuation.' },
+    { type: 'deferred_maintenance', label: 'Deferred Maintenance', reason: 'Documents visible repair items such as peeling paint, water staining, aging systems, or deferred maintenance.' },
   ],
   commercial: [
     { type: 'exterior_front', label: 'Front Exterior', reason: 'Primary facade and entrance condition.' },
@@ -29,7 +29,7 @@ const requirementsByPropertyType: Record<PropertyType, PhotoRequirement[]> = {
     { type: 'interior_bathroom', label: 'Restroom Facilities', reason: 'Condition of tenant amenities.' },
     { type: 'interior_living', label: 'Tenant Spaces', reason: 'Representative unit or office condition.' },
     { type: 'deferred_maintenance', label: 'Deferred Maintenance', reason: 'Roof issues, HVAC age, parking lot condition, and needed repairs.' },
-    { type: 'interior_garage', label: 'Loading/Parking Area', reason: 'Parking capacity and condition affect commercial value.' },
+    { type: 'interior_garage', label: 'Loading/Parking Area', reason: 'Parking capacity and condition help explain commercial utility.' },
     { type: 'aerial', label: 'Signage & Street View', reason: 'Visibility, signage condition, and neighborhood context.' },
   ],
   industrial: [
@@ -37,11 +37,11 @@ const requirementsByPropertyType: Record<PropertyType, PhotoRequirement[]> = {
     { type: 'exterior_rear', label: 'Rear Exterior', reason: 'Dock doors, staging areas, and rear access.' },
     { type: 'exterior_east', label: 'Left Side', reason: 'Exterior wall condition and clearance.' },
     { type: 'exterior_west', label: 'Right Side', reason: 'Complete perimeter documentation.' },
-    { type: 'interior_kitchen', label: 'Office Areas', reason: 'Office finish level affects overall valuation.' },
+    { type: 'interior_kitchen', label: 'Office Areas', reason: 'Office finish level helps explain overall utility and marketability.' },
     { type: 'interior_living', label: 'Warehouse/Production Floor', reason: 'Clear height, column spacing, and floor condition.' },
     { type: 'interior_bathroom', label: 'Facilities', reason: 'Restroom and break area condition.' },
     { type: 'deferred_maintenance', label: 'Deferred Maintenance', reason: 'Roof leaks, floor damage, and aging mechanical systems.' },
-    { type: 'interior_garage', label: 'Overhead Doors', reason: 'Door count, size, and condition impact industrial value.' },
+    { type: 'interior_garage', label: 'Overhead Doors', reason: 'Door count, size, and condition help explain industrial utility.' },
     { type: 'structural_detail', label: 'Clearance Heights', reason: 'Interior clear height documentation with reference objects.' },
   ],
   land: [
@@ -137,7 +137,7 @@ export default function PhotoUploader({ propertyType, onPhotosChange, onFileUplo
         </p>
         {uploadedCount > 0 && (
           <span className="text-xs font-medium text-gold/70 bg-gold/5 border border-gold/15 px-3 py-1 rounded-full">
-            More photos = stronger case
+            Evidence file getting clearer
           </span>
         )}
       </div>
@@ -145,7 +145,7 @@ export default function PhotoUploader({ propertyType, onPhotosChange, onFileUplo
       {/* Encouragement banner */}
       <div className="rounded-lg bg-gold/5 border border-gold/10 px-4 py-3">
         <p className="text-xs text-cream/50 leading-relaxed">
-          Upload as many photos as you can. You have access the county assessor never had — especially inside your property. Every photo of damage, wear, or outdated conditions becomes evidence in your appeal.
+          Add clear photos that show visible condition, layout, maintenance, and context. The most useful photos are relevant, well-lit, and captioned with what is shown and where it is located.
         </p>
       </div>
 

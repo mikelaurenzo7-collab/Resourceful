@@ -94,9 +94,9 @@ A missing source response is not evidence of absence. Empty, unavailable, or non
 Before rendering, Resourceful performs a report-wide consistency pass:
 
 - subject city, county or equivalent, state, address, parcel identifier, zoning authority, and filing authority must agree across the workfile, narratives, tables, maps, and contents;
-- copy-forward references to another municipality, county, market, zoning district, or property are release-blocking;
+- copy-forward references to another municipality, county, market, zoning district, or property are release-blocking, including subject, site, improvement, condition, zoning, and highest-and-best-use sections;
 - market analysis must expose a machine-checkable data vintage reasonably proximate to the effective date;
-- post-effective-date evidence must be identified and separated from evidence known as of the effective date;
+- post-effective-date evidence must be identified and separated from evidence known as of the effective date; retrospective assignments block release when later evidence is used without a hindsight explanation and reviewer approval;
 - zoning and highest-and-best-use conclusions must reconcile, including legal-nonconforming, variance, special-use, planned-development, or rezoning support when applicable;
 - personal-property exclusions belong in property-rights or exclusions analysis, not under extraordinary assumptions unless an actual uncertain assignment-specific fact exists;
 - definitive flood-hazard statements require official FEMA evidence or a stored map-panel reference; absent digital coverage is not equivalent to no flood risk; and

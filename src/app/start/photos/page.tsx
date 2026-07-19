@@ -4,7 +4,11 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import PhotoUploader from '@/components/intake/PhotoUploader';
-import { PROPERTY_ISSUES, useWizard } from '@/components/intake/WizardLayout';
+import {
+  PROPERTY_ISSUES,
+  PropertyIssueIcon,
+  useWizard,
+} from '@/components/intake/WizardLayout';
 import Button from '@/components/ui/Button';
 import { trackFunnelEventOnce } from '@/lib/analytics/funnel-client';
 import { buildSafeFunnelProperties } from '@/lib/analytics/funnel-contract';
@@ -124,13 +128,13 @@ export default function PhotosPage() {
         </span>
         <h1 className="font-display text-3xl text-cream mb-3">Your Property, Your Evidence</h1>
         <p className="text-cream/50 max-w-lg mx-auto leading-relaxed">
-          County assessors value your home from a desk — they&apos;ve never seen your basement, roof,
-          or deferred maintenance.
-          <span className="text-gold/70"> Your photos are evidence they&apos;ll never have.</span>
+          Photos preserve visible condition, layout, maintenance, and context that public records often
+          cannot show.
+          <span className="text-gold/70"> They help reviewers decide what can be supported.</span>
         </p>
         <p className="text-xs text-cream/30 mt-3 max-w-md mx-auto">
-          Our AI analyzes each photo for condition defects and quantifies the depreciation
-          impact on your value. More photos = stronger case.
+          AI-assisted photo review identifies visible observations and captions. Any valuation effect
+          still needs corroborating evidence, comparable support, and human review.
         </p>
       </div>
 
@@ -169,7 +173,9 @@ export default function PhotosPage() {
           {selectedIssues.map((issue) => (
             <div key={issue.id} className="card-premium rounded-xl p-4">
               <div className="flex items-start gap-3">
-                <span className="text-lg">{issue.icon}</span>
+                <span className="mt-0.5 text-gold/70">
+                  <PropertyIssueIcon issue={issue} />
+                </span>
                 <div>
                   <p className="text-sm font-medium text-cream">{issue.label}</p>
                   <p className="text-xs text-gold/70 mt-1 leading-relaxed">{issue.photoTip}</p>
@@ -179,17 +185,17 @@ export default function PhotosPage() {
           ))}
 
           <div className="rounded-xl border border-gold/15 bg-navy-light/50 p-5">
-            <h3 className="text-sm font-medium text-cream mb-3">How to Take Photos That Win Appeals</h3>
+            <h3 className="text-sm font-medium text-cream mb-3">How to Take Useful Evidence Photos</h3>
             <ul className="space-y-2">
               {[
-                'Basement and crawl space photos are some of the most powerful evidence — water stains, cracks, mold, and aging mechanicals are common and the assessor has never seen them',
+                'Basement and crawl space photos are often useful when they show water stains, cracks, mold, aging mechanicals, or other visible conditions',
                 'Include a ruler, coin, or your hand for scale on damage photos',
                 'Take both a close-up AND a wide-angle shot of each issue',
-                'Use natural lighting when possible — open blinds, turn on lights',
-                'Don\'t clean up first — show the property as-is, that\'s the point',
-                'Photograph utility rooms, water heaters, furnaces, and electrical panels — age and condition of systems matters',
-                'Describe each photo when you upload — tell us what we\'re looking at and why it matters',
-                'There\'s no limit — the more you upload, the more evidence we have to work with',
+                'Use natural lighting when possible, and turn on lights so the condition is legible',
+                'Show the property as-is, but do not create hazards or disturb suspected hazardous materials',
+                'Photograph utility rooms, water heaters, furnaces, and electrical panels when they are safely accessible',
+                'Describe each photo when you upload it so the reviewer knows what is shown and why it may matter',
+                'Prioritize clear, relevant photos over volume',
               ].map((tip, index) => (
                 <li key={index} className="flex items-start gap-2 text-xs text-cream/50">
                   <span className="text-gold/50 mt-0.5">&#x2022;</span>
@@ -207,9 +213,8 @@ export default function PhotosPage() {
             <p className="text-sm text-cream/60 mb-2">No specific issues selected — that&apos;s fine</p>
             <p className="text-xs text-cream/40 leading-relaxed">
               Even without specific problems, photos of your property&apos;s actual condition
-              are powerful evidence. The assessor assumed &quot;average&quot; without ever stepping inside.
-              Show us your kitchen, bathrooms, basement, and any areas showing age or wear.
-              The more photos you provide, the stronger your case.
+              can help explain the workfile. Show kitchens, bathrooms, basements, mechanicals,
+              exterior condition, and any areas showing age or wear.
             </p>
           </div>
         </div>
@@ -252,7 +257,7 @@ export default function PhotosPage() {
               onClick={() => completePhotoStep(0)}
               className="w-full text-center py-3 text-sm text-cream/40 hover:text-cream/60 transition-colors focus:outline-none focus:ring-2 focus:ring-gold/50 rounded-lg"
             >
-              Continue without photos (your report will use market data only)
+              Continue without photos
             </button>
 
             <div className="rounded-xl border border-gold/15 bg-navy-light/50 p-4 text-left space-y-3">
@@ -261,15 +266,15 @@ export default function PhotosPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div>
-                  <p className="text-sm font-medium text-cream">You Have Access the Assessor Never Had</p>
+                  <p className="text-sm font-medium text-cream">Why Property Photos Matter</p>
                   <p className="text-xs text-cream/40 mt-1 leading-relaxed">
-                    County assessment systems are built on assumptions, not inspections. Assessors value your property from a desk using age, size, and neighborhood averages. They&apos;ve <span className="text-cream/60">never walked your basement, checked your roof, or seen the water damage behind the walls</span>.
+                    Public assessment records usually describe age, size, class, and exterior characteristics. They often do not capture the current interior condition, layout limitations, repairs, or maintenance history that may matter to a reviewer.
                   </p>
                   <p className="text-xs text-cream/40 mt-1.5 leading-relaxed">
-                    That&apos;s exactly why your photos matter. You&apos;re the only person with access to the inside of your property. Every photo of a cracked foundation, leaking pipe, outdated kitchen, or aging mechanical system is evidence the assessor never collected — and the Board of Review has never seen.
+                    Photos help document what is visible now: cracked foundations, water staining, dated finishes, aging mechanicals, exterior wear, site constraints, or other facts that may not appear in public data.
                   </p>
                   <p className="text-xs text-cream/40 mt-1.5 leading-relaxed">
-                    <span className="text-gold/60 font-medium">Upload as many as you can.</span> Basements, crawl spaces, utility rooms, damaged areas — the more you document, the stronger your case. Describe what each photo shows so our analysts can reference it precisely in your report.
+                    <span className="text-gold/60 font-medium">Prioritize clarity over volume.</span> Basements, crawl spaces, utility rooms, damaged areas, and representative interior spaces are useful when safe to photograph. Describe each photo so reviewers can reference it precisely.
                   </p>
                 </div>
               </div>

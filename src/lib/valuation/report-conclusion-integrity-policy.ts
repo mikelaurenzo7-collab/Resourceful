@@ -43,7 +43,7 @@ const MONTHS: Record<string, number> = {
 };
 
 const VALUE_LABEL_PATTERN = /\b(?:final\s+(?:as[- ]is\s+)?(?:market\s+)?value|reconciled\s+(?:market\s+)?value|market\s+value\s+conclusion|opinion\s+of\s+(?:the\s+)?(?:as[- ]is\s+)?market\s+value)\b[^$\d]{0,180}\$\s*([\d,]+(?:\.\d{1,2})?)/gi;
-const EFFECTIVE_DATE_LABEL_PATTERN = /\b(?:valuation\s+date|effective\s+date|market\s+value\s+as\s+of|opinion\s+of\s+value\s+as\s+of)\b[^\dA-Za-z]{0,30}((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})/gi;
+const EFFECTIVE_DATE_LABEL_PATTERN = /\b(?:valuation\s+date|effective\s+date|market\s+value\s+as\s+of|opinion\s+of\s+value\s+as\s+of)\b(?:\s+(?:is|was|of|on|as))?\s*[:,-]?\s*((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s+\d{4}|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})/gi;
 
 function narrativeText(data: ReportTemplateData, sectionName: string): string {
   const narrative = data.narratives.find((item) => item.section_name === sectionName);

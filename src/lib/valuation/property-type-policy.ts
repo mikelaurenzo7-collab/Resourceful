@@ -13,7 +13,7 @@ const MULTIFAMILY_PHRASES = [
   'four flat',
 ] as const;
 
-const NUMERIC_MULTI_UNIT_PATTERN = /\b(?:[2-9]\d*)[\s-]+(?:unit|units|flat|flats)\b/;
+const NUMERIC_MULTI_UNIT_PATTERN = /\b(?:[2-9]|[1-9]\d+)[\s-]+(?:unit|units|flat|flats)\b/;
 
 const NONRESIDENTIAL_INCOME_PHRASES = [
   'commercial',

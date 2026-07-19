@@ -12,7 +12,7 @@ export interface PropertyIssue {
   label: string;
   description: string;
   photoTip: string;
-  icon: string; // emoji for display
+  iconPath: string;
 }
 
 export interface TaxBillData {
@@ -98,108 +98,122 @@ export const PROPERTY_ISSUES: PropertyIssue[] = [
     id: 'water_damage',
     label: 'Water Damage / Leaks',
     description: 'Stains on ceilings or walls, active leaks, water intrusion',
-    photoTip: 'Photograph water stains, drip areas, and any standing water. Include close-ups of damage and wide shots showing extent.',
-    icon: '\u{1F4A7}',
+    photoTip: 'Photograph stains, leak locations, and affected areas. Include close-ups and wider views showing extent.',
+    iconPath: 'M12 3.75c3 3.35 5 6.12 5 9.05A5 5 0 0 1 7 12.8c0-2.93 2-5.7 5-9.05Z',
   },
   {
     id: 'mold',
     label: 'Mold / Mildew',
     description: 'Visible mold growth on walls, ceilings, or around fixtures',
-    photoTip: 'Photograph all visible mold areas. Include a ruler or coin for scale. Capture both the mold and surrounding area.',
-    icon: '\u{1F9EB}',
+    photoTip: 'Photograph visible growth and surrounding surfaces. Include scale when safe and avoid disturbing suspected material.',
+    iconPath: 'M12 4v16m-6-8h12M7 7l10 10M17 7 7 17',
   },
   {
     id: 'foundation_cracks',
     label: 'Foundation Cracks',
     description: 'Cracks in foundation walls, basement floor, or exterior base',
-    photoTip: 'Photograph cracks with a ruler alongside for scale. Show the full length of each crack and any displacement.',
-    icon: '\u{1F3DA}\uFE0F',
+    photoTip: 'Photograph each crack with scale and a wider context photo showing its location and direction.',
+    iconPath: 'M4 20h16M6 20V8l6-4 6 4v12M10 20l2-5-2-3 4-4',
   },
   {
     id: 'roof_damage',
     label: 'Roof Damage',
     description: 'Missing shingles, sagging areas, visible deterioration',
-    photoTip: 'If safely accessible, photograph from ground level showing missing shingles, sagging areas, or visible wear.',
-    icon: '\u{1F3E0}',
+    photoTip: 'Photograph visible roof wear safely from the ground or from existing records. Do not climb onto unsafe areas.',
+    iconPath: 'M3 12 12 5l9 7M5 10v10h14V10',
   },
   {
     id: 'hvac_issues',
     label: 'HVAC / Mechanical Issues',
     description: 'Aging or non-functional heating, cooling, or ventilation',
-    photoTip: 'Photograph the equipment nameplate showing age/model and any visible deterioration or rust.',
-    icon: '\u{2744}\uFE0F',
+    photoTip: 'Photograph equipment, nameplates, visible deterioration, service tags, and any supporting repair documentation.',
+    iconPath: 'M12 3v18M5 6l14 12M19 6 5 18',
   },
   {
     id: 'plumbing',
     label: 'Plumbing Problems',
     description: 'Leaking pipes, low water pressure, outdated fixtures',
-    photoTip: 'Photograph any visible pipe corrosion, leaks under sinks, water-damaged cabinets, or outdated fixtures.',
-    icon: '\u{1F6BF}',
+    photoTip: 'Photograph visible corrosion, leaks, damaged cabinets, fixture condition, and supporting repair estimates if available.',
+    iconPath: 'M4 7h10a4 4 0 0 1 4 4v1M7 7V4m5 10c2 2 3 3.6 3 5a3 3 0 0 1-6 0c0-1.4 1-3 3-5Z',
   },
   {
     id: 'electrical',
     label: 'Electrical Concerns',
     description: 'Outdated wiring, insufficient outlets, panel issues',
-    photoTip: 'Photograph the electrical panel (with door open), any exposed or outdated wiring, and knob-and-tube if present.',
-    icon: '\u{26A1}',
+    photoTip: 'Photograph the panel, visible wiring concerns, labels, and any electrician reports. Do not touch unsafe wiring.',
+    iconPath: 'M13 2 4 14h7l-1 8 9-12h-7l1-8Z',
   },
   {
     id: 'structural',
     label: 'Structural Issues',
     description: 'Sagging floors, bowing walls, visible settling',
-    photoTip: 'Use a level or straight edge to show unevenness. Photograph bowing walls, sagging beams, and displaced framing.',
-    icon: '\u{1F6A7}',
+    photoTip: 'Photograph visible movement, sagging, bowing, or displacement with context and scale where safe.',
+    iconPath: 'M4 20h16M6 20l6-16 6 16M8 14h8',
   },
   {
     id: 'windows_doors',
     label: 'Windows / Doors',
     description: 'Drafty, foggy, or damaged windows and doors',
-    photoTip: 'Photograph foggy double-pane windows, damaged seals, rotted frames, and any gaps where air infiltrates.',
-    icon: '\u{1FA9F}',
+    photoTip: 'Photograph fogging, broken seals, damaged frames, gaps, rot, and any quote or inspection note.',
+    iconPath: 'M5 4h14v16H5V4Zm7 0v16M5 12h14',
   },
   {
     id: 'exterior_deterioration',
     label: 'Exterior Deterioration',
     description: 'Peeling paint, rotting siding, damaged fascia or soffits',
-    photoTip: 'Photograph peeling paint, rotted wood, damaged siding from multiple angles. Include both close-up and full views.',
-    icon: '\u{1F3D7}\uFE0F',
+    photoTip: 'Photograph deterioration from close and wide angles, including locations on the building exterior.',
+    iconPath: 'M4 20h16M6 20V9l6-4 6 4v11M9 20v-6h6v6',
   },
   {
     id: 'drainage_grading',
     label: 'Drainage / Grading',
     description: 'Water pooling near foundation, poor lot drainage',
-    photoTip: 'Photograph areas where water pools, especially near the foundation. Show the grade slope away from the house.',
-    icon: '\u{1F30A}',
+    photoTip: 'Photograph pooling, grading, downspouts, and water paths, ideally during or soon after rain when conditions are visible.',
+    iconPath: 'M3 17c2 0 2-1 4-1s2 1 4 1 2-1 4-1 2 1 4 1M3 12c2 0 2-1 4-1s2 1 4 1 2-1 4-1 2 1 4 1',
   },
   {
     id: 'outdated_finishes',
     label: 'Outdated Finishes',
     description: 'Original kitchen/bath from 20+ years ago, dated fixtures',
-    photoTip: 'Photograph dated kitchens, bathrooms, and fixtures. These reduce market value compared to updated comps.',
-    icon: '\u{1F6CB}\uFE0F',
+    photoTip: 'Photograph dated rooms and fixtures, then let comparable evidence determine whether an adjustment is supportable.',
+    iconPath: 'M4 10h16v8H4v-8Zm2-4h12v4H6V6Zm2 12v2m8-2v2',
   },
   {
     id: 'environmental',
     label: 'Environmental Hazards',
     description: 'Asbestos, lead paint (pre-1978), radon concerns',
-    photoTip: 'Photograph any test results or visible asbestos-containing materials. Note the year the home was built.',
-    icon: '\u{2622}\uFE0F',
+    photoTip: 'Upload test results or official documents when available. Do not disturb suspected hazardous material for photos.',
+    iconPath: 'M12 3 3 20h18L12 3Zm0 6v4m0 3h.01',
   },
   {
     id: 'noise_nuisance',
     label: 'Noise / Nuisance Factors',
     description: 'Near highway, railroad, commercial, or industrial sites',
-    photoTip: 'Photograph the source of the nuisance from your property. Show proximity and line of sight.',
-    icon: '\u{1F4E2}',
+    photoTip: 'Photograph the source from the property, showing proximity, line of sight, and any supporting map or record.',
+    iconPath: 'M4 14v-4l5-2 7-4v16l-7-4-5-2Zm0 0v5h4l1-3',
   },
   {
     id: 'other',
     label: 'Other Issues',
     description: 'Anything else affecting your property value',
-    photoTip: 'Document any other condition issues with clear, well-lit photographs.',
-    icon: '\u{1F4CB}',
+    photoTip: 'Document the issue with clear photographs, dates, notes, and any supporting third-party records.',
+    iconPath: 'M8 4h8l2 2v14H6V6l2-2Zm1 6h6M9 14h6M9 18h4',
   },
 ];
+
+export function PropertyIssueIcon({
+  issue,
+  className = 'h-5 w-5',
+}: {
+  issue: Pick<PropertyIssue, 'iconPath' | 'label'>;
+  className?: string;
+}) {
+  return (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={issue.iconPath} />
+    </svg>
+  );
+}
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 

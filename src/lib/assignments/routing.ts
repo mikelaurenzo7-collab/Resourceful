@@ -65,17 +65,12 @@ export function getAssignmentDisplayLabel(
   serviceType: ServiceType | string,
   desiredOutcome?: string | null
 ): string {
-  switch (resolveAssignmentKind(serviceType, desiredOutcome)) {
-    case 'tax_appeal':
-      return 'Property Tax Appeal Analysis';
-    case 'pre_listing':
-      return 'Pre-Listing Analysis';
-    case 'independent_valuation':
-      return 'Independent Valuation Analysis';
-    case 'pre_purchase':
-    default:
-      return 'Pre-Purchase Analysis';
-  }
+  if (isIndependentValuationPurpose(desiredOutcome)) return 'Independent Valuation Analysis';
+  if (serviceType === 'tax_appeal') return 'Property Tax Appeal Analysis';
+  if (serviceType === 'pre_listing') return 'Pre-Listing Analysis';
+  if (serviceType === 'pre_purchase') return 'Pre-Purchase Analysis';
+
+  return 'Property Valuation Analysis';
 }
 
 export function getReportDocumentSubject(

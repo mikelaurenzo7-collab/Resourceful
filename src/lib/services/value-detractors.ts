@@ -1,7 +1,6 @@
 // ─── Value Detractor Detection ───────────────────────────────────────────────
-// Our Blue Ocean moat: identify nearby negative externalities that suppress
-// property value but the county assessor never accounts for. Competitors
-// (Zillow, Redfin, Realtor) don't do this. We find what they miss.
+// Identify nearby externalities that may affect marketability or utility and
+// may be missed in ordinary record-based valuation.
 //
 // Sources:
 //   1. Azure Maps POI Category Search — industrial facilities, waste
@@ -10,8 +9,9 @@
 //      crime spikes) near the property address
 //   3. FEMA flood data — already captured in Stage 1
 //
-// Output is a structured list of detractors with estimated value impact
-// percentages, passed to the narrative AI for professional framing.
+// Output is a structured screening list with estimated impact percentages.
+// Narrative and release policies must frame these as review inputs, not as
+// standalone proof of a value adjustment.
 
 import { apiLogger } from '@/lib/logger';
 
@@ -263,7 +263,7 @@ export async function detectValueDetractors(params: {
       distance_meters: 0,
       estimated_impact_pct: floodImpact,
       source: 'fema',
-      details: `Property is in FEMA flood zone ${params.floodZone}, which typically requires flood insurance and suppresses market value`,
+      details: `Property is in FEMA flood zone ${params.floodZone}; review official flood evidence, insurance requirements, and market support before applying an adjustment`,
     });
   }
 

@@ -90,6 +90,19 @@ describe('evaluateNationwideReportIntegrity', () => {
     expect(result.hardFailureCodes).toContain('COUNTY_TEMPLATE_LEAK');
   });
 
+  it('blocks wrong subject municipality in zoning and subject-property sections', () => {
+    const result = evaluateNationwideReportIntegrity(data({
+      narratives: [
+        ...data().narratives.filter((item) => item.section_name !== 'site_description_narrative'),
+        narrative('site_description_narrative', 'Zoning, Palatine, IL. The subject site is zoned M-1.'),
+      ],
+    }));
+
+    expect(result.hardFailureCodes).toContain('MUNICIPALITY_TEMPLATE_LEAK');
+    expect(result.hardFailures.some((failure) => failure.includes('site_description_narrative'))).toBe(true);
+    expect(result.hardFailures.some((failure) => failure.includes('Palatine'))).toBe(true);
+  });
+
   it('warns on a one-year market offset and blocks materially stale market evidence', () => {
     const oneYearOffset = evaluateNationwideReportIntegrity(data({
       narratives: [
@@ -107,6 +120,50 @@ describe('evaluateNationwideReportIntegrity', () => {
       ],
     }));
     expect(stale.hardFailureCodes).toContain('MARKET_VINTAGE_STALE');
+  });
+
+  it('blocks undisclosed post-effective-date market evidence', () => {
+    const result = evaluateNationwideReportIntegrity(data({
+      narratives: [
+        ...data().narratives.filter((item) => item.section_name !== 'market_analysis'),
+        narrative('market_analysis', 'Q1 2026 industrial market summary.'),
+      ],
+    }));
+
+    expect(result.hardFailureCodes).toContain('MARKET_VINTAGE_POST_EFFECTIVE_DATE');
+  });
+
+  it('allows disclosed later market evidence as a warning for non-retrospective assignments', () => {
+    const result = evaluateNationwideReportIntegrity(data({
+      narratives: [
+        ...data().narratives.filter((item) => item.section_name !== 'market_analysis'),
+        narrative(
+          'market_analysis',
+          'Q1 2026 industrial market summary is later evidence after the valuation date and is used only as limited context.'
+        ),
+      ],
+    }));
+
+    expect(result.hardFailureCodes).not.toContain('MARKET_VINTAGE_POST_EFFECTIVE_DATE');
+    expect(result.warningCodes).toContain('MARKET_VINTAGE_POST_EFFECTIVE_DATE');
+  });
+
+  it('blocks all-later market evidence for retrospective assignments even when disclosed', () => {
+    const result = evaluateNationwideReportIntegrity(data({
+      report: {
+        ...data().report,
+        is_retrospective_assignment: true,
+      },
+      narratives: [
+        ...data().narratives.filter((item) => item.section_name !== 'market_analysis'),
+        narrative(
+          'market_analysis',
+          'Q1 2026 industrial market summary is later evidence after the valuation date.'
+        ),
+      ],
+    }));
+
+    expect(result.hardFailureCodes).toContain('MARKET_VINTAGE_POST_EFFECTIVE_DATE');
   });
 
   it('blocks unsupported multifamily highest-and-best-use conclusions under single-unit zoning', () => {

@@ -1,4 +1,5 @@
 import type { ReportTemplateData } from '@/lib/templates/report-template';
+import { isRetrospectiveAssignment } from './workfile-provenance';
 
 export type NationwideReportIntegrityCode =
   | 'MUNICIPALITY_TEMPLATE_LEAK'
@@ -31,6 +32,14 @@ export interface NationwideReportIntegrityAssessment {
 
 const CITY_SECTION = 'area_analysis_city';
 const COUNTY_SECTIONS = new Set(['area_analysis_county', 'assessment_data']);
+const SUBJECT_LOCALITY_SECTIONS = [
+  'property_description',
+  'site_description_narrative',
+  'improvement_description_narrative',
+  'condition_assessment',
+  'hbu_as_vacant',
+  'hbu_as_improved',
+] as const;
 const MARKET_SECTION = 'market_analysis';
 const ASSIGNMENT_SECTION = 'assignment_and_scope';
 const CERTIFICATION_SECTION = 'certification_and_limiting_conditions';
@@ -75,17 +84,28 @@ function normalizePlace(value: string | null | undefined): string {
 }
 
 function unique(values: string[]): string[] {
-  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean)));
 }
 
 function namedMunicipalities(text: string): string[] {
   const names: string[] = [];
   const explicit = /\b(?:city|village|town|borough|municipality)\s+of\s+([A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,3})\b/g;
-  for (const match of text.matchAll(explicit)) names.push(match[1]);
+  Array.from(text.matchAll(explicit)).forEach((match) => names.push(match[1]));
+
+  const zoningAfterComma = /\bZoning,\s*([A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,3}),\s*[A-Z]{2}\b/g;
+  Array.from(text.matchAll(zoningAfterComma)).forEach((match) => names.push(match[1]));
+
+  const zoningBeforeLabel = /\b([A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,3}),\s*[A-Z]{2}\s+Zoning\b/g;
+  Array.from(text.matchAll(zoningBeforeLabel)).forEach((match) => names.push(match[1]));
 
   for (const line of text.split(/\r?\n/)) {
-    const heading = line.trim().match(/^([A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,3})\s+(?:Area Analysis|Analysis|Zoning)$/);
-    if (heading) names.push(heading[1]);
+    const headingText = line.trim();
+    const headingSuffix = [' Area Analysis', ' Analysis', ' Zoning']
+      .find((suffix) => headingText.endsWith(suffix));
+    if (headingSuffix) {
+      const place = headingText.slice(0, -headingSuffix.length).trim();
+      if (place) names.push(place);
+    }
   }
 
   return unique(names);
@@ -94,7 +114,7 @@ function namedMunicipalities(text: string): string[] {
 function namedCounties(text: string): string[] {
   const names: string[] = [];
   const pattern = /\b([A-Z][A-Za-z.'-]*(?:\s+[A-Z][A-Za-z.'-]*){0,3})\s+(County|Parish|Borough|Census Area|Municipality)\b/g;
-  for (const match of text.matchAll(pattern)) names.push(match[1]);
+  Array.from(text.matchAll(pattern)).forEach((match) => names.push(match[1]));
   return unique(names);
 }
 
@@ -140,8 +160,25 @@ function evaluateLocationConsistency(
     }
   }
 
+  if (expectedCity) {
+    for (const sectionName of SUBJECT_LOCALITY_SECTIONS) {
+      const text = narrativeText(data, sectionName);
+      if (!hasText(text)) continue;
+
+      const foreignCities = namedMunicipalities(text)
+        .filter((name) => normalizePlace(name) !== expectedCity);
+      for (const city of foreignCities) {
+        pushFinding(
+          hardFailures,
+          'MUNICIPALITY_TEMPLATE_LEAK',
+          `${sectionName} references ${city}, but the subject municipality is ${data.report.city}`
+        );
+      }
+    }
+  }
+
   if (!expectedCounty) return;
-  for (const sectionName of COUNTY_SECTIONS) {
+  for (const sectionName of Array.from(COUNTY_SECTIONS)) {
     const text = narrativeText(data, sectionName);
     if (!hasText(text)) continue;
 
@@ -162,9 +199,9 @@ function marketVintageYears(text: string): number[] {
   const quarterPattern = /\b(?:Q[1-4]|[1-4](?:st|nd|rd|th)\s+quarter)\s*(20\d{2})\b/gi;
   const marketPattern = /\b(?:market|survey|report|summary|data|statistics|vacancy|rent|capitalization rate|cap rate)[^.\n]{0,60}\b(20\d{2})\b/gi;
 
-  for (const match of text.matchAll(quarterPattern)) years.push(Number(match[1]));
-  for (const match of text.matchAll(marketPattern)) years.push(Number(match[1]));
-  return [...new Set(years.filter((year) => Number.isInteger(year)))];
+  Array.from(text.matchAll(quarterPattern)).forEach((match) => years.push(Number(match[1])));
+  Array.from(text.matchAll(marketPattern)).forEach((match) => years.push(Number(match[1])));
+  return Array.from(new Set(years.filter((year) => Number.isInteger(year))));
 }
 
 function evaluateMarketVintage(
@@ -204,10 +241,23 @@ function evaluateMarketVintage(
   }
 
   if (years.every((year) => year > valuationYear)) {
+    const hindsightDisclosed = /\b(hindsight|post[- ]effective[- ]date|after the valuation date|subsequent|later evidence)\b/i
+      .test(marketText);
+    const message =
+      'All machine-detected market periods post-date the valuation year; hindsight evidence must be identified and separated from effective-date evidence';
+    if (!hindsightDisclosed || isRetrospectiveAssignment(data)) {
+      pushFinding(
+        hardFailures,
+        'MARKET_VINTAGE_POST_EFFECTIVE_DATE',
+        message
+      );
+      return;
+    }
+
     pushFinding(
       warnings,
       'MARKET_VINTAGE_POST_EFFECTIVE_DATE',
-      'All machine-detected market periods post-date the valuation year; hindsight evidence must be identified and separated from effective-date evidence'
+      message
     );
   }
 }

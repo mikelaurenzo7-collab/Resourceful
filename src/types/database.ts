@@ -431,7 +431,7 @@ export type CountyRule = {
   hearing_format: string | null;
   appeal_form_name: string | null;
   form_download_url: string | null;
-  evidence_requirements: Record<string, unknown>[] | null;
+  evidence_requirements: Array<string | Record<string, unknown>> | null;
   filing_fee_cents: number;
   filing_fee_notes: string | null;
   assessor_api_url: string | null;

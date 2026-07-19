@@ -4,7 +4,7 @@ Status: normative product and QA reference for the Resourceful final-report syst
 
 ## 1. Corpus reviewed
 
-The audit covers eight supplied final-report files representing seven unique reports. One industrial/flex report was supplied twice and was byte-identical. The unique reports range from 63 to 85 pages and cover:
+The audit covers ten supplied final-report files representing nine unique report artifacts. One industrial/flex report was supplied twice and was byte-identical. The unique reports range from 58 to 85 pages and cover:
 
 - small multifamily properties;
 - estate/date-of-death multifamily assignments;
@@ -13,8 +13,11 @@ The audit covers eight supplied final-report files representing seven unique rep
 - industrial property;
 - flex office/industrial property;
 - vacant or distressed income-producing property.
+- mixed-use or multi-parcel commercial assignments.
 
 The source documents are treated as professional workflow references, not as reusable templates. Client names, contact details, parcel identifiers, signatures, license numbers, and report prose must not be copied into Resourceful fixtures or documentation.
+
+The corpus sets a high professional baseline for length, evidence density, and appraisal-style organization. It also demonstrates why Resourceful needs deterministic release controls: copied municipality or zoning-authority references, retrospective-date market-vintage issues, and stale local language can appear even in otherwise serious reports.
 
 ## 2. Report architecture worth preserving
 

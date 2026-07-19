@@ -9,7 +9,7 @@
 // judgments require market/cost support and human review.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Database, Photo, PhotoAiAnalysis, PropertyDataUpdate } from '@/types/database';
+import type { Database, Photo, PhotoAiAnalysis, PhotoType, PropertyDataUpdate } from '@/types/database';
 import type { StageResult } from '../../orchestrator';
 import { analyzePhoto } from '@/lib/services/anthropic';
 import { analyzeDeferredMaintenance } from '@/lib/services/gemini';
@@ -19,7 +19,7 @@ import { pipelineLogger } from '@/lib/logger';
 const CONDITION_ORDER = ['poor', 'fair', 'average', 'good', 'excellent'] as const;
 type ConditionRating = (typeof CONDITION_ORDER)[number];
 
-const REQUIRED_PHOTO_TYPES: Record<string, string[]> = {
+const REQUIRED_PHOTO_TYPES: Record<string, PhotoType[]> = {
   residential: [
     'exterior_front',
     'exterior_rear',
@@ -189,8 +189,8 @@ export async function runPhotoAnalysis(
     return { success: true };
   }
 
-  const uploadedTypes = new Set(
-    photos.map((photo) => photo.photo_type).filter((value): value is string => Boolean(value))
+  const uploadedTypes = new Set<PhotoType>(
+    photos.map((photo) => photo.photo_type).filter((value): value is PhotoType => value != null)
   );
   const requiredTypes = REQUIRED_PHOTO_TYPES[propertyType] ?? REQUIRED_PHOTO_TYPES.residential;
   const missingTypes = requiredTypes.filter((type) => !uploadedTypes.has(type));

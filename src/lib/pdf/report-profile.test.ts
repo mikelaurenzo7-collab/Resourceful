@@ -272,4 +272,10 @@ describe('evaluateReportProfileCompleteness', () => {
     const result = evaluateReportProfileCompleteness(data);
     expect(result.warnings.some((warning) => warning.includes('distressed comparable'))).toBe(true);
   });
+
+  it('warns when a complex report has no map or parcel-context exhibit', () => {
+    const result = evaluateReportProfileCompleteness(baseData({ maps: {} }));
+
+    expect(result.warnings).toContain('Complex-property report has no subject map or parcel-context exhibit');
+  });
 });

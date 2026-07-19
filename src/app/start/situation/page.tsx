@@ -2,7 +2,11 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useWizard, PROPERTY_ISSUES } from '@/components/intake/WizardLayout';
+import {
+  useWizard,
+  PROPERTY_ISSUES,
+  PropertyIssueIcon,
+} from '@/components/intake/WizardLayout';
 import Button from '@/components/ui/Button';
 
 export default function SituationPage() {
@@ -36,8 +40,8 @@ export default function SituationPage() {
         </h1>
         <p className="text-cream/50 max-w-lg mx-auto">
           {isTaxAppeal
-            ? "Select any issues affecting your property. Each documented condition reduces your assessed value and strengthens your appeal evidence."
-            : 'Select any known issues so we can factor them into the analysis.'}
+            ? 'Select conditions that may affect marketability, records, or appeal evidence. Documented issues help reviewers decide what is supportable.'
+            : 'Select known issues so the report can organize the facts, limitations, and any review needs.'}
         </p>
       </div>
 
@@ -70,8 +74,8 @@ export default function SituationPage() {
             {state.ownerOccupied !== null && (
               <p className="text-xs text-cream/30 mt-2">
                 {state.ownerOccupied
-                  ? 'Owner-occupied homes often qualify for homestead exemptions that strengthen appeal arguments.'
-                  : 'Investment properties are evaluated on market value and income potential — we tailor the analysis accordingly.'}
+                  ? 'Owner occupancy can affect exemption review, records, and evidence organization.'
+                  : 'Investment properties may require income, lease, vacancy, and market evidence when available.'}
               </p>
             )}
           </div>
@@ -133,8 +137,8 @@ export default function SituationPage() {
             : 'Any known issues?'}
         </h2>
         <p className="text-xs text-cream/40 mb-4">
-          Select all that apply. Each issue you document strengthens your report.
-          {isTaxAppeal && " We'll show you exactly what to photograph in the next step."}
+          Select all that apply. Each issue becomes part of the evidence checklist.
+          {isTaxAppeal && " We'll show what to photograph in the next step."}
         </p>
       </div>
 
@@ -152,7 +156,9 @@ export default function SituationPage() {
               }`}
             >
               <div className="flex items-start gap-3">
-                <span className="text-lg">{issue.icon}</span>
+                <span className={`mt-0.5 ${isSelected ? 'text-gold' : 'text-cream/45'}`}>
+                  <PropertyIssueIcon issue={issue} />
+                </span>
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-medium ${isSelected ? 'text-gold' : 'text-cream'}`}>
                     {issue.label}
@@ -186,13 +192,13 @@ export default function SituationPage() {
           onChange={(e) => updateState({ additionalNotes: e.target.value })}
           placeholder={
             isTaxAppeal
-              ? 'e.g., My neighbor with a similar house sold for $50k less than my assessed value. The assessor never came inside...'
-              : 'e.g., The roof was replaced in 2020. The basement floods during heavy rain...'
+              ? 'Example: the assessor record may overstate living area, recent similar sales appear lower, or condition has changed since the last assessment.'
+              : 'Example: the roof was replaced in 2020, the basement floods during heavy rain, or the analysis needs a specific effective date.'
           }
           rows={3}
           className="w-full rounded-lg bg-navy-light border border-gold/15 px-4 py-3 text-sm text-cream placeholder-cream/25 focus:outline-none focus:border-gold/40 focus:ring-1 focus:ring-gold/20 resize-none"
         />
-        <p className="text-xs text-cream/25 mt-1.5">Every detail you share helps strengthen your report.</p>
+        <p className="text-xs text-cream/25 mt-1.5">Details are treated as leads until supported by records, photos, calculations, or review.</p>
       </div>
 
       {/* Selected issues summary */}
@@ -200,14 +206,15 @@ export default function SituationPage() {
         <div className="mt-6 rounded-xl border border-gold/15 bg-gold/5 p-4">
           <p className="text-xs text-gold/70 mb-2">
             {state.propertyIssues.length} issue{state.propertyIssues.length !== 1 ? 's' : ''} selected
-            {isTaxAppeal && ' — these will be documented in your appeal report'}
+            {isTaxAppeal && ' - these will be carried into the evidence checklist'}
           </p>
           <div className="flex flex-wrap gap-2">
             {state.propertyIssues.map((id) => {
               const issue = PROPERTY_ISSUES.find((i) => i.id === id);
               return issue ? (
-                <span key={id} className="text-xs bg-gold/10 text-cream/70 rounded-full px-3 py-1 border border-gold/20">
-                  {issue.icon} {issue.label}
+                <span key={id} className="inline-flex items-center gap-1.5 rounded-full border border-gold/20 bg-gold/10 px-3 py-1 text-xs text-cream/70">
+                  <PropertyIssueIcon issue={issue} className="h-3.5 w-3.5 text-gold/65" />
+                  {issue.label}
                 </span>
               ) : null;
             })}

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import localFont from 'next/font/local';
-import { Playfair_Display } from 'next/font/google';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
@@ -12,12 +11,6 @@ const geistSans = localFont({
   src: './fonts/GeistVF.woff',
   variable: '--font-inter',
   weight: '100 900',
-  display: 'swap',
-});
-
-const playfair = Playfair_Display({
-  subsets: ['latin'],
-  variable: '--font-playfair',
   display: 'swap',
 });
 
@@ -95,7 +88,7 @@ export default function RootLayout({
         <OrganizationJsonLd />
         <WebSiteJsonLd />
       </head>
-      <body className={`${geistSans.variable} ${playfair.variable} font-sans antialiased bg-[#0f1419] text-[#f5f0e8] min-h-screen`}>
+      <body className={`${geistSans.variable} font-sans antialiased bg-[#0f1419] text-[#f5f0e8] min-h-screen`}>
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-gold focus:text-navy-deep focus:rounded-lg focus:font-medium focus:text-sm"

@@ -263,6 +263,15 @@ export function evaluateReportProfileCompleteness(
     warnings.push('Complex-property report has no subject-photo exhibit');
   }
 
+  const mapExhibitCount = [
+    data.maps.regional?.url,
+    data.maps.neighborhood?.url,
+    data.maps.parcel?.url,
+  ].filter(hasText).length;
+  if (profile.isComplexProperty && mapExhibitCount === 0) {
+    warnings.push('Complex-property report has no subject map or parcel-context exhibit');
+  }
+
   if (profile.hasSalesApproach && data.comparableSales.length < 3) {
     warnings.push(`Only ${data.comparableSales.length} comparable sale(s) support the sales approach`);
   }

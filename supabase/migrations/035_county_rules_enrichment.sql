@@ -1,4 +1,4 @@
--- 030_county_rules_enrichment.sql
+-- 035_county_rules_enrichment.sql
 -- Adds Cook County-specific enrichment fields to county_rules
 
 alter table county_rules
