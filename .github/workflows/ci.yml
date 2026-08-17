@@ -55,6 +55,9 @@ jobs:
       - name: Verify migration lineage
         run: pnpm check:migrations
 
+      - name: Verify operability invariants
+        run: pnpm check:operability
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
