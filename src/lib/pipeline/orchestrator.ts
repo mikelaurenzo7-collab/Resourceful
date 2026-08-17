@@ -1,84 +1,47 @@
-// ─── Pipeline Orchestrator ───────────────────────────────────────────────────
-// Runs report-generation stages 1-7 sequentially, then routes the immutable
-// artifact to the admin approval queue. Delivery is a separate, verified action.
+// ─── Legacy Inline Pipeline Orchestrator ─────────────────────────────────────
+// Production request handlers no longer call this function. The durable worker
+// executes one stage per invocation through durable-runner.ts. This inline path
+// remains for controlled local tooling and compatibility while the migration is
+// rolled out; it deliberately does not use Promise.race timeouts because those
+// do not cancel the underlying stage and can release ownership prematurely.
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { sendAdminNotification } from '@/lib/services/resend-email';
 import { getAppUrl } from '@/lib/utils/app-url';
-
-import type { PropertyType, Report } from '@/types/database';
-
-import { runDataCollection } from './stages/stage1-data-collection';
-import { runComparables } from './stages/stage2-comparables';
-import { runIncomeAnalysis } from './stages/stage3-income-analysis';
-import { runPhotoAnalysis } from './stages/stage4-photo-analysis';
-import { runNarratives } from './stages/stage5-narratives';
-import { runFilingGuide } from './stages/stage6-filing-guide';
-import { runPdfAssembly } from './stages/stage7-pdf-assembly';
 import { pipelineLogger } from '@/lib/logger';
 import { acquirePipelineLock, releasePipelineLock } from '@/lib/supabase/rpc';
+import type { Report, ReportUpdate } from '@/types/database';
 
-export interface StageResult {
-  success: boolean;
-  error?: string;
-}
+import {
+  PIPELINE_STAGES,
+  type PipelineStageDefinition,
+  type StageResult,
+} from './stage-registry';
+
+export type { StageResult } from './stage-registry';
 
 type SupabaseAdmin = ReturnType<typeof createAdminClient>;
 
-interface StageDefinition {
-  number: number;
-  name: string;
-  skipWhen?: (propertyType: PropertyType, serviceType: string) => boolean;
-  run: (reportId: string, supabase: SupabaseAdmin) => Promise<StageResult>;
+async function updateReportOrThrow(
+  supabase: SupabaseAdmin,
+  reportId: string,
+  update: ReportUpdate,
+  operation: string
+) {
+  const { error } = await supabase
+    .from('reports')
+    .update(update)
+    .eq('id', reportId);
+
+  if (error) {
+    throw new Error(`${operation}: ${error.message}`);
+  }
 }
 
-const STAGES: StageDefinition[] = [
-  {
-    number: 1,
-    name: 'stage-1-data',
-    run: runDataCollection,
-  },
-  {
-    number: 2,
-    name: 'stage-2-comps',
-    run: runComparables,
-  },
-  {
-    number: 3,
-    name: 'stage-3-income',
-    // Income analysis is later admitted to the PDF only when the deterministic
-    // property-type and evidence policies classify it as supported.
-    skipWhen: (propertyType) =>
-      propertyType !== 'commercial' &&
-      propertyType !== 'industrial' &&
-      propertyType !== 'residential' &&
-      propertyType !== 'agricultural',
-    run: runIncomeAnalysis,
-  },
-  {
-    number: 4,
-    name: 'stage-4-photos',
-    run: runPhotoAnalysis,
-  },
-  {
-    number: 5,
-    name: 'stage-5-narratives',
-    run: runNarratives,
-  },
-  {
-    number: 6,
-    name: 'stage-6-filing',
-    // Generates filing guidance for tax appeals and assignment-specific guidance
-    // for pre-purchase and pre-listing reports.
-    run: runFilingGuide,
-  },
-  {
-    number: 7,
-    name: 'stage-7-pdf',
-    run: runPdfAssembly,
-  },
-];
-
+/**
+ * @deprecated Production execution must enqueue a pipeline_runs record and let
+ * /api/cron/pipeline-worker own each stage durably.
+ */
 export async function runPipeline(
   reportId: string,
   startFromStage: number = 1
@@ -93,14 +56,23 @@ export async function runPipeline(
   if (lockError) {
     pipelineLogger.error(
       { reportId, error: lockError.message },
-      'Failed to acquire pipeline lock'
+      'Failed to acquire legacy pipeline lock'
     );
-    return { success: false, error: `Failed to acquire pipeline lock: ${lockError.message}` };
+    return {
+      success: false,
+      error: `Failed to acquire pipeline lock: ${lockError.message}`,
+    };
   }
 
   if (!lockAcquired) {
-    pipelineLogger.warn({ reportId }, 'Could not acquire lock — pipeline already running');
-    return { success: false, error: 'Pipeline already running for this report' };
+    pipelineLogger.warn(
+      { reportId },
+      'Could not acquire legacy lock — pipeline already running'
+    );
+    return {
+      success: false,
+      error: 'Pipeline already running for this report',
+    };
   }
 
   const { data, error: fetchError } = await supabase
@@ -114,22 +86,30 @@ export async function runPipeline(
     const message = fetchError?.message ?? 'not found';
     pipelineLogger.error({ reportId, error: message }, 'Failed to fetch report');
     await releasePipelineLock(supabase, reportId);
-    return { success: false, error: `Failed to fetch report ${reportId}: ${message}` };
+    return {
+      success: false,
+      error: `Failed to fetch report ${reportId}: ${message}`,
+    };
   }
 
-  await supabase
-    .from('reports')
-    .update({
-      status: 'processing' as const,
-      pipeline_started_at: new Date().toISOString(),
-      pipeline_error_log: null,
-    })
-    .eq('id', reportId);
-
-  pipelineLogger.info({ reportId, startFromStage }, 'Starting pipeline');
-
   try {
-    for (const stage of STAGES) {
+    await updateReportOrThrow(
+      supabase,
+      reportId,
+      {
+        status: 'processing',
+        pipeline_started_at: new Date().toISOString(),
+        pipeline_error_log: null,
+      },
+      'Failed to mark legacy pipeline processing'
+    );
+
+    pipelineLogger.info(
+      { reportId, startFromStage },
+      'Starting legacy inline pipeline'
+    );
+
+    for (const stage of PIPELINE_STAGES) {
       if (stage.number < startFromStage) {
         pipelineLogger.info(
           { reportId, stage: stage.name, stageNumber: stage.number },
@@ -138,10 +118,21 @@ export async function runPipeline(
         continue;
       }
 
-      if (stage.skipWhen?.(report.property_type as PropertyType, report.service_type)) {
+      if (stage.skipWhen?.(report.property_type, report.service_type)) {
         pipelineLogger.info(
-          { reportId, stage: stage.name, propertyType: report.property_type },
+          {
+            reportId,
+            stage: stage.name,
+            propertyType: report.property_type,
+            serviceType: report.service_type,
+          },
           'Skipping stage — not applicable'
+        );
+        await updateReportOrThrow(
+          supabase,
+          reportId,
+          { pipeline_last_completed_stage: stage.name },
+          `Failed to persist skipped stage ${stage.name}`
         );
         continue;
       }
@@ -151,22 +142,9 @@ export async function runPipeline(
         'Running stage'
       );
       const stageStart = Date.now();
-      const stageTimeoutMs = 10 * 60 * 1000;
 
       try {
-        const result = await Promise.race([
-          stage.run(reportId, supabase),
-          new Promise<StageResult>((_, reject) =>
-            setTimeout(
-              () => reject(
-                new Error(
-                  `Stage ${stage.number} (${stage.name}) timed out after ${stageTimeoutMs / 1000}s`
-                )
-              ),
-              stageTimeoutMs
-            )
-          ),
-        ]);
+        const result = await stage.run(reportId, supabase);
 
         if (!result.success) {
           await handleStageFailure(
@@ -182,18 +160,30 @@ export async function runPipeline(
         }
 
         pipelineLogger.info(
-          { reportId, stage: stage.name, durationMs: Date.now() - stageStart },
+          {
+            reportId,
+            stage: stage.name,
+            durationMs: Date.now() - stageStart,
+          },
           'Stage completed'
         );
 
-        await supabase
-          .from('reports')
-          .update({ pipeline_last_completed_stage: stage.name })
-          .eq('id', reportId);
+        await updateReportOrThrow(
+          supabase,
+          reportId,
+          { pipeline_last_completed_stage: stage.name },
+          `Failed to persist completion of ${stage.name}`
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         const stack = error instanceof Error ? error.stack : undefined;
-        await handleStageFailure(supabase, reportId, stage, message, stack);
+        await handleStageFailure(
+          supabase,
+          reportId,
+          stage,
+          message,
+          stack
+        );
         return {
           success: false,
           error: `Stage ${stage.number} (${stage.name}) threw: ${message}`,
@@ -201,23 +191,21 @@ export async function runPipeline(
       }
     }
 
-    await supabase
-      .from('reports')
-      .update({ pipeline_completed_at: new Date().toISOString() })
-      .eq('id', reportId);
-
-    pipelineLogger.info(
-      { reportId },
-      'Stages 1-7 complete — routing verified artifact to admin approval'
+    await updateReportOrThrow(
+      supabase,
+      reportId,
+      {
+        pipeline_completed_at: new Date().toISOString(),
+        status: 'pending_approval',
+      },
+      'Failed to finalize legacy pipeline'
     );
-    await supabase
-      .from('reports')
-      .update({ status: 'pending_approval' as const })
-      .eq('id', reportId);
 
     try {
-      const adminReviewUrl = `${getAppUrl()}/admin/reports/${encodeURIComponent(reportId)}/review`;
-      await sendAdminNotification({
+      const adminReviewUrl = `${getAppUrl()}/admin/reports/${encodeURIComponent(
+        reportId
+      )}/review`;
+      const notification = await sendAdminNotification({
         reportId,
         propertyAddress: report.property_address,
         propertyType: report.property_type,
@@ -225,26 +213,42 @@ export async function runPipeline(
         clientEmail: report.client_email || undefined,
         county: report.county || undefined,
       });
+
+      if (notification.error) {
+        throw new Error(notification.error);
+      }
     } catch (emailError) {
       pipelineLogger.error(
         {
           reportId,
-          error: emailError instanceof Error ? emailError.message : String(emailError),
+          error:
+            emailError instanceof Error
+              ? emailError.message
+              : String(emailError),
         },
         'Failed to send admin notification email'
       );
     }
 
-    pipelineLogger.info({ reportId }, 'Pipeline complete — pending admin approval');
+    pipelineLogger.info(
+      { reportId },
+      'Legacy pipeline complete — pending admin approval'
+    );
     return { success: true };
   } finally {
     try {
-      const { error: releaseError } = await releasePipelineLock(supabase, reportId);
+      const { error: releaseError } = await releasePipelineLock(
+        supabase,
+        reportId
+      );
       if (releaseError) throw new Error(releaseError.message);
     } catch (error) {
       pipelineLogger.error(
-        { reportId, error: error instanceof Error ? error.message : String(error) },
-        'CRITICAL: Failed to release pipeline lock — report may remain stuck'
+        {
+          reportId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        'CRITICAL: Failed to release legacy pipeline lock'
       );
     }
   }
@@ -253,19 +257,24 @@ export async function runPipeline(
 async function handleStageFailure(
   supabase: SupabaseAdmin,
   reportId: string,
-  stage: StageDefinition,
+  stage: PipelineStageDefinition,
   errorMessage: string,
   errorStack?: string
 ) {
   pipelineLogger.error(
-    { reportId, stage: stage.name, stageNumber: stage.number, error: errorMessage },
+    {
+      reportId,
+      stage: stage.name,
+      stageNumber: stage.number,
+      error: errorMessage,
+    },
     'Stage failed'
   );
 
-  await supabase
+  const { error } = await supabase
     .from('reports')
     .update({
-      status: 'failed' as const,
+      status: 'failed',
       pipeline_error_log: {
         stage: stage.name,
         error: errorMessage,
@@ -274,4 +283,11 @@ async function handleStageFailure(
       },
     })
     .eq('id', reportId);
+
+  if (error) {
+    pipelineLogger.error(
+      { reportId, stage: stage.name, dbError: error.message },
+      'CRITICAL: Stage failed and report failure state could not be persisted'
+    );
+  }
 }

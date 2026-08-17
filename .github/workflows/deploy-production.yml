@@ -15,21 +15,18 @@ permissions:
 
 jobs:
   validate-and-deploy:
-    name: Validate and deploy production
+    name: Validate, stage, verify, and promote production
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     environment: production
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      # Vercel project identifiers are routing identifiers, not credentials.
-      # Pin them here so this workflow cannot deploy Resourceful into the
-      # unrelated `resourceful` project that is connected to the J2C repository.
       VERCEL_ORG_ID: team_ssX7cPECdHvXGFHSOuS9iXos
       VERCEL_PROJECT_ID: prj_j6M19RLIb5zIyju5W8J2meEDESqG
       CANONICAL_APP_URL: https://resourceful-7x38.vercel.app
 
     steps:
-      - name: Verify deployment token and project binding
+      - name: Verify deployment routing
         shell: bash
         run: |
           set -euo pipefail
@@ -74,12 +71,16 @@ jobs:
           }
           NODE
 
+      - name: Verify repository invariants
+        run: |
+          pnpm check:migrations
+          pnpm check:operability
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run static validation
+      - name: Run application validation
         run: |
-          pnpm check:migrations
           pnpm lint
           pnpm typecheck
           pnpm test
@@ -115,33 +116,26 @@ jobs:
 
           current_url="$(node --env-file="$env_file" -p 'process.env.NEXT_PUBLIC_APP_URL || ""')"
           if [ "$current_url" = "$CANONICAL_APP_URL" ]; then
-            echo "NEXT_PUBLIC_APP_URL already matches the canonical production origin."
+            echo "NEXT_PUBLIC_APP_URL already matches the canonical origin."
           elif [ -z "$current_url" ]; then
-            echo "NEXT_PUBLIC_APP_URL is missing; adding the canonical production origin."
             printf '%s' "$CANONICAL_APP_URL" | vercel env add \
               NEXT_PUBLIC_APP_URL production \
               --yes \
               --token="$VERCEL_TOKEN"
           else
-            echo "Repairing NEXT_PUBLIC_APP_URL from '$current_url' to '$CANONICAL_APP_URL'."
             printf '%s' "$CANONICAL_APP_URL" | vercel env update \
               NEXT_PUBLIC_APP_URL production \
               --yes \
               --token="$VERCEL_TOKEN"
           fi
 
-          # Re-pull after a mutation so the build and every downstream assertion
-          # use the value stored by Vercel rather than the pre-repair snapshot.
           vercel env pull "$env_file" \
             --yes \
             --environment=production \
             --token="$VERCEL_TOKEN"
 
           repaired_url="$(node --env-file="$env_file" -p 'process.env.NEXT_PUBLIC_APP_URL || ""')"
-          if [ "$repaired_url" != "$CANONICAL_APP_URL" ]; then
-            echo "::error::Vercel did not persist the canonical NEXT_PUBLIC_APP_URL. Received '${repaired_url:-missing}'."
-            exit 1
-          fi
+          test "$repaired_url" = "$CANONICAL_APP_URL"
 
       - name: Verify production environment contract
         shell: bash
@@ -178,14 +172,14 @@ jobs:
             }
           }
 
-          const secretMode = process.env.STRIPE_SECRET_KEY?.startsWith('sk_live_')
+          const secretMode = process.env.STRIPE_SECRET_KEY.startsWith('sk_live_')
             ? 'live'
-            : process.env.STRIPE_SECRET_KEY?.startsWith('sk_test_')
+            : process.env.STRIPE_SECRET_KEY.startsWith('sk_test_')
               ? 'test'
               : 'invalid';
-          const publicMode = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_live_')
+          const publicMode = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.startsWith('pk_live_')
             ? 'live'
-            : process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith('pk_test_')
+            : process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY.startsWith('pk_test_')
               ? 'test'
               : 'invalid';
           if (secretMode === 'invalid' || publicMode === 'invalid' || secretMode !== publicMode) {
@@ -196,7 +190,7 @@ jobs:
       - name: Build production artifact
         run: vercel build --prod --token="$VERCEL_TOKEN"
 
-      - name: Deploy production artifact
+      - name: Stage production deployment without assigning domains
         id: deploy
         shell: bash
         run: |
@@ -204,17 +198,18 @@ jobs:
           deployment_url="$(vercel deploy \
             --prebuilt \
             --prod \
+            --skip-domain \
             --env RESOURCEFUL_BUILD_SHA="$GITHUB_SHA" \
             --token="$VERCEL_TOKEN")"
           deployment_url="${deployment_url%/}"
           echo "url=$deployment_url" >> "$GITHUB_OUTPUT"
-          echo "### Resourceful production deployment" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Resourceful staged production deployment" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "- Commit: \`$GITHUB_SHA\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Deployment: $deployment_url" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Staged deployment: $deployment_url" >> "$GITHUB_STEP_SUMMARY"
           echo "- Canonical domain: $CANONICAL_APP_URL" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Verify immutable deployment identity and dependencies
+      - name: Verify staged deployment identity and dependencies
         shell: bash
         env:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
@@ -224,21 +219,33 @@ jobs:
           curl --fail --silent --show-error --retry 8 --retry-delay 5 \
             --max-time 30 \
             --header "Authorization: Bearer $cron_secret" \
-            "$DEPLOYMENT_URL/api/health" > /tmp/resourceful-deployment-health.json
-          node - "$GITHUB_SHA" /tmp/resourceful-deployment-health.json <<'NODE'
+            "$DEPLOYMENT_URL/api/health" > /tmp/resourceful-staged-health.json
+          node - "$GITHUB_SHA" /tmp/resourceful-staged-health.json <<'NODE'
           const fs = require('node:fs');
           const [expected, file] = process.argv.slice(2);
           const body = JSON.parse(fs.readFileSync(file, 'utf8'));
-          if (body.healthy !== true) throw new Error('Immutable deployment dependency health is not healthy.');
+          if (body.healthy !== true) {
+            throw new Error(`Staged deployment is unhealthy: ${JSON.stringify(body.services ?? {})}`);
+          }
           if (body.deployment?.commit !== expected) {
-            throw new Error(`Immutable deployment commit mismatch: ${body.deployment?.commit ?? 'missing'} !== ${expected}`);
+            throw new Error(`Staged deployment commit mismatch: ${body.deployment?.commit ?? 'missing'} !== ${expected}`);
           }
           if (body.deployment?.environment !== 'production') {
-            throw new Error(`Immutable deployment environment is ${body.deployment?.environment ?? 'missing'}, expected production.`);
+            throw new Error(`Staged environment is ${body.deployment?.environment ?? 'missing'}, expected production.`);
           }
           NODE
 
-      - name: Verify canonical alias promoted to the same healthy commit
+      - name: Promote verified deployment
+        shell: bash
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          vercel promote "$DEPLOYMENT_URL" \
+            --yes \
+            --token="$VERCEL_TOKEN"
+
+      - name: Verify canonical alias serves the promoted commit
         shell: bash
         run: |
           set -euo pipefail
@@ -251,7 +258,9 @@ jobs:
           const fs = require('node:fs');
           const [expected, file] = process.argv.slice(2);
           const body = JSON.parse(fs.readFileSync(file, 'utf8'));
-          if (body.healthy !== true) throw new Error('Canonical production dependency health is not healthy.');
+          if (body.healthy !== true) {
+            throw new Error(`Canonical deployment is unhealthy: ${JSON.stringify(body.services ?? {})}`);
+          }
           if (body.deployment?.commit !== expected) {
             throw new Error(`Canonical alias is stale: ${body.deployment?.commit ?? 'missing'} !== ${expected}`);
           }

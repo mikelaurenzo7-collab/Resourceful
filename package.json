@@ -16,7 +16,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check:migrations": "node --test scripts/check-migration-lineage.test.mjs && node scripts/check-migration-lineage.mjs",
-    "check": "pnpm check:migrations && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
+    "check:operability": "node scripts/check-operability.mjs",
+    "check": "pnpm check:migrations && pnpm check:operability && pnpm lint && pnpm typecheck && pnpm test && pnpm build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.79.0",
