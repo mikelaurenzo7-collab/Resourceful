@@ -188,6 +188,15 @@ assert(
     reviewActions.includes('requirePendingApprovalReport'),
   'Admin narrative review does not scope mutations to the report and review state'
 );
+assert(
+  reviewActions.includes("status: 'delivering' as ReportStatus") &&
+    reviewActions.includes(".eq('status', 'pending_approval')") &&
+    reviewActions.indexOf("status: 'delivering' as ReportStatus") <
+      reviewActions.indexOf('runDelivery(') &&
+    reviewActions.includes("action: 'approved'") &&
+    reviewActions.includes("action: 'hold_for_review'"),
+  'Admin approval does not atomically claim pending review work before Stage 8 or preserve correct audit actions'
+);
 
 const partnerCreateAction = await read(
   'src/app/admin/partners/create/actions.ts'
@@ -199,7 +208,9 @@ assert(
 );
 assert(
   partnerCreateAction.includes('perReportFeeCents <= 0') &&
-    partnerCreateAction.includes('monthlyReportLimit <= 0'),
+    partnerCreateAction.includes('monthlyReportLimit <= 0') &&
+    partnerCreateAction.includes('Number.isInteger(perReportFeeCents)') &&
+    partnerCreateAction.includes('Number.isInteger(monthlyReportLimit)'),
   'Partner creation server action does not fail closed on invalid billing/quota values'
 );
 
@@ -307,6 +318,18 @@ assert(
   'Stage 7 does not reconcile an already-published immutable artifact'
 );
 
+const productionDeploy = await read(
+  '.github/workflows/deploy-production.yml'
+);
+assert(
+  productionDeploy.includes('RESOURCEFUL_SUPABASE_PROJECT_REF') &&
+    productionDeploy.includes('EXPECTED_SUPABASE_PROJECT_REF') &&
+    productionDeploy.includes('SUPABASE_PROJECT_REF') &&
+    productionDeploy.includes('ogenlhodmwvyacvnrsnj') &&
+    productionDeploy.includes('Resourceful production must never use the Wireline Supabase project'),
+  'Production deployment is not pinned away from the known Wireline Supabase database'
+);
+
 assert(
   await exists(
     'supabase/migrations/036_durable_pipeline_control_plane.sql'
@@ -350,6 +373,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Validated ${crons.length} Vercel crons, ${apiFiles.length} API files, ${adminFiles.length} admin files, durable paid-work and admin ingress, quota-safe partner accounting, one-stage worker execution, and jurisdiction operations automation.`
+    `Validated ${crons.length} Vercel crons, ${apiFiles.length} API files, ${adminFiles.length} admin files, durable paid-work and admin ingress, quota-safe partner accounting, one-stage worker execution, jurisdiction operations automation, approval delivery ownership, and production database isolation.`
   );
 }
