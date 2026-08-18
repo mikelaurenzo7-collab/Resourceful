@@ -29,11 +29,15 @@ export interface RateLimitResult {
 // ─── In-Memory Fallback ──────────────────────────────────────────────────────
 // When the DB is down, we fall back to per-instance in-memory rate limiting.
 // Less accurate than distributed (each serverless instance tracks separately),
-// but prevents wide-open abuse during outages.
+// but prevents wide-open abuse during outages. The fallback is deliberately
+// temporary: warm instances periodically probe Postgres so a transient outage
+// cannot leave them permanently degraded until the process is recycled.
 const memoryStore = new Map<string, { count: number; expiresAt: number }>();
 const MAX_MEMORY_ENTRIES = 50_000; // Hard cap to prevent OOM under attack
 let dbFailureCount = 0;
-const DB_FAILURE_THRESHOLD = 3; // Switch to memory after 3 consecutive DB failures
+const DB_FAILURE_THRESHOLD = 3;
+let lastDbFailureAt = 0;
+const DB_RECOVERY_PROBE_INTERVAL_MS = 30_000;
 let lastCleanup = 0;
 const CLEANUP_INTERVAL_MS = 60_000; // Prune expired entries every 60s
 
@@ -80,7 +84,8 @@ function checkMemoryRateLimit(
 /**
  * Check and consume a rate limit token for the given identifier (typically IP).
  * Uses Supabase RPC for atomic check-and-increment across all serverless instances.
- * Falls back to in-memory rate limiting if the database is unavailable.
+ * Falls back to in-memory rate limiting if the database is unavailable, while
+ * periodically probing the database to restore distributed enforcement.
  */
 export async function checkRateLimit(
   identifier: string,
@@ -93,8 +98,12 @@ export async function checkRateLimit(
   const resetAt = windowStart + windowMs;
   const windowKey = `${key}:${windowStart}`;
 
-  // If DB has failed repeatedly, use in-memory to avoid latency + abuse
-  if (dbFailureCount >= DB_FAILURE_THRESHOLD) {
+  const fallbackActive = dbFailureCount >= DB_FAILURE_THRESHOLD;
+  const recoveryProbeDue =
+    lastDbFailureAt === 0 ||
+    now - lastDbFailureAt >= DB_RECOVERY_PROBE_INTERVAL_MS;
+
+  if (fallbackActive && !recoveryProbeDue) {
     return checkMemoryRateLimit(key, config);
   }
 
@@ -110,12 +119,28 @@ export async function checkRateLimit(
 
     if (error) {
       dbFailureCount++;
-      apiLogger.error({ err: error.message, dbFailureCount, threshold: DB_FAILURE_THRESHOLD }, 'DB error, falling back to memory');
+      lastDbFailureAt = Date.now();
+      apiLogger.error(
+        {
+          err: error.message,
+          dbFailureCount,
+          threshold: DB_FAILURE_THRESHOLD,
+          recoveryProbeIntervalMs: DB_RECOVERY_PROBE_INTERVAL_MS,
+        },
+        '[rate-limit] Database check failed; using bounded in-memory fallback'
+      );
       return checkMemoryRateLimit(key, config);
     }
 
-    // DB succeeded — reset failure counter
+    // DB succeeded — immediately restore distributed enforcement.
+    if (dbFailureCount >= DB_FAILURE_THRESHOLD) {
+      apiLogger.info(
+        { previousDbFailureCount: dbFailureCount },
+        '[rate-limit] Database recovered; distributed rate limiting restored'
+      );
+    }
     dbFailureCount = 0;
+    lastDbFailureAt = 0;
 
     const count = (data as number) ?? 1;
 
@@ -129,9 +154,18 @@ export async function checkRateLimit(
       remaining: config.limit - count,
       resetAt,
     };
-  } catch {
+  } catch (error) {
     dbFailureCount++;
-    apiLogger.error({ dbFailureCount, DB_FAILURE_THRESHOLD }, '[rate-limit] Unexpected error (/), falling back to memory');
+    lastDbFailureAt = Date.now();
+    apiLogger.error(
+      {
+        err: error instanceof Error ? error.message : String(error),
+        dbFailureCount,
+        threshold: DB_FAILURE_THRESHOLD,
+        recoveryProbeIntervalMs: DB_RECOVERY_PROBE_INTERVAL_MS,
+      },
+      '[rate-limit] Unexpected database error; using bounded in-memory fallback'
+    );
     return checkMemoryRateLimit(key, config);
   }
 }
@@ -162,7 +196,15 @@ export async function applyRateLimit(
 
   if (!result.success) {
     const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
-    apiLogger.warn({ prefix: config.prefix, ip, limit: config.limit, windowSeconds: config.windowSeconds }, '[rate-limit] exceeded by (limit: /s)');
+    apiLogger.warn(
+      {
+        prefix: config.prefix,
+        ip,
+        limit: config.limit,
+        windowSeconds: config.windowSeconds,
+      },
+      '[rate-limit] Request limit exceeded'
+    );
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
       {
