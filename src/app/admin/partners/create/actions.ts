@@ -39,17 +39,14 @@ export async function createPartnerAction(
       .trim()
       .toLowerCase();
     const contactName = String(formData.get('contact_name') ?? '').trim();
-    const revenueSharePct = Number.parseFloat(
-      String(formData.get('revenue_share_pct') ?? '30')
+    const revenueSharePct = Number(
+      String(formData.get('revenue_share_pct') ?? '30').trim()
     );
-    const perReportFeeCents = Number.parseInt(
-      String(formData.get('per_report_fee_cents') ?? '2500'),
-      10
+    const perReportFeeCents = Number(
+      String(formData.get('per_report_fee_cents') ?? '2500').trim()
     );
     const monthlyLimitRaw = String(formData.get('monthly_report_limit') ?? '').trim();
-    const monthlyReportLimit = monthlyLimitRaw
-      ? Number.parseInt(monthlyLimitRaw, 10)
-      : null;
+    const monthlyReportLimit = monthlyLimitRaw ? Number(monthlyLimitRaw) : null;
     const whiteLabelName = String(formData.get('white_label_name') ?? '').trim();
 
     if (!firmName) {
