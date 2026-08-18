@@ -55,6 +55,13 @@ export class PartnerIdempotencyConflictError extends Error {
   }
 }
 
+export class PartnerMonthlyLimitError extends Error {
+  constructor() {
+    super('Monthly report limit exceeded');
+    this.name = 'PartnerMonthlyLimitError';
+  }
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function hashKey(plaintext: string): string {
@@ -68,9 +75,16 @@ export function fingerprintPartnerRequest(value: unknown): string {
     .digest('hex');
 }
 
+function currentMonthStartIso(): string {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
+}
+
 // ─── Validate API Key ───────────────────────────────────────────────────────
-// Looks up partner by hashed key, checks active status and monthly limits.
-// Returns the partner record on success, null on failure.
+// Authentication and billing-configuration only. Monthly quota is enforced
+// transactionally by record_partner_report_usage against the immutable usage
+// ledger, so retries cannot be rejected merely because a prior request itself
+// consumed the final slot.
 
 export async function validateApiKey(
   key: string
@@ -94,16 +108,6 @@ export async function validateApiKey(
   }
 
   const partner = data as unknown as ApiPartner;
-
-  // Fast preflight. The durable usage ledger remains the billing idempotency
-  // boundary; this prevents obviously over-limit requests before expensive
-  // jurisdiction screening.
-  if (
-    partner.monthly_report_limit !== null &&
-    partner.reports_this_month >= partner.monthly_report_limit
-  ) {
-    return { partner: null, error: 'Monthly report limit exceeded' };
-  }
 
   if (partner.per_report_fee_cents <= 0) {
     return { partner: null, error: 'Partner billing not configured — contact support' };
@@ -248,8 +252,9 @@ export async function generateApiKey(
 }
 
 // ─── Track API Usage ────────────────────────────────────────────────────────
-// Exactly one immutable usage row exists per report. Replays are no-ops when
-// the same partner/fee tuple was already recorded.
+// Exactly one immutable usage row exists per report. The SQL function locks the
+// partner row, counts the current calendar month's ledger entries, enforces the
+// configured cap, and only then records/increments billing aggregates.
 
 export async function trackApiUsage(
   partnerId: string,
@@ -267,6 +272,10 @@ export async function trackApiUsage(
   );
 
   if (error) {
+    if (error.message.includes('Monthly report limit exceeded')) {
+      throw new PartnerMonthlyLimitError();
+    }
+
     apiLogger.error(
       { partnerId, reportId, message: error.message },
       '[partner-api] Failed to record idempotent partner usage'
@@ -282,17 +291,36 @@ export async function getPartnerStats(
 ): Promise<PartnerStats | null> {
   const supabase = createAdminClient();
 
-  const { data, error } = await supabase
-    .from('api_partners' as never)
-    .select(
-      'firm_name, reports_this_month, total_reports_generated, total_revenue_cents, monthly_report_limit, per_report_fee_cents, revenue_share_pct'
-    )
-    .eq('id', partnerId)
-    .single();
+  const [{ data, error }, { count, error: countError }] = await Promise.all([
+    supabase
+      .from('api_partners' as never)
+      .select(
+        'firm_name, reports_this_month, total_reports_generated, total_revenue_cents, monthly_report_limit, per_report_fee_cents, revenue_share_pct'
+      )
+      .eq('id', partnerId)
+      .single(),
+    supabase
+      .from('partner_report_usage' as never)
+      .select('*', { count: 'exact', head: true })
+      .eq('partner_id', partnerId)
+      .gte('created_at', currentMonthStartIso()),
+  ]);
 
   if (error || !data) return null;
+  if (countError) {
+    apiLogger.warn(
+      { partnerId, message: countError.message },
+      '[partner-api] Failed to refresh current-month usage count for stats'
+    );
+  }
 
-  return data as unknown as PartnerStats;
+  return {
+    ...(data as unknown as PartnerStats),
+    reports_this_month:
+      countError || count === null
+        ? (data as unknown as PartnerStats).reports_this_month
+        : count,
+  };
 }
 
 // ─── Create Partner (admin use) ─────────────────────────────────────────────
