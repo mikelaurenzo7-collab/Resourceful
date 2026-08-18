@@ -38,6 +38,9 @@
     },
     "src/app/api/cron/stale-pipeline/route.ts": {
       "maxDuration": 120
+    },
+    "src/app/api/cron/jurisdiction-operations/route.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
@@ -72,6 +75,10 @@
     {
       "path": "/api/cron/stale-pipeline",
       "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/cron/jurisdiction-operations",
+      "schedule": "0 12 * * *"
     }
   ]
 }
