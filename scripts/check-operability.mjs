@@ -109,6 +109,8 @@ assert(
 );
 
 const requiredQueueRoutes = [
+  'src/app/api/reports/route.ts',
+  'src/app/api/v1/reports/route.ts',
   'src/app/api/webhooks/stripe/route.ts',
   'src/app/api/admin/reports/[id]/rerun/route.ts',
   'src/app/api/cron/stale-pipeline/route.ts',
@@ -121,6 +123,21 @@ for (const routePath of requiredQueueRoutes) {
     `${routePath} does not establish durable queue ownership`
   );
 }
+
+const founderIngressRoute = await read('src/app/api/reports/route.ts');
+assert(
+  founderIngressRoute.includes("source: 'founder'") &&
+    founderIngressRoute.includes('`founder:${report.id}`'),
+  'Founder complimentary work is not explicitly identified and idempotently queued'
+);
+
+const partnerIngressRoute = await read('src/app/api/v1/reports/route.ts');
+assert(
+  partnerIngressRoute.includes("source: 'partner_api'") &&
+    partnerIngressRoute.includes('Idempotency-Key') &&
+    partnerIngressRoute.includes('claimPartnerReportRequest'),
+  'Partner API work does not require private request idempotency before queue ownership'
+);
 
 const apiFiles = await collectFiles('src/app/api', ['.ts', '.tsx']);
 for (const apiFile of apiFiles) {
@@ -167,6 +184,36 @@ assert(
   'Stage 5 retry safety does not prevent duplicate filing prefills'
 );
 
+const directIngressMigration = await read(
+  'supabase/migrations/038_partner_durable_ingress.sql'
+);
+assert(
+  directIngressMigration.includes('partner_report_requests') &&
+    directIngressMigration.includes('request_fingerprint') &&
+    directIngressMigration.includes('partner_request_id'),
+  'Partner API request idempotency is not backed by a private durable ledger'
+);
+assert(
+  directIngressMigration.includes('partner_report_usage') &&
+    directIngressMigration.includes('record_partner_report_usage'),
+  'Partner API usage accounting is not idempotent per report'
+);
+assert(
+  directIngressMigration.includes("'founder'") &&
+    directIngressMigration.includes("'partner_api'") &&
+    directIngressMigration.includes("p_source <> 'admin'"),
+  'Founder/partner queue sources are not distinct from privileged admin replacement work'
+);
+
+const partnerApiService = await read(
+  'src/lib/services/partner-api-service.ts'
+);
+assert(
+  partnerApiService.includes('record_partner_report_usage') &&
+    !partnerApiService.includes("rpc('increment_partner_usage'"),
+  'Partner API service still uses non-idempotent aggregate counter mutation'
+);
+
 const adminRerunRoute = await read(
   'src/app/api/admin/reports/[id]/rerun/route.ts'
 );
@@ -202,6 +249,10 @@ assert(
   'Jurisdiction operations control-plane migration is missing'
 );
 assert(
+  await exists('supabase/migrations/038_partner_durable_ingress.sql'),
+  'Durable founder/partner ingress migration is missing'
+);
+assert(
   await exists('src/app/api/cron/jurisdiction-operations/route.ts'),
   'Jurisdiction operations cron route is missing'
 );
@@ -222,6 +273,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Validated ${crons.length} Vercel crons, ${apiFiles.length} API files, durable payment ownership, one-stage worker execution, and jurisdiction operations automation.`
+    `Validated ${crons.length} Vercel crons, ${apiFiles.length} API files, durable paid-work ingress, one-stage worker execution, and jurisdiction operations automation.`
   );
 }
