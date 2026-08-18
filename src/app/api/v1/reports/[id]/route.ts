@@ -5,10 +5,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateApiKey } from '@/lib/services/partner-api-service';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { applyRateLimit } from '@/lib/rate-limit';
 import type { Report } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
-
-// ─── Extract Bearer Token ───────────────────────────────────────────────────
 
 function extractBearerToken(request: NextRequest): string | null {
   const auth = request.headers.get('authorization');
@@ -16,14 +15,20 @@ function extractBearerToken(request: NextRequest): string | null {
   return auth.slice(7).trim();
 }
 
-// ─── GET Handler ────────────────────────────────────────────────────────────
-
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    // ── Authenticate via API key ──────────────────────────────────────────
+    // Status endpoints are naturally polled. Keep the allowance materially
+    // higher than create traffic while still bounding accidental/hostile loops.
+    const rateLimited = await applyRateLimit(request, {
+      prefix: 'v1-report-status',
+      limit: 600,
+      windowSeconds: 900,
+    });
+    if (rateLimited) return rateLimited;
+
     const token = extractBearerToken(request);
     if (!token) {
       return NextResponse.json(
@@ -43,7 +48,6 @@ export async function GET(
     const reportId = params.id;
     const supabase = createAdminClient();
 
-    // ── Fetch report — scoped to this partner ─────────────────────────────
     const { data: rawReport, error: fetchError } = await supabase
       .from('reports')
       .select('*')
@@ -60,7 +64,6 @@ export async function GET(
 
     const report = rawReport as unknown as Report;
 
-    // ── Build response ────────────────────────────────────────────────────
     const response: Record<string, unknown> = {
       reportId: report.id,
       status: report.status,
@@ -72,13 +75,11 @@ export async function GET(
       pipelineStage: report.pipeline_last_completed_stage,
     };
 
-    // ── Include valuation data if pipeline is far enough along ────────────
     if (
       report.status === 'pending_approval' ||
       report.status === 'approved' ||
       report.status === 'delivered'
     ) {
-      // Fetch property_data for valuation numbers
       const { data: rawPropData } = await supabase
         .from('property_data')
         .select('assessed_value, market_value_estimate_low, market_value_estimate_high')
@@ -92,20 +93,23 @@ export async function GET(
           market_value_estimate_high: number | null;
         };
         response.assessedValue = propData.assessed_value;
-        response.concludedValue = propData.market_value_estimate_low;
+        response.marketValueEstimateLow = propData.market_value_estimate_low;
+        response.marketValueEstimateHigh = propData.market_value_estimate_high;
 
+        // Do not label a raw value gap as tax savings. Assessment ratios,
+        // equalization, exemptions, levy rates, and local tax rules determine
+        // actual tax impact and are jurisdiction-specific.
         if (propData.assessed_value && propData.market_value_estimate_low) {
-          const savings = propData.assessed_value - propData.market_value_estimate_low;
-          response.potentialSavings = savings > 0 ? savings : 0;
+          const gap = propData.assessed_value - propData.market_value_estimate_low;
+          response.valueGap = gap > 0 ? gap : 0;
         }
       }
     }
 
-    // ── Generate signed PDF URL if the report has a PDF ───────────────────
     if (report.report_pdf_storage_path) {
       const { data: signedData } = await supabase.storage
         .from('reports')
-        .createSignedUrl(report.report_pdf_storage_path, 86400); // 24 hours
+        .createSignedUrl(report.report_pdf_storage_path, 86400);
 
       if (signedData?.signedUrl) {
         response.pdfUrl = signedData.signedUrl;
