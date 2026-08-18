@@ -95,14 +95,9 @@ export async function GET(
         response.assessedValue = propData.assessed_value;
         response.marketValueEstimateLow = propData.market_value_estimate_low;
         response.marketValueEstimateHigh = propData.market_value_estimate_high;
-
-        // Do not label a raw value gap as tax savings. Assessment ratios,
-        // equalization, exemptions, levy rates, and local tax rules determine
-        // actual tax impact and are jurisdiction-specific.
-        if (propData.assessed_value && propData.market_value_estimate_low) {
-          const gap = propData.assessed_value - propData.market_value_estimate_low;
-          response.valueGap = gap > 0 ? gap : 0;
-        }
+        // Do not derive a gap or savings figure here: assessed value and market
+        // value are not necessarily on the same basis until the jurisdiction's
+        // assessment ratio/equalization rules are applied.
       }
     }
 
