@@ -143,7 +143,8 @@ assert(
     partnerIngressRoute.includes("payment_status: 'partner_api_pending'") &&
     partnerIngressRoute.includes('PartnerMonthlyLimitError') &&
     partnerIngressRoute.includes("status: 'paid'") &&
-    partnerIngressRoute.indexOf('trackApiUsage') < partnerIngressRoute.lastIndexOf("status: 'paid'"),
+    partnerIngressRoute.indexOf('await trackApiUsage') <
+      partnerIngressRoute.indexOf('const updated = await updateReport'),
   'Partner API reports can become runnable before quota-safe usage accounting succeeds'
 );
 
@@ -159,6 +160,61 @@ for (const apiFile of apiFiles) {
     `${apiFile} imports the legacy inline pipeline orchestrator`
   );
 }
+
+const adminFiles = await collectFiles('src/app/admin', ['.ts', '.tsx']);
+for (const adminFile of adminFiles) {
+  const source = await read(adminFile);
+  assert(
+    !/\brunPipeline\s*\(/u.test(source),
+    `${adminFile} calls the legacy inline pipeline`
+  );
+  assert(
+    !source.includes("from '@/lib/pipeline/orchestrator'"),
+    `${adminFile} imports the legacy inline pipeline orchestrator`
+  );
+}
+
+const reviewActions = await read(
+  'src/app/admin/reports/[id]/review/actions.ts'
+);
+assert(
+  reviewActions.includes('enqueuePipelineRun') &&
+    reviewActions.includes("source: 'admin'") &&
+    reviewActions.includes('replaceActive: true'),
+  'Admin review edits/regeneration/reruns are not owned by the durable control plane'
+);
+assert(
+  reviewActions.includes(".eq('report_id', reportId)") &&
+    reviewActions.includes('requirePendingApprovalReport'),
+  'Admin narrative review does not scope mutations to the report and review state'
+);
+
+const partnerCreateAction = await read(
+  'src/app/admin/partners/create/actions.ts'
+);
+assert(
+  partnerCreateAction.includes('isAdminWithEmailMatch') &&
+    partnerCreateAction.includes('auth.getUser()'),
+  'Partner creation server action does not independently authorize the admin caller'
+);
+assert(
+  partnerCreateAction.includes('perReportFeeCents <= 0') &&
+    partnerCreateAction.includes('monthlyReportLimit <= 0'),
+  'Partner creation server action does not fail closed on invalid billing/quota values'
+);
+
+const outcomeActions = await read(
+  'src/app/admin/outcomes/[id]/actions.ts'
+);
+assert(
+  outcomeActions.includes('tax_bill_tax_amount') &&
+    !outcomeActions.includes('actual_savings_cents, amount_paid_cents'),
+  'County savings intelligence still uses Resourceful service fees as the tax-savings denominator'
+);
+assert(
+  outcomeActions.includes('isAdminWithEmailMatch'),
+  'Outcome mutation server action does not use strict admin identity matching'
+);
 
 const orchestrator = await read(
   'src/lib/pipeline/orchestrator.ts'
@@ -294,6 +350,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Validated ${crons.length} Vercel crons, ${apiFiles.length} API files, durable paid-work ingress, quota-safe partner accounting, one-stage worker execution, and jurisdiction operations automation.`
+    `Validated ${crons.length} Vercel crons, ${apiFiles.length} API files, ${adminFiles.length} admin files, durable paid-work and admin ingress, quota-safe partner accounting, one-stage worker execution, and jurisdiction operations automation.`
   );
 }
