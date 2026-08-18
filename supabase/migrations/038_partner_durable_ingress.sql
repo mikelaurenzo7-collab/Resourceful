@@ -108,9 +108,9 @@ revoke all on function public.bind_partner_report_request(uuid, uuid, uuid)
 grant execute on function public.bind_partner_report_request(uuid, uuid, uuid)
   to service_role;
 
--- One immutable usage charge per partner report. The ledger is the idempotency
--- boundary; aggregate partner counters are updated only when a new ledger row
--- is inserted.
+-- One immutable usage charge per partner report. This ledger is authoritative
+-- for monthly quotas; the mutable reports_this_month field is only a cache for
+-- older admin surfaces and is refreshed from the ledger on every new usage.
 create table if not exists public.partner_report_usage (
   report_id uuid primary key references public.reports(id) on delete restrict,
   partner_id uuid not null references public.api_partners(id) on delete restrict,
@@ -126,7 +126,7 @@ revoke all on public.partner_report_usage from anon, authenticated;
 grant all on public.partner_report_usage to service_role;
 
 comment on table public.partner_report_usage is
-  'Service-role-only idempotency ledger for Partner API report usage and billing counters.';
+  'Service-role-only idempotency ledger for Partner API report usage, billing aggregates, and calendar-month quota enforcement.';
 
 create or replace function public.record_partner_report_usage(
   p_partner_id uuid,
@@ -140,7 +140,9 @@ set search_path = public, pg_temp
 as $$
 declare
   v_existing public.partner_report_usage%rowtype;
-  v_inserted integer := 0;
+  v_partner public.api_partners%rowtype;
+  v_current_month_count integer := 0;
+  v_month_start timestamptz := date_trunc('month', now());
 begin
   if p_fee_cents < 0 then
     raise exception 'Partner usage fee cannot be negative';
@@ -159,18 +161,26 @@ begin
       p_partner_id;
   end if;
 
-  insert into public.partner_report_usage (report_id, partner_id, fee_cents)
-  values (p_report_id, p_partner_id, p_fee_cents)
-  on conflict (report_id) do nothing;
+  -- Serialize usage accounting per partner. This makes the monthly cap correct
+  -- even when multiple API requests consume the last available slots at once.
+  select *
+  into v_partner
+  from public.api_partners
+  where id = p_partner_id
+  for update;
 
-  get diagnostics v_inserted = row_count;
+  if not found or not v_partner.is_active then
+    raise exception 'Active partner % was not found', p_partner_id;
+  end if;
 
-  if v_inserted = 0 then
-    select *
-    into v_existing
-    from public.partner_report_usage
-    where report_id = p_report_id;
+  -- Replays are no-ops and must remain valid even when the original request
+  -- consumed the final monthly slot.
+  select *
+  into v_existing
+  from public.partner_report_usage
+  where report_id = p_report_id;
 
+  if found then
     if v_existing.partner_id is distinct from p_partner_id
        or v_existing.fee_cents is distinct from p_fee_cents then
       raise exception
@@ -181,18 +191,29 @@ begin
     return;
   end if;
 
+  select count(*)::integer
+  into v_current_month_count
+  from public.partner_report_usage
+  where partner_id = p_partner_id
+    and created_at >= v_month_start;
+
+  if v_partner.monthly_report_limit is not null
+     and v_current_month_count >= v_partner.monthly_report_limit then
+    raise exception 'Monthly report limit exceeded';
+  end if;
+
+  insert into public.partner_report_usage (report_id, partner_id, fee_cents)
+  values (p_report_id, p_partner_id, p_fee_cents);
+
+  v_current_month_count := v_current_month_count + 1;
+
   update public.api_partners
   set
-    reports_this_month = reports_this_month + 1,
+    reports_this_month = v_current_month_count,
     total_reports_generated = total_reports_generated + 1,
     total_revenue_cents = total_revenue_cents + p_fee_cents,
     updated_at = now()
-  where id = p_partner_id
-    and is_active = true;
-
-  if not found then
-    raise exception 'Active partner % was not found', p_partner_id;
-  end if;
+  where id = p_partner_id;
 end;
 $$;
 
