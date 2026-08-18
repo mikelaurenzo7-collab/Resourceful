@@ -87,9 +87,14 @@ export async function recordOutcome(reportId: string, formData: FormData) {
 
   if (report.county_fips) {
     await recalculateCountyStats(supabase, report.county_fips);
-    aggregateCountyIntelligence(report.county_fips).catch(err =>
-      adminLogger.error({ err: String(err) }, '[outcomes] Intelligence aggregation failed')
-    );
+    try {
+      await aggregateCountyIntelligence(report.county_fips);
+    } catch (err) {
+      adminLogger.error(
+        { reportId, countyFips: report.county_fips, err: String(err) },
+        '[outcomes] Intelligence aggregation failed'
+      );
+    }
   }
 
   if (['won_full', 'won_partial', 'settled_informal'].includes(appealOutcome)) {
@@ -99,11 +104,19 @@ export async function recordOutcome(reportId: string, formData: FormData) {
       .eq('id', reportId)
       .single();
     if (fullReport) {
-      const r = fullReport as unknown as { client_email: string; client_name: string | null };
+      const r = fullReport as unknown as {
+        client_email: string;
+        client_name: string | null;
+      };
       if (r.client_email) {
-        generateReferralCode(r.client_email, r.client_name).catch(err =>
-          adminLogger.error({ err: String(err) }, '[outcomes] Referral code generation failed')
-        );
+        try {
+          await generateReferralCode(r.client_email, r.client_name);
+        } catch (err) {
+          adminLogger.error(
+            { reportId, err: String(err) },
+            '[outcomes] Referral code generation failed'
+          );
+        }
       }
     }
   }
