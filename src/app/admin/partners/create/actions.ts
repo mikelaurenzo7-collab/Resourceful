@@ -1,11 +1,9 @@
 'use server';
 
 import { adminLogger } from '@/lib/logger';
-
-// ─── Admin: Create Partner Server Action ─────────────────────────────────────
-// Creates a new API partner and generates a one-time-visible API key.
-
+import { isAdminWithEmailMatch } from '@/lib/repository/admin';
 import { createPartner } from '@/lib/services/partner-api-service';
+import { createClient } from '@/lib/supabase/server';
 
 export type CreatePartnerState = {
   success: boolean;
@@ -15,47 +13,72 @@ export type CreatePartnerState = {
   firmName?: string;
 };
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export async function createPartnerAction(
   _prevState: CreatePartnerState,
   formData: FormData
 ): Promise<CreatePartnerState> {
   try {
-    const firmName = formData.get('firm_name') as string;
-    const contactEmail = formData.get('contact_email') as string;
-    const contactName = formData.get('contact_name') as string | null;
-    const revenueSharePct = parseFloat(
-      (formData.get('revenue_share_pct') as string) || '30'
+    // Server actions are callable endpoints in their own right. Never rely on
+    // the surrounding /admin layout as the authorization boundary.
+    const authClient = await createClient();
+    const {
+      data: { user },
+    } = await authClient.auth.getUser();
+
+    if (!user?.email) {
+      return { success: false, error: 'Not authenticated.' };
+    }
+    if (!(await isAdminWithEmailMatch(user.id, user.email))) {
+      return { success: false, error: 'Not authorized — admin access required.' };
+    }
+
+    const firmName = String(formData.get('firm_name') ?? '').trim();
+    const contactEmail = String(formData.get('contact_email') ?? '')
+      .trim()
+      .toLowerCase();
+    const contactName = String(formData.get('contact_name') ?? '').trim();
+    const revenueSharePct = Number.parseFloat(
+      String(formData.get('revenue_share_pct') ?? '30')
     );
-    const perReportFeeCents = parseInt(
-      (formData.get('per_report_fee_cents') as string) || '2500',
+    const perReportFeeCents = Number.parseInt(
+      String(formData.get('per_report_fee_cents') ?? '2500'),
       10
     );
-    const monthlyLimitStr = formData.get('monthly_report_limit') as string;
-    const monthlyReportLimit = monthlyLimitStr ? parseInt(monthlyLimitStr, 10) : null;
-    const whiteLabelName = formData.get('white_label_name') as string | null;
+    const monthlyLimitRaw = String(formData.get('monthly_report_limit') ?? '').trim();
+    const monthlyReportLimit = monthlyLimitRaw
+      ? Number.parseInt(monthlyLimitRaw, 10)
+      : null;
+    const whiteLabelName = String(formData.get('white_label_name') ?? '').trim();
 
-    // Validation
-    if (!firmName || firmName.trim().length === 0) {
+    if (!firmName) {
       return { success: false, error: 'Firm name is required.' };
     }
-    if (!contactEmail || !contactEmail.includes('@')) {
+    if (!EMAIL_PATTERN.test(contactEmail)) {
       return { success: false, error: 'Valid contact email is required.' };
     }
-    if (isNaN(revenueSharePct) || revenueSharePct < 0 || revenueSharePct > 100) {
+    if (!Number.isFinite(revenueSharePct) || revenueSharePct < 0 || revenueSharePct > 100) {
       return { success: false, error: 'Revenue share must be between 0 and 100.' };
     }
-    if (isNaN(perReportFeeCents) || perReportFeeCents < 0) {
-      return { success: false, error: 'Per-report fee must be a positive number.' };
+    if (!Number.isInteger(perReportFeeCents) || perReportFeeCents <= 0) {
+      return { success: false, error: 'Per-report fee must be a positive whole number of cents.' };
+    }
+    if (
+      monthlyReportLimit !== null &&
+      (!Number.isInteger(monthlyReportLimit) || monthlyReportLimit <= 0)
+    ) {
+      return { success: false, error: 'Monthly report limit must be a positive whole number or left blank for unlimited.' };
     }
 
     const { partner, plaintextKey } = await createPartner({
-      firm_name: firmName.trim(),
-      contact_email: contactEmail.trim(),
-      contact_name: contactName?.trim() || undefined,
+      firm_name: firmName,
+      contact_email: contactEmail,
+      contact_name: contactName || undefined,
       revenue_share_pct: revenueSharePct,
       per_report_fee_cents: perReportFeeCents,
       monthly_report_limit: monthlyReportLimit,
-      white_label_name: whiteLabelName?.trim() || undefined,
+      white_label_name: whiteLabelName || undefined,
     });
 
     return {
@@ -67,6 +90,6 @@ export async function createPartnerAction(
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     adminLogger.error({ err: message }, '[admin/partners/create] Error');
-    return { success: false, error: message };
+    return { success: false, error: 'Unable to create partner.' };
   }
 }
