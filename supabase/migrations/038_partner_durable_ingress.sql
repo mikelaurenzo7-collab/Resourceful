@@ -4,26 +4,109 @@
 
 begin;
 
--- Partner API requests require a stable client idempotency key. Persist both
--- the key and a fingerprint of the validated request so replaying the same key
--- with different work can never silently alias one report to another.
-alter table public.reports
-  add column if not exists partner_idempotency_key text,
-  add column if not exists partner_request_fingerprint text;
+-- Partner request keys and fingerprints stay in an internal service-role-only
+-- ledger instead of customer-visible report rows. A report stores only the
+-- internal request UUID, which lets a replay recover work created immediately
+-- before a network/process failure without exposing the partner's key.
+create table if not exists public.partner_report_requests (
+  id uuid primary key default gen_random_uuid(),
+  partner_id uuid not null references public.api_partners(id) on delete restrict,
+  idempotency_key text not null check (
+    char_length(idempotency_key) between 8 and 200
+  ),
+  request_fingerprint text not null check (
+    request_fingerprint ~ '^[0-9a-f]{64}$'
+  ),
+  report_id uuid unique references public.reports(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (partner_id, idempotency_key)
+);
 
-create unique index if not exists reports_partner_idempotency_unique_idx
-  on public.reports (api_partner_id, partner_idempotency_key)
-  where api_partner_id is not null
-    and partner_idempotency_key is not null;
+create index if not exists partner_report_requests_partner_created_idx
+  on public.partner_report_requests (partner_id, created_at desc);
+
+alter table public.partner_report_requests enable row level security;
+revoke all on public.partner_report_requests from anon, authenticated;
+grant all on public.partner_report_requests to service_role;
+
+comment on table public.partner_report_requests is
+  'Service-role-only Partner API idempotency ledger. Keys/fingerprints never need to appear in customer report reads.';
+
+alter table public.reports
+  add column if not exists partner_request_id uuid
+    references public.partner_report_requests(id) on delete restrict;
+
+create unique index if not exists reports_partner_request_unique_idx
+  on public.reports (partner_request_id)
+  where partner_request_id is not null;
 
 create index if not exists reports_partner_created_idx
   on public.reports (api_partner_id, created_at desc)
   where api_partner_id is not null;
 
-comment on column public.reports.partner_idempotency_key is
-  'Partner-supplied Idempotency-Key. Unique per API partner when present.';
-comment on column public.reports.partner_request_fingerprint is
-  'SHA-256 fingerprint of the validated Partner API request bound to the idempotency key.';
+comment on column public.reports.partner_request_id is
+  'Internal Partner API request ledger identity used for replay recovery; never the partner-supplied idempotency key.';
+
+create or replace function public.bind_partner_report_request(
+  p_request_id uuid,
+  p_report_id uuid,
+  p_partner_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_request public.partner_report_requests%rowtype;
+begin
+  select *
+  into v_request
+  from public.partner_report_requests
+  where id = p_request_id
+    and partner_id = p_partner_id
+  for update;
+
+  if not found then
+    raise exception
+      'Partner request % was not found for partner %',
+      p_request_id,
+      p_partner_id;
+  end if;
+
+  if v_request.report_id is not null
+     and v_request.report_id is distinct from p_report_id then
+    raise exception
+      'Partner request % is already bound to a different report',
+      p_request_id;
+  end if;
+
+  if not exists (
+    select 1
+    from public.reports
+    where id = p_report_id
+      and api_partner_id = p_partner_id
+      and partner_request_id = p_request_id
+  ) then
+    raise exception
+      'Report % is not durably bound to partner request %',
+      p_report_id,
+      p_request_id;
+  end if;
+
+  update public.partner_report_requests
+  set
+    report_id = p_report_id,
+    updated_at = now()
+  where id = p_request_id;
+end;
+$$;
+
+revoke all on function public.bind_partner_report_request(uuid, uuid, uuid)
+  from public, anon, authenticated;
+grant execute on function public.bind_partner_report_request(uuid, uuid, uuid)
+  to service_role;
 
 -- One immutable usage charge per partner report. The ledger is the idempotency
 -- boundary; aggregate partner counters are updated only when a new ledger row
@@ -68,6 +151,7 @@ begin
     from public.reports
     where id = p_report_id
       and api_partner_id = p_partner_id
+      and partner_request_id is not null
   ) then
     raise exception
       'Report % is not durably bound to partner %',
