@@ -116,6 +116,21 @@ async function loadPaymentReport(
   return data as unknown as PaymentReportState;
 }
 
+function assertPaymentIntentOwnership(
+  reportId: string,
+  storedPaymentIntentId: string | null,
+  expectedPaymentIntentId: string
+): void {
+  if (
+    storedPaymentIntentId &&
+    storedPaymentIntentId !== expectedPaymentIntentId
+  ) {
+    throw new Error(
+      `Report ${reportId} is already bound to another payment intent`
+    );
+  }
+}
+
 async function handlePaymentIntentSucceeded(
   paymentIntent: Stripe.PaymentIntent
 ) {
@@ -142,14 +157,11 @@ async function handlePaymentIntentSucceeded(
   let report = await loadPaymentReport(reportId);
   let paymentTransitioned = false;
 
-  if (
-    report.stripe_payment_intent_id &&
-    report.stripe_payment_intent_id !== paymentIntent.id
-  ) {
-    throw new Error(
-      `Report ${reportId} is already bound to another payment intent`
-    );
-  }
+  assertPaymentIntentOwnership(
+    reportId,
+    report.stripe_payment_intent_id,
+    paymentIntent.id
+  );
 
   if (report.status === 'intake') {
     const { data: updated, error: updateError } = await supabase
@@ -182,20 +194,17 @@ async function handlePaymentIntentSucceeded(
     }
   }
 
-  if (
-    report.stripe_payment_intent_id &&
-    report.stripe_payment_intent_id !== paymentIntent.id
-  ) {
-    throw new Error(
-      `Report ${reportId} was concurrently bound to another payment intent`
-    );
-  }
+  assertPaymentIntentOwnership(
+    reportId,
+    report.stripe_payment_intent_id,
+    paymentIntent.id
+  );
 
   if (
     report.stripe_payment_intent_id === null &&
     RECOVERABLE_PAYMENT_STATUSES.has(report.status)
   ) {
-    const { error: bindError } = await supabase
+    const { data: bound, error: bindError } = await supabase
       .from('reports')
       .update({
         stripe_payment_intent_id: paymentIntent.id,
@@ -203,17 +212,36 @@ async function handlePaymentIntentSucceeded(
         amount_paid_cents: paymentIntent.amount,
       })
       .eq('id', reportId)
-      .is('stripe_payment_intent_id', null);
+      .is('stripe_payment_intent_id', null)
+      .select(
+        'status, stripe_payment_intent_id, pipeline_last_completed_stage'
+      )
+      .maybeSingle();
 
     if (bindError) {
       throw new Error(
         `Failed to reconcile report payment identity: ${bindError.message}`
       );
     }
-    report = {
-      ...report,
-      stripe_payment_intent_id: paymentIntent.id,
-    };
+
+    // A concurrent webhook may have won the compare-and-set with another
+    // payment intent. Never infer ownership from a zero-row update: reload the
+    // canonical row and fail closed if the persisted identity differs.
+    report = bound
+      ? (bound as unknown as PaymentReportState)
+      : await loadPaymentReport(reportId);
+
+    assertPaymentIntentOwnership(
+      reportId,
+      report.stripe_payment_intent_id,
+      paymentIntent.id
+    );
+
+    if (report.stripe_payment_intent_id !== paymentIntent.id) {
+      throw new Error(
+        `Report ${reportId} payment identity could not be durably established`
+      );
+    }
   }
 
   if (!RECOVERABLE_PAYMENT_STATUSES.has(report.status)) {
@@ -226,6 +254,12 @@ async function handlePaymentIntentSucceeded(
       'Duplicate payment event reached a non-runnable report; no pipeline work added'
     );
     return;
+  }
+
+  if (report.stripe_payment_intent_id !== paymentIntent.id) {
+    throw new Error(
+      `Report ${reportId} does not have durable ownership for payment intent ${paymentIntent.id}`
+    );
   }
 
   const run = await enqueuePipelineRun({
@@ -359,6 +393,9 @@ async function handleDispute(dispute: Stripe.Dispute) {
   });
 
   if (alert.error) {
-    throw new Error(alert.error);
+    paymentLogger.warn(
+      { disputeId: dispute.id, err: alert.error },
+      'Dispute alert email failed'
+    );
   }
 }
