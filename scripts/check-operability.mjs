@@ -73,6 +73,26 @@ assert(
   Number(workerFunction?.maxDuration) >= 300,
   'Pipeline worker maxDuration must be at least 300 seconds'
 );
+
+const jurisdictionOperationsCron = crons.find(
+  (cron) => cron.path === '/api/cron/jurisdiction-operations'
+);
+assert(
+  Boolean(jurisdictionOperationsCron),
+  'Jurisdiction operations reconciliation is missing from vercel.json crons'
+);
+assert(
+  jurisdictionOperationsCron?.schedule === '0 12 * * *',
+  'Jurisdiction operations reconciliation must run daily at 12:00 UTC'
+);
+
+const jurisdictionOperationsFunction =
+  functions['src/app/api/cron/jurisdiction-operations/route.ts'];
+assert(
+  Number(jurisdictionOperationsFunction?.maxDuration) >= 120,
+  'Jurisdiction operations reconciliation maxDuration must be at least 120 seconds'
+);
+
 assert(
   Number(
     functions['src/app/api/webhooks/stripe/route.ts']?.maxDuration
@@ -177,6 +197,22 @@ assert(
   await exists('src/lib/pipeline/stage-registry.ts'),
   'Shared runtime stage registry is missing'
 );
+assert(
+  await exists('supabase/migrations/037_operations_autopilot.sql'),
+  'Jurisdiction operations control-plane migration is missing'
+);
+assert(
+  await exists('src/app/api/cron/jurisdiction-operations/route.ts'),
+  'Jurisdiction operations cron route is missing'
+);
+assert(
+  await exists('src/lib/operations/jurisdiction-task-planner.test.ts'),
+  'Jurisdiction operations planner regression tests are missing'
+);
+assert(
+  await exists('src/app/admin/operations/page.tsx'),
+  'Admin operations control tower is missing'
+);
 
 if (failures.length > 0) {
   console.error('Resourceful operability checks failed:');
@@ -186,6 +222,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Validated ${crons.length} Vercel crons, ${apiFiles.length} API files, durable payment ownership, and one-stage worker execution.`
+    `Validated ${crons.length} Vercel crons, ${apiFiles.length} API files, durable payment ownership, one-stage worker execution, and jurisdiction operations automation.`
   );
 }
