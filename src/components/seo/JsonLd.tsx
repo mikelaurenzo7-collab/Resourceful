@@ -2,6 +2,12 @@ import { getAppUrl } from '@/lib/utils/app-url';
 
 const baseUrl = getAppUrl();
 
+function serializeJsonLd(value: unknown): string {
+  // JSON-LD is embedded in a <script> tag. Escape `<` so dynamic values such
+  // as breadcrumb labels/URLs can never manufacture a closing </script> token.
+  return JSON.stringify(value).replace(/</g, '\\u003c');
+}
+
 export function OrganizationJsonLd() {
   const schema = {
     '@context': 'https://schema.org',
@@ -24,7 +30,7 @@ export function OrganizationJsonLd() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
     />
   );
 }
@@ -42,7 +48,7 @@ export function WebSiteJsonLd() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
     />
   );
 }
@@ -119,7 +125,7 @@ export function ServiceJsonLd() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
     />
   );
 }
@@ -199,7 +205,7 @@ export function FAQJsonLd() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
     />
   );
 }
@@ -219,7 +225,7 @@ export function BreadcrumbJsonLd({ items }: { items: { name: string; url: string
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
     />
   );
 }
