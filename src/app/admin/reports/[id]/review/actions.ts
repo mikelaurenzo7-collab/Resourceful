@@ -79,10 +79,62 @@ export async function approveReport(reportId: string) {
   const adminUserId = await getAdminUserId();
   const supabase = createAdminClient();
 
+  // Stage 8 deliberately refuses pending_approval. Atomically claim the report
+  // as delivering first so two admins cannot deliver the same artifact.
+  const { data: claimed, error: claimError } = await supabase
+    .from('reports')
+    .update({ status: 'delivering' as ReportStatus } as never)
+    .eq('id', reportId)
+    .eq('status', 'pending_approval')
+    .select('id')
+    .maybeSingle();
+
+  if (claimError || !claimed) {
+    throw new Error(
+      claimError
+        ? `Failed to claim report for delivery: ${claimError.message}`
+        : 'Report is no longer pending approval; another admin may have acted on it.'
+    );
+  }
+
   const result = await runDelivery(reportId, adminUserId, supabase as never);
 
   if (!result.success) {
-    throw new Error(`Delivery failed: ${result.error}`);
+    const { error: rollbackError } = await supabase
+      .from('reports')
+      .update({ status: 'pending_approval' as ReportStatus } as never)
+      .eq('id', reportId)
+      .eq('status', 'delivering');
+
+    if (rollbackError) {
+      adminLogger.error(
+        { reportId, err: rollbackError.message },
+        '[approve] Delivery failed and approval claim rollback failed'
+      );
+    }
+
+    throw new Error(
+      [
+        `Delivery failed: ${result.error}`,
+        rollbackError ? `Approval rollback failed: ${rollbackError.message}` : null,
+      ]
+        .filter(Boolean)
+        .join('; ')
+    );
+  }
+
+  const approvalEventError = await insertApprovalEvent(supabase, {
+    report_id: reportId,
+    admin_user_id: adminUserId,
+    action: 'approved',
+    notes: 'Report artifact verified, approved, and delivered',
+  });
+  if (approvalEventError) {
+    // Delivery is already durable; never misrepresent this as a delivery failure.
+    adminLogger.error(
+      { reportId, err: approvalEventError.message },
+      '[approve] Report delivered but approval audit event failed'
+    );
   }
 
   try {
@@ -95,6 +147,9 @@ export async function approveReport(reportId: string) {
 
     const tasks: Array<{ name: string; promise: Promise<unknown> }> = [
       {
+        // Stage 8 also attempts this. Retrying here is intentional because the
+        // reminder write is idempotent and Stage 8 treats reminder failure as
+        // non-fatal delivery work.
         name: 'reminder subscription',
         promise: subscribeToReminders(reportId),
       },
