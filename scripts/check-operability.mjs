@@ -138,6 +138,14 @@ assert(
     partnerIngressRoute.includes('claimPartnerReportRequest'),
   'Partner API work does not require private request idempotency before queue ownership'
 );
+assert(
+  partnerIngressRoute.includes("status: 'intake'") &&
+    partnerIngressRoute.includes("payment_status: 'partner_api_pending'") &&
+    partnerIngressRoute.includes('PartnerMonthlyLimitError') &&
+    partnerIngressRoute.includes("status: 'paid'") &&
+    partnerIngressRoute.indexOf('trackApiUsage') < partnerIngressRoute.lastIndexOf("status: 'paid'"),
+  'Partner API reports can become runnable before quota-safe usage accounting succeeds'
+);
 
 const apiFiles = await collectFiles('src/app/api', ['.ts', '.tsx']);
 for (const apiFile of apiFiles) {
@@ -199,6 +207,13 @@ assert(
   'Partner API usage accounting is not idempotent per report'
 );
 assert(
+  directIngressMigration.includes("date_trunc('month', now())") &&
+    directIngressMigration.includes('for update') &&
+    directIngressMigration.includes('Monthly report limit exceeded') &&
+    directIngressMigration.includes('reports_this_month = v_current_month_count'),
+  'Partner monthly quota is not enforced atomically from the immutable current-month usage ledger'
+);
+assert(
   directIngressMigration.includes("'founder'") &&
     directIngressMigration.includes("'partner_api'") &&
     directIngressMigration.includes("p_source <> 'admin'"),
@@ -212,6 +227,12 @@ assert(
   partnerApiService.includes('record_partner_report_usage') &&
     !partnerApiService.includes("rpc('increment_partner_usage'"),
   'Partner API service still uses non-idempotent aggregate counter mutation'
+);
+assert(
+  partnerApiService.includes('PartnerMonthlyLimitError') &&
+    partnerApiService.includes('currentMonthStartIso') &&
+    !partnerApiService.includes('reports_this_month >= partner.monthly_report_limit'),
+  'Partner API service still treats the stale mutable monthly counter as quota authority'
 );
 
 const adminRerunRoute = await read(
@@ -273,6 +294,6 @@ if (failures.length > 0) {
   process.exitCode = 1;
 } else {
   console.log(
-    `Validated ${crons.length} Vercel crons, ${apiFiles.length} API files, durable paid-work ingress, one-stage worker execution, and jurisdiction operations automation.`
+    `Validated ${crons.length} Vercel crons, ${apiFiles.length} API files, durable paid-work ingress, quota-safe partner accounting, one-stage worker execution, and jurisdiction operations automation.`
   );
 }
