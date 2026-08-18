@@ -11,12 +11,13 @@ import {
   fingerprintPartnerRequest,
   getPartnerReportByRequestId,
   PartnerIdempotencyConflictError,
+  PartnerMonthlyLimitError,
   trackApiUsage,
   validateApiKey,
 } from '@/lib/services/partner-api-service';
 import { validateCheckoutService } from '@/lib/services/service-eligibility';
 import { screenServiceJurisdiction } from '@/lib/services/jurisdiction-eligibility';
-import { createReport } from '@/lib/repository/reports';
+import { createReport, updateReport } from '@/lib/repository/reports';
 import { enqueuePipelineRun } from '@/lib/pipeline/queue';
 import { inferNextStageNumber } from '@/lib/pipeline/run-types';
 import { applyRateLimit } from '@/lib/rate-limit';
@@ -229,11 +230,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (!report) {
+      // Creating the row is not permission to consume pipeline resources. Keep
+      // the report non-runnable until the idempotent usage ledger accepts it.
       const reportInput: ReportInsert & { partner_request_id: string } = {
         user_id: null,
         client_email,
         client_name: client_name ?? null,
-        status: 'paid',
+        status: 'intake',
         service_type,
         property_type,
         property_address: resolved?.line1 ?? property_address,
@@ -248,7 +251,7 @@ export async function POST(request: NextRequest) {
         report_pdf_storage_path: null,
         admin_notes: `Partner API report — ${partner.firm_name}`,
         stripe_payment_intent_id: null,
-        payment_status: 'partner_api',
+        payment_status: 'partner_api_pending',
         amount_paid_cents: partner.per_report_fee_cents,
         review_tier,
         photos_skipped: true,
@@ -302,8 +305,36 @@ export async function POST(request: NextRequest) {
       partnerId: partner.id,
     });
 
-    // Exactly-once aggregate usage is backed by partner_report_usage(report_id).
-    await trackApiUsage(partner.id, report.id, partner.per_report_fee_cents);
+    // Exactly-once usage and monthly quota enforcement are backed by the
+    // immutable partner_report_usage ledger. A replay of already-accounted work
+    // remains a no-op even if that work consumed the final monthly slot.
+    try {
+      await trackApiUsage(partner.id, report.id, partner.per_report_fee_cents);
+    } catch (error) {
+      if (error instanceof PartnerMonthlyLimitError) {
+        return NextResponse.json(
+          {
+            error: error.message,
+            code: 'MONTHLY_REPORT_LIMIT_EXCEEDED',
+            retryable: true,
+          },
+          { status: 429 }
+        );
+      }
+      throw error;
+    }
+
+    if (report.status === 'intake') {
+      const updated = await updateReport(report.id, {
+        status: 'paid',
+        payment_status: 'partner_api',
+      });
+      report = {
+        ...report,
+        status: updated.status,
+        pipeline_last_completed_stage: updated.pipeline_last_completed_stage,
+      };
+    }
 
     let queueStatus = 'not_required';
     if (RECOVERABLE_PIPELINE_STATUSES.has(report.status as ReportStatus)) {
