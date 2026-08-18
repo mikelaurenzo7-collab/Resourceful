@@ -1,10 +1,12 @@
 // ─── Durable Pipeline Run Contracts ─────────────────────────────────────────
-// These types mirror migration 036's service-role-only RPC contract. They are
+// These types mirror migration 036 plus later control-plane extensions. They are
 // intentionally isolated from customer-facing database types because app code
 // never reads pipeline_runs directly; every state transition is atomic in SQL.
 
 export type PipelineRunSource =
   | 'stripe'
+  | 'founder'
+  | 'partner_api'
   | 'admin'
   | 'stale_recovery'
   | 'migration_recovery';
