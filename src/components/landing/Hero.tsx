@@ -114,11 +114,23 @@ export default function Hero() {
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    // A selected canonical address should remain stable. Without this guard,
+    // setting the input to the selected formatted address immediately schedules
+    // another autocomplete request and can reopen the suggestion list over the
+    // public-record result card.
+    if (address) {
+      setIsSearching(false);
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
     debounceRef.current = setTimeout(() => fetchSuggestions(query), 300);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [fetchSuggestions, query]);
+  }, [address, fetchSuggestions, query]);
 
   useEffect(() => {
     const closeOnOutsideClick = (event: MouseEvent) => {

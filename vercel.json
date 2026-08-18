@@ -1,13 +1,16 @@
 {
   "functions": {
     "src/app/api/webhooks/stripe/route.ts": {
-      "maxDuration": 300
+      "maxDuration": 60
     },
     "src/app/api/reports/[id]/download/route.ts": {
       "maxDuration": 120
     },
     "src/app/api/reports/[id]/viewer/route.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/cron/pipeline-worker/route.ts": {
+      "maxDuration": 300
     },
     "src/app/api/cron/reminders/route.ts": {
       "maxDuration": 120
@@ -28,16 +31,23 @@
       "maxDuration": 60
     },
     "src/app/api/admin/reports/[id]/rerun/route.ts": {
-      "maxDuration": 300
+      "maxDuration": 60
     },
     "src/app/api/admin/reports/[id]/regenerate/route.ts": {
       "maxDuration": 120
     },
     "src/app/api/cron/stale-pipeline/route.ts": {
       "maxDuration": 120
+    },
+    "src/app/api/cron/jurisdiction-operations/route.ts": {
+      "maxDuration": 120
     }
   },
   "crons": [
+    {
+      "path": "/api/cron/pipeline-worker",
+      "schedule": "* * * * *"
+    },
     {
       "path": "/api/cron/reminders",
       "schedule": "0 9 1 * *"
@@ -65,6 +75,10 @@
     {
       "path": "/api/cron/stale-pipeline",
       "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/cron/jurisdiction-operations",
+      "schedule": "0 12 * * *"
     }
   ]
 }

@@ -32,7 +32,11 @@ export default function ReviewControls({
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const isActionable = reportStatus === 'pending_approval';
+  const canRerun = ['pending_approval', 'failed', 'rejected'].includes(reportStatus);
+
   function handleStartEdit(narrative: ReportNarrative) {
+    if (!isActionable) return;
     setEditingId(narrative.id);
     setEditContent(narrative.admin_edited_content ?? narrative.content ?? '');
   }
@@ -48,7 +52,8 @@ export default function ReviewControls({
         await editSection(reportId, sectionId, editContent);
         setEditingId(null);
         setEditContent('');
-        setMessage({ type: 'success', text: 'Section updated successfully.' });
+        setMessage({ type: 'success', text: 'Section updated and PDF rebuild queued.' });
+        router.refresh();
       } catch (err) {
         setMessage({ type: 'error', text: `Failed to save: ${err instanceof Error ? err.message : 'Unknown error'}` });
       }
@@ -59,7 +64,8 @@ export default function ReviewControls({
     startTransition(async () => {
       try {
         await regenerateSection(reportId, sectionKey);
-        setMessage({ type: 'success', text: `Regenerating section: ${sectionKey}` });
+        setMessage({ type: 'success', text: `Narrative regeneration queued: ${sectionKey}` });
+        router.refresh();
       } catch (err) {
         setMessage({ type: 'error', text: `Failed to regenerate: ${err instanceof Error ? err.message : 'Unknown error'}` });
       }
@@ -99,11 +105,12 @@ export default function ReviewControls({
   }
 
   function handleRerunPipeline() {
-    if (!confirm('Are you sure you want to rerun the full pipeline? This will reset all generated content.')) return;
+    if (!canRerun) return;
+    if (!confirm('Are you sure you want to rerun the full pipeline? This will reset generated pipeline content and create a new durable run.')) return;
     startTransition(async () => {
       try {
         await rerunPipeline(reportId);
-        setMessage({ type: 'success', text: 'Pipeline rerun initiated.' });
+        setMessage({ type: 'success', text: 'Full pipeline rerun queued.' });
         router.refresh();
       } catch (err) {
         setMessage({ type: 'error', text: `Failed to rerun pipeline: ${err instanceof Error ? err.message : 'Unknown error'}` });
@@ -111,11 +118,8 @@ export default function ReviewControls({
     });
   }
 
-  const isActionable = reportStatus === 'pending_approval';
-
   return (
     <>
-      {/* Status message */}
       {message && (
         <div
           className={`rounded-lg px-4 py-3 text-sm ${
@@ -134,9 +138,15 @@ export default function ReviewControls({
         </div>
       )}
 
-      {/* Section Review */}
       <section>
-        <h2 className="text-lg font-bold text-gray-100 mb-4">Section Review</h2>
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <h2 className="text-lg font-bold text-gray-100">Section Review</h2>
+          {!isActionable && (
+            <span className="text-xs font-medium text-gray-500">
+              Read-only at {reportStatus.replace(/_/g, ' ')}
+            </span>
+          )}
+        </div>
         <div className="space-y-3">
           {narratives.length === 0 ? (
             <p className="text-sm text-gray-500 italic">No narrative sections generated yet.</p>
@@ -156,42 +166,44 @@ export default function ReviewControls({
                       {narrative.admin_edited && <span className="ml-2 text-amber-600 font-medium">Edited</span>}
                     </p>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleRegenerate(narrative.section_name)}
-                      disabled={isPending}
-                      className="rounded-lg border border-white/10 px-3 py-1 text-xs font-medium text-gray-300 hover:bg-white/[0.03] disabled:opacity-50"
-                    >
-                      Regenerate
-                    </button>
-                    {editingId === narrative.id ? (
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => handleSaveEdit(narrative.id)}
-                          disabled={isPending}
-                          className="rounded-lg bg-amber-400/15 px-3 py-1 text-xs font-medium text-white hover:bg-amber-400/20 disabled:opacity-50"
-                        >
-                          {isPending ? 'Saving...' : 'Save'}
-                        </button>
-                        <button
-                          onClick={handleCancelEdit}
-                          className="rounded-lg border border-white/10 px-3 py-1 text-xs font-medium text-gray-300 hover:bg-white/[0.03]"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    ) : (
+                  {isActionable && (
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => handleStartEdit(narrative)}
-                        className="rounded-lg border border-amber-400/20 px-3 py-1 text-xs font-medium text-amber-300 hover:bg-amber-400/15 hover:text-white"
+                        onClick={() => handleRegenerate(narrative.section_name)}
+                        disabled={isPending}
+                        className="rounded-lg border border-white/10 px-3 py-1 text-xs font-medium text-gray-300 hover:bg-white/[0.03] disabled:opacity-50"
                       >
-                        Edit
+                        Regenerate
                       </button>
-                    )}
-                  </div>
+                      {editingId === narrative.id ? (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleSaveEdit(narrative.id)}
+                            disabled={isPending}
+                            className="rounded-lg bg-amber-400/15 px-3 py-1 text-xs font-medium text-white hover:bg-amber-400/20 disabled:opacity-50"
+                          >
+                            {isPending ? 'Saving...' : 'Save'}
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="rounded-lg border border-white/10 px-3 py-1 text-xs font-medium text-gray-300 hover:bg-white/[0.03]"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleStartEdit(narrative)}
+                          className="rounded-lg border border-amber-400/20 px-3 py-1 text-xs font-medium text-amber-300 hover:bg-amber-400/15 hover:text-white"
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="px-4 py-3">
-                  {editingId === narrative.id ? (
+                  {editingId === narrative.id && isActionable ? (
                     <textarea
                       className="w-full rounded-lg border border-white/10 px-3 py-2 text-sm focus:border-amber-400/30 focus:outline-none focus:ring-1 focus:ring-amber-400/20"
                       rows={8}
@@ -210,7 +222,6 @@ export default function ReviewControls({
         </div>
       </section>
 
-      {/* Decision Buttons */}
       {isActionable && (
         <section>
           <div className="flex items-center gap-4">
@@ -239,18 +250,18 @@ export default function ReviewControls({
         </section>
       )}
 
-      {/* Rerun Pipeline */}
-      <section className="border-t border-white/[0.06] pt-6">
-        <button
-          onClick={handleRerunPipeline}
-          disabled={isPending}
-          className="w-full rounded-xl border-2 border-dashed border-white/10 px-6 py-3 text-sm font-medium text-gray-400 transition-colors hover:border-amber-400/20 hover:text-amber-300 disabled:opacity-50"
-        >
-          Rerun Full Pipeline
-        </button>
-      </section>
+      {canRerun && (
+        <section className="border-t border-white/[0.06] pt-6">
+          <button
+            onClick={handleRerunPipeline}
+            disabled={isPending}
+            className="w-full rounded-xl border-2 border-dashed border-white/10 px-6 py-3 text-sm font-medium text-gray-400 transition-colors hover:border-amber-400/20 hover:text-amber-300 disabled:opacity-50"
+          >
+            Rerun Full Pipeline
+          </button>
+        </section>
+      )}
 
-      {/* Modals */}
       <RejectModal
         open={rejectOpen}
         onClose={() => setRejectOpen(false)}

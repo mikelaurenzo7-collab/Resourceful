@@ -2,6 +2,12 @@ import { getAppUrl } from '@/lib/utils/app-url';
 
 const baseUrl = getAppUrl();
 
+function serializeJsonLd(value: unknown): string {
+  // JSON-LD is embedded in a <script> tag. Escape `<` so dynamic values such
+  // as breadcrumb labels/URLs can never manufacture a closing </script> token.
+  return JSON.stringify(value).replace(/</g, '\\u003c');
+}
+
 export function OrganizationJsonLd() {
   const schema = {
     '@context': 'https://schema.org',
@@ -24,7 +30,7 @@ export function OrganizationJsonLd() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
     />
   );
 }
@@ -42,7 +48,7 @@ export function WebSiteJsonLd() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
     />
   );
 }
@@ -69,29 +75,29 @@ export function ServiceJsonLd() {
       itemListElement: [
         {
           '@type': 'Offer',
-          name: 'Property Tax Appeal Case Analysis',
+          name: 'Residential Property Tax Appeal Case Analysis',
           price: '49.00',
           priceCurrency: 'USD',
           description:
-            'A reviewable property-tax appeal evidence package with assessment analysis, comparable sales, condition documentation, source notes, and a jurisdiction-specific next-step checklist.',
+            'A residential property-tax appeal evidence package with assessment analysis, comparable sales, condition documentation, source notes, and a jurisdiction-specific next-step checklist.',
           url: `${baseUrl}/start?service=tax_appeal`,
         },
         {
           '@type': 'Offer',
-          name: 'Expert-Reviewed Property Tax Appeal Analysis',
+          name: 'Expert-Reviewed Residential Property Tax Appeal Analysis',
           price: '149.00',
           priceCurrency: 'USD',
           description:
-            'A property-tax appeal case analysis with additional professional review of the evidence, conclusions, and customer-ready work product.',
+            'A residential property-tax appeal case analysis with additional professional review of the evidence, conclusions, and customer-ready work product.',
           url: `${baseUrl}/start?service=tax_appeal&tier=expert-reviewed`,
         },
         {
           '@type': 'Offer',
-          name: 'Guided Property Tax Appeal Filing Support',
+          name: 'Guided Residential Property Tax Appeal Filing Support',
           price: '199.00',
           priceCurrency: 'USD',
           description:
-            'Expert-reviewed analysis plus a live filing-preparation and hearing-preparation session. The customer remains responsible for filing unless a separate written engagement states otherwise.',
+            'Residential expert-reviewed analysis plus a live filing-preparation and hearing-preparation session. The customer remains responsible for filing unless a separate written engagement states otherwise.',
           url: `${baseUrl}/start?service=tax_appeal&tier=guided-filing`,
         },
         {
@@ -119,7 +125,7 @@ export function ServiceJsonLd() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
     />
   );
 }
@@ -199,7 +205,7 @@ export function FAQJsonLd() {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
     />
   );
 }
@@ -219,7 +225,7 @@ export function BreadcrumbJsonLd({ items }: { items: { name: string; url: string
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: serializeJsonLd(schema) }}
     />
   );
 }

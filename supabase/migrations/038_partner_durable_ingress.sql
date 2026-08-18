@@ -1,0 +1,428 @@
+-- ─── Migration 038: Durable Founder + Partner Ingress ───────────────────────
+-- Extends the durable pipeline control plane to every paid-work ingress and
+-- makes Partner API creation/usage accounting safely replayable.
+
+begin;
+
+-- Partner request keys and fingerprints stay in an internal service-role-only
+-- ledger instead of customer-visible report rows. A report stores only the
+-- internal request UUID, which lets a replay recover work created immediately
+-- before a network/process failure without exposing the partner's key.
+create table if not exists public.partner_report_requests (
+  id uuid primary key default gen_random_uuid(),
+  partner_id uuid not null references public.api_partners(id) on delete restrict,
+  idempotency_key text not null check (
+    char_length(idempotency_key) between 8 and 200
+  ),
+  request_fingerprint text not null check (
+    request_fingerprint ~ '^[0-9a-f]{64}$'
+  ),
+  report_id uuid unique references public.reports(id) on delete restrict,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (partner_id, idempotency_key)
+);
+
+create index if not exists partner_report_requests_partner_created_idx
+  on public.partner_report_requests (partner_id, created_at desc);
+
+alter table public.partner_report_requests enable row level security;
+revoke all on public.partner_report_requests from anon, authenticated;
+grant all on public.partner_report_requests to service_role;
+
+comment on table public.partner_report_requests is
+  'Service-role-only Partner API idempotency ledger. Keys/fingerprints never need to appear in customer report reads.';
+
+alter table public.reports
+  add column if not exists partner_request_id uuid
+    references public.partner_report_requests(id) on delete restrict;
+
+create unique index if not exists reports_partner_request_unique_idx
+  on public.reports (partner_request_id)
+  where partner_request_id is not null;
+
+create index if not exists reports_partner_created_idx
+  on public.reports (api_partner_id, created_at desc)
+  where api_partner_id is not null;
+
+comment on column public.reports.partner_request_id is
+  'Internal Partner API request ledger identity used for replay recovery; never the partner-supplied idempotency key.';
+
+create or replace function public.bind_partner_report_request(
+  p_request_id uuid,
+  p_report_id uuid,
+  p_partner_id uuid
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_request public.partner_report_requests%rowtype;
+begin
+  select *
+  into v_request
+  from public.partner_report_requests
+  where id = p_request_id
+    and partner_id = p_partner_id
+  for update;
+
+  if not found then
+    raise exception
+      'Partner request % was not found for partner %',
+      p_request_id,
+      p_partner_id;
+  end if;
+
+  if v_request.report_id is not null
+     and v_request.report_id is distinct from p_report_id then
+    raise exception
+      'Partner request % is already bound to a different report',
+      p_request_id;
+  end if;
+
+  if not exists (
+    select 1
+    from public.reports
+    where id = p_report_id
+      and api_partner_id = p_partner_id
+      and partner_request_id = p_request_id
+  ) then
+    raise exception
+      'Report % is not durably bound to partner request %',
+      p_report_id,
+      p_request_id;
+  end if;
+
+  update public.partner_report_requests
+  set
+    report_id = p_report_id,
+    updated_at = now()
+  where id = p_request_id;
+end;
+$$;
+
+revoke all on function public.bind_partner_report_request(uuid, uuid, uuid)
+  from public, anon, authenticated;
+grant execute on function public.bind_partner_report_request(uuid, uuid, uuid)
+  to service_role;
+
+-- One immutable usage charge per partner report. This ledger is authoritative
+-- for monthly quotas; the mutable reports_this_month field is only a cache for
+-- older admin surfaces and is refreshed from the ledger on every new usage.
+create table if not exists public.partner_report_usage (
+  report_id uuid primary key references public.reports(id) on delete restrict,
+  partner_id uuid not null references public.api_partners(id) on delete restrict,
+  fee_cents integer not null check (fee_cents >= 0),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists partner_report_usage_partner_created_idx
+  on public.partner_report_usage (partner_id, created_at desc);
+
+alter table public.partner_report_usage enable row level security;
+revoke all on public.partner_report_usage from anon, authenticated;
+grant all on public.partner_report_usage to service_role;
+
+comment on table public.partner_report_usage is
+  'Service-role-only idempotency ledger for Partner API report usage, billing aggregates, and calendar-month quota enforcement.';
+
+create or replace function public.record_partner_report_usage(
+  p_partner_id uuid,
+  p_report_id uuid,
+  p_fee_cents integer
+)
+returns void
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_existing public.partner_report_usage%rowtype;
+  v_partner public.api_partners%rowtype;
+  v_current_month_count integer := 0;
+  v_month_start timestamptz := date_trunc('month', now());
+begin
+  if p_fee_cents < 0 then
+    raise exception 'Partner usage fee cannot be negative';
+  end if;
+
+  if not exists (
+    select 1
+    from public.reports
+    where id = p_report_id
+      and api_partner_id = p_partner_id
+      and partner_request_id is not null
+  ) then
+    raise exception
+      'Report % is not durably bound to partner %',
+      p_report_id,
+      p_partner_id;
+  end if;
+
+  -- Serialize usage accounting per partner. This makes the monthly cap correct
+  -- even when multiple API requests consume the last available slots at once.
+  select *
+  into v_partner
+  from public.api_partners
+  where id = p_partner_id
+  for update;
+
+  if not found or not v_partner.is_active then
+    raise exception 'Active partner % was not found', p_partner_id;
+  end if;
+
+  -- Replays are no-ops and must remain valid even when the original request
+  -- consumed the final monthly slot.
+  select *
+  into v_existing
+  from public.partner_report_usage
+  where report_id = p_report_id;
+
+  if found then
+    if v_existing.partner_id is distinct from p_partner_id
+       or v_existing.fee_cents is distinct from p_fee_cents then
+      raise exception
+        'Partner usage identity mismatch for report %',
+        p_report_id;
+    end if;
+
+    return;
+  end if;
+
+  select count(*)::integer
+  into v_current_month_count
+  from public.partner_report_usage
+  where partner_id = p_partner_id
+    and created_at >= v_month_start;
+
+  if v_partner.monthly_report_limit is not null
+     and v_current_month_count >= v_partner.monthly_report_limit then
+    raise exception 'Monthly report limit exceeded';
+  end if;
+
+  insert into public.partner_report_usage (report_id, partner_id, fee_cents)
+  values (p_report_id, p_partner_id, p_fee_cents);
+
+  v_current_month_count := v_current_month_count + 1;
+
+  update public.api_partners
+  set
+    reports_this_month = v_current_month_count,
+    total_reports_generated = total_reports_generated + 1,
+    total_revenue_cents = total_revenue_cents + p_fee_cents,
+    updated_at = now()
+  where id = p_partner_id;
+end;
+$$;
+
+revoke all on function public.record_partner_report_usage(uuid, uuid, integer)
+  from public, anon, authenticated;
+grant execute on function public.record_partner_report_usage(uuid, uuid, integer)
+  to service_role;
+
+-- Retire direct counter mutation as an application path. Existing deployments
+-- may still contain migration 016's function, but only service-role code can
+-- invoke it after this migration and current application code uses the ledgered
+-- function above.
+revoke all on function public.increment_partner_usage(uuid, integer)
+  from public, anon, authenticated;
+grant execute on function public.increment_partner_usage(uuid, integer)
+  to service_role;
+
+-- Founder and partner reports are legitimate first-class durable work sources.
+-- Keep them distinct from admin reruns so only true admin actions retain the
+-- authority to replace an active run.
+alter table public.pipeline_runs
+  drop constraint if exists pipeline_runs_source_check;
+
+alter table public.pipeline_runs
+  add constraint pipeline_runs_source_check check (
+    source in (
+      'stripe',
+      'founder',
+      'partner_api',
+      'admin',
+      'stale_recovery',
+      'migration_recovery'
+    )
+  );
+
+create or replace function public.enqueue_pipeline_run(
+  p_report_id uuid,
+  p_source text,
+  p_idempotency_key text,
+  p_start_stage smallint default 1,
+  p_max_stage_attempts smallint default 3,
+  p_metadata jsonb default '{}'::jsonb,
+  p_replace_active boolean default false
+)
+returns setof public.pipeline_runs
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+  v_run public.pipeline_runs%rowtype;
+begin
+  if p_source not in (
+    'stripe',
+    'founder',
+    'partner_api',
+    'admin',
+    'stale_recovery',
+    'migration_recovery'
+  ) then
+    raise exception 'Unsupported pipeline source: %', p_source;
+  end if;
+
+  if p_idempotency_key is null or btrim(p_idempotency_key) = '' then
+    raise exception 'Pipeline idempotency key is required';
+  end if;
+
+  if p_start_stage < 1 or p_start_stage > 7 then
+    raise exception 'Pipeline start stage must be between 1 and 7';
+  end if;
+
+  if p_max_stage_attempts < 1 or p_max_stage_attempts > 10 then
+    raise exception 'Pipeline max stage attempts must be between 1 and 10';
+  end if;
+
+  if p_replace_active and p_source <> 'admin' then
+    raise exception 'Only an authenticated admin action may replace an active pipeline run';
+  end if;
+
+  select *
+  into v_run
+  from public.pipeline_runs
+  where idempotency_key = p_idempotency_key;
+
+  if found then
+    if v_run.report_id is distinct from p_report_id
+       or v_run.source is distinct from p_source then
+      raise exception
+        'Pipeline idempotency key % is already bound to different work',
+        p_idempotency_key;
+    end if;
+
+    return next v_run;
+    return;
+  end if;
+
+  select *
+  into v_run
+  from public.pipeline_runs
+  where report_id = p_report_id
+    and status in ('queued', 'running', 'retrying')
+  order by created_at desc
+  limit 1
+  for update;
+
+  if found and not p_replace_active then
+    return next v_run;
+    return;
+  end if;
+
+  if found
+    and p_replace_active
+    and v_run.status = 'running'
+    and v_run.lease_expires_at > now() then
+    raise exception
+      'Pipeline run % is currently leased and cannot be replaced safely',
+      v_run.id;
+  end if;
+
+  if found and p_replace_active then
+    update public.pipeline_runs
+    set
+      status = 'cancelled',
+      lease_owner = null,
+      lease_expires_at = null,
+      completed_at = now(),
+      metadata = metadata || jsonb_build_object(
+        'cancelled_by_source', p_source,
+        'cancelled_at', now()
+      )
+    where id = v_run.id;
+  end if;
+
+  if p_replace_active then
+    update public.reports
+    set
+      status = 'paid',
+      pipeline_started_at = null,
+      pipeline_completed_at = null,
+      pipeline_error_log = null,
+      pipeline_last_completed_stage = null,
+      report_pdf_storage_path = null
+    where id = p_report_id
+      and status in ('failed', 'rejected', 'pending_approval');
+
+    if not found then
+      raise exception
+        'Report % is not in a rerunnable terminal or review state',
+        p_report_id;
+    end if;
+  end if;
+
+  begin
+    insert into public.pipeline_runs (
+      report_id,
+      source,
+      start_stage,
+      current_stage,
+      max_stage_attempts,
+      idempotency_key,
+      metadata
+    )
+    values (
+      p_report_id,
+      p_source,
+      p_start_stage,
+      p_start_stage,
+      p_max_stage_attempts,
+      p_idempotency_key,
+      coalesce(p_metadata, '{}'::jsonb)
+    )
+    returning * into v_run;
+  exception
+    when unique_violation then
+      select *
+      into v_run
+      from public.pipeline_runs
+      where idempotency_key = p_idempotency_key
+         or (
+           report_id = p_report_id
+           and status in ('queued', 'running', 'retrying')
+         )
+      order by
+        case when idempotency_key = p_idempotency_key then 0 else 1 end,
+        created_at desc
+      limit 1;
+  end;
+
+  if v_run.id is null then
+    raise exception 'Failed to establish durable ownership for report %', p_report_id;
+  end if;
+
+  if v_run.report_id is distinct from p_report_id then
+    raise exception
+      'Pipeline idempotency key % resolved to a different report',
+      p_idempotency_key;
+  end if;
+
+  return next v_run;
+end;
+$$;
+
+-- CREATE OR REPLACE preserves the existing service_role grant, but state the
+-- contract explicitly for fresh and upgraded projects.
+revoke all on function public.enqueue_pipeline_run(
+  uuid, text, text, smallint, smallint, jsonb, boolean
+) from public, anon, authenticated;
+grant execute on function public.enqueue_pipeline_run(
+  uuid, text, text, smallint, smallint, jsonb, boolean
+) to service_role;
+
+commit;

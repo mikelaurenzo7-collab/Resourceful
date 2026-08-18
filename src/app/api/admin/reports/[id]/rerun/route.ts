@@ -1,12 +1,17 @@
 // ─── Admin Rerun Pipeline API ────────────────────────────────────────────────
-// POST: Reset report to 'paid' status and trigger full pipeline from stage 1.
+// POST: reset a reviewable report and establish durable stage-1 ownership.
 
+import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { isAdminWithEmailMatch, createApprovalEvent } from '@/lib/repository/admin';
-import { getReportById, updateReport } from '@/lib/repository/reports';
-import { runPipeline } from '@/lib/pipeline/orchestrator';
+
 import { apiLogger } from '@/lib/logger';
+import { enqueuePipelineRun } from '@/lib/pipeline/queue';
+import {
+  createApprovalEvent,
+  isAdminWithEmailMatch,
+} from '@/lib/repository/admin';
+import { getReportById } from '@/lib/repository/reports';
+import { createClient } from '@/lib/supabase/server';
 
 export async function POST(
   _request: NextRequest,
@@ -14,8 +19,6 @@ export async function POST(
 ) {
   try {
     const { id: reportId } = await params;
-
-    // ── Authenticate user ──────────────────────────────────────────────────
     const supabase = await createClient();
     const {
       data: { user },
@@ -29,7 +32,6 @@ export async function POST(
       );
     }
 
-    // ── Verify admin ───────────────────────────────────────────────────────
     const adminCheck = await isAdminWithEmailMatch(user.id, user.email);
     if (!adminCheck) {
       return NextResponse.json(
@@ -38,7 +40,6 @@ export async function POST(
       );
     }
 
-    // ── Verify report exists ───────────────────────────────────────────────
     const report = await getReportById(reportId);
     if (!report) {
       return NextResponse.json(
@@ -47,78 +48,84 @@ export async function POST(
       );
     }
 
-    // ── Guard: only allow rerun from terminal or reviewable states ─────────
-    const rerunnableStatuses = ['failed', 'rejected', 'pending_approval'];
+    const rerunnableStatuses = [
+      'failed',
+      'rejected',
+      'pending_approval',
+    ];
     if (!rerunnableStatuses.includes(report.status)) {
       return NextResponse.json(
-        { error: `Cannot rerun a report in '${report.status}' status. Allowed: ${rerunnableStatuses.join(', ')}` },
+        {
+          error: `Cannot rerun a report in '${report.status}' status. Allowed: ${rerunnableStatuses.join(
+            ', '
+          )}`,
+        },
         { status: 409 }
       );
     }
 
-    // ── Reset report to 'paid' status ──────────────────────────────────────
-    await updateReport(reportId, {
-      status: 'paid',
-      pipeline_started_at: null,
-      pipeline_completed_at: null,
-      pipeline_error_log: null,
-      pipeline_last_completed_stage: null,
-      report_pdf_storage_path: null,
-    });
+    const actionId = randomUUID();
 
-    // ── Record approval event ──────────────────────────────────────────────
     await createApprovalEvent({
       report_id: reportId,
       admin_user_id: user.id,
       action: 'rerun_pipeline',
       section_name: null,
-      notes: `Pipeline rerun triggered. Previous status: ${report.status}`,
+      notes: `Durable pipeline rerun requested. Previous status: ${report.status}. Action ID: ${actionId}`,
     });
 
-    // ── Trigger full pipeline from stage 1 (fire-and-forget) ───────────────
-    apiLogger.info({ reportId }, '[api/admin/rerun] Triggering full pipeline rerun for report');
-
-    runPipeline(reportId, 1).catch(async (err) => {
-      const errMessage = err instanceof Error ? err.message : String(err);
-      const stack = err instanceof Error ? err.stack : undefined;
-      apiLogger.error(
-        { reportId, err: errMessage, stack },
-        '[api/admin/rerun] Pipeline failed'
-      );
-      // Update report status so it doesn't stay stuck in 'paid'
-      try {
-        const { createAdminClient: adminClient } = await import('@/lib/supabase/admin');
-        await adminClient().from('reports').update({
-          status: 'failed',
-          pipeline_error_log: {
-            stage: 'pipeline',
-            error: errMessage,
-            stack: stack ?? errMessage,
-            timestamp: new Date().toISOString(),
-          },
-        }).eq('id', reportId);
-      } catch (dbErr) {
-        apiLogger.error(
-          { reportId, dbErr: String(dbErr), pipelineError: errMessage },
-          '[api/admin/rerun] CRITICAL: Pipeline failed AND status update failed'
-        );
-      }
+    // enqueue_pipeline_run atomically cancels any active lease, resets the
+    // report to paid, and inserts replacement ownership for admin reruns.
+    const run = await enqueuePipelineRun({
+      reportId,
+      source: 'admin',
+      idempotencyKey: `admin:${reportId}:${actionId}`,
+      startStage: 1,
+      replaceActive: true,
+      metadata: {
+        action_id: actionId,
+        admin_user_id: user.id,
+        previous_status: report.status,
+      },
     });
+
+    apiLogger.info(
+      {
+        reportId,
+        runId: run.id,
+        actionId,
+        currentStage: run.current_stage,
+      },
+      '[api/admin/rerun] Durable pipeline rerun queued'
+    );
 
     return NextResponse.json(
       {
-        message: 'Pipeline rerun triggered',
+        message: 'Pipeline rerun queued',
         reportId,
-        status: 'paid',
+        runId: run.id,
+        status: run.status,
+        currentStage: run.current_stage,
       },
-      { status: 200 }
+      { status: 202 }
     );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    apiLogger.error({ err: message }, 'Unhandled error');
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : String(error);
+    apiLogger.error(
+      { err: message },
+      '[api/admin/rerun] Unhandled error'
+    );
+    const activeLeaseConflict = message.includes(
+      'currently leased and cannot be replaced safely'
+    );
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      {
+        error: activeLeaseConflict
+          ? 'The pipeline is currently running. Retry after the active stage finishes.'
+          : 'Internal server error',
+      },
+      { status: activeLeaseConflict ? 409 : 500 }
     );
   }
 }
