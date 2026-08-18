@@ -1,6 +1,8 @@
 // ─── Create Report API ──────────────────────────────────────────────────────
 // POST: Validate input, verify the purchasable service and jurisdiction, create
 // the report row, create the Stripe PaymentIntent, and return the payment secret.
+// Founder access is also placed on the same durable queue as every other paid
+// work source; no request-scoped pipeline execution is permitted here.
 
 import { NextRequest, NextResponse } from 'next/server';
 import { reportCreateSchema } from '@/lib/validations/report';
@@ -9,7 +11,7 @@ import { getPriceCents } from '@/config/pricing';
 import { createReport, updateReport } from '@/lib/repository/reports';
 import { applyRateLimit } from '@/lib/rate-limit';
 import { isFounderEmail } from '@/config/founders';
-import { runPipeline } from '@/lib/pipeline/orchestrator';
+import { enqueuePipelineRun } from '@/lib/pipeline/queue';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createClient } from '@/lib/supabase/server';
 import { validateReferralCode, applyReferralCode } from '@/lib/services/referral-service';
@@ -18,7 +20,7 @@ import { screenServiceJurisdiction } from '@/lib/services/jurisdiction-eligibili
 import type { Report } from '@/types/database';
 import { apiLogger } from '@/lib/logger';
 
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 function jurisdictionFailureStatus(code: string): number {
   if (code === 'ADDRESS_VERIFICATION_FAILED' || code === 'COUNTY_FIPS_UNRESOLVED') {
@@ -232,29 +234,30 @@ export async function POST(request: NextRequest) {
     }
 
     if (founderAccess) {
-      apiLogger.info({ id: report.id }, '[api/reports] Founder access — skipping payment');
-      runPipeline(report.id).catch(async (err) => {
-        const message = err instanceof Error ? err.message : String(err);
-        apiLogger.error({ id: report.id, message }, '[api/reports] Pipeline failed for founder report');
-        try {
-          await createAdminClient().from('reports').update({
-            status: 'failed',
-            pipeline_error_log: {
-              stage: 'pipeline',
-              error: message,
-              timestamp: new Date().toISOString(),
-            },
-          }).eq('id', report.id);
-        } catch (dbErr) {
-          apiLogger.error(
-            { id: report.id, dbErr, message },
-            '[api/reports] CRITICAL: Pipeline and error recording failed'
-          );
-        }
+      const run = await enqueuePipelineRun({
+        reportId: report.id,
+        source: 'founder',
+        idempotencyKey: `founder:${report.id}`,
+        metadata: {
+          enqueued_from: 'founder_access',
+          client_email,
+          service_type,
+          property_type,
+        },
       });
 
+      apiLogger.info(
+        { id: report.id, runId: run.id, runStatus: run.status },
+        '[api/reports] Founder access durably queued'
+      );
+
       return NextResponse.json(
-        { reportId: report.id, founderAccess: true, priceCents: 0 },
+        {
+          reportId: report.id,
+          founderAccess: true,
+          priceCents: 0,
+          queueStatus: run.status,
+        },
         { status: 201 }
       );
     }
