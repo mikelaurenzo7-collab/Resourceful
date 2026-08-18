@@ -51,7 +51,10 @@ async function fetchAllCountyRules(): Promise<CountyRule[]> {
       .range(offset, offset + PAGE_SIZE - 1);
 
     if (error) throw new Error(`Failed to load county rules: ${error.message}`);
-    const page = data ?? [];
+    // operations tables are intentionally typed outside the generated public
+    // Database map. Cast only at this repository boundary, after Supabase has
+    // returned a successful rowset, rather than leaking `{}` into domain code.
+    const page = (data ?? []) as unknown as CountyRule[];
     rules.push(...page);
     if (page.length < PAGE_SIZE) break;
   }
@@ -72,7 +75,7 @@ async function fetchExistingTasks(): Promise<OperationsTask[]> {
       .range(offset, offset + PAGE_SIZE - 1);
 
     if (error) throw new Error(`Failed to load operations tasks: ${error.message}`);
-    const page = data ?? [];
+    const page = (data ?? []) as unknown as OperationsTask[];
     tasks.push(...page);
     if (page.length < PAGE_SIZE) break;
   }
