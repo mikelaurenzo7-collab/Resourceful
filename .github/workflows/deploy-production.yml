@@ -24,6 +24,8 @@ jobs:
       VERCEL_ORG_ID: team_ssX7cPECdHvXGFHSOuS9iXos
       VERCEL_PROJECT_ID: prj_j6M19RLIb5zIyju5W8J2meEDESqG
       CANONICAL_APP_URL: https://resourceful-7x38.vercel.app
+      EXPECTED_SUPABASE_PROJECT_REF: ${{ vars.RESOURCEFUL_SUPABASE_PROJECT_REF }}
+      WIRELINE_SUPABASE_PROJECT_REF: ogenlhodmwvyacvnrsnj
 
     steps:
       - name: Verify deployment routing
@@ -32,6 +34,14 @@ jobs:
           set -euo pipefail
           if [ -z "$VERCEL_TOKEN" ]; then
             echo "::error::VERCEL_TOKEN is not configured in the GitHub production environment."
+            exit 1
+          fi
+          if [ -z "$EXPECTED_SUPABASE_PROJECT_REF" ]; then
+            echo "::error::Set the GitHub production variable RESOURCEFUL_SUPABASE_PROJECT_REF to the dedicated Resourceful Supabase project ref."
+            exit 1
+          fi
+          if [ "$EXPECTED_SUPABASE_PROJECT_REF" = "$WIRELINE_SUPABASE_PROJECT_REF" ]; then
+            echo "::error::Resourceful production must never use the Wireline Supabase project."
             exit 1
           fi
           test "$VERCEL_ORG_ID" = "team_ssX7cPECdHvXGFHSOuS9iXos"
@@ -146,6 +156,7 @@ jobs:
             'NEXT_PUBLIC_SUPABASE_URL',
             'NEXT_PUBLIC_SUPABASE_ANON_KEY',
             'SUPABASE_SERVICE_ROLE_KEY',
+            'SUPABASE_PROJECT_REF',
             'OPENAI_API_KEY',
             'STRIPE_SECRET_KEY',
             'STRIPE_WEBHOOK_SECRET',
@@ -163,6 +174,34 @@ jobs:
           if (process.env.NEXT_PUBLIC_APP_URL !== process.env.CANONICAL_APP_URL) {
             throw new Error(
               `NEXT_PUBLIC_APP_URL must equal ${process.env.CANONICAL_APP_URL}; received ${process.env.NEXT_PUBLIC_APP_URL}`
+            );
+          }
+
+          const expectedSupabaseRef = process.env.EXPECTED_SUPABASE_PROJECT_REF?.trim();
+          const configuredSupabaseRef = process.env.SUPABASE_PROJECT_REF?.trim();
+          const wirelineSupabaseRef = process.env.WIRELINE_SUPABASE_PROJECT_REF?.trim();
+          if (!expectedSupabaseRef) {
+            throw new Error('RESOURCEFUL_SUPABASE_PROJECT_REF GitHub production variable is required.');
+          }
+          if (expectedSupabaseRef === wirelineSupabaseRef) {
+            throw new Error('Resourceful production is explicitly forbidden from using the Wireline Supabase project.');
+          }
+          if (configuredSupabaseRef !== expectedSupabaseRef) {
+            throw new Error(
+              `Supabase project mismatch: Vercel has ${configuredSupabaseRef ?? 'missing'}, expected dedicated Resourceful ref ${expectedSupabaseRef}`
+            );
+          }
+
+          let supabaseUrl;
+          try {
+            supabaseUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL);
+          } catch {
+            throw new Error('NEXT_PUBLIC_SUPABASE_URL is not a valid URL.');
+          }
+          const urlProjectRef = supabaseUrl.hostname.split('.')[0];
+          if (urlProjectRef !== expectedSupabaseRef) {
+            throw new Error(
+              `NEXT_PUBLIC_SUPABASE_URL resolves to project ${urlProjectRef}, expected ${expectedSupabaseRef}`
             );
           }
 
