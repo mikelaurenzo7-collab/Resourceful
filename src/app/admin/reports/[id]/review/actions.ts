@@ -13,7 +13,6 @@ import { subscribeToReminders } from '@/lib/services/reminder-service';
 import type {
   ApprovalAction,
   ReportStatus,
-  AdminUser,
   ReportNarrative,
   Report,
 } from '@/types/database';
@@ -87,21 +86,54 @@ export async function approveReport(reportId: string) {
   }
 
   try {
-    const { data: reportData } = await supabase.from('reports').select('*').eq('id', reportId).single();
+    const { data: reportData } = await supabase
+      .from('reports')
+      .select('*')
+      .eq('id', reportId)
+      .single();
     const report = reportData as unknown as Report | null;
 
+    const tasks: Array<{ name: string; promise: Promise<unknown> }> = [
+      {
+        name: 'reminder subscription',
+        promise: subscribeToReminders(reportId),
+      },
+    ];
+
     if (report && isFilingEligible(report)) {
-      adminLogger.info({ reportId, tier: report.review_tier }, '[approve] Auto-filing for report');
-      fileAppeal(reportId).catch(err =>
-        adminLogger.error({ reportId, err: String(err) }, '[approve] Filing failed')
+      adminLogger.info(
+        { reportId, tier: report.review_tier },
+        '[approve] Preparing filing workflow'
       );
+      tasks.push({
+        name: 'filing preparation',
+        promise: fileAppeal(reportId).then((filingResult) => {
+          if (!filingResult.success) {
+            throw new Error(filingResult.error ?? 'Filing preparation failed');
+          }
+          return filingResult;
+        }),
+      });
     }
 
-    subscribeToReminders(reportId).catch(err =>
-      adminLogger.error({ reportId, err: String(err) }, '[approve] Reminder subscription failed')
-    );
+    const settled = await Promise.allSettled(tasks.map((task) => task.promise));
+    settled.forEach((taskResult, index) => {
+      if (taskResult.status === 'rejected') {
+        adminLogger.error(
+          {
+            reportId,
+            task: tasks[index].name,
+            err: String(taskResult.reason),
+          },
+          '[approve] Post-delivery task failed'
+        );
+      }
+    });
   } catch (err) {
-    adminLogger.warn({ err: String(err) }, '[approve] Post-delivery tasks failed (non-fatal)');
+    adminLogger.warn(
+      { reportId, err: String(err) },
+      '[approve] Post-delivery tasks failed (non-fatal)'
+    );
   }
 
   revalidatePath('/admin/reports');
@@ -111,6 +143,7 @@ export async function approveReport(reportId: string) {
 export async function rejectReport(reportId: string, notes: string) {
   const adminUserId = await getAdminUserId();
   const supabase = createAdminClient();
+  await requirePendingApprovalReport(supabase, reportId);
 
   const eventError = await insertApprovalEvent(supabase, {
     report_id: reportId,
@@ -138,13 +171,26 @@ export async function rejectReport(reportId: string, notes: string) {
     .eq('id', reportId)
     .single();
 
-  sendReportRejectionAlert({
-    reportId,
-    propertyAddress: (reportData as { property_address: string } | null)?.property_address ?? 'Unknown',
-    notes,
-  }).catch((err) => {
-    adminLogger.error({ err: String(err) }, '[admin] Failed to send rejection alert email');
-  });
+  try {
+    const alert = await sendReportRejectionAlert({
+      reportId,
+      propertyAddress:
+        (reportData as { property_address: string } | null)?.property_address ??
+        'Unknown',
+      notes,
+    });
+    if (alert.error) {
+      adminLogger.error(
+        { reportId, err: alert.error },
+        '[admin] Failed to send rejection alert email'
+      );
+    }
+  } catch (err) {
+    adminLogger.error(
+      { reportId, err: String(err) },
+      '[admin] Failed to send rejection alert email'
+    );
+  }
 
   revalidatePath('/admin/reports');
   revalidatePath(`/admin/reports/${reportId}/review`);
@@ -158,8 +204,8 @@ export async function holdReport(reportId: string, notes: string) {
   const eventError = await insertApprovalEvent(supabase, {
     report_id: reportId,
     admin_user_id: adminUserId,
-    action: 'approved',
-    notes: `HOLD FOR REVIEW: ${notes}`,
+    action: 'hold_for_review',
+    notes,
   });
 
   if (eventError) throw new Error(`Failed to record hold: ${eventError.message}`);
@@ -196,7 +242,10 @@ export async function editSection(
     .eq('report_id', reportId)
     .single();
 
-  const currentNarrative = rawNarrative as unknown as Pick<ReportNarrative, 'content' | 'section_name'> | null;
+  const currentNarrative = rawNarrative as unknown as Pick<
+    ReportNarrative,
+    'content' | 'section_name'
+  > | null;
   if (narrativeError || !currentNarrative) {
     throw new Error('Narrative section not found for this report.');
   }
