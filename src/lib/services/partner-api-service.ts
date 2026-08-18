@@ -1,5 +1,5 @@
 // ─── Partner API Service ─────────────────────────────────────────────────────
-// Manages API key lifecycle, partner authentication, and usage tracking
+// Manages API key lifecycle, durable request idempotency, and usage tracking
 // for the white-label Partner API.
 
 import crypto from 'crypto';
@@ -38,10 +38,34 @@ export type PartnerStats = {
   revenue_share_pct: number;
 };
 
+export type PartnerReportRequest = {
+  id: string;
+  partner_id: string;
+  idempotency_key: string;
+  request_fingerprint: string;
+  report_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export class PartnerIdempotencyConflictError extends Error {
+  constructor() {
+    super('This Idempotency-Key is already bound to a different request body.');
+    this.name = 'PartnerIdempotencyConflictError';
+  }
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function hashKey(plaintext: string): string {
   return crypto.createHash('sha256').update(plaintext).digest('hex');
+}
+
+export function fingerprintPartnerRequest(value: unknown): string {
+  return crypto
+    .createHash('sha256')
+    .update(JSON.stringify(value))
+    .digest('hex');
 }
 
 // ─── Validate API Key ───────────────────────────────────────────────────────
@@ -71,7 +95,9 @@ export async function validateApiKey(
 
   const partner = data as unknown as ApiPartner;
 
-  // Check monthly limit
+  // Fast preflight. The durable usage ledger remains the billing idempotency
+  // boundary; this prevents obviously over-limit requests before expensive
+  // jurisdiction screening.
   if (
     partner.monthly_report_limit !== null &&
     partner.reports_this_month >= partner.monthly_report_limit
@@ -79,12 +105,116 @@ export async function validateApiKey(
     return { partner: null, error: 'Monthly report limit exceeded' };
   }
 
-  // Ensure partner has billing terms configured (prevent misconfigured free access)
   if (partner.per_report_fee_cents <= 0) {
     return { partner: null, error: 'Partner billing not configured — contact support' };
   }
 
   return { partner, error: null };
+}
+
+// ─── Durable Partner Request Idempotency ────────────────────────────────────
+
+export async function claimPartnerReportRequest(input: {
+  partnerId: string;
+  idempotencyKey: string;
+  requestFingerprint: string;
+}): Promise<{ request: PartnerReportRequest; created: boolean }> {
+  const supabase = createAdminClient();
+  const { data: inserted, error: insertError } = await supabase
+    .from('partner_report_requests' as never)
+    .insert({
+      partner_id: input.partnerId,
+      idempotency_key: input.idempotencyKey,
+      request_fingerprint: input.requestFingerprint,
+    } as never)
+    .select('*')
+    .maybeSingle();
+
+  if (!insertError && inserted) {
+    return {
+      request: inserted as unknown as PartnerReportRequest,
+      created: true,
+    };
+  }
+
+  // A concurrent/replayed request should resolve the canonical ledger row.
+  // PostgREST reports Postgres unique violations as 23505.
+  if (insertError && insertError.code !== '23505') {
+    throw new Error(
+      `Failed to claim Partner API request: ${insertError.message}`
+    );
+  }
+
+  const { data: existing, error: existingError } = await supabase
+    .from('partner_report_requests' as never)
+    .select('*')
+    .eq('partner_id', input.partnerId)
+    .eq('idempotency_key', input.idempotencyKey)
+    .single();
+
+  if (existingError || !existing) {
+    throw new Error(
+      `Failed to recover Partner API request: ${
+        existingError?.message ?? 'request not found'
+      }`
+    );
+  }
+
+  const request = existing as unknown as PartnerReportRequest;
+  if (request.request_fingerprint !== input.requestFingerprint) {
+    throw new PartnerIdempotencyConflictError();
+  }
+
+  return { request, created: false };
+}
+
+export async function bindPartnerReportRequest(input: {
+  requestId: string;
+  reportId: string;
+  partnerId: string;
+}): Promise<void> {
+  const supabase = createAdminClient();
+  const { error } = await supabase.rpc(
+    'bind_partner_report_request' as never,
+    {
+      p_request_id: input.requestId,
+      p_report_id: input.reportId,
+      p_partner_id: input.partnerId,
+    } as never
+  );
+
+  if (error) {
+    throw new Error(`Failed to bind Partner API request: ${error.message}`);
+  }
+}
+
+export async function getPartnerReportByRequestId(
+  partnerId: string,
+  requestId: string
+): Promise<{
+  id: string;
+  status: string;
+  pipeline_last_completed_stage: string | null;
+  county_fips: string | null;
+} | null> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from('reports' as never)
+    .select('id,status,pipeline_last_completed_stage,county_fips')
+    .eq('api_partner_id', partnerId)
+    .eq('partner_request_id', requestId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to recover Partner API report: ${error.message}`);
+  }
+
+  return data as unknown as {
+    id: string;
+    status: string;
+    pipeline_last_completed_stage: string | null;
+    county_fips: string | null;
+  } | null;
 }
 
 // ─── Generate API Key ───────────────────────────────────────────────────────
@@ -104,7 +234,7 @@ export async function generateApiKey(
   const { error } = await supabase
     .from('api_partners' as never)
     .update({
-      api_key: hashed,  
+      api_key: hashed,
       api_key_prefix: prefix,
       updated_at: new Date().toISOString(),
     } as never)
@@ -118,7 +248,8 @@ export async function generateApiKey(
 }
 
 // ─── Track API Usage ────────────────────────────────────────────────────────
-// Increments counters when a report is created via the Partner API.
+// Exactly one immutable usage row exists per report. Replays are no-ops when
+// the same partner/fee tuple was already recorded.
 
 export async function trackApiUsage(
   partnerId: string,
@@ -126,32 +257,25 @@ export async function trackApiUsage(
   feeCents: number
 ): Promise<void> {
   const supabase = createAdminClient();
+  const { error } = await supabase.rpc(
+    'record_partner_report_usage' as never,
+    {
+      p_partner_id: partnerId,
+      p_report_id: reportId,
+      p_fee_cents: feeCents,
+    } as never
+  );
 
-  // Atomic counter increment via DB function (migration 016).
-  // No fallback — if the RPC fails, we log and throw rather than
-  // risk a non-atomic read-modify-write race condition.
-  const { error: partnerError } = await supabase.rpc('increment_partner_usage' as never, {
-    partner_id: partnerId,
-    fee_cents: feeCents,
-  } as never);
-
-  if (partnerError) {
-    apiLogger.error({ partnerId, message: partnerError.message }, '[partner-api] Failed to track usage for partner');
-    throw new Error(`Partner usage tracking failed: ${partnerError.message}`);
+  if (error) {
+    apiLogger.error(
+      { partnerId, reportId, message: error.message },
+      '[partner-api] Failed to record idempotent partner usage'
+    );
+    throw new Error(`Partner usage tracking failed: ${error.message}`);
   }
-
-  // Tag the report with partner info (new columns from migration 013)
-  await supabase
-    .from('reports')
-    .update({
-      api_partner_id: partnerId,  
-      is_white_label: true,
-    } as never)
-    .eq('id', reportId);
 }
 
 // ─── Get Partner Stats ──────────────────────────────────────────────────────
-// Returns usage statistics for a partner.
 
 export async function getPartnerStats(
   partnerId: string
@@ -172,7 +296,6 @@ export async function getPartnerStats(
 }
 
 // ─── Create Partner (admin use) ─────────────────────────────────────────────
-// Creates a new partner record with a placeholder key, then generates the real key.
 
 export async function createPartner(input: {
   firm_name: string;
@@ -185,7 +308,6 @@ export async function createPartner(input: {
 }): Promise<{ partner: ApiPartner; plaintextKey: string }> {
   const supabase = createAdminClient();
 
-  // Generate key upfront so we can store the hash at creation time
   const randomPart = crypto.randomBytes(32).toString('hex');
   const plaintextKey = `rfl_${randomPart}`;
   const prefix = plaintextKey.slice(0, 8);
